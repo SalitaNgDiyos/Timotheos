@@ -6,11 +6,13 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { Bible, Locked, isBibleFile, isLocked, openBible } from './bibles';
-import { Dict, openDicts } from './dict';
+import { BookMod, guessKind, isBookFile, openBook } from './books';
+import type { ModFile } from './native';
+import { commentaryMarks, initPanel, show as showPanel, strongEntry, updateCommentary, forgetSearchCache } from './panel';
 import { importBytes, loadSettings, modulesDir, saveSettings, scan } from './native';
 import { SKINS, applySkin } from './skins';
 
-interface Settings { folders: string[]; open: string[]; ref: { b: number; c: number }; skin: string; show: Record<string, boolean>; fontSize: number }
+interface Settings { folders: string[]; open: string[]; ref: { b: number; c: number; v?: number }; sideW?: number; sideHidden?: boolean; skin: string; show: Record<string, boolean>; fontSize: number }
 const DEFAULT: Settings = { folders: [], open: [], ref: { b: 43, c: 3 }, skin: 'parchment', show: { strongs: false, morph: false, footnotes: true, headings: true, woj: true, added: true }, fontSize: 18 };
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -21,7 +23,15 @@ const isAndroid = /Android/i.test(navigator.userAgent);
 let S: Settings = DEFAULT;
 let bibles: Bible[] = [];
 let locked: Locked[] = [];
-let dicts: Dict[] = [];
+let books: BookMod[] = [];
+let restBooks: ModFile[] = [];
+/** open the dictionaries, books and devotionals in the background */
+async function openRest(): Promise<void> {
+  const t0 = performance.now(); const more: BookMod[] = [];
+  for (const f of restBooks) more.push(await openBook(f));
+  books = [...books, ...more]; restBooks = [];
+  statusLine(performance.now() - t0);
+}
 let nav: { id: number; name: string; abbr: string; grp: string; chapters: number[] }[] = [];
 let ownDir = '';
 
@@ -36,14 +46,24 @@ async function loadModules(): Promise<void> {
   const opened = await Promise.all(bfiles.map(openBible));
   bibles = opened.filter((m): m is Bible => !isLocked(m)).sort((a, b) => a.abbr.localeCompare(b.abbr));
   locked = opened.filter(isLocked);
-  dicts = await openDicts(files);
+  // commentaries first (the panel and the "c" marks need them); the rest are opened after the first chapter shows
+  const bookFiles = files.filter(f => isBookFile(f.name) && !seen.has(f.name.toLowerCase()) && seen.add(f.name.toLowerCase()));
+  const cmts = bookFiles.filter(f => guessKind(f.name) === 'commentary');
+  books = await Promise.all(cmts.map(openBook));
+  restBooks = bookFiles.filter(f => !cmts.includes(f));
+  forgetSearchCache();
   S.open = S.open.filter(id => bibles.some(b => b.id === id));
   if (!S.open.length && bibles.length) S.open = [(bibles.find(b => /kjv/i.test(b.abbr)) || bibles[0]).id];
   buildNav();
-  $('#status').textContent = `${bibles.length} Bible${bibles.length === 1 ? '' : 's'} · ${dicts.length} Strong's dictionar${dicts.length === 1 ? 'y' : 'ies'}${locked.length ? ` · ${locked.length} could not be opened` : ''} · ${Math.round(performance.now() - t0)} ms`;
+  statusLine(performance.now() - t0);
   $('#empty').classList.toggle('hidden', bibles.length > 0);
 }
 
+function statusLine(ms: number): void {
+  const nd = books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked).length, nl = books.filter(m => !m.locked).length;
+  const bad = locked.length + books.filter(m => m.locked).length;
+  $('#status').textContent = `${bibles.length} Bible${bibles.length === 1 ? '' : 's'} · ${nl} library modules${restBooks.length ? ` (opening ${restBooks.length} more…)` : ` (${nd} Strong's dictionaries)`}${bad ? ` · ${bad} could not be opened` : ''} · ${Math.round(ms)} ms`;
+}
 function openBibles(): Bible[] { return S.open.map(id => bibles.find(b => b.id === id)).filter((b): b is Bible => !!b); }
 
 function buildNav(): void {
@@ -64,11 +84,11 @@ function buildNav(): void {
 
 /* ---------------------------------------------------------------- reading */
 let seq = 0;
-async function go(b: number, c: number): Promise<void> {
+async function go(b: number, c: number, v = 1): Promise<void> {
   const bk = nav.find(x => x.id === b) || nav[0];
   if (!bk) { $('#view').innerHTML = ''; return; }
   if (!bk.chapters.includes(c)) c = bk.chapters[0];
-  S.ref = { b: bk.id, c }; save();
+  S.ref = { b: bk.id, c, v }; save();
   $<HTMLSelectElement>('#bookSel').value = String(bk.id);
   const cs = $<HTMLSelectElement>('#chapSel'); cs.innerHTML = bk.chapters.map(n => `<option>${n}</option>`).join(''); cs.value = String(c);
   $('#refBtn').textContent = `${bk.name} ${c}`; $('#capRef').textContent = `${bk.name} ${c}`;
@@ -78,13 +98,14 @@ async function go(b: number, c: number): Promise<void> {
   if (my !== seq) return;
   const vmax = Math.max(0, ...chapters.map(ch => ch.length ? ch[ch.length - 1].v : 0));
   const show = S.show;
+  const marks = commentaryMarks(bk.id, c);
   const cell = (m: Bible, raw: string | undefined) => raw == null ? '' : TWRender.render(raw, m, show, { fn: { n: 0 } });
   const font = (m: Bible) => m.font ? ` style="font-family:'TwGreek','${esc(m.font)}',var(--font-text)"` : '';
   let html = '';
   if (isPhone() || list.length === 1) {
     html = '<div class="rows">';
     for (let v = 1; v <= vmax; v++) {
-      html += `<div class="vrow" data-v="${v}"><span class="vn">${v}</span><div class="vtexts">`;
+      html += `<div class="vrow${v === S.ref.v ? ' sel' : ''}" data-v="${v}"><span class="vn">${v}${marks.has(v) ? '<i class="cm">c</i>' : ''}</span><div class="vtexts">`;
       list.forEach((m, i) => { const r = chapters[i].find(x => x.v === v); if (r) html += `<div class="vt${m.rtl ? ' rtl' : ''}"${font(m)}>${list.length > 1 ? `<span class="ab">${esc(m.abbr)}</span>` : ''}${cell(m, r.raw)}</div>`; });
       html += '</div></div>';
     }
@@ -92,13 +113,15 @@ async function go(b: number, c: number): Promise<void> {
   } else {
     html = `<table class="chap"><thead><tr><th class="vn"></th>${list.map(m => `<th title="${esc(m.title)}">${esc(m.abbr)}</th>`).join('')}</tr></thead><tbody>`;
     for (let v = 1; v <= vmax; v++) {
-      html += `<tr data-v="${v}"><td class="vn">${v}</td>`;
+      html += `<tr data-v="${v}"${v === S.ref.v ? ' class="sel"' : ''}><td class="vn">${v}${marks.has(v) ? '<i class="cm" title="Commentary">c</i>' : ''}</td>`;
       list.forEach((m, i) => { const r = chapters[i].find(x => x.v === v); html += `<td class="${m.rtl ? 'rtl' : ''}"${font(m)}>${cell(m, r?.raw)}</td>`; });
       html += '</tr>';
     }
     html += '</tbody></table>';
   }
   const view = $('#view'); view.innerHTML = html; view.scrollTop = 0;
+  if ((S.ref.v || 1) > 1) { const el = view.querySelector(`[data-v="${S.ref.v}"]`); if (el) el.scrollIntoView({ block: 'center' }); }
+  updateCommentary();
   $('#timing').textContent = `${Math.round(performance.now() - t0)} ms`;
 }
 function step(d: number): void {
@@ -111,18 +134,17 @@ function step(d: number): void {
 /* ---------------------------------------------------------------- Strong's popup / sheet */
 async function lookup(keys: string[]): Promise<string> {
   const parts: string[] = [];
+  const nd = books.some(m => m.kind === 'dictionary' && m.isStrong && !m.locked);
   for (const k of keys) {
-    const want = k[0].toUpperCase() === 'H' ? 'hebrew' : 'greek';
-    const order = [...dicts].sort((a, b) => Number(b[want]) - Number(a[want]));
-    let hit: { subject: string; html: string } | null = null; let src = '';
-    for (const d of order) { hit = await d.lookup(k); if (hit) { src = d.title; break; } }
-    parts.push(hit ? `<div class="entry"><h4>${esc(hit.subject)}</h4><div class="src">${esc(src)}</div>${clean(hit.html)}</div>` : `<div class="entry"><h4>${esc(k)}</h4><div class="src">${dicts.length ? 'Not in your Strong\'s dictionaries' : 'No Strong\'s dictionary yet – import one'}</div></div>`);
+    const hit = await strongEntry(k);
+    parts.push(hit ? `<div class="entry"><h4>${esc(hit.subject)}</h4><div class="src">${esc(hit.src)}</div>${clean(hit.html)}</div>` : `<div class="entry"><h4>${esc(k)}</h4><div class="src">${nd ? 'Not in your Strong\'s dictionaries' : 'No Strong\'s dictionary yet – import one'}</div></div>`);
   }
   return parts.join('');
 }
 function clean(html: string): string {
   const t = document.createElement('template'); t.innerHTML = html;
   t.content.querySelectorAll('script,style,iframe,object,embed').forEach(n => n.remove());
+  t.content.querySelectorAll('a[href]').forEach(a => { (a as HTMLElement).dataset.href = a.getAttribute('href') || ''; a.classList.add('link'); });
   t.content.querySelectorAll('*').forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || a.name === 'href') n.removeAttribute(a.name); });
   return t.innerHTML;
 }
@@ -193,12 +215,12 @@ async function importModules(): Promise<void> {
     let bin = ''; for (let i = 0; i < data.length; i += 0x8000) bin += String.fromCharCode(...data.subarray(i, i + 0x8000));
     await importBytes(name, btoa(bin));
   }
-  if (list.length) { await loadModules(); go(S.ref.b, S.ref.c); toggleMenu('#bibleMenu', bibleMenu); }
+  if (list.length) { await loadModules(); await go(S.ref.b, S.ref.c); openRest(); toggleMenu('#bibleMenu', bibleMenu); }
 }
 async function addFolder(): Promise<void> {
   const d = await openDialog({ directory: true, title: 'Choose a folder with theWord or e-Sword modules' });
   if (!d || S.folders.includes(String(d))) return;
-  S.folders.push(String(d)); save(); await loadModules(); go(S.ref.b, S.ref.c); bibleMenu();
+  S.folders.push(String(d)); save(); await loadModules(); await go(S.ref.b, S.ref.c); openRest(); bibleMenu();
 }
 
 /* ---------------------------------------------------------------- start */
@@ -228,7 +250,32 @@ async function init(): Promise<void> {
     const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], sup.fn'); clearTimeout(timer);
     if (t) timer = window.setTimeout(() => showWord(t), 300);
   });
-  $('#view').addEventListener('click', e => { const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], sup.fn'); if (t) showWord(t); });
+  $('#view').addEventListener('click', e => {
+    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], sup.fn'); if (t) return void showWord(t);
+    const vn = (e.target as HTMLElement).closest<HTMLElement>('.vn'); if (!vn) return;
+    const v = +vn.closest<HTMLElement>('[data-v]')!.dataset.v!;
+    $('#view').querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); vn.closest('[data-v]')!.classList.add('sel');
+    S.ref.v = v; save(); updateCommentary();
+    if ((e.target as HTMLElement).closest('.cm')) showPanel('cmt');
+  });
+  // the study panel (Commentary, Library, Search)
+  initPanel({ books: () => books, openBibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, clean, save, settings: () => S as unknown as Record<string, unknown> });
+  const applySide = () => {
+    document.body.classList.toggle('side-hidden', !!S.sideHidden);
+    $('#side').style.width = Math.max(260, Math.min(900, S.sideW || 400)) + 'px';
+    $('#sideBtn').classList.toggle('on', !S.sideHidden);
+  };
+  applySide();
+  $('#sideBtn').onclick = () => { S.sideHidden = !S.sideHidden; save(); applySide(); };
+  document.querySelectorAll<HTMLButtonElement>('[data-open]').forEach(b => b.onclick = () => showPanel(b.dataset.open!));
+  $('#sideClose').onclick = () => document.body.classList.remove('side-open');
+  const sp = $('#sideSplit');
+  sp.addEventListener('pointerdown', e => {
+    e.preventDefault(); sp.setPointerCapture(e.pointerId); const x0 = e.clientX, w0 = $('#side').offsetWidth;
+    const move = (ev: PointerEvent) => { S.sideW = Math.round(Math.max(260, Math.min(innerWidth - 360, w0 - (ev.clientX - x0)))); applySide(); };
+    const up = () => { sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); save(); };
+    sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up);
+  });
   document.addEventListener('keydown', e => {
     if ((e.target as HTMLElement).matches('input, select, textarea')) return;
     if (e.key === 'ArrowLeft') step(-1); if (e.key === 'ArrowRight') step(1);
@@ -240,7 +287,11 @@ async function init(): Promise<void> {
   $('#view').addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; if (Math.abs(dx) > 80 && Math.abs(dx) > 2 * Math.abs(dy)) step(dx < 0 ? 1 : -1); });
   let last = isPhone(); window.addEventListener('resize', () => { if (isPhone() !== last) { last = isPhone(); go(S.ref.b, S.ref.c); } });
   await loadModules();
-  await go(S.ref.b, S.ref.c);
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, dicts: () => dicts, showWord, picker };
+  await go(S.ref.b, S.ref.c, S.ref.v || 1);
+  const w = window as unknown as Record<string, unknown>;
+  w.__tanglawFirst = Math.round(performance.now());
+  await openRest();
+  w.__tanglawReady = Math.round(performance.now());
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });

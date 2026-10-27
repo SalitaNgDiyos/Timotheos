@@ -10,6 +10,8 @@ export interface Bible {
   books: Map<number, number[]>;          // book → verse count per chapter
   rules: string[]; rtl: boolean; font: string; warnings: string[];
   chapter(b: number, c: number): Promise<{ v: number; raw: string }[]>;
+  /** every verse as [book, chapter, verse, raw] (for searching; read once, then kept) */
+  allVerses(): Promise<[number, number, number, string][]>;
 }
 export interface Locked { id: string; file: string; title: string; reason: string }
 
@@ -38,6 +40,7 @@ async function openOnt(f: ModFile): Promise<Bible> {
   const books = new Map<number, number[]>();
   const [b0, b1] = kind === 'ont' ? [1, 66] : kind === 'ot' ? [1, 39] : [40, 66];
   for (let b = b0; b <= b1; b++) books.set(b, canon.kjvChapters(b));
+  let allCache: [number, number, number, string][] | null = null;
   return {
     id: 'tw:' + f.name, file: f.path, format: 'theWord', rules, warnings: [],
     abbr: (props['short.title'] || f.name.replace(/\.[^.]+$/, '')).trim(),
@@ -48,6 +51,13 @@ async function openOnt(f: ModFile): Promise<Bible> {
       const start = canon.ontLine(b, c, 1, kind);
       const lines = await ontSlice(f.path, start, vc);
       return lines.map((raw, i) => ({ v: i + 1, raw }));
+    },
+    async allVerses() {
+      if (allCache) return allCache;
+      const lines = await ontSlice(f.path, 0, count); const out: [number, number, number, string][] = [];
+      let i = 0;
+      for (let b = b0; b <= b1; b++) canon.kjvChapters(b).forEach((n: number, ci: number) => { for (let v = 1; v <= n; v++) out.push([b, ci + 1, v, lines[i++] ?? '']); });
+      return (allCache = out);
     },
   };
 }
@@ -75,6 +85,7 @@ async function openESword(f: ModFile): Promise<Bible> {
   }
   for (const arr of books.values()) for (let i = 0; i < arr.length; i++) if (!arr[i]) arr[i] = 0;
   const notes = T('notes');
+  let allCache: [number, number, number, string][] | null = null;
   const abbr = details.abbreviation || f.name.replace(/\.(bblx|bbli)$/i, '');
   return {
     id: 'es:' + f.name, file: f.path, format: 'e-Sword', rules: [], books, font: details.font && details.font !== 'DEFAULT' ? details.font : '',
@@ -94,6 +105,14 @@ async function openESword(f: ModFile): Promise<Bible> {
         out.push({ v: v as number, raw: '<_HTML_>' + esw.eswordToHtml(t, n, true) });
       }
       return out;
+    },
+    async allVerses() {
+      if (allCache) return allCache;
+      const out: [number, number, number, string][] = [];
+      for (const [eb, ec, v, sc] of (await sql(f.path, `select Book, Chapter, Verse, Scripture from ${bible} order by Book, Chapter, Verse`)).rows) {
+        const [b, c] = toT(eb as number, ec as number); out.push([b, c, v as number, '<_HTML_>' + esw.eswordToHtml(text(sc), null, true)]);
+      }
+      return (allCache = out);
     },
   };
 }

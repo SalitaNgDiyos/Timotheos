@@ -15,7 +15,13 @@ What it does now (proof of concept):
   `render.js`), Strong's popups from theWord .dct.twm and e-Sword lexicons/dictionaries
   (popup with the mouse, bottom sheet on a phone);
 - the eight skins; a title bar drawn in the skin (Tauri draws no system frame);
-- phone layout: book → chapter picker sheet, swipe left/right for the next/previous chapter.
+- phone layout: book → chapter picker sheet, swipe left/right for the next/previous chapter;
+- **study panel** (beside the text on a computer, full screen on a phone): **Commentary** follows the
+  selected verse (filled dot = comment on this verse, ring = on the passage/chapter/book; "c" marks in the
+  text), **Library** opens any commentary, dictionary, book or devotional (topic list, filter, back,
+  previous/next topic, Bible references in entries jump to the verse), **Search** with theWord-style
+  queries (AND/OR/NOT, "phrases", wildcards, G/H Strong's numbers, NEAR, ranges) – the same search
+  engine as the Electron version.
 Encrypted modules are listed as "cannot be opened" and never decoded.
 
 ## How it is built
@@ -23,10 +29,11 @@ Encrypted modules are listed as "cannot be opened" and never decoded.
   line by line, **read-only** SQLite queries (native SQLite, so modules are not loaded into memory as a
   whole – needed on phones), settings, import. No module format knowledge lives here.
 - `src/*.ts` – everything that understands modules and the screen, in TypeScript:
-  `bibles.ts` (theWord + e-Sword Bibles), `dict.ts` (Strong's dictionaries), `main.ts` (screen),
+  `bibles.ts` (theWord + e-Sword Bibles), `books.ts` (commentaries, dictionaries, books, devotionals –
+  port of lib/bookmod.js), `panel.ts` (Commentary, Library, Search), `main.ts` (screen),
   `skins.ts`, `native.ts` (calls to the native side).
 - `src/legacy/*.js` – shared unchanged with the Electron version: `canon.js` (books, KJV
-  versification, 1611 order), `render.js` (theWord tags → HTML), `rtf.js`, `eswordfmt.js`.
+  versification, 1611 order), `render.js` (theWord tags → HTML), `rtf.js`, `eswordfmt.js`, `search.js`.
 
 ## Build
 ```
@@ -43,6 +50,6 @@ module folders, runs `test/ui.js` in the window (env `TANGLAW_SCRIPT`), prints t
 screenshot. Add `400 800` at the end for a phone-sized window.
 
 ## Not yet moved over from 0.4.x
-Library (commentaries, books, devotionals), search, study tools (highlights, notes, bookmarks, lists,
-reading plans), Copy Verses, docking panels, Options window, user guide, module properties. The plan
+Study tools (highlights, notes, bookmarks, verse lists, reading plans), Copy Verses, search statistics and
+custom ranges, cross-references, docking panels, Options window, user guide, module properties. The plan
 is to move them module by module, in TypeScript.
