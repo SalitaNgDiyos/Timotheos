@@ -33,7 +33,7 @@
 </main>
 <div id="sideSplit" class="desk" title="Drag to make the panel wider or narrower"></div>
 <aside id="side">
-  <div class="ptabs"><button data-ptab="cmt">Commentary</button><button data-ptab="lib">Library</button><button data-ptab="search">Search</button><span class="grow"></span><button id="sideClose" class="phoneonly" aria-label="Close">✕</button></div>
+  <div class="ptabs"><button data-ptab="cmt">Commentary</button><button data-ptab="lib">Library</button><button data-ptab="search">Search</button><button data-ptab="study">My Study</button><span class="grow"></span><button id="sideClose" class="phoneonly" aria-label="Close">✕</button></div>
   <section class="ptab" id="p-cmt"><div class="phead" id="cmtHead"></div><div class="chips" id="cmtChips"></div><div id="cmtBody" class="pbody entrybody"></div></section>
   <section class="ptab hidden" id="p-lib">
     <div class="libbar"><select id="libMod" aria-label="Module"></select>
@@ -48,11 +48,13 @@
       <div class="srow"><select id="searchScope" aria-label="Range"></select><label><input type="checkbox" id="optWhole"> whole words</label><label><input type="checkbox" id="optCase"> match case</label></div></form>
     <div id="searchStatus" class="small sstatus"></div><ol id="searchResults" class="results pbody"></ol>
   </section>
+  <section class="ptab hidden" id="p-study"><div class="seg" id="studyTabs"><button data-st="lists">Verse lists</button><button data-st="notes">Notes</button><button data-st="marks">Bookmarks</button></div><div id="studyBody" class="pbody"></div></section>
 </aside>
 </div>
-<nav class="phonebar"><button id="pPrev" aria-label="Previous chapter"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button><button id="refBtn" class="ref">…</button><button data-open="cmt" aria-label="Commentary"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4z"/></svg></button><button data-open="lib" aria-label="Library"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 5.5C4.5 4 8 4 12 6c4-2 7.5-2 10-.5V19c-2.5-1.5-6-1.5-10 .5-4-2-7.5-2-10-.5zM12 6v13.5"/></svg></button><button data-open="search" aria-label="Search"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button><button id="pNext" aria-label="Next chapter"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></nav>
+<nav class="phonebar"><button id="pPrev" aria-label="Previous chapter"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button><button id="refBtn" class="ref">…</button><button data-open="cmt" aria-label="Commentary"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v11H9l-5 4z"/></svg></button><button data-open="lib" aria-label="Library"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 5.5C4.5 4 8 4 12 6c4-2 7.5-2 10-.5V19c-2.5-1.5-6-1.5-10 .5-4-2-7.5-2-10-.5zM12 6v13.5"/></svg></button><button data-open="study" aria-label="My Study"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button><button data-open="search" aria-label="Search"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button><button id="pNext" aria-label="Next chapter"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></nav>
 <footer class="status"><span id="status"></span></footer>
 <div id="popup" class="popup hidden"></div>
+<div id="vmenu" class="menu vmenu hidden"></div>
 <div id="sheet" class="sheet"><div class="sheetpanel"><div class="grab"></div><div id="sheetBody"></div></div></div>
 <script type="module" src="/src/main.ts"></script>
 </body>

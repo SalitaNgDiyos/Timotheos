@@ -164,6 +164,54 @@ fn settings_save(app: tauri::AppHandle, settings: serde_json::Value) -> Result<(
     fs::rename(tmp, p).map_err(|e| e.to_string())
 }
 
+/** the user's study data (highlights, notes, bookmarks, lists, plans): one JSON file, written safely,
+ *  with a copy kept for each of the last 7 days */
+#[tauri::command]
+fn ud_load(app: tauri::AppHandle) -> serde_json::Value {
+    fs::read_to_string(data_dir(&app).join("my-study-data.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(serde_json::json!({}))
+}
+
+#[tauri::command]
+fn ud_save(app: tauri::AppHandle, data: serde_json::Value) -> Result<(), String> {
+    let dir = data_dir(&app);
+    let p = dir.join("my-study-data.json");
+    if p.exists() {
+        let day = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() / 86400).unwrap_or(0);
+        let bdir = dir.join("backups");
+        let _ = fs::create_dir_all(&bdir);
+        let today = bdir.join(format!("my-study-data.day{}.json", day));
+        if !today.exists() {
+            let _ = fs::copy(&p, &today);
+            if let Ok(rd) = fs::read_dir(&bdir) {
+                let mut olds: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|x| x.to_string_lossy().contains("my-study-data.day")).collect();
+                olds.sort();
+                while olds.len() > 7 { let _ = fs::remove_file(olds.remove(0)); }
+            }
+        }
+    }
+    let tmp = p.with_extension("tmp");
+    fs::write(&tmp, serde_json::to_vec(&data).unwrap()).map_err(|e| e.to_string())?;
+    fs::rename(tmp, p).map_err(|e| e.to_string())
+}
+
+/** settings and study data of the Electron edition of Tanglaw, if it was used on this computer
+ *  (its folder is "Tanglaw Bible" in the user's application-data folder) */
+#[tauri::command]
+fn legacy_data(app: tauri::AppHandle) -> serde_json::Value {
+    let Ok(cfg) = app.path().config_dir() else { return serde_json::Value::Null };
+    for name in ["Tanglaw Bible", "tanglaw-bible"] {
+        let d = cfg.join(name);
+        let st = d.join("settings.json");
+        if st.exists() {
+            let read = |f: &str| fs::read_to_string(d.join(f)).ok().and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()).unwrap_or(serde_json::Value::Null);
+            let modules = d.join("modules");
+            return serde_json::json!({ "folder": d.to_string_lossy(), "settings": read("settings.json"), "study": read("my-study-data.json"),
+                "modules": if modules.exists() { serde_json::Value::String(modules.to_string_lossy().to_string()) } else { serde_json::Value::Null } });
+        }
+    }
+    serde_json::Value::Null
+}
+
 /** test hook: a test script reports its results here (printed on the console) */
 #[tauri::command]
 fn test_report(text: String) { println!("RESULT {}", text); }
@@ -174,7 +222,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(Store::default())
-        .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, test_report])
+        .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, ud_load, ud_save, legacy_data, test_report])
         .setup(|app| {
             // test hook (like the Electron version's): TANGLAW_SCRIPT runs a script in the window after start
             if let (Ok(sz), Some(w)) = (std::env::var("TANGLAW_SIZE"), app.get_webview_window("main")) {

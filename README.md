@@ -21,7 +21,16 @@ What it does now (proof of concept):
   text), **Library** opens any commentary, dictionary, book or devotional (topic list, filter, back,
   previous/next topic, Bible references in entries jump to the verse), **Search** with theWord-style
   queries (AND/OR/NOT, "phrases", wildcards, G/H Strong's numbers, NEAR, ranges) – the same search
-  engine as the Electron version.
+  engine as the Electron version;
+- **your study**: highlights (selection or whole verse, five colours, underline, bold), notes under the
+  verses (typed references become links), bookmarks 1–0, verse lists, a **My Study** tab; right-click a
+  verse (long-press on a phone) for the verse menu; the same data file layout as Tanglaw 0.4, with a
+  copy kept for each of the last 7 days;
+- **first start on a computer that has Tanglaw 0.4**: its module folders, open Bibles, place, skin and
+  all study data are taken over automatically (from `%APPDATA%\Tanglaw Bible`); Tanglaw 0.4 itself is
+  not changed;
+- keys: ← → chapter, Ctrl+← → book, ↑ ↓ verse, type a number for a verse (Shift: chapter), Alt+← →
+  or Backspace for history, Ctrl+1…0 / Ctrl+Shift+1…0 bookmarks, Ctrl+L add to list, Ctrl+C copy verse.
 Encrypted modules are listed as "cannot be opened" and never decoded.
 
 ## How it is built
@@ -45,11 +54,12 @@ npx tauri android init && npx tauri android build --apk   # Android (Android SDK
 `.github/workflows/build.yml` builds all three on GitHub's machines (Actions → Build Tanglaw).
 
 ## Test
-`test/run.sh test/ui.js shot.png 12` starts the release build under a virtual screen with the test
+`test/run.sh test/ui.js shot.png 30` starts the release build under a virtual screen with the test
 module folders, runs `test/ui.js` in the window (env `TANGLAW_SCRIPT`), prints the results and saves a
-screenshot. Add `400 800` at the end for a phone-sized window.
+screenshot. Add `400 800` at the end for a phone-sized window. `LEGACY=1 test/run.sh test/study.js shot.png 30`
+checks the study tools and taking over data from Tanglaw 0.4.
 
 ## Not yet moved over from 0.4.x
-Study tools (highlights, notes, bookmarks, verse lists, reading plans), Copy Verses, search statistics and
+Reading plans, Copy Verses window, search statistics and
 custom ranges, cross-references, docking panels, Options window, user guide, module properties. The plan
 is to move them module by module, in TypeScript.

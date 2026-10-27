@@ -13,6 +13,11 @@ export const importBytes = (name: string, b64: string) => invoke<string>('import
 export const loadSettings = () => invoke<Record<string, unknown>>('settings_load');
 export const saveSettings = (settings: unknown) => invoke<void>('settings_save', { settings });
 
+export const loadStudy = () => invoke<Record<string, unknown>>('ud_load');
+export const saveStudy = (data: unknown) => invoke<void>('ud_save', { data });
+export interface Legacy { folder: string; settings: Record<string, unknown> | null; study: Record<string, unknown> | null; modules: string | null }
+export const legacyData = () => invoke<Legacy | null>('legacy_data');
+
 /** text of a SQLite value (blobs arrive as {$b64}) */
 export function text(v: unknown): string {
   if (v == null) return '';

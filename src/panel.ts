@@ -4,6 +4,7 @@ import canon from './legacy/canon.js';
 import search from './legacy/search.js';
 import { Bible } from './bibles';
 import { BookMod, Topic } from './books';
+import { renderStudy } from './study';
 
 export interface PanelHost {
   books(): BookMod[];
@@ -55,6 +56,7 @@ export function show(t: string, open = true): void {
   if (open) document.body.classList.add('side-open');
   if (t === 'cmt') updateCommentary();
   if (t === 'lib') { fillLibSelect(); if (lib.cur && !lib.topics.length) openLib(lib.cur); }
+  if (t === 'study') renderStudy();
   if (t === 'search') setTimeout(() => $<HTMLInputElement>('#searchInput').focus(), 50);
 }
 
