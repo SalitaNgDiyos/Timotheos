@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ebe6db">
+<title>Tanglaw Bible</title>
+<link rel="stylesheet" href="/fonts.css">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<header class="titlebar" data-tauri-drag-region>
+  <span class="logo" data-tauri-drag-region><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3M12 6.5v6M9.5 9h5"/></svg></span>
+  <span class="name" data-tauri-drag-region>Tanglaw Bible</span>
+  <button id="biblesBtn" class="tbtn" title="Bibles and modules"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16.5 4.6l3.8-1 3.7 15.5-3.8 1z"/></svg><span class="lbl">Bibles</span></button>
+  <div class="desk tools">
+    <select id="bookSel" aria-label="Book"></select><select id="chapSel" aria-label="Chapter"></select>
+    <button id="prev" class="tbtn" title="Previous chapter (←)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <button id="next" class="tbtn" title="Next chapter (→)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+  <span class="drag" data-tauri-drag-region></span>
+  <button id="skinBtn" class="tbtn" title="Skin and view"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.8 1.7-1.7 0-.5-.2-.8-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2z"/></svg><span class="lbl">Skin</span></button>
+  <span class="winbtns desk"><button id="wMin" aria-label="Minimise"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M1 6h10" stroke="currentColor"/></svg></button><button id="wMax" aria-label="Maximise"><svg viewBox="0 0 12 12" width="11" height="11"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor"/></svg></button><button id="wClose" class="x" aria-label="Close"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor"/></svg></button></span>
+  <div id="bibleMenu" class="menu hidden"></div>
+  <div id="skinMenu" class="menu right hidden"></div>
+</header>
+<main id="center">
+  <div class="cap"><span id="capRef"></span><span class="grow"></span><span id="timing" class="small"></span></div>
+  <div id="view" class="view" tabindex="0"></div>
+  <div id="empty" class="empty hidden"><h2>No Bibles yet</h2><p>Import theWord (.ont, .ot, .nt) or e-Sword (.bblx, .bbli) Bibles. Add a Strong's dictionary (.dct.twm, .lexi, .dctx) to see word meanings.</p><button id="emptyImport" class="primary">Import modules…</button></div>
+</main>
+<nav class="phonebar"><button id="pPrev" aria-label="Previous chapter"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button><button id="refBtn" class="ref">…</button><button id="pNext" aria-label="Next chapter"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></nav>
+<footer class="status"><span id="status"></span></footer>
+<div id="popup" class="popup hidden"></div>
+<div id="sheet" class="sheet"><div class="sheetpanel"><div class="grab"></div><div id="sheetBody"></div></div></div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
