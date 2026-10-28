@@ -11,6 +11,30 @@
     await sleep(500);
     const kjv = T.bibles().find(b => /^KJV$/i.test(b.abbr));
     T.setOpen([kjv.id]); await T.go(43, 3, 16); await sleep(400);
+    // tidy cross-references: no verse twice, readable names
+    await T.go(43, 3, 2); await sleep(600);
+    const dup = [...document.querySelectorAll('#view .xrs')].filter(d => { const l = [...d.querySelectorAll('a.xr')].map(a => a.textContent.replace(/[\[\]]/g, '')); return new Set(l).size !== l.length; });
+    ok(!dup.length, 'no cross-reference shown twice (John 3:2: ' + document.querySelector('#view [data-v="2"] .xrs')?.textContent + ')');
+    await T.go(43, 3, 16); await sleep(600);
+    ok(/1 John 4:9/.test(document.querySelector('#view [data-v="16"] .xrs')?.textContent || ''), 'book names read well: ' + document.querySelector('#view [data-v="16"] .xrs')?.textContent.slice(0, 60));
+    // verse list in the navigation
+    const vs = document.getElementById('verseSel');
+    ok(vs && vs.options.length === 36 && vs.value === '16', 'verse list: ' + (vs ? vs.options.length + ' verses, at ' + vs.value : 'missing'));
+    vs.value = '20'; vs.dispatchEvent(new Event('change')); await sleep(300);
+    ok(T.S().ref.v === 20 && document.querySelector('#view [data-v="20"]').classList.contains('sel'), 'choosing verse 20 selects it');
+    // Bible references inside a commentary
+    await T.go(1, 2, 17); T.showPanel('cmt'); await sleep(700);
+    let lk = null;
+    for (const ch of document.querySelectorAll('#cmtChips .chip')) { ch.click(); await sleep(500); lk = document.querySelector('#cmtBody a[data-href*="bible"]'); if (lk) break; }
+    ok(lk, 'Bible references in a commentary are links: ' + (lk ? lk.textContent + ' (' + document.querySelectorAll('#cmtBody a[data-href*="bible"]').length + ')' : 'none'));
+    if (lk) {
+      lk.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); await sleep(900);
+      const tip = document.getElementById('reftip');
+      ok(tip && !tip.classList.contains('hidden') && tip.textContent.length > 20, 'resting on it shows the verse: ' + (tip ? tip.textContent.slice(0, 70) : ''));
+      const want = lk.dataset.href; lk.click(); await sleep(700);
+      ok(want.includes('id=' + T.S().ref.b + '.' + T.S().ref.c + '.' + T.S().ref.v), 'clicking it opens ' + document.getElementById('capRef').textContent + ':' + T.S().ref.v);
+    }
+    await T.go(43, 3, 16); await sleep(400);
     // Copy Verses (F5)
     key('F5'); await sleep(900);
     const prev = document.getElementById('cpPreview');

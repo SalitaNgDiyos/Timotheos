@@ -11,10 +11,10 @@
     const mk = document.querySelector('tr[data-v="16"] mark.hl-yellow');
     ok(mk && mk.textContent === 'loved', 'highlight brought over lands on "' + (mk && mk.textContent) + '"');
     const un = document.querySelector('.unote'); ok(un && /Rom 5:8/.test(un.textContent), 'note brought over shows under John 3:16');
-    // keyboard: verse, bookmark, history
+    // keyboard: verse, history
     document.getElementById('view').focus();
     key('ArrowDown'); await sleep(200); ok(S.ref.v === 17, '↓ → verse ' + S.ref.v);
-    key('1', { code: 'Digit1', ctrlKey: true }); await sleep(700); ok(S.ref.b === 19 && S.ref.c === 23, 'Ctrl+1 → bookmark 1 (Ps 23): ' + document.getElementById('capRef').textContent);
+    await T.go(19, 23); await sleep(500); ok(!document.querySelector('[data-st="marks"]') && !/Bookmark/.test(document.body.innerHTML.replace(/<script[\s\S]*?<\/script>/g, '')), 'no bookmarks anywhere');
     key('ArrowLeft', { altKey: true }); await sleep(700); ok(S.ref.b === 43 && S.ref.c === 3, 'Alt+← → back to John 3');
     key('2', { code: 'Digit2' }); key('1', { code: 'Digit1' }); await sleep(900); ok(S.ref.v === 21, 'typing 21 → verse ' + S.ref.v);
     key('L', { key: 'l', ctrlKey: true }); await sleep(300);

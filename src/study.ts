@@ -1,4 +1,4 @@
-// The user's own study: highlights, notes, bookmarks, verse lists (same data file layout as the Electron
+// The user's own study: highlights, notes, verse lists (same data file layout as the Electron
 // version, so data brought over from it shows in the same places).
 import canon from './legacy/canon.js';
 import TWRender from './legacy/render.js';
@@ -8,6 +8,7 @@ import { $, copyText, dialog, esc, flash, isPhone } from './ui';
 import { copyDialog, quickCopy } from './copy';
 import { addXref } from './xrefs';
 import { renderPlans } from './plans';
+import { linkRefs } from './refs';
 
 export interface Ref { b: number; c: number; v: number; v2?: number }
 export interface StudyHost {
@@ -35,7 +36,7 @@ export async function initStudy(host: StudyHost, legacy: Record<string, unknown>
   H = host;
   const mine = await loadStudy().catch(() => ({} as Record<string, unknown>));
   let note: string | null = null;
-  if (!Object.keys(mine).length && legacy && Object.keys(legacy).length) { ud = Object.assign(EMPTY(), legacy) as StudyData; save(true); note = 'brought over your highlights, notes, bookmarks and verse lists from Tanglaw 0.4'; }
+  if (!Object.keys(mine).length && legacy && Object.keys(legacy).length) { ud = Object.assign(EMPTY(), legacy) as StudyData; save(true); note = 'brought over your highlights, notes and verse lists from Tanglaw 0.4'; }
   else ud = Object.assign(EMPTY(), mine) as StudyData;
   if (!Array.isArray(ud.bookmarks) || ud.bookmarks.length !== 10) ud.bookmarks = Array(10).fill(null);
   wire();
@@ -135,21 +136,11 @@ let lastNoteHtml = '';
 function sanitizeNote(h: string): string {
   const t = document.createElement('template'); t.innerHTML = h;
   t.content.querySelectorAll('*').forEach(n => { if (!/^(B|I|U|EM|STRONG|BR|DIV|P|UL|OL|LI|SPAN|A)$/.test(n.tagName)) n.replaceWith(...n.childNodes); else for (const a of [...n.attributes]) if (!(n.tagName === 'A' && a.name === 'data-href') && a.name !== 'class') n.removeAttribute(a.name); });
-  const w = document.createTreeWalker(t.content, NodeFilter.SHOW_TEXT); const texts: Text[] = []; let n; while ((n = w.nextNode())) if (!n.parentElement?.closest('a')) texts.push(n as Text);
-  const RE = /\b((?:[1-4]\s?)?[A-Z][a-z]{1,12}\.?)\s(\d{1,3}):(\d{1,3})(?:[-–](\d{1,3}))?/g;
-  for (const tn of texts) {
-    if (!RE.test(tn.textContent || '')) continue; RE.lastIndex = 0;
-    const span = document.createElement('span');
-    span.innerHTML = esc(tn.textContent).replace(RE, (m, bk, c, v, v2) => { const f = canon.findBook ? canon.findBook(bk.replace(/\.$/, '')) : null; const id = f && (f.id || f); return id ? `<a class="link" data-href="tw://bible.*?id=${id}.${c}.${v}${v2 ? '-' + id + '.' + c + '.' + v2 : ''}">${m}</a>` : m; });
-    tn.replaceWith(...span.childNodes);
-  }
+  linkRefs(t.content);
   return t.innerHTML;
 }
 
-/* ---------------------------------------------------------------- bookmarks, lists, copying */
-const slot = (d: number) => (d === 0 ? 9 : d - 1);
-export function setBookmark(d: number, r: Ref = H.ref()): void { ud.bookmarks[slot(d)] = { b: r.b, c: r.c, v: r.v }; save(true); flash(`Bookmark ${d}: ${refName(r)}`); renderStudy(); }
-export function gotoBookmark(d: number): void { const r = ud.bookmarks[slot(d)]; if (r) H.go(r.b, r.c, r.v); else flash(`Bookmark ${d} is empty – set it with Ctrl+Shift+${d}`); }
+/* ---------------------------------------------------------------- lists, copying */
 function curList(): Ref[] { if (!ud.lists[ud.currentList]) { ud.currentList = Object.keys(ud.lists)[0] || 'My verses'; ud.lists[ud.currentList] = ud.lists[ud.currentList] || []; } return ud.lists[ud.currentList]; }
 export function addToList(refs: Ref[]): void {
   const list = curList(); let n = 0;
@@ -180,7 +171,6 @@ function verseMenu(x: number, y: number, rowEl: HTMLElement, cellEl: HTMLElement
     <button data-a="copydlg">Copy verses… <kbd>F5</kbd></button>
     <button data-a="list">Add to “${esc(ud.currentList)}” <kbd>Ctrl+L</kbd></button>
     <div class="mrow"><span>${t?.partial ? 'Highlight selection' : 'Highlight verse'}</span>${['yellow', 'green', 'blue', 'pink', 'orange'].map(s => `<button data-a="hl" data-s="${s}" class="sw hl-${s}" title="${s}"></button>`).join('')}<button data-a="hl" data-s="ul" class="sw" title="Underline"><u>U</u></button><button data-a="hl" data-s="bold" class="sw" title="Bold"><b>B</b></button><button data-a="hl" data-s="" class="sw" title="Remove highlighting">✕</button></div>
-    <div class="mrow"><span>Bookmark</span>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => `<button data-a="bm" data-d="${d}" class="sw" title="${ud.bookmarks[slot(d)] ? 'replaces ' + refName(ud.bookmarks[slot(d)]!) : 'empty'}">${d}</button>`).join('')}</div>
     <button data-a="note">${ud.notes[k] ? 'Edit my note…' : 'Add a note…'}</button>
     <button data-a="xref">Add a cross-reference…</button>
     <button data-a="cmt">Commentaries</button>`;
@@ -193,7 +183,6 @@ function verseMenu(x: number, y: number, rowEl: HTMLElement, cellEl: HTMLElement
     if (a === 'copy') copyVerse(r);
     if (a === 'list') addToList([r]);
     if (a === 'hl' && t) highlight(t, b.dataset.s || null);
-    if (a === 'bm') setBookmark(+b.dataset.d!, r);
     if (a === 'note') editNote(k);
     if (a === 'cmt') H.showPanel('cmt');
     if (a === 'copydlg') { const sv = selectedVerses(); copyDialog(sv ? { ...r, v: sv[0] } : r, sv ? { ...r, v: sv[1] } : r); }
@@ -261,8 +250,5 @@ export async function renderStudy(): Promise<void> {
     body.querySelectorAll<HTMLElement>('.unote').forEach(n => n.onclick = () => editNote(n.dataset.note!));
   } else if (seg === 'plans') {
     await renderPlans(body, { openBibles: H.openBibles, go: H.go, rerender: H.rerender }, renderStudy);
-  } else {
-    body.innerHTML = `<ul class="vlist">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => { const r = ud.bookmarks[slot(d)]; return `<li><b class="bmn">${d}</b> ${r ? `<a data-d="${d}">${esc(refName(r))}</a>` : '<span class="hint">empty</span>'}</li>`; }).join('')}</ul><p class="hint">Ctrl+Shift+number sets a bookmark at the selected verse, Ctrl+number goes there.</p>`;
-    body.querySelectorAll<HTMLElement>('a[data-d]').forEach(a => a.onclick = () => gotoBookmark(+a.dataset.d!));
   }
 }

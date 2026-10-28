@@ -39,13 +39,6 @@ export function initPanel(host: PanelHost): void {
   $('#searchForm').onsubmit = e => { e.preventDefault(); runSearch(); };
   const sc = $<HTMLSelectElement>('#searchScope');
   sc.innerHTML = search.PREDEFINED.map(([id, label]: string[]) => `<option value="${id}">${esc(label)}</option>`).join('') + '<option value="book">Current book</option><option value="chapter">Current chapter</option>';
-  // links inside entries: Bible references jump to the verse
-  $('#side').addEventListener('click', e => {
-    const a = (e.target as HTMLElement).closest<HTMLElement>('[data-href]'); if (!a) return;
-    e.preventDefault();
-    const m = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(a.dataset.href || '');
-    if (m) H.go(+m[1], +m[2], m[3] ? +m[3] : 1);
-  });
   show(tab, false);
 }
 
@@ -178,3 +171,15 @@ async function runSearch(): Promise<void> {
 const cache = new Map<string, [number, number, number, string][]>();
 export function forgetSearchCache(): void { cache.clear(); }
 export { runSearch };
+
+/** theWord links to book modules: tw://dct.ABBR?t=TOPIC | ?tid=N, tw://bk.…, tw://cmt.…, tw://[self]?t=… */
+export async function followBookLink(href: string): Promise<boolean> {
+  const m = /^tw:\/\/(?:(dct|bk|cmt|map|dev)\.([^?#|]+)|\[(self)\])\?(?:t=([^&#|]*)|tid=(\d+))/i.exec(href);
+  if (!m) return false;
+  let mod = m[3] ? H.books().find(x => x.id === lib.cur) : undefined;
+  if (!mod) { const want = decodeURIComponent(m[2] || '').toLowerCase(); mod = H.books().find(x => !x.locked && (x.abbr.toLowerCase() === want || x.title.toLowerCase().startsWith(want))); }
+  if (!mod) return false;
+  if (m[5]) { await openLib(mod.id, +m[5]); return true; }
+  const e = await mod.lookup(decodeURIComponent(m[4] || '')); if (!e) return false;
+  await openLib(mod.id, e.id); return true;
+}

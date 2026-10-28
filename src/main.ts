@@ -8,10 +8,11 @@ import { readFile } from '@tauri-apps/plugin-fs';
 import { Bible, Locked, isBibleFile, isLocked, openBible } from './bibles';
 import { BookMod, guessKind, isBookFile, openBook } from './books';
 import type { ModFile } from './native';
-import { commentaryMarks, initPanel, show as showPanel, strongEntry, updateCommentary, forgetSearchCache } from './panel';
+import { commentaryMarks, followBookLink, initPanel, show as showPanel, strongEntry, updateCommentary, forgetSearchCache } from './panel';
 import { importBytes, legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
-import { addToList, afterRender, copyVerse, gotoBookmark, initStudy, saveUD, setBookmark } from './study';
+import { addToList, afterRender, copyVerse, initStudy, saveUD } from './study';
 import { copyDialog, initCopy } from './copy';
+import { bibleTarget, linkRefs, wireRefPreview } from './refs';
 import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
 import { flash } from './ui';
 import { SKINS } from './skins';
@@ -122,6 +123,7 @@ async function go(b: number, c: number, v = 1): Promise<void> {
   const chapters = await Promise.all(list.map(m => m.chapter(bk.id, c)));
   if (my !== seq) return;
   const vmax = Math.max(0, ...chapters.map(ch => ch.length ? ch[ch.length - 1].v : 0));
+  const vs = $<HTMLSelectElement>('#verseSel'); vs.innerHTML = Array.from({ length: vmax }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join(''); vs.value = String(Math.min(v, vmax) || 1);
   const show = S.show;
   const marks = commentaryMarks(bk.id, c);
   const cell = (m: Bible, raw: string | undefined) => raw == null ? '' : TWRender.render(raw, m, show, { fn: { n: 0 } });
@@ -157,12 +159,14 @@ async function decorateXrefs(b: number, c: number, my: number): Promise<void> {
   const xr = await chapterXrefs(b, c); if (my !== seq) return;
   for (const [v, refs] of Object.entries(xr)) {
     const cell = $('#view').querySelector(`[data-v="${v}"] [data-col="0"]`); if (!cell || !refs.length) continue;
-    const label = (r: { b: number; c: number; v: number; span: number }) => `${canon.book(r.b, '1611').abbr} ${r.c}:${r.v}${r.span ? '–' + (r.v + r.span) : ''}`;
+    const label = (r: { b: number; c: number; v: number; span: number }) => `${refAbbr(r.b)} ${r.c}:${r.v}${r.span ? '–' + (r.v + r.span) : ''}`;
     const shown = refs.slice(0, 8);
     cell.insertAdjacentHTML('beforeend', `<div class="xrs">${shown.map(r => `<a class="xr${r.back ? ' back' : ''}${r.user ? ' mine' : ''}" data-ref="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' + label(r) + ']' : label(r)}</a>${r.user ? `<i class="rmx" data-from="${b}.${c}.${v}" data-to="${r.b}.${r.c}.${r.v}" title="Remove my cross-reference">×</i>` : ''}`).join('; ')}${refs.length > 8 ? ` <a class="xrmore" data-v="${v}">+${refs.length - 8} more</a>` : ''}</div>`);
     if (refs.length > 8) cell.querySelector<HTMLElement>('.xrmore')!.onclick = e => { e.stopPropagation(); const d = cell.querySelector('.xrs')!; d.innerHTML = refs.map(r => `<a class="xr${r.back ? ' back' : ''}" data-ref="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' + label(r) + ']' : label(r)}</a>`).join('; '); };
   }
 }
+/** a short book name that reads well: "1 John", "2 Kgs", "Rom" */
+export function refAbbr(b: number): string { return String(canon.book(b, '1611').abbr).replace(/^(\d)(?=\D)/, '$1 '); }
 async function versePreview(ref: string): Promise<string> {
   const [b, c, v, span] = ref.split('.').map(Number);
   for (const m of openBibles()) {
@@ -177,7 +181,7 @@ function selectVerse(v: number): void {
   const el = $('#view').querySelector<HTMLElement>(`[data-v="${v}"]`);
   if (!el) { if (v < 1) step(-1); else step(1); return; }
   $('#view').querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); el.classList.add('sel');
-  el.scrollIntoView({ block: 'nearest' }); S.ref.v = v; save(); updateCommentary();
+  el.scrollIntoView({ block: 'nearest' }); S.ref.v = v; save(); updateCommentary(); $<HTMLSelectElement>('#verseSel').value = String(v);
 }
 function step(d: number): void {
   const i = nav.findIndex(x => x.id === S.ref.b); if (i < 0) return;
@@ -201,6 +205,7 @@ function clean(html: string): string {
   t.content.querySelectorAll('script,style,iframe,object,embed').forEach(n => n.remove());
   t.content.querySelectorAll('a[href]').forEach(a => { (a as HTMLElement).dataset.href = a.getAttribute('href') || ''; a.classList.add('link'); });
   t.content.querySelectorAll('*').forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name) || a.name === 'href') n.removeAttribute(a.name); });
+  linkRefs(t.content);
   return t.innerHTML;
 }
 async function showWord(el: HTMLElement): Promise<void> {
@@ -258,7 +263,14 @@ function picker(): void {
   body.querySelectorAll<HTMLButtonElement>('[data-b]').forEach(btn => btn.onclick = () => {
     const bk = nav.find(x => x.id === +btn.dataset.b!)!;
     body.innerHTML = `<div class="pk"><h5>${esc(bk.name)}</h5><div class="pgrid ch">${bk.chapters.map(c => `<button data-c="${c}">${c}</button>`).join('')}</div></div>`;
-    body.querySelectorAll<HTMLButtonElement>('[data-c]').forEach(cb => cb.onclick = () => { $('#sheet').classList.remove('open'); go(bk.id, +cb.dataset.c!); });
+    body.querySelectorAll<HTMLButtonElement>('[data-c]').forEach(cb => cb.onclick = async () => {
+      const c = +cb.dataset.c!; const m = openBibles()[0];
+      const n = m ? (await m.chapter(bk.id, c)).reduce((x, r) => Math.max(x, r.v), 0) : 0;
+      const count = n || canon.kjvChapters(bk.id)[c - 1] || 0;
+      if (!count) { $('#sheet').classList.remove('open'); return void go(bk.id, c); }
+      body.innerHTML = `<div class="pk"><h5>${esc(bk.name)} ${c}</h5><div class="pgrid ch">${Array.from({ length: count }, (_, i) => `<button data-v="${i + 1}">${i + 1}</button>`).join('')}</div></div>`;
+      body.querySelectorAll<HTMLButtonElement>('[data-v]').forEach(vb => vb.onclick = async () => { $('#sheet').classList.remove('open'); const v = +vb.dataset.v!; await go(bk.id, c, v); $('#view').querySelector(`[data-v="${v}"]`)?.scrollIntoView({ block: 'center' }); });
+    });
   });
   $('#sheet').classList.add('open');
 }
@@ -305,6 +317,7 @@ async function init(): Promise<void> {
   $('#wMin').onclick = () => win.minimize(); $('#wMax').onclick = () => win.toggleMaximize(); $('#wClose').onclick = () => win.close();
   $('#bookSel').onchange = () => go(+$<HTMLSelectElement>('#bookSel').value, 1);
   $('#chapSel').onchange = () => go(S.ref.b, +$<HTMLSelectElement>('#chapSel').value);
+  $('#verseSel').onchange = () => { const v = +$<HTMLSelectElement>('#verseSel').value; selectVerse(v); $('#view').querySelector(`[data-v="${v}"]`)?.scrollIntoView({ block: 'center' }); };
   $('#prev').onclick = $('#pPrev').onclick = () => step(-1);
   $('#next').onclick = $('#pNext').onclick = () => step(1);
   $('#refBtn').onclick = picker;
@@ -330,9 +343,19 @@ async function init(): Promise<void> {
     const vn = (e.target as HTMLElement).closest<HTMLElement>('.vn'); if (!vn) return;
     const v = +vn.closest<HTMLElement>('[data-v]')!.dataset.v!;
     $('#view').querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); vn.closest('[data-v]')!.classList.add('sel');
-    S.ref.v = v; save(); updateCommentary();
+    S.ref.v = v; save(); updateCommentary(); $<HTMLSelectElement>('#verseSel').value = String(v);
     if ((e.target as HTMLElement).closest('.cm')) showPanel('cmt');
   });
+  // links anywhere (commentary, library, popups, notes): a Bible reference opens the verse, a book link the topic
+  document.addEventListener('click', e => {
+    const a = (e.target as HTMLElement).closest<HTMLElement>('[data-href]'); if (!a) return;
+    e.preventDefault(); const href = a.dataset.href || '';
+    const r = /bible/i.test(href) ? bibleTarget(href) : null;
+    $('#popup').classList.add('hidden');
+    if (r) { go(r.b, r.c, r.v); if (isPhone()) { document.body.classList.remove('side-open'); $('#sheet').classList.remove('open'); } return; }
+    followBookLink(href).then(ok => { if (!ok && /^https?:/i.test(href)) flash('Web links open in your browser: ' + href); });
+  });
+  wireRefPreview(versePreview);
   // the study panel (Commentary, Library, Search)
   initPanel({ books: () => books, openBibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, clean, save, settings: () => S as unknown as Record<string, unknown> });
   initCopy({ nav: () => nav, openBibles, save: saveUD });
@@ -364,8 +387,6 @@ async function init(): Promise<void> {
     if (k === 'Escape') { $('#popup').classList.add('hidden'); $('#sheet').classList.remove('open'); $('#vmenu').classList.add('hidden'); document.body.classList.remove('side-open'); return; }
     if (e.altKey && (k === 'ArrowLeft' || k === 'ArrowRight')) { e.preventDefault(); return historyGo(k === 'ArrowLeft' ? -1 : 1); }
     if (!e.altKey && !e.ctrlKey && k === 'Backspace') { e.preventDefault(); return historyGo(-1); }
-    if (e.ctrlKey && e.shiftKey && d != null) { e.preventDefault(); return setBookmark(d, cur); }
-    if (e.ctrlKey && !e.shiftKey && d != null) { e.preventDefault(); return gotoBookmark(d); }
     if (e.ctrlKey && k.toLowerCase() === 'l') { e.preventDefault(); return addToList([cur]); }
     if (e.ctrlKey && k.toLowerCase() === 'c' && !String(window.getSelection())) { e.preventDefault(); copyVerse(cur); return; }
     if (e.ctrlKey && k === ',') { e.preventDefault(); return openOptions(); }

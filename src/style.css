@@ -72,6 +72,8 @@ sup.fn, sup.xref { color: var(--fn); font: 600 10px var(--font-ui); cursor: poin
 
 /* popup (mouse) and bottom sheet (touch) */
 .popup { position: fixed; z-index: 60; width: min(440px, 94vw); max-height: 360px; overflow: auto; resize: both; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.22); padding: 10px 14px; font: 14.5px/1.5 var(--font-text); }
+.popup.reftip { z-index: 70; resize: none; pointer-events: none; max-height: 260px; }
+a.bref { border-bottom: 1px dotted currentColor; }
 .entry h4 { margin: 0 0 2px; font: 600 15px var(--font-ui); }
 .entry .src { color: var(--muted); font: 11px var(--font-ui); margin-bottom: 6px; }
 .entry + .entry { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }

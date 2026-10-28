@@ -30,8 +30,9 @@ export async function chapterXrefs(b: number, c: number): Promise<Record<number,
   const lo = enc(b, c, 0, 0), hi = enc(b, c, 255, 255);
   const add = (v: number, t: ReturnType<typeof dec>, back: boolean, user: boolean) => {
     const arr = out[v] || (out[v] = []); const id = `${t.b}.${t.c}.${t.v}.${t.span}`;
-    const had = arr.find(y => y.id === id && y.back === back);
-    if (had) had.user = had.user || user; else arr.push({ id, ...t, back, user });
+    // one entry per verse: a verse that this one points to *and* that points back is shown once, unbracketed
+    const had = arr.find(y => y.id === id);
+    if (had) { had.user = had.user || user; if (!back) had.back = false; } else arr.push({ id, ...t, back, user });
   };
   for (const s of sets) {
     try {
@@ -39,6 +40,8 @@ export async function chapterXrefs(b: number, c: number): Promise<Record<number,
       for (const [a, z] of (await sql(s.file, `select vi1, vi2 from "${s.table}" where vi2 between ? and ?`, [lo, hi])).rows as number[][]) add(dec(z).v, dec(a), true, s.user);
     } catch { /* a broken set is skipped */ }
   }
+  // forward references first, each group in Bible order
+  for (const arr of Object.values(out)) arr.sort((x, y) => +x.back - +y.back || x.b - y.b || x.c - y.c || x.v - y.v);
   return out;
 }
 
