@@ -1,7 +1,7 @@
 {
   "name": "tanglaw-next",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",
@@ -12,6 +12,7 @@
     "@tauri-apps/plugin-clipboard-manager": "^2.5.0",
     "@tauri-apps/plugin-dialog": "^2",
     "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-opener": "^2.7.2",
     "fflate": "^0.8.2"
   },
   "devDependencies": {

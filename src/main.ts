@@ -2,6 +2,7 @@
 // Strong's popups from your dictionaries, the eight skins; desktop and phone layouts from one code base.
 import canon from './legacy/canon.js';
 import TWRender from './legacy/render.js';
+import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
@@ -18,6 +19,8 @@ import { openImage, printHtml, viewerOpen } from './tools';
 import { initAnnotate } from './annotate';
 import { initUserMods, newUserModule } from './usermods';
 import { currentLang, initLang, translationTable } from './i18n';
+import { initKeys, keysDialog, runKey } from './keys';
+import { autoUpdates, checkUpdate, initUpdate, newer, setAutoUpdates } from './update';
 import { defineModuleSets } from './search';
 import { firstOriginal, translit } from './translit';
 import { legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
@@ -27,7 +30,7 @@ import { bibleTarget, linkRefs, wireRefPreview } from './refs';
 import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
 import { copyText, dialog, flash } from './ui';
 import { PRESETS as DOCK_PRESETS, Layout, PANELS, close as closePanel, isHiddenAll, isOpen, layout as currentLayout, openPanel, openPanels, retitle, setHidden, setLayout, titleOf } from './dock';
-import { addBibleView, addBookView, addSearchView, initViews, viewsReload } from './views';
+import { addBibleView, addBookView, addCompareView, addSearchView, compareViews, initViews, viewsReload } from './views';
 import { icon } from './icons';
 import { openPicker } from './picker';
 import { openGuide } from './guide';
@@ -571,6 +574,8 @@ async function translationDialog(): Promise<void> {
   LS().tlFixes = fx; await saveSettings(S);
   if (currentLang() === 'tl') location.reload(); else flash('Saved – choose Tagalog in the Options menu to use it');
 }
+/** the compare view (opens one if none is open) */
+function openCompare(): void { const id = compareViews()[0] || addCompareView(); openPanel(id); }
 /** the Tools menu */
 function toolsMenu(): void {
   const m = $('#toolsMenu'); const lm = libCurrent();
@@ -578,6 +583,7 @@ function toolsMenu(): void {
     `<label><input type="checkbox" id="tClip" ${clipOn() ? 'checked' : ''}> Clipboard monitor</label>` +
     '<button id="tWl">Word lookup dictionaries…</button><button id="tSets">Module sets…</button>' +
     '<div class="msep"></div><button id="tNewMod">New module of your own…</button><button id="tTl">Tagalog translation…</button>' +
+    '<button id="tKeys">Keyboard shortcuts… <kbd>Ctrl+/</kbd></button><button id="tCmp">Compare the verse <kbd>Ctrl+M</kbd></button><button id="tUpd">Check for a new version…</button>' + `<label class="sub"><input type="checkbox" id="tAuto" ${autoUpdates() ? 'checked' : ''}> Look for new versions when Tanglaw starts</label>` +
     '<div class="msep"></div><button id="tPrint">Print the chapter <kbd>Ctrl+P</kbd></button>' +
     (lm ? `<button id="tPrintT">Print the Library topic</button><button id="tExp">Export from ${esc(lm.abbr || lm.title)}…</button>` : '');
   const hide = () => m.classList.add('hidden');
@@ -585,6 +591,10 @@ function toolsMenu(): void {
   m.querySelector<HTMLButtonElement>('#tWl')!.onclick = () => { hide(); wordLookDialog(); };
   m.querySelector<HTMLButtonElement>('#tSets')!.onclick = () => { hide(); defineModuleSets(); };
   m.querySelector<HTMLButtonElement>('#tNewMod')!.onclick = () => { hide(); newUserModule(); };
+  m.querySelector<HTMLButtonElement>('#tKeys')!.onclick = () => { hide(); keysDialog(); };
+  m.querySelector<HTMLButtonElement>('#tCmp')!.onclick = () => { hide(); openCompare(); };
+  m.querySelector<HTMLButtonElement>('#tUpd')!.onclick = () => { hide(); checkUpdate(true); };
+  m.querySelector<HTMLInputElement>('#tAuto')!.onchange = e => setAutoUpdates((e.target as HTMLInputElement).checked);
   m.querySelector<HTMLButtonElement>('#tTl')!.onclick = () => { hide(); translationDialog(); };
   m.querySelector<HTMLButtonElement>('#tPrint')!.onclick = () => { hide(); printChapter(); };
   const pt = m.querySelector<HTMLButtonElement>('#tPrintT'); if (pt) pt.onclick = () => { hide(); printTopic($('#libBody')); };
@@ -612,7 +622,7 @@ function layoutMenu(): void {
   const extra = openPanels().filter(p => !PANELS.includes(p));
   m.innerHTML = '<div class="mh">Panels</div>' + PANELS.map(p => `<label><input type="checkbox" data-pan="${p}" ${isOpen(p) ? 'checked' : ''}> ${esc(titleOf(p))}</label>`).join('') +
     extra.map(p => `<label><input type="checkbox" data-pan="${esc(p)}" checked> ${esc(p.startsWith('bible-') ? 'Bible view: ' : p.startsWith('search-') ? '' : 'Book view: ')}${esc(titleOf(p))}</label>`).join('') +
-    '<div class="msep"></div><button id="mAddBible">+ New Bible view</button><button id="mAddBook">+ New book view</button><button id="mAddSearch">+ New search view</button>' +
+    '<div class="msep"></div><button id="mAddBible">+ New Bible view</button><button id="mAddBook">+ New book view</button><button id="mAddSearch">+ New search view</button><button id="mAddCompare">+ Compare view</button>' +
     `<button id="mHideAll">${isHiddenAll() ? 'Show the panels' : 'Hide all panels'}</button>` +
     '<div class="msep"></div><div class="mh">Layouts</div>' + Object.entries(DOCK_PRESETS).map(([k, [l]]) => `<button data-pre="${k}">${esc(l)}</button>`).join('') +
     Object.keys(saved).map(n => `<div class="mrow lrow"><button data-lay="${esc(n)}">${esc(n)}</button><i class="ldel" data-del="${esc(n)}" title="Delete this layout">×</i></div>`).join('') +
@@ -622,6 +632,7 @@ function layoutMenu(): void {
   m.querySelector<HTMLElement>('#mAddBible')!.onclick = () => add(addBibleView());
   m.querySelector<HTMLElement>('#mAddBook')!.onclick = () => add(addBookView());
   m.querySelector<HTMLElement>('#mAddSearch')!.onclick = () => add(addSearchView());
+  m.querySelector<HTMLElement>('#mAddCompare')!.onclick = () => { m.classList.add('hidden'); openCompare(); };
   m.querySelector<HTMLElement>('#mHideAll')!.onclick = () => { S.sideHidden = !isHiddenAll(); save(); setHidden(!!S.sideHidden); m.classList.add('hidden'); };
   m.querySelectorAll<HTMLElement>('[data-pre]').forEach(b => b.onclick = () => { m.classList.add('hidden'); setLayout(DOCK_PRESETS[b.dataset.pre!][1]); S.sideHidden = false; save(); });
   m.querySelectorAll<HTMLElement>('[data-lay]').forEach(b => b.onclick = () => { m.classList.add('hidden'); setLayout(saved[b.dataset.lay!]); S.sideHidden = false; save(); });
@@ -703,6 +714,7 @@ async function init(): Promise<void> {
   applyLook(S.skin, S.fontSize, S.look);
   canon.setOrder(S.look.bookOrder);
   initLang(LS().lang || 'en', LS().tlFixes || {});
+  initUpdate(S, save, false); invoke<boolean>('test_mode').then(t => { if (!t) initUpdate(S, save); }).catch(() => {});
   document.body.classList.toggle('android', isAndroid);
   ownDir = await modulesDir();
   const win = getCurrentWindow();
@@ -821,31 +833,51 @@ async function init(): Promise<void> {
   document.addEventListener('dock-unhide', () => { S.sideHidden = false; save(); });
   document.querySelectorAll<HTMLButtonElement>('[data-open]').forEach(b => b.onclick = () => showPanel(b.dataset.open!));
   let typed = '', typedT = 0;
+  // keyboard: the actions and their keys (Tools → Keyboard shortcuts… changes them)
+  const cur = () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 });
+  const toggleShow = (k: string, label: string) => () => { S.show[k] = !S.show[k]; save(); optMenu(); flash(`${label}: ${S.show[k] ? 'on' : 'off'}`); go(S.ref.b, S.ref.c, S.ref.v); };
+  initKeys([
+    { id: 'prevChapter', label: 'Previous chapter', group: 'Moving around', def: '←', run: () => step(-1) },
+    { id: 'nextChapter', label: 'Next chapter', group: 'Moving around', def: '→', run: () => step(1) },
+    { id: 'prevVerse', label: 'Previous verse', group: 'Moving around', def: '↑', run: () => selectVerse(cur().v - 1) },
+    { id: 'nextVerse', label: 'Next verse', group: 'Moving around', def: '↓', run: () => selectVerse(cur().v + 1) },
+    { id: 'prevBook', label: 'Previous book', group: 'Moving around', def: 'Ctrl+←', run: () => stepBook(-1) },
+    { id: 'nextBook', label: 'Next book', group: 'Moving around', def: 'Ctrl+→', run: () => stepBook(1) },
+    { id: 'back', label: 'Back', group: 'Moving around', def: 'Alt+←', run: () => historyGo(-1) },
+    { id: 'forward', label: 'Forward', group: 'Moving around', def: 'Alt+→', run: () => historyGo(1) },
+    { id: 'back2', label: 'Back (second key)', group: 'Moving around', def: 'Backspace', run: () => historyGo(-1) },
+    { id: 'copyVerse', label: 'Copy the selected verse', group: 'Verses', def: 'Ctrl+C', run: () => { if (String(window.getSelection())) return false; copyVerse(cur()); } },
+    { id: 'copyDialog', label: 'Copy verses…', group: 'Verses', def: 'F5', run: () => { copyDialog(cur()); } },
+    { id: 'addToList', label: 'Add the verse to the current list', group: 'Verses', def: 'Ctrl+L', run: () => addToList([cur()]) },
+    { id: 'print', label: 'Print the chapter', group: 'Verses', def: 'Ctrl+P', run: () => printChapter() },
+    { id: 'search', label: 'Search', group: 'Panels and windows', def: 'Ctrl+F', run: () => { showPanel('search'); } },
+    { id: 'compare', label: 'Compare the verse in all Bibles', group: 'Panels and windows', def: 'Ctrl+M', run: () => openCompare() },
+    { id: 'options', label: 'Options…', group: 'Panels and windows', def: 'Ctrl+,', run: () => openOptions() },
+    { id: 'guide', label: 'User guide', group: 'Panels and windows', def: 'F1', run: () => openGuide() },
+    { id: 'keys', label: 'Keyboard shortcuts', group: 'Panels and windows', def: 'Ctrl+/', run: () => { keysDialog(); } },
+    { id: 'paragraph', label: 'Paragraph mode', group: 'What to show', def: 'P', run: () => { S.show.paragraph = !S.show.paragraph; save(); optMenu(); flash(S.show.paragraph ? 'Paragraph mode' : 'Verse by verse'); go(S.ref.b, S.ref.c, S.ref.v); } },
+    { id: 'columns', label: 'Column text', group: 'What to show', def: 'Alt+I', run: () => { S.show.columns = !S.show.columns; save(); optMenu(); go(S.ref.b, S.ref.c, S.ref.v); } },
+    { id: 'wordLook', label: 'Word lookup', group: 'What to show', def: 'D', run: () => { const wl = WL(); wl.on = !wl.on; save(); optMenu(); if (wl.on && !(wl.dicts || []).length) return void wordLookDialog(); flash(wl.on ? 'Word lookup on' : 'Word lookup off'); } },
+    { id: 'strongs', label: "Strong's numbers", group: 'What to show', def: 'S', run: toggleShow('strongs', "Strong's numbers") },
+    { id: 'morph', label: 'Morphology', group: 'What to show', def: 'M', run: toggleShow('morph', 'Morphology') },
+    { id: 'lemma', label: 'Lemmas', group: 'What to show', def: 'L', run: toggleShow('lemma', 'Lemmas') },
+    { id: 'footnotes', label: 'Footnotes', group: 'What to show', def: 'F', run: toggleShow('footnotes', 'Footnotes') },
+    { id: 'headings', label: 'Headings', group: 'What to show', def: 'H', run: toggleShow('headings', 'Headings') },
+    { id: 'woj', label: 'Words of Jesus in red', group: 'What to show', def: 'J', run: toggleShow('woj', 'Words of Jesus in red') },
+    { id: 'xrefs', label: 'Cross-references', group: 'What to show', def: 'X', run: toggleShow('xrefs', 'Cross-references') },
+    { id: 'highlights', label: 'My highlighting', group: 'What to show', def: 'U', run: toggleShow('highlights', 'My highlighting') },
+  ], (S as unknown as { keys?: Record<string, string> }).keys || {}, k => { (S as unknown as { keys?: Record<string, string> }).keys = k; save(); });
   document.addEventListener('keydown', e => {
     const tg = e.target as HTMLElement;
     if ((tg instanceof HTMLElement && (tg.matches('input, select, textarea') || tg.isContentEditable)) || document.querySelector('.dlg')) return;
     const k = e.key; const digit = /^Digit(\d)$/.exec(e.code); const d = digit ? +digit[1] : null;
-    const cur = { b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 };
     if (k === 'Escape') { $('#popup').classList.add('hidden'); $('#sheet').classList.remove('open'); $('#vmenu').classList.add('hidden'); document.body.classList.remove('side-open'); return; }
-    if (e.altKey && (k === 'ArrowLeft' || k === 'ArrowRight')) { e.preventDefault(); return historyGo(k === 'ArrowLeft' ? -1 : 1); }
-    if (!e.altKey && !e.ctrlKey && k === 'Backspace') { e.preventDefault(); return historyGo(-1); }
-    if (e.ctrlKey && k.toLowerCase() === 'l') { e.preventDefault(); return addToList([cur]); }
-    if (e.ctrlKey && k.toLowerCase() === 'c' && !String(window.getSelection())) { e.preventDefault(); copyVerse(cur); return; }
-    if (e.ctrlKey && k === ',') { e.preventDefault(); return openOptions(); }
-    if (e.ctrlKey && k.toLowerCase() === 'p') { e.preventDefault(); return printChapter(); }
     if (viewerOpen()) return;
-    if (k === 'F1') { e.preventDefault(); return openGuide(); }
-    if (k === 'F5') { e.preventDefault(); copyDialog(cur); return; }
-    if (e.ctrlKey && k === 'ArrowLeft') { e.preventDefault(); return stepBook(-1); }
-    if (e.ctrlKey && k === 'ArrowRight') { e.preventDefault(); return stepBook(1); }
-    if (e.altKey && !e.ctrlKey && k.toLowerCase() === 'i') { e.preventDefault(); S.show.columns = !S.show.columns; save(); optMenu(); return void go(S.ref.b, S.ref.c, S.ref.v); }
+    // a Bible's own switches (letters theWord leaves to the modules come first)
+    if (!e.ctrlKey && !e.altKey && !e.metaKey && k.length === 1 && /[a-z]/i.test(k)) { const t = customToggleList().find(x => x.name.length === 1 && x.name.toLowerCase() === k.toLowerCase()); if (t && 'ABEGIKRVYZ'.includes(t.name.toUpperCase())) { setCustom(t.name, !customOn(t.name)); optMenu(); flash(`${t.label || t.name}: ${customOn(t.name) ? 'on' : 'off'}`); return; } }
+    if (runKey(e)) return;
+    if (!e.ctrlKey && !e.altKey && !e.metaKey && k.length === 1 && /[a-z]/i.test(k)) { const t = customToggleList().find(x => x.name.length === 1 && x.name.toLowerCase() === k.toLowerCase()); if (t) { setCustom(t.name, !customOn(t.name)); optMenu(); flash(`${t.label || t.name}: ${customOn(t.name) ? 'on' : 'off'}`); return; } }
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    if (k === 'ArrowLeft') return step(-1);
-    if (k === 'ArrowRight') return step(1);
-    if (k === 'ArrowUp' || k === 'ArrowDown') { e.preventDefault(); return selectVerse(cur.v + (k === 'ArrowUp' ? -1 : 1)); }
-    if (k === 'd' || k === 'D') { const wl = WL(); wl.on = !wl.on; save(); optMenu(); if (wl.on && !(wl.dicts || []).length) return void wordLookDialog(); flash(wl.on ? 'Word lookup on' : 'Word lookup off'); return; }
-    if (k.length === 1 && /[a-z]/i.test(k)) { const t = customToggleList().find(x => x.name.length === 1 && x.name.toLowerCase() === k.toLowerCase()); if (t) { setCustom(t.name, !customOn(t.name)); optMenu(); flash(`${t.label || t.name}: ${customOn(t.name) ? 'on' : 'off'}`); return; } }
-    if (k === 'p' || k === 'P') { S.show.paragraph = !S.show.paragraph; save(); optMenu(); flash(S.show.paragraph ? 'Paragraph mode' : 'Verse by verse'); return void go(S.ref.b, S.ref.c, S.ref.v); }
     if (d != null) { // typing a number goes to that verse (Shift: chapter)
       clearTimeout(typedT); typed += String(d);
       const shift = e.shiftKey;
@@ -863,6 +895,6 @@ async function init(): Promise<void> {
   w.__tanglawFirst = Math.round(performance.now());
   await openRest(); viewsReload();
   w.__tanglawReady = Math.round(performance.now());
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked, clipTestReader, setClipmon, lang: (l: string) => initLang(l, LS().tlFixes || {}), modulesDir: () => ownDir, docxText: (html: string) => strFromU8(unzipSync(exportForTest.docx(html))['word/document.xml']), rtfOf: exportForTest.rtf };
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked, clipTestReader, setClipmon, newer, applyLookNow: () => applyLook(S.skin, S.fontSize, S.look), lang: (l: string) => initLang(l, LS().tlFixes || {}), modulesDir: () => ownDir, docxText: (html: string) => strFromU8(unzipSync(exportForTest.docx(html))['word/document.xml']), rtfOf: exportForTest.rtf };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });

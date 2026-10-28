@@ -471,3 +471,17 @@ sup.lemma { font: italic 400 .62em var(--font-text); color: var(--muted); margin
 .ebody.editing a { cursor: text; }
 a.bkm { scroll-margin-top: 40px; }
 .tltable { max-height: 52vh; overflow: auto; margin-top: 6px; } .tlrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; padding: 2px 0; border-bottom: 1px solid var(--line); } .tlrow .en { font-size: 13px; }
+/* added words and headings, your way */
+:root[data-added="brackets"] .added:not(.plain) { font-style: normal; } :root[data-added="brackets"] .added:not(.plain)::before { content: '['; } :root[data-added="brackets"] .added:not(.plain)::after { content: ']'; }
+:root[data-added="grey"] .added:not(.plain) { font-style: normal; color: var(--muted); }
+:root[data-head="caps"] .heading { font-variant: small-caps; letter-spacing: .03em; }
+:root[data-head="small"] .heading { font: 600 .78em var(--font-ui); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+/* compare view */
+.vcompare .cmprow { display: grid; grid-template-columns: 4.5em 1fr; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.vcompare .cab { font: 600 12px var(--font-ui); color: var(--accent); padding-top: 3px; overflow: hidden; text-overflow: ellipsis; }
+.vcompare mark.cdiff { background: color-mix(in srgb, var(--accent) 18%, transparent); color: inherit; border-radius: 2px; }
+.vcompare .vno { cursor: pointer; color: var(--muted); } .vcompare .vno.cur { color: var(--accent); font-weight: 700; }
+/* keyboard shortcuts */
+.klist { max-height: 56vh; overflow: auto; } .klist h5 { margin: 10px 0 4px; } table.keys { width: 100%; border-collapse: collapse; } table.keys td { padding: 3px 4px; border-bottom: 1px solid var(--line); } table.keys td:last-child { text-align: right; white-space: nowrap; }
+.kbtn { font: 12px var(--font-ui); padding: 2px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: inherit; cursor: pointer; min-width: 64px; } .kbtn.wait { background: var(--accent); color: #fff; }
+.updnotes { max-height: 30vh; overflow: auto; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }

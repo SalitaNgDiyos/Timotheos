@@ -6,6 +6,7 @@ export interface Look {
   fontText: string; fontGreek: string; fontHebrew: string; lineH: number; textWidth: number; bgMode: 'skin' | 'color'; bgColor: string; texture: 'none' | 'paper';
   vnPos: 'margin' | 'inline' | 'hidden'; vnStyle: 'normal' | 'bold' | 'circle'; capColor: boolean; bookOrder: '1611' | 'nets' | 'orthodox';
   fnStyle?: 'num' | 'letter' | 'star'; fnPlace?: 'text' | 'chapter';
+  wojColor?: string; addedStyle?: 'italic' | 'brackets' | 'grey'; headStyle?: 'normal' | 'caps' | 'small';
 }
 export const LOOK: Look = { fontText: 'Gentium Plus', fontGreek: 'Gentium Plus', fontHebrew: 'Noto Serif Hebrew', lineH: 1.65, textWidth: 0, bgMode: 'skin', bgColor: '#fffdf8', texture: 'none', vnPos: 'margin', vnStyle: 'normal', capColor: true, bookOrder: '1611' };
 const BUNDLED = ['Gentium Plus', 'Literata', 'Source Serif 4', 'Inter', 'Noto Serif Hebrew'];
@@ -21,7 +22,9 @@ export function applyLook(skin: string, size: number, l: Look): void {
   greekHebrewFaces(l);
   r.setProperty('--textw', l.textWidth ? l.textWidth + 'px' : 'none');
   if (l.bgMode === 'color') r.setProperty('--textbg', l.bgColor);
-  const d = document.documentElement.dataset; d.texture = l.texture; d.vnpos = l.vnPos; d.vnstyle = l.vnStyle; d.caps = l.capColor ? 'color' : 'plain';
+  const d = document.documentElement.dataset; d.added = l.addedStyle || 'italic'; d.head = l.headStyle || 'normal';
+  if (l.wojColor) r.setProperty('--woj', l.wojColor); else r.removeProperty('--woj');
+  d.texture = l.texture; d.vnpos = l.vnPos; d.vnstyle = l.vnStyle; d.caps = l.capColor ? 'color' : 'plain';
 }
 
 /** "TwGreek"/"TwHebrew" cover only Greek/Hebrew letters, so Greek and Hebrew can have their own font */
@@ -62,6 +65,11 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     <label class="fl">Background <span class="srow"><select id="oBg"><option value="skin">Skin colour</option><option value="color">My colour</option></select><input type="color" id="oBgC" value="${l.bgMode === 'color' ? l.bgColor : sk.v.textbg}"><select id="oTex"><option value="none">No texture</option><option value="paper">Paper</option></select></span></label>
     <h4>Order of the books</h4>
     <label class="fl">Old Testament <select id="oOrder"><option value="1611">1611 King James Bible – the Apocrypha between the Testaments</option><option value="nets">Septuagint (NETS order) – all books in one Old Testament</option><option value="orthodox">Greek Orthodox Old Testament (4 Maccabees etc. as appendix)</option></select></label>
+    <h4>Words of Jesus, added words, headings</h4>
+    <label class="fl">Words of Jesus <span class="srow"><select id="oWojM"><option value="skin">The skin's red</option><option value="mine">My colour</option></select><input type="color" id="oWoj" value="${l.wojColor || '#b3261e'}"></span></label>
+    <label class="fl">Added words <select id="oAdd"><option value="italic">In italics (as printed in the KJV)</option><option value="brackets">In [brackets]</option><option value="grey">In grey</option></select></label>
+    <label class="fl">Headings <select id="oHead"><option value="normal">Bold</option><option value="caps">Small capitals</option><option value="small">Small and quiet</option></select></label>
+    <p class="small">Switch them on or off in the Options menu (keys J, F, H).</p>
     <h4>Footnotes</h4>
     <label class="fl">Marks <select id="oFnS"><option value="num">Numbers 1 2 3</option><option value="letter">Letters a b c</option><option value="star">A star *</option></select></label>
     <label class="fl">Text <select id="oFnP"><option value="text">Shown when the mark is pointed at</option><option value="chapter">Also listed under the chapter</option></select></label>
@@ -73,6 +81,11 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     const q = <T extends HTMLElement>(s: string) => b.querySelector(s) as T;
     q<HTMLSelectElement>('#oW').value = String(l.textWidth); q<HTMLSelectElement>('#oBg').value = l.bgMode; q<HTMLSelectElement>('#oTex').value = l.texture;
     q<HTMLSelectElement>('#oOrder').value = l.bookOrder || '1611';
+    q<HTMLSelectElement>('#oWojM').value = l.wojColor ? 'mine' : 'skin'; q<HTMLSelectElement>('#oAdd').value = l.addedStyle || 'italic'; q<HTMLSelectElement>('#oHead').value = l.headStyle || 'normal';
+    q<HTMLSelectElement>('#oWojM').onchange = () => { l.wojColor = q<HTMLSelectElement>('#oWojM').value === 'mine' ? q<HTMLInputElement>('#oWoj').value : undefined; change(false); };
+    q<HTMLInputElement>('#oWoj').oninput = () => { l.wojColor = q<HTMLInputElement>('#oWoj').value; q<HTMLSelectElement>('#oWojM').value = 'mine'; change(false); };
+    q<HTMLSelectElement>('#oAdd').onchange = () => { l.addedStyle = q<HTMLSelectElement>('#oAdd').value as Look['addedStyle']; change(false); };
+    q<HTMLSelectElement>('#oHead').onchange = () => { l.headStyle = q<HTMLSelectElement>('#oHead').value as Look['headStyle']; change(false); };
     q<HTMLSelectElement>('#oFnS').value = l.fnStyle || 'num'; q<HTMLSelectElement>('#oFnP').value = l.fnPlace || 'text';
     q<HTMLSelectElement>('#oFnS').onchange = () => { l.fnStyle = q<HTMLSelectElement>('#oFnS').value as Look['fnStyle']; change(true); };
     q<HTMLSelectElement>('#oFnP').onchange = () => { l.fnPlace = q<HTMLSelectElement>('#oFnP').value as Look['fnPlace']; change(true); };

@@ -40,6 +40,7 @@ export function initViews(host: ViewsHost): void {
   // book views that follow: a commentary the verse, a dictionary the word
   document.addEventListener('tanglaw-ref', () => { for (const [id, c] of Object.entries(cfgs())) if (id.startsWith('book-') && (c as BookCfg).follow) followBook(id, null); });
   document.addEventListener('tanglaw-key', e => { for (const [id, c] of Object.entries(cfgs())) if (id.startsWith('book-') && (c as BookCfg).follow) followBook(id, (e as CustomEvent).detail); });
+  document.addEventListener('tanglaw-ref', () => { for (const id of compareViews()) renderCompare(id); });
   document.addEventListener('tanglaw-word', e => { const d = document.getElementById('dictBody'); if (d) { d.innerHTML = (e as CustomEvent).detail; d.scrollTop = 0; } });
 }
 const newId = (kind: string) => { let n = 1; while (cfgs()[`${kind}-${n}`] || document.getElementById(`p-${kind}-${n}`)) n++; return `${kind}-${n}`; };
@@ -49,6 +50,9 @@ export function addBibleView(): string {
   const id = newId('bible'); const r = H.ref(); const open = H.openBibles()[0];
   cfgs()[id] = { bible: (H.bibles().find(b => b !== open) || open)?.id || '', follow: true, b: r.b, c: r.c }; H.save(); return id;
 }
+/** a compare view: the verse in many Bibles */
+export function addCompareView(): string { const id = newId('compare'); cfgs()[id] = { compare: 'all', diff: true } as unknown as BookCfg; H.save(); return id; }
+export const compareViews = () => Object.keys(cfgs()).filter(k => k.startsWith('compare-'));
 /** another search panel */
 export function addSearchView(): string {
   const id = newId('search'); cfgs()[id] = { search: true } as unknown as BookCfg; H.save(); return id;
@@ -62,6 +66,7 @@ export function viewTitle(id: string): string {
   if (id.startsWith('bible-')) { const b = H.bibles().find(x => x.id === (c as BibleCfg)?.bible); return b ? b.abbr : 'Bible'; }
   if (id.startsWith('book-')) { const m = H.books().find(x => x.id === (c as BookCfg)?.mod); return m ? (m.abbr || m.title).slice(0, 18) : 'Book'; }
   if (id.startsWith('search-')) return 'Search ' + (+id.slice(7) + 1);
+  if (id.startsWith('compare-')) return 'Compare';
   return id;
 }
 export function viewClosed(id: string): void { if (id.startsWith('search-')) searchViewClosed(id); delete cfgs()[id]; H.save(); }
@@ -69,12 +74,15 @@ export function viewClosed(id: string): void { if (id.startsWith('search-')) sea
 /** the section of a panel this module makes (null: not one of ours) */
 export function createView(id: string): HTMLElement | null {
   const sec = document.createElement('section'); sec.className = 'ptab hidden'; sec.id = 'p-' + id;
-  if (id !== 'dict' && !(/^(bible|book|search)-\d+$/.test(id) && cfgs()[id])) return null;
+  if (id !== 'dict' && !(/^(bible|book|search|compare)-\d+$/.test(id) && cfgs()[id])) return null;
   park().appendChild(sec); // in the page before it is wired
   if (id === 'dict') sec.innerHTML = '<div id="dictBody" class="pbody entrybody"><p class="hint">Rest the mouse on a word with a Strong\'s number or morphology code: its dictionary entry shows here.</p></div>';
   else if (/^bible-\d+$/.test(id) && cfgs()[id]) {
     sec.innerHTML = `<div class="vbar"><select class="vbible" title="Bible"></select><button class="ib vpick" title="Books and chapters: choose where to read">${icon('tree', 16)}</button><button class="ib vprevc" title="Previous chapter">${icon('prev', 16)}</button><button class="ib vnextc" title="Next chapter">${icon('next', 16)}</button><label class="vfollow" title="Follow the main Bible text (untick to read elsewhere in this Bible)"><input type="checkbox" class="vfol"> follow</label></div><div class="vtext pbody"></div>`;
     wireBible(id, sec);
+  } else if (/^compare-\d+$/.test(id)) {
+    sec.innerHTML = `<div class="vbar"><select class="vcmp" title="Which Bibles"></select><label class="vfollow" title="Mark the words that differ from the first Bible"><input type="checkbox" class="vdiff"> differences</label><label class="vfollow" title="Show the whole passage around the verse"><input type="checkbox" class="vctx"> ±2 verses</label></div><div class="vcompare pbody"></div>`;
+    wireCompare(id, sec);
   } else if (/^search-\d+$/.test(id)) { sec.classList.add('searchview'); createSearchView(sec, id);
   } else if (/^book-\d+$/.test(id) && cfgs()[id]) {
     sec.innerHTML = `<div class="vbar"><select class="vset" title="Module set: which modules to choose from"></select><select class="vmod" title="Module"></select><button class="ib vprev" title="Previous topic">‹</button><button class="ib vnext" title="Next topic">›</button><button class="ib vprint" title="Print this topic">${icon('print', 15)}</button><button class="ib vexport" title="Export this topic or the whole module">${icon('import', 15)}</button><label class="vfollow vfolb" title="A commentary follows the verse you read; a dictionary follows the word you point at"><input type="checkbox" class="vfol"> follow</label></div><div class="libsplit"><div class="libside"><input class="vfilter" type="search" placeholder="Find a topic…" spellcheck="false"><ul class="vtopics"></ul><div class="vcount small"></div></div><div class="lsplit" title="Drag to make the topic list wider or narrower"></div><div class="vbody pbody entrybody"><p class="hint">Choose a commentary, dictionary or book.</p></div></div>`;
@@ -87,6 +95,7 @@ export function viewShown(id: string): void {
   if (id.startsWith('bible-')) renderBible(id);
   if (id.startsWith('book-')) fillMods(id);
   if (id.startsWith('search-')) searchViewShown(id);
+  if (id.startsWith('compare-')) renderCompare(id);
 }
 /** modules were read again */
 export function viewsReload(): void {
@@ -217,4 +226,48 @@ async function showBookTopic(id: string, tid: Topic['id']): Promise<void> {
   const st = bookState.get(id); const ul = sec.querySelector<HTMLElement>('.vtopics')!;
   if (st) { const i = st.rows.findIndex(r => r.id === tid); if (i >= 0 && (i * ROW < ul.scrollTop || i * ROW > ul.scrollTop + ul.clientHeight - ROW)) ul.scrollTop = Math.max(0, i * ROW - ul.clientHeight / 2); }
   drawTopics(id);
+}
+
+/* ---------------------------------------------------------------- compare view */
+interface CompareCfg { compare: string; diff: boolean; ctx?: boolean }
+function wireCompare(id: string, sec: HTMLElement): void {
+  const c = cfgs()[id] as unknown as CompareCfg; const sel = sec.querySelector<HTMLSelectElement>('.vcmp')!;
+  const sets = (H.settings().bibleSets as Record<string, string[]>) || {};
+  sel.innerHTML = '<option value="all">All Bibles</option><option value="open">Open Bibles</option>' + (Object.keys(sets).length ? `<optgroup label="Bible sets">${Object.keys(sets).map(n => `<option value="set:${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>` : '');
+  sel.value = c.compare; if (sel.selectedIndex < 0) sel.value = 'all';
+  sel.onchange = () => { c.compare = sel.value; H.save(); renderCompare(id); };
+  const df = sec.querySelector<HTMLInputElement>('.vdiff')!; df.checked = c.diff !== false; df.onchange = () => { c.diff = df.checked; H.save(); renderCompare(id); };
+  const cx = sec.querySelector<HTMLInputElement>('.vctx')!; cx.checked = !!c.ctx; cx.onchange = () => { c.ctx = cx.checked; H.save(); renderCompare(id); };
+  sec.querySelector('.vcompare')!.addEventListener('click', e => { const v = (e.target as HTMLElement).closest<HTMLElement>('[data-gov]'); if (v) H.go(H.ref().b, H.ref().c, +v.dataset.gov!); });
+}
+const words = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').match(/[\p{L}\p{N}']+/gu) || [];
+/** mark the words of a verse that are not in the first Bible's verse */
+function markDiff(html: string, base: Set<string>): string {
+  const t = document.createElement('template'); t.innerHTML = html;
+  const w = document.createTreeWalker(t.content, NodeFilter.SHOW_TEXT); const nodes: Text[] = []; let n; while ((n = w.nextNode())) if (!(n.parentElement?.closest('sup'))) nodes.push(n as Text);
+  for (const tn of nodes) {
+    const parts = tn.data.split(/([\p{L}\p{N}']+)/u); if (parts.length < 2) continue;
+    const frag = document.createDocumentFragment();
+    parts.forEach((p, i) => { if (i % 2 && !base.has(words(p)[0] || '')) { const m = document.createElement('mark'); m.className = 'cdiff'; m.textContent = p; frag.appendChild(m); } else frag.appendChild(document.createTextNode(p)); });
+    tn.replaceWith(frag);
+  }
+  return t.innerHTML;
+}
+async function renderCompare(id: string): Promise<void> {
+  const sec = document.getElementById('p-' + id); const c = cfgs()[id] as unknown as CompareCfg; if (!sec || !c || sec.closest('#parked')) return;
+  const r = H.ref(); const body = sec.querySelector<HTMLElement>('.vcompare')!;
+  let list = H.bibles().filter(b => !H.hiddenBibles().includes(b.id));
+  if (c.compare === 'open') list = H.openBibles();
+  else if (c.compare.startsWith('set:')) { const ids = ((H.settings().bibleSets as Record<string, string[]>) || {})[c.compare.slice(4)] || []; list = ids.map(i => H.bibles().find(b => b.id === i)).filter((b): b is Bible => !!b); }
+  const show = { ...H.show(), strongs: false, morph: false, footnotes: false, xrefs: false };
+  const from = c.ctx ? Math.max(1, r.v - 2) : r.v, to = c.ctx ? r.v + 2 : r.v;
+  const out: string[] = []; let base: Set<string> | null = null;
+  for (const m of list) {
+    const rows = (await m.chapter(r.b, r.c)).filter(x => x.v >= from && x.v <= to); if (!rows.length) continue;
+    const html = rows.map(x => `${c.ctx ? `<sup class="vno${x.v === r.v ? ' cur' : ''}" data-gov="${x.v}">${x.v}</sup>` : ''}${TWRender.render(x.raw, m, show)}`).join(' ');
+    let shown = html;
+    if (c.diff !== false) { const t = document.createElement('div'); t.innerHTML = html; t.querySelectorAll('sup').forEach(s2 => s2.remove()); const ws = words(t.textContent || ''); if (!base) base = new Set(ws); else shown = markDiff(html, base); }
+    out.push(`<div class="cmprow${m.rtl ? ' rtl' : ''}"><div class="cab" title="${esc(m.title)}">${esc(m.abbr)}</div><div class="ctx"${H.bibleStyle(m)}>${shown}</div></div>`);
+  }
+  body.innerHTML = `<div class="vhead">${esc(canon.book(r.b).name)} ${r.c}:${from === to ? r.v : `${from}–${to}`} <span class="small">${out.length} Bible${out.length === 1 ? '' : 's'}${c.diff !== false && out.length > 1 ? ' · words not in the first Bible are marked' : ''}</span></div>` + (out.join('') || '<p class="hint">No Bible here has this verse.</p>');
 }

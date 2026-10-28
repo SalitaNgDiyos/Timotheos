@@ -1,7 +1,7 @@
 # Timotheos
 Open Source Bible App that supports theWord and e-Sword
 
-## Tanglaw Bible – Tauri edition (proof of concept, 0.5.0)
+## Tanglaw Bible – Tauri edition (0.6.0)
 
 The next Tanglaw: the same look and the same module readers as the Electron version (0.4.x), on
 **Tauri 2** + **TypeScript**, so one code base builds for **Windows, Linux and Android**.
@@ -59,6 +59,26 @@ What it does now (proof of concept):
   not changed;
 - keys: ← → chapter, Ctrl+← → book, ↑ ↓ verse, type a number for a verse (Shift: chapter), Alt+← →
   or Backspace for history, Ctrl+L add to list, Ctrl+C copy verse, F5 Copy Verses, Ctrl+, Options, F1 guide.
+- **0.6.0 – features learned from theWord's manual** (described and built in Tanglaw's own way):
+  - *Bible text:* footnote marks counted through the chapter (numbers, letters or a star; optionally listed
+    under the chapter), paragraph mode (P; borrows paragraph breaks from another open Bible), lemmas,
+    column text (Alt+I: each word over its original word, transliteration, Strong's number, morphology and
+    lemma), a Bible's own switches (theWord user toggles, e.g. V), words of Jesus / added words / headings
+    styles, a font and size per Bible;
+  - *Bibles menu:* order (↑ ↓), hide, Bible sets; *compare view* (Ctrl+M) with differences marked;
+  - *word popups:* original word and transliteration, chosen Strong's dictionaries for Greek, Hebrew and
+    morphology, order of entries, verse popups in all open Bibles, a bar (keep open, copy, to the
+    Dictionary panel); word lookup dictionaries (D) for any word of the text; book views that follow the
+    verse or word;
+  - *search:* a References view (hover a reference for the verse), book search across commentaries,
+    dictionaries and books with module sets, any number of search panels;
+  - *tools:* clipboard monitor, graphics viewer for pictures in modules (RTF PNG/JPEG pictures are now
+    shown), printing (Ctrl+P), your own marks in book modules, export of topics (.docx, .rtf, .html, .txt);
+  - *your own modules:* commentaries, dictionaries and books written in Tanglaw (theWord .twm with
+    user=1), with section links (theWord topic links);
+  - Tagalog menus and windows (Options → Language / Wika) with a table to correct the translation;
+  - keyboard shortcuts you can change (Ctrl+/); a once-a-day check for a newer release on GitHub
+    (only tells you and opens the download page; can be switched off).
 Encrypted modules are skipped quietly (the import report says why) and never decoded.
 
 ## How it is built
@@ -92,7 +112,11 @@ checks the study tools and taking over data from Tanglaw 0.4; `test/features.js`
 cross-references, references in commentaries, the verse list, reading plans and Options; `test/search.js`
 search ranges, books and statistics; `test/panels.js` the panel places and the guide;
 `test/props-setup.sh` then `FOLDERS='["/tmp/claude-0/propmods"]' test/run.sh test/props.js shot.png 60`
-module properties and the import report (on copies of the test modules).
+module properties and the import report (on copies of the test modules). 0.6.0 adds `test/text.js`
+(footnotes, paragraphs, lemmas, Bibles menu, word popups, search references), `test/tools.js` (switches,
+column text, word lookup, book search, module sets, search panels, clipboard monitor, graphics viewer,
+printing, marks, export), `test/user.js` (your own modules, section links, Tagalog), `test/own.js`
+(compare view, keyboard shortcuts, versions, text styles), and `test/morph.js`.
 
 ## Not yet moved over from 0.4.x
-The option to put the Apocrypha after the New Testament; printing.
+The option to put the Apocrypha after the New Testament.
