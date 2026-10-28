@@ -34,7 +34,7 @@
     T.showPanel('lib'); const sel = document.getElementById('libMod'); sel.value = dct.id; sel.dispatchEvent(new Event('change')); await sleep(1200);
     const first = document.querySelector('#libBody h4')?.textContent;
     document.getElementById('libNext').click(); await sleep(500);
-    ok(first && document.querySelector('#libBody h4')?.textContent !== first && document.querySelectorAll('#libTopics li').length > 1000, 'Library: Mounce (' + document.querySelectorAll('#libTopics li').length + ' topics), next topic: ' + first + ' → ' + document.querySelector('#libBody h4')?.textContent);
+    ok(first && document.querySelector('#libBody h4')?.textContent !== first && parseInt(document.getElementById('libCount').textContent) > 1000, 'Library: Mounce (' + document.getElementById('libCount').textContent + ' topics), next topic: ' + first + ' → ' + document.querySelector('#libBody h4')?.textContent);
     document.getElementById('libFilter').value = 'G26'; document.getElementById('libFilter').dispatchEvent(new Event('input')); await sleep(700);
     ok([...document.querySelectorAll('#libTopics li')].some(li => li.textContent.trim() === 'G26'), 'topic filter finds G26');
     // search

@@ -3,12 +3,12 @@ import { SKINS, applySkin } from './skins';
 import { dialog, esc } from './ui';
 
 export interface Look {
-  fontText: string; lineH: number; textWidth: number; bgMode: 'skin' | 'color'; bgColor: string; texture: 'none' | 'paper';
+  fontText: string; fontGreek: string; fontHebrew: string; lineH: number; textWidth: number; bgMode: 'skin' | 'color'; bgColor: string; texture: 'none' | 'paper';
   vnPos: 'margin' | 'inline' | 'hidden'; vnStyle: 'normal' | 'bold' | 'circle'; capColor: boolean;
 }
-export const LOOK: Look = { fontText: 'Gentium Plus', lineH: 1.65, textWidth: 0, bgMode: 'skin', bgColor: '#fffdf8', texture: 'none', vnPos: 'margin', vnStyle: 'normal', capColor: true };
+export const LOOK: Look = { fontText: 'Gentium Plus', fontGreek: 'Gentium Plus', fontHebrew: 'Noto Serif Hebrew', lineH: 1.65, textWidth: 0, bgMode: 'skin', bgColor: '#fffdf8', texture: 'none', vnPos: 'margin', vnStyle: 'normal', capColor: true };
 const BUNDLED = ['Gentium Plus', 'Literata', 'Source Serif 4', 'Inter', 'Noto Serif Hebrew'];
-const COMMON = ['Cambria', 'Constantia', 'Georgia', 'Palatino Linotype', 'Book Antiqua', 'Times New Roman', 'Segoe UI', 'Calibri', 'Verdana', 'Noto Serif', 'DejaVu Serif', 'Liberation Serif', 'Roboto'];
+const COMMON = ['SBL Greek', 'SBL Hebrew', 'Ezra SIL', 'Cardo', 'Cambria', 'Constantia', 'Georgia', 'Palatino Linotype', 'Book Antiqua', 'Times New Roman', 'Segoe UI', 'Calibri', 'Verdana', 'Noto Serif', 'DejaVu Serif', 'Liberation Serif', 'Roboto'];
 let installed: string[] | null = null;
 
 export function applyLook(skin: string, size: number, l: Look): void {
@@ -16,10 +16,31 @@ export function applyLook(skin: string, size: number, l: Look): void {
   const r = document.documentElement.style;
   r.setProperty('--size', size + 'px');
   r.setProperty('--lh', String(l.lineH));
-  r.setProperty('--font-text', `'TwGreek', '${l.fontText.replace(/'/g, '')}', 'Gentium Plus', Georgia, serif`);
+  r.setProperty('--font-text', `'TwGreek', 'TwHebrew', '${l.fontText.replace(/'/g, '')}', 'Gentium Plus', Georgia, serif`);
+  greekHebrewFaces(l);
   r.setProperty('--textw', l.textWidth ? l.textWidth + 'px' : 'none');
   if (l.bgMode === 'color') r.setProperty('--textbg', l.bgColor);
   const d = document.documentElement.dataset; d.texture = l.texture; d.vnpos = l.vnPos; d.vnstyle = l.vnStyle; d.caps = l.capColor ? 'color' : 'plain';
+}
+
+/** "TwGreek"/"TwHebrew" cover only Greek/Hebrew letters, so Greek and Hebrew can have their own font */
+function greekHebrewFaces(l: Look): void {
+  const rules: CSSFontFaceRule[] = [];
+  for (const ss of document.styleSheets) {
+    if (!/fonts\.css$/.test(ss.href || '')) continue;
+    try { for (const r of ss.cssRules) if (r instanceof CSSFontFaceRule) rules.push(r); } catch { /* not readable */ }
+  }
+  let css = '';
+  const alias = (name: string, fam: string, subset: RegExp, range: string) => {
+    const bundled = rules.filter(r => r.style.getPropertyValue('font-family').replace(/['"]/g, '') === fam && subset.test(r.style.getPropertyValue('src')));
+    if (bundled.length) for (const r of bundled) css += `@font-face{font-family:'${name}';font-style:${r.style.getPropertyValue('font-style') || 'normal'};font-weight:${r.style.getPropertyValue('font-weight') || 400};src:${r.style.getPropertyValue('src')};unicode-range:${r.style.getPropertyValue('unicode-range') || range};}\n`;
+    else for (const [w, st] of [[400, 'normal'], [700, 'normal'], [400, 'italic'], [700, 'italic']]) css += `@font-face{font-family:'${name}';font-weight:${w};font-style:${st};src:local('${fam.replace(/'/g, '')}');unicode-range:${range};}\n`;
+  };
+  alias('TwGreek', l.fontGreek, /greek/, 'U+0370-03FF, U+1F00-1FFF');
+  alias('TwHebrew', l.fontHebrew, /hebrew-hebrew/, 'U+0590-05FF, U+FB1D-FB4F');
+  let st = document.getElementById('dynFonts');
+  if (!st) { st = document.createElement('style'); st.id = 'dynFonts'; document.head.appendChild(st); }
+  st.textContent = css;
 }
 
 /** the Options window; calls change() after every change so the screen follows at once */
@@ -32,6 +53,8 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     <label class="ck"><input type="checkbox" id="oCap" ${l.capColor ? 'checked' : ''}> Coloured captions</label>
     <h4>Bible text</h4>
     <label class="fl">Font <select id="oFont">${fonts(l.fontText)}</select></label>
+    <label class="fl">Greek <select id="oGreek">${fonts(l.fontGreek)}</select></label>
+    <label class="fl">Hebrew <select id="oHebrew">${fonts(l.fontHebrew)}</select></label>
     <label class="fl">Size <span class="srow"><input type="range" id="oSize" min="12" max="34" value="${st.fontSize}"><b id="oSizeV">${st.fontSize} px</b></span></label>
     <label class="fl">Line spacing <span class="srow"><input type="range" id="oLh" min="1.2" max="2.4" step="0.05" value="${l.lineH}"><b id="oLhV">${l.lineH.toFixed(2)}</b></span></label>
     <label class="fl">Text width <select id="oW"><option value="0">Fill the window</option><option value="680">Narrow</option><option value="860">Medium</option><option value="1100">Wide</option></select></label>
@@ -47,6 +70,8 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     b.querySelectorAll<HTMLButtonElement>('[data-skin]').forEach(x => x.onclick = () => { st.skin = x.dataset.skin!; b.querySelectorAll('.skin').forEach(y => y.classList.toggle('on', y === x)); change(false); });
     q<HTMLInputElement>('#oCap').onchange = () => { l.capColor = q<HTMLInputElement>('#oCap').checked; change(false); };
     q<HTMLSelectElement>('#oFont').onchange = () => { l.fontText = q<HTMLSelectElement>('#oFont').value; change(false); };
+    q<HTMLSelectElement>('#oGreek').onchange = () => { l.fontGreek = q<HTMLSelectElement>('#oGreek').value; change(false); };
+    q<HTMLSelectElement>('#oHebrew').onchange = () => { l.fontHebrew = q<HTMLSelectElement>('#oHebrew').value; change(false); };
     q<HTMLInputElement>('#oSize').oninput = () => { st.fontSize = +q<HTMLInputElement>('#oSize').value; q('#oSizeV').textContent = st.fontSize + ' px'; change(false); };
     q<HTMLInputElement>('#oLh').oninput = () => { l.lineH = +q<HTMLInputElement>('#oLh').value; q('#oLhV').textContent = l.lineH.toFixed(2); change(false); };
     q<HTMLSelectElement>('#oW').onchange = () => { l.textWidth = +q<HTMLSelectElement>('#oW').value; change(false); };

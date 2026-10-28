@@ -12,8 +12,9 @@ J
 {"version":1,"bookmarks":[{"b":19,"c":23,"v":1},null,null,null,null,null,null,null,null,null],"lists":{"My verses":[{"b":45,"c":5,"v":8}]},"currentList":"My verses","highlights":{"tw:kjv.ont":{"43.3.16":[{"s":11,"e":16,"style":"yellow"}]}},"notes":{"43.3.16":{"html":"God's love: compare <a class=\"link\" data-href=\"tw://bible.*?id=45.5.8\">Rom 5:8</a>.","t":1}},"plans":[]}
 J
 else
+DEF='["/home/claude/testmods","/home/claude/esreal"]'; F=${FOLDERS:-$DEF}
 cat > "$H/.local/share/org.tanglaw.bible/settings.json" <<J
-{"folders":["/home/claude/testmods","/home/claude/esreal"],"ref":{"b":43,"c":3},"skin":"${SKIN:-parchment}"}
+{"folders":$F,"ref":{"b":43,"c":3},"skin":"${SKIN:-parchment}"}
 J
 fi
 BIN=${TANGLAW_BIN:-$(cd "$(dirname "$0")/.." && pwd)/src-tauri/target/release/tanglaw}

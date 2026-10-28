@@ -8,14 +8,16 @@ import { readFile } from '@tauri-apps/plugin-fs';
 import { Bible, Locked, isBibleFile, isLocked, openBible } from './bibles';
 import { BookMod, guessKind, isBookFile, openBook } from './books';
 import type { ModFile } from './native';
-import { commentaryMarks, followBookLink, initPanel, show as showPanel, strongEntry, updateCommentary } from './panel';
+import { commentaryMarks, followBookLink, initPanel, libCurrent, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
 import { find, forgetSearchCache, initSearch } from './search';
-import { importBytes, legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
+import { legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
 import { addToList, afterRender, copyVerse, initStudy, saveUD } from './study';
 import { copyDialog, initCopy } from './copy';
 import { bibleTarget, linkRefs, wireRefPreview } from './refs';
 import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
-import { flash } from './ui';
+import { dialog, flash } from './ui';
+import { importFiles, reportHtml } from './importer';
+import { initProps, openProps } from './props';
 import { SKINS } from './skins';
 import { LOOK, Look, applyLook, optionsDialog } from './options';
 
@@ -46,7 +48,7 @@ const save = () => saveSettings(S).catch(() => {});
 /** the Electron edition's appearance settings that the new one understands */
 function pickLook(a: Record<string, unknown>): Partial<Look> {
   const o: Partial<Look> = {};
-  for (const k of ['fontText', 'lineH', 'textWidth', 'bgMode', 'bgColor', 'vnPos', 'vnStyle', 'capColor'] as const) if (a[k] != null) (o as Record<string, unknown>)[k] = a[k];
+  for (const k of ['fontText', 'fontGreek', 'fontHebrew', 'lineH', 'textWidth', 'bgMode', 'bgColor', 'vnPos', 'vnStyle', 'capColor'] as const) if (a[k] != null) (o as Record<string, unknown>)[k] = a[k];
   if (o.vnStyle && !['normal', 'bold', 'circle'].includes(o.vnStyle)) o.vnStyle = 'normal';
   if (a.texture === 'paper') o.texture = 'paper';
   return o;
@@ -129,7 +131,7 @@ async function go(b: number, c: number, v = 1): Promise<void> {
   const marks = commentaryMarks(bk.id, c);
   const cell = (m: Bible, raw: string | undefined) => raw == null ? '' : TWRender.render(raw, m, show, { fn: { n: 0 } });
   const vin = (v: number) => S.look.vnPos === 'inline' ? `<sup class="vnum">${v}</sup>` : '';
-  const font = (m: Bible) => m.font ? ` style="font-family:'TwGreek','${esc(m.font)}',var(--font-text)"` : '';
+  const font = (m: Bible) => m.font ? ` style="font-family:'TwGreek','TwHebrew','${esc(m.font)}',var(--font-text)"` : '';
   let html = '';
   if (isPhone() || list.length === 1) {
     html = '<div class="rows">';
@@ -228,7 +230,7 @@ async function showWord(el: HTMLElement): Promise<void> {
 function bibleMenu(): void {
   const m = $('#bibleMenu');
   m.innerHTML = `<div class="mh">Bibles <span class="small">(tick to read side by side)</span></div>` +
-    bibles.map(b => `<label><input type="checkbox" data-id="${esc(b.id)}" ${S.open.includes(b.id) ? 'checked' : ''}><b>${esc(b.abbr)}</b><span class="small">${esc(b.title)}</span><span class="fmt">${b.format}</span></label>`).join('') +
+    bibles.map(b => `<div class="brow"><label><input type="checkbox" data-id="${esc(b.id)}" ${S.open.includes(b.id) ? 'checked' : ''}><b>${esc(b.abbr)}</b><span class="small">${esc(b.title)}</span><span class="fmt">${b.format}</span></label><button class="ib" data-props="${esc(b.id)}" title="Properties of ${esc(b.abbr)}">ⓘ</button></div>`).join('') +
     (locked.length ? `<div class="mh">Cannot be opened</div>` + locked.map(l => `<div class="lk">${esc(l.title)} – ${esc(l.reason)}</div>`).join('') : '') +
     `<div class="msep"></div><button id="mImport">Import modules…</button>${isAndroid ? '' : '<button id="mFolder">Read modules from a folder…</button>'}` +
     (S.folders.length ? `<div class="small fl">${S.folders.map(esc).join('<br>')}</div>` : '');
@@ -236,6 +238,7 @@ function bibleMenu(): void {
     const id = cb.dataset.id!; S.open = cb.checked ? [...S.open, id] : S.open.filter(x => x !== id);
     save(); buildNav(); go(S.ref.b, S.ref.c);
   });
+  m.querySelectorAll<HTMLButtonElement>('[data-props]').forEach(pb => pb.onclick = e => { e.stopPropagation(); const b = bibles.find(x => x.id === pb.dataset.props); if (b) { m.classList.add('hidden'); openProps(b.file, b.title); } });
   ($('#mImport') as HTMLButtonElement).onclick = importModules;
   const mf = document.querySelector<HTMLButtonElement>('#mFolder'); if (mf) mf.onclick = addFolder;
 }
@@ -279,13 +282,15 @@ function picker(): void {
 async function importModules(): Promise<void> {
   const picked = await openDialog({ multiple: true, title: 'Import theWord or e-Sword modules' });
   const list = !picked ? [] : Array.isArray(picked) ? picked : [picked];
-  for (const p of list) {
-    const path = String(p); const name = decodeURIComponent(path.split(/[\\/]/).pop() || 'module').replace(/^.*%2F/, '');
-    const data = await readFile(path);
-    let bin = ''; for (let i = 0; i < data.length; i += 0x8000) bin += String.fromCharCode(...data.subarray(i, i + 0x8000));
-    await importBytes(name, btoa(bin));
-  }
-  if (list.length) { await loadModules(); await go(S.ref.b, S.ref.c); openRest(); toggleMenu('#bibleMenu', bibleMenu); }
+  if (list.length) await importPaths(list.map(String));
+}
+async function importPaths(list: string[]): Promise<void> {
+  const files = list.map(p => { const path = String(p); return { name: decodeURIComponent(path.split(/[\\/]/).pop() || 'module').replace(/^.*%2F/, '').replace(/^.*\//, ''), data: () => readFile(path) }; });
+  $('#bibleMenu').classList.add('hidden');
+  const r = await importFiles(files, t => { $('#status').textContent = t; });
+  if (r.some(x => x.status === 'imported' || x.status === 'updated')) { await loadModules(); await go(S.ref.b, S.ref.c); openRest(); }
+  else statusLine(0);
+  await dialog('Import report', reportHtml(r), [{ label: 'OK', value: 'ok', primary: true }], b => b.parentElement!.classList.add('wide'));
 }
 async function addFolder(): Promise<void> {
   const d = await openDialog({ directory: true, title: 'Choose a folder with theWord or e-Sword modules' });
@@ -363,6 +368,8 @@ async function init(): Promise<void> {
   initSearch({ openBibles, allBibles: () => bibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, settings: () => S as unknown as Record<string, unknown>, save });
   initPanel({ books: () => books, openBibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, clean, save, settings: () => S as unknown as Record<string, unknown> });
   initCopy({ nav: () => nav, openBibles, save: saveUD });
+  initProps(async () => { await loadModules(); await go(S.ref.b, S.ref.c, S.ref.v); await openRest(); await reloadLib(); });
+  $('#libProps').onclick = () => { const m = libCurrent(); if (m) openProps(m.file, m.title); else flash('Choose a module first'); };
   const studyNote = await initStudy({ ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, rerender, openBibles, showPanel, show: () => S.show }, legacy ? legacy.study : null);
   const note = [migrated, studyNote].filter(Boolean).join('; ');
   if (note) setTimeout(() => flash('Welcome to the new Tanglaw – ' + note + '.'), 1200);
@@ -418,6 +425,6 @@ async function init(): Promise<void> {
   w.__tanglawFirst = Math.round(performance.now());
   await openRest();
   w.__tanglawReady = Math.round(performance.now());
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender };
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });

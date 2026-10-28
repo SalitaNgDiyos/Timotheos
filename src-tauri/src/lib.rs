@@ -20,7 +20,7 @@ struct Store {
 #[derive(Serialize)]
 struct ModFile { path: String, name: String, size: u64 }
 
-const MODULE_EXT: &[&str] = &[".ont", ".ot", ".nt", ".bblx", ".bbli", ".twm", ".dctx", ".dcti", ".lexx", ".lexi", ".cmtx", ".cmti", ".ontx", ".otx", ".ntx"];
+const MODULE_EXT: &[&str] = &[".ont", ".ot", ".nt", ".bblx", ".bbli", ".twm", ".dctx", ".dcti", ".lexx", ".lexi", ".cmtx", ".cmti", ".topx", ".topi", ".refx", ".refi", ".devx", ".devi", ".ontx", ".otx", ".ntx"];
 
 fn walk(dir: &Path, depth: u32, out: &mut Vec<ModFile>) {
     let Ok(rd) = fs::read_dir(dir) else { return };
@@ -151,6 +151,44 @@ fn import_bytes(app: tauri::AppHandle, name: String, b64: String) -> Result<Stri
     Ok(p.to_string_lossy().to_string())
 }
 
+/* ------------------------------------------------------------ importing with a report */
+fn safe_name(name: &str) -> String { name.chars().filter(|c| !matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')).collect() }
+/** put a file to be imported in a waiting place (not yet among the modules); the TypeScript side checks it */
+#[tauri::command]
+fn import_stage(app: tauri::AppHandle, name: String, b64: String) -> Result<String, String> {
+    let bytes = base64::engine::general_purpose::STANDARD.decode(b64).map_err(|e| e.to_string())?;
+    let dir = data_dir(&app).join("modules").join(".incoming");
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let p = dir.join(safe_name(&name));
+    fs::write(&p, bytes).map_err(|e| e.to_string())?;
+    Ok(p.to_string_lossy().to_string())
+}
+/** move a checked file into Tanglaw's module folder: "imported", "updated" (replaced a different file of
+ *  the same name) or "already" (the same file was there) */
+#[tauri::command]
+fn import_commit(app: tauri::AppHandle, store: State<Store>, staged: String) -> Result<(String, String), String> {
+    let src = PathBuf::from(&staged);
+    let inc = data_dir(&app).join("modules").join(".incoming");
+    if src.parent() != Some(inc.as_path()) { return Err("not a waiting import".into()); }
+    let dest = data_dir(&app).join("modules").join(src.file_name().ok_or("no name")?);
+    let ds = dest.to_string_lossy().to_string();
+    forget(&store, &staged);
+    let status = if dest.exists() {
+        if fs::read(&dest).map_err(|e| e.to_string())? == fs::read(&src).map_err(|e| e.to_string())? { "already" } else { "updated" }
+    } else { "imported" };
+    if status == "already" { fs::remove_file(&src).map_err(|e| e.to_string())?; }
+    else { forget(&store, &ds); fs::rename(&src, &dest).map_err(|e| e.to_string())?; }
+    Ok((ds, status.into()))
+}
+#[tauri::command]
+fn import_discard(app: tauri::AppHandle, store: State<Store>, staged: String) -> Result<(), String> {
+    let src = PathBuf::from(&staged);
+    if src.parent() != Some(data_dir(&app).join("modules").join(".incoming").as_path()) { return Err("not a waiting import".into()); }
+    forget(&store, &staged);
+    let _ = fs::remove_file(src);
+    Ok(())
+}
+
 #[tauri::command]
 fn settings_load(app: tauri::AppHandle) -> serde_json::Value {
     fs::read_to_string(data_dir(&app).join("settings.json")).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or(serde_json::json!({}))
@@ -249,6 +287,102 @@ fn user_xref_change(app: tauri::AppHandle, store: State<Store>, op: String, vi1:
     Ok(n)
 }
 
+/* ------------------------------------------------------------ module properties (editing a module file) */
+const BACKUP: &str = ".tanglaw-backup";
+/** only unlocked module files may be changed */
+fn editable_module(path: &str) -> Result<PathBuf, String> {
+    let p = PathBuf::from(path);
+    let low = path.to_lowercase();
+    let ok = [".ont", ".ot", ".nt", ".twm", ".bblx", ".bbli", ".dctx", ".dcti", ".lexx", ".lexi", ".cmtx", ".cmti", ".refx", ".refi", ".topx", ".topi", ".devx", ".devi"]
+        .iter().any(|e| low.ends_with(e));
+    if !ok || !p.is_file() { return Err("not a module file Tanglaw can change".into()); }
+    Ok(p)
+}
+fn forget(store: &Store, path: &str) { store.ont.lock().unwrap().remove(path); store.db.lock().unwrap().remove(path); }
+fn backup_once(p: &Path) -> Result<bool, String> {
+    let b = PathBuf::from(format!("{}{}", p.to_string_lossy(), BACKUP));
+    if b.exists() { return Ok(false); }
+    fs::copy(p, &b).map_err(|e| format!("could not keep a copy of the original: {e}"))?;
+    Ok(true)
+}
+#[derive(Serialize)]
+struct FileState { size: u64, writable: bool, backup: Option<String> }
+#[tauri::command]
+fn mod_file(path: String) -> Result<FileState, String> {
+    let md = fs::metadata(&path).map_err(|e| e.to_string())?;
+    let b = format!("{path}{BACKUP}");
+    let writable = !md.permissions().readonly() && fs::OpenOptions::new().append(true).open(&path).is_ok();
+    Ok(FileState { size: md.len(), writable, backup: if Path::new(&b).exists() { Some(b) } else { None } })
+}
+/** the whole file, base64 (theWord text Bibles, for editing their properties) */
+#[tauri::command]
+fn mod_read(path: String) -> Result<String, String> {
+    let p = editable_module(&path)?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(fs::read(p).map_err(|e| e.to_string())?))
+}
+/** replace a text Bible with new contents (base64); the original is kept once as <file>.tanglaw-backup */
+#[tauri::command]
+fn mod_write(store: State<Store>, path: String, b64: String) -> Result<bool, String> {
+    let p = editable_module(&path)?;
+    let data = base64::engine::general_purpose::STANDARD.decode(b64).map_err(|e| e.to_string())?;
+    let made = backup_once(&p)?;
+    let tmp = PathBuf::from(format!("{path}.tanglaw-tmp"));
+    fs::write(&tmp, data).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &p).map_err(|e| e.to_string())?;
+    forget(&store, &path);
+    Ok(made)
+}
+fn to_value(p: &serde_json::Value) -> rusqlite::types::Value {
+    match p {
+        serde_json::Value::Number(x) if x.is_i64() => rusqlite::types::Value::Integer(x.as_i64().unwrap()),
+        serde_json::Value::Number(x) => rusqlite::types::Value::Real(x.as_f64().unwrap_or(0.0)),
+        serde_json::Value::String(s) => rusqlite::types::Value::Text(s.clone()),
+        serde_json::Value::Bool(b) => rusqlite::types::Value::Integer(*b as i64),
+        serde_json::Value::Object(o) => match o.get("$b64").and_then(|v| v.as_str()) {
+            Some(b) => rusqlite::types::Value::Blob(base64::engine::general_purpose::STANDARD.decode(b).unwrap_or_default()),
+            None => rusqlite::types::Value::Null,
+        },
+        _ => rusqlite::types::Value::Null,
+    }
+}
+/** change a database module: run the statements on a copy, compact it if asked, then put the copy in place.
+ *  The original is kept once as <file>.tanglaw-backup. Returns (size before, size after, backup made now). */
+#[tauri::command]
+fn mod_sql_write(store: State<Store>, path: String, statements: Vec<(String, Vec<serde_json::Value>)>, vacuum: bool) -> Result<(u64, u64, bool), String> {
+    let p = editable_module(&path)?;
+    let before = fs::metadata(&p).map_err(|e| e.to_string())?.len();
+    let tmp = PathBuf::from(format!("{path}.tanglaw-tmp"));
+    fs::copy(&p, &tmp).map_err(|e| e.to_string())?;
+    let res = (|| -> Result<(), String> {
+        let mut c = Connection::open(&tmp).map_err(|e| e.to_string())?;
+        let tx = c.transaction().map_err(|e| e.to_string())?;
+        for (q, ps) in &statements {
+            let vals: Vec<rusqlite::types::Value> = ps.iter().map(to_value).collect();
+            tx.execute(q, rusqlite::params_from_iter(vals.iter())).map_err(|e| format!("{e} ({q})"))?;
+        }
+        tx.commit().map_err(|e| e.to_string())?;
+        if vacuum { c.execute_batch("VACUUM").map_err(|e| e.to_string())?; }
+        Ok(())
+    })();
+    if let Err(e) = res { let _ = fs::remove_file(&tmp); return Err(e); }
+    forget(&store, &path);
+    let made = backup_once(&p)?;
+    fs::rename(&tmp, &p).map_err(|e| e.to_string())?;
+    let after = fs::metadata(&p).map_err(|e| e.to_string())?.len();
+    Ok((before, after, made))
+}
+/** put the copy kept before the first change back */
+#[tauri::command]
+fn mod_restore(store: State<Store>, path: String) -> Result<(), String> {
+    let p = editable_module(&path)?;
+    let b = PathBuf::from(format!("{path}{BACKUP}"));
+    if !b.exists() { return Err("there is no copy of the original of this module".into()); }
+    forget(&store, &path);
+    fs::copy(&b, &p).map_err(|e| e.to_string())?;
+    fs::remove_file(&b).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /** test hook: a test script reports its results here (printed on the console) */
 #[tauri::command]
 fn test_report(text: String) { println!("RESULT {}", text); }
@@ -259,7 +393,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(Store::default())
-        .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, ud_load, ud_save, legacy_data, user_xrefs, user_xref_change, test_report])
+        .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, ud_load, ud_save, legacy_data, user_xrefs, user_xref_change, mod_file, mod_read, mod_write, mod_sql_write, mod_restore, import_stage, import_commit, import_discard, test_report])
         .setup(|app| {
             // test hook (like the Electron version's): TANGLAW_SCRIPT runs a script in the window after start
             if let (Ok(sz), Some(w)) = (std::env::var("TANGLAW_SIZE"), app.get_webview_window("main")) {

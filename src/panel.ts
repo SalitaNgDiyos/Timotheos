@@ -101,16 +101,36 @@ export async function openLib(id: string, tid?: Topic['id'], addHistory = true):
   if (tid == null) { const first = lib.topics.find(t => !t.pid) || lib.topics[0]; tid = first?.id; }
   if (tid != null) await showTopic(tid, addHistory);
 }
+/* The topic list draws only the rows in view (a commentary can have 24,000 topics; drawing them all
+   froze the window). Rows have a fixed height. */
+const ROW = 24;
+let rows: { id: Topic['id']; subject: string; depth: number; parent: boolean }[] = [];
+let curTid: Topic['id'] | null = null;
 function renderTopics(list: Topic[]): void {
-  const ul = $('#libTopics');
   const kids = new Map<Topic['id'], Topic[]>(); for (const t of list) { const k = t.pid || 0; (kids.get(k) || kids.set(k, []).get(k)!).push(t); }
-  const ids = new Set(list.map(t => t.id)); const out: string[] = [];
-  const add = (pid: Topic['id'], depth: number) => { for (const t of kids.get(pid) || []) { out.push(`<li data-tid="${esc(t.id)}" style="padding-left:${8 + depth * 12}px"${kids.has(t.id) ? ' class="parent"' : ''}>${esc(t.subject || '(untitled)')}</li>`); if (depth < 6) add(t.id, depth + 1); } };
+  rows = [];
+  const seen = new Set<Topic['id']>();
+  const add = (pid: Topic['id'], depth: number) => { for (const t of kids.get(pid) || []) { if (seen.has(t.id)) continue; seen.add(t.id); rows.push({ id: t.id, subject: t.subject || '(untitled)', depth, parent: kids.has(t.id) }); if (depth < 6) add(t.id, depth + 1); } };
   add(0, 0);
-  for (const t of list) if (t.pid && !ids.has(t.pid)) out.push(`<li data-tid="${esc(t.id)}">${esc(t.subject)}</li>`);
-  ul.innerHTML = out.join('');
+  for (const t of list) if (!seen.has(t.id)) { seen.add(t.id); rows.push({ id: t.id, subject: t.subject || '(untitled)', depth: 0, parent: false }); }
   $('#libCount').textContent = `${list.length} topic${list.length === 1 ? '' : 's'}`;
+  const ul = $('#libTopics'); ul.scrollTop = 0;
   ul.onclick = e => { const li = (e.target as HTMLElement).closest<HTMLElement>('li[data-tid]'); if (li) showTopic(tidOf(li.dataset.tid!)); };
+  ul.onscroll = () => drawRows();
+  drawRows();
+}
+function drawRows(): void {
+  const ul = $('#libTopics'); const h = ul.clientHeight || 400;
+  const first = Math.max(0, Math.floor(ul.scrollTop / ROW) - 10), last = Math.min(rows.length, Math.ceil((ul.scrollTop + h) / ROW) + 10);
+  let html = `<li class="vsp" style="height:${first * ROW}px"></li>`;
+  for (let i = first; i < last; i++) { const r = rows[i]; html += `<li data-tid="${esc(String(r.id))}" style="padding-left:${8 + r.depth * 12}px" class="${r.parent ? 'parent' : ''}${r.id === curTid ? ' cur' : ''}">${esc(r.subject)}</li>`; }
+  html += `<li class="vsp" style="height:${(rows.length - last) * ROW}px"></li>`;
+  ul.innerHTML = html;
+}
+function showRow(tid: Topic['id']): void {
+  const i = rows.findIndex(r => r.id === tid); const ul = $('#libTopics');
+  if (i >= 0) { const top = i * ROW; if (top < ul.scrollTop || top + ROW > ul.scrollTop + ul.clientHeight) ul.scrollTop = Math.max(0, top - ul.clientHeight / 2); }
+  drawRows();
 }
 const tidOf = (s: string): Topic['id'] => { const t = lib.topics.find(x => String(x.id) === s); return t ? t.id : (isNaN(+s) ? s : +s); };
 async function filterTopics(): Promise<void> {
@@ -123,15 +143,14 @@ async function showTopic(tid: Topic['id'], addHistory = true): Promise<void> {
   if (addHistory) { lib.history.push({ id: m.id, tid }); if (lib.history.length > 100) lib.history.shift(); }
   $('#libBody').innerHTML = `<div class="entry"><h4>${esc(t.subject)}</h4><div class="src">${esc(m.title)}</div>${H.clean(t.html) || '<p class="hint">(empty)</p>'}</div>`;
   $('#libBody').scrollTop = 0;
-  document.querySelectorAll('#libTopics li.cur').forEach(x => x.classList.remove('cur'));
-  const li = document.querySelector(`#libTopics li[data-tid="${CSS.escape(String(tid))}"]`); if (li) { li.classList.add('cur'); li.scrollIntoView({ block: 'nearest' }); }
+  curTid = tid; showRow(tid);
   document.body.classList.add('lib-reading');
 }
 function stepTopic(d: number): void {
-  const items = [...document.querySelectorAll<HTMLElement>('#libTopics li[data-tid]')]; if (!items.length) return;
-  const cur = items.findIndex(li => li.classList.contains('cur'));
-  const i = Math.max(0, Math.min(items.length - 1, cur < 0 ? 0 : cur + d));
-  if (i !== cur) showTopic(tidOf(items[i].dataset.tid!));
+  if (!rows.length) return;
+  const cur = rows.findIndex(r => r.id === curTid);
+  const i = Math.max(0, Math.min(rows.length - 1, cur < 0 ? 0 : cur + d));
+  if (i !== cur) showTopic(rows[i].id);
 }
 /** a word or Strong's number: show the entry from the Strong's dictionaries */
 export async function strongEntry(key: string): Promise<{ subject: string; html: string; src: string } | null> {
@@ -153,3 +172,12 @@ export async function followBookLink(href: string): Promise<boolean> {
   const e = await mod.lookup(decodeURIComponent(m[4] || '')); if (!e) return false;
   await openLib(mod.id, e.id); return true;
 }
+
+/** a module file changed (Properties): forget what was read from it and show it again */
+export async function reloadLib(): Promise<void> {
+  const cur = lib.cur; lib.topics = []; lib.history = [];
+  fillLibSelect();
+  if (cur && tab === 'lib' && H.books().some(m => m.id === cur)) await openLib(cur);
+  updateCommentary();
+}
+export const libCurrent = () => H.books().find(m => m.id === lib.cur);
