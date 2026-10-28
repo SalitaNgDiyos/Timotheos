@@ -1,7 +1,7 @@
 // The study panel: Commentary (follows the selected verse), Library (any commentary, dictionary, book or
 // devotional) and Search. On a computer it sits beside the Bible text; on a phone it opens over it.
 import { focusSearch } from './search';
-import { DEFAULT_LAYOUT, Layout, PANELS, activate, initDock, layout, visible } from './dock';
+import { DEFAULT_LAYOUT, PANELS, activate, initDock, layout, visible } from './dock';
 import { createView, viewClosed, viewShown, viewTitle } from './views';
 import canon from './legacy/canon.js';
 import { Bible } from './bibles';
@@ -28,10 +28,10 @@ let cmtSel = '';
 
 export function initPanel(host: PanelHost): void {
   H = host;
-  const st = H.settings() as { panelTab?: string; cmtSel?: string; libCur?: string; dock?: Partial<Layout>; sideHidden?: boolean };
+  const st = H.settings() as { panelTab?: string; cmtSel?: string; libCur?: string; dock?: unknown; sideHidden?: boolean };
   cmtSel = st.cmtSel || ''; lib.cur = st.libCur || '';
   // older settings had one panel with tabs: keep the tab that was open
-  if (!st.dock && st.panelTab && PANELS.includes(st.panelTab)) { const l = DEFAULT_LAYOUT(); l.right.active = st.panelTab; st.dock = l; }
+  if (!st.dock && st.panelTab && PANELS.includes(st.panelTab)) { const l = DEFAULT_LAYOUT(); for (const g of l.zones.right.groups) if (g.panels.includes(st.panelTab)) g.active = st.panelTab; st.dock = l; }
   $('#libMod').onchange = () => openLib($<HTMLSelectElement>('#libMod').value);
   let ft = 0;
   $('#libFilter').oninput = () => { clearTimeout(ft); ft = window.setTimeout(filterTopics, 180); };
@@ -39,10 +39,11 @@ export function initPanel(host: PanelHost): void {
   $('#libBack').onclick = () => { if (lib.history.length < 2) return; lib.history.pop(); const p = lib.history[lib.history.length - 1]; if (p.id !== lib.cur) openLib(p.id, p.tid, false); else showTopic(p.tid, false); };
   $('#libTopics').addEventListener('keydown', e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); e.stopPropagation(); stepTopic(d); } });
   initDock(st.dock, !!st.sideHidden, {
-    save: l => { (H.settings() as Record<string, unknown>).dock = l; H.save(); },
+    save: lo => { (H.settings() as Record<string, unknown>).dock = lo; H.save(); },
     shown, create: createView, title: viewTitle, closed: viewClosed,
   });
-  for (const z of ['left', 'right', 'bottom'] as const) { const a = layout()[z].active; if (a && visible(a)) shown(a, true); }
+  const l = layout(); for (const z of ['left', 'right', 'bottom'] as const) for (const g of l.zones[z].groups) if (visible(g.active)) shown(g.active, true);
+  for (const f of l.floats) shown(f.active, true);
 }
 
 /** show a panel (and, on a phone, open the panel screen) */

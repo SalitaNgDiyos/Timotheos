@@ -13,11 +13,11 @@ const SECTIONS: [string, string, string][] = [
   ['screen', 'The screen', `
 <p><b>Top bar:</b> Bibles menu · book, chapter and verse lists · previous/next chapter · Copy verses · Skin · ? (this guide) · Options · Layouts.</p>
 <p><b>Middle:</b> the Bible text. Under each verse you may see cross-references and your notes. A small <b>c</b> beside a verse number means a commentary has something on that verse; click it to open the Commentary.</p>
-<p><b>Panels:</b> Commentary, Library, Search and My Study at first, sharing the right side. More can be added – Dictionary, Books &amp; chapters, more Bible views and book views – and every panel can go to the left, the right or the bottom (see <a data-go="panels">Panels and layouts</a>).</p>
+<p><b>Panes:</b> Commentary, Library, Search and My Study at first, on the right. More can be added – Dictionary, more Bible views and book views, each in a pane of its own – and every pane can go to the left, the right or the bottom (see <a data-go="panels">Panes and layouts</a>).</p>
 <p><b>Bottom line:</b> how many modules were found.</p>`],
   ['reading', 'Reading the Bible', `
 <h4>Going to a passage</h4>
-<ul><li>Choose book, chapter and verse in the lists at the top, or use the arrows for the previous and next chapter.</li>
+<ul><li>Choose book, chapter and verse in the lists at the top, or click the ☰ icon on the Bible caption for the list of books and chapters, or use the arrows for the previous and next chapter.</li>
 <li>Keyboard: ${K('←')} ${K('→')} chapter, ${K('Ctrl+←')} ${K('Ctrl+→')} book, ${K('↑')} ${K('↓')} verse. Type a number to go to that verse; hold ${K('Shift')} while typing to go to that chapter.</li>
 <li>${K('Alt+←')} / ${K('Alt+→')} or ${K('Backspace')} go back and forward through the places you visited.</li>
 <li>Click any Bible reference in a commentary, dictionary, book, note or cross-reference to go there. Resting the mouse on a reference shows the verse.</li></ul>
@@ -35,12 +35,14 @@ const SECTIONS: [string, string, string][] = [
 <p>The <b>Library</b> shows any commentary, dictionary, book or devotional. Choose it in the list; its topics are on the left. Use the filter box to find a topic, the arrows (or ${K('↑')} ${K('↓')} in the topic list) for the previous or next topic, and ← to go back.</p>
 <p>Bible references in these modules are links, including plain written ones such as “John 3:16”, “1 Cor. 13:4-7” or e-Sword's “Joh_3:16”. Links to other modules (e.g. a dictionary entry) open in the Library.</p>
 <p>The ⓘ button shows the module's <a data-go="props">properties</a>.</p>`],
-  ['panels', 'Panels and layouts', `
-<ul><li><b>Move a panel:</b> drag its tab to the left, right or bottom of the window (drop zones appear while you drag), or onto another tab. Or right-click the tab → <b>Move to the left / right / bottom</b>.</li>
-<li><b>Resize:</b> drag the thin edge between a panel and the Bible text.</li>
-<li><b>Close a panel:</b> the × on its tab. The <b>Layouts</b> menu (top right) opens it again: tick it under Panels.</li>
-<li><b>Add panels</b> (Layouts menu): <b>Dictionary</b> shows the entry of the word under the mouse; <b>Books &amp; chapters</b> lists every book (click one, then a chapter); <b>+ New Bible view</b> adds another Bible, which follows the main text (untick “follow” to read elsewhere in it); <b>+ New book view</b> adds another commentary, dictionary or book beside the Library. Add as many Bible and book views as you like.</li>
-<li><b>Layouts:</b> Standard, Study, Word study and Reading (the Bible only) are ready-made. <b>Save this layout…</b> keeps the places and sizes of your panels under a name; choose it later in the Layouts menu (× deletes a saved layout). <b>Hide all panels</b> gives the whole window to the Bible.</li>
+  ['panels', 'Panes and layouts', `
+<p>The Bible text stays in the middle. Panels sit in <b>panes</b> at the left, the right or the bottom; each side can hold several panes, one above the other (side by side at the bottom), and a pane can hold several panels as tabs.</p>
+<ul><li><b>Move a panel:</b> drag its tab (or the pane's title bar). Arrows appear at the left, right and bottom edges of the window – drop on one for a new pane on that side. Over another pane a small compass appears: the middle adds it as a tab there, the arrows put it above or below (left or right at the bottom). Dropping anywhere else makes it a floating window.</li>
+<li><b>Pane buttons</b> (top right of each pane): A− / A+ smaller or larger text (or ${K('Ctrl')} + mouse wheel over the pane), float as a window / dock again, maximize / restore, close. Double-click a title bar to float or dock it.</li>
+<li><b>Resize:</b> drag the edge between a side and the Bible text, or between two panes. In the Library and book views, drag the edge beside the topic list to make the list wider or narrower.</li>
+<li><b>Layouts</b> menu: tick or untick panels to open or close them; <b>Dictionary</b> shows the entry of the word under the mouse. <b>+ New Bible view</b> and <b>+ New book view</b> each open in a pane of their own; add as many as you like. A Bible view follows the main text; untick “follow” to read elsewhere in it.</li>
+<li><b>Books and chapters:</b> the ☰ icon on the caption of the Bible text (and of every Bible view) opens the list of books; choose a book, a chapter and a verse. ‹ › in a Bible view go to the previous or next chapter.</li>
+<li>Ready-made layouts: Standard, Study, Word study, Compact and Reading (the Bible only). <b>Save this layout…</b> keeps your arrangement under a name. <b>Hide all panels</b> gives the whole window to the Bible.</li>
 <li>On a phone there is one panel at a time, full screen; the buttons at the bottom open it.</li></ul>`],
   ['study', 'Your study: highlights, notes, lists, cross-references, reading plans', `
 <p>Right-click a verse (long-press on a phone) for the verse menu.</p>

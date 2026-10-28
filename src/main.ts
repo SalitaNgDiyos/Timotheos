@@ -16,8 +16,10 @@ import { copyDialog, initCopy } from './copy';
 import { bibleTarget, linkRefs, wireRefPreview } from './refs';
 import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
 import { dialog, flash } from './ui';
-import { DEFAULT_LAYOUT, Layout, PANELS, close as closePanel, isHiddenAll, isOpen, layout as currentLayout, openPanel, openPanels, retitle, setHidden, setLayout, titleOf } from './dock';
+import { PRESETS as DOCK_PRESETS, Layout, PANELS, close as closePanel, isHiddenAll, isOpen, layout as currentLayout, openPanel, openPanels, retitle, setHidden, setLayout, titleOf } from './dock';
 import { addBibleView, addBookView, initViews, viewsReload } from './views';
+import { icon } from './icons';
+import { openPicker } from './picker';
 import { openGuide } from './guide';
 import { importFiles, reportHtml } from './importer';
 import { initProps, openProps } from './props';
@@ -282,12 +284,6 @@ function optMenu(): void {
   m.querySelectorAll<HTMLInputElement>('[data-ord]').forEach(r => r.onchange = () => { S.look.bookOrder = r.dataset.ord as Look['bookOrder']; save(); canon.setOrder(S.look.bookOrder); buildNav(); go(S.ref.b, S.ref.c, S.ref.v); viewsReload(); });
 }
 /** the Layouts menu: open and close panels, add Bible and book views, layouts */
-const PRESETS: [string, string, Partial<Layout>][] = [
-  ['default', 'Standard – panels on the right', DEFAULT_LAYOUT()],
-  ['study', 'Study – Library left, Commentary right', { left: { panels: ['lib'], active: 'lib', size: 360 }, right: { panels: ['cmt', 'study', 'search'], active: 'cmt', size: 400 }, bottom: { panels: [], active: '', size: 240 } }],
-  ['words', 'Word study – Dictionary, Search below', { left: { panels: ['tree'], active: 'tree', size: 220 }, right: { panels: ['dict', 'cmt', 'lib'], active: 'dict', size: 400 }, bottom: { panels: ['search'], active: 'search', size: 240 } }],
-  ['reading', 'Reading – the Bible only', { left: { panels: [], active: '', size: 300 }, right: { panels: [], active: '', size: 400 }, bottom: { panels: [], active: '', size: 240 } }],
-];
 function layoutMenu(): void {
   const m = $('#layoutMenu'); const saved = (S as unknown as { layouts?: Record<string, Layout> }).layouts || {};
   const extra = openPanels().filter(p => !PANELS.includes(p));
@@ -295,7 +291,7 @@ function layoutMenu(): void {
     extra.map(p => `<label><input type="checkbox" data-pan="${esc(p)}" checked> ${esc(p.startsWith('bible-') ? 'Bible view: ' : 'Book view: ')}${esc(titleOf(p))}</label>`).join('') +
     '<div class="msep"></div><button id="mAddBible">+ New Bible view</button><button id="mAddBook">+ New book view</button>' +
     `<button id="mHideAll">${isHiddenAll() ? 'Show the panels' : 'Hide all panels'}</button>` +
-    '<div class="msep"></div><div class="mh">Layouts</div>' + PRESETS.map(([k, l]) => `<button data-pre="${k}">${esc(l)}</button>`).join('') +
+    '<div class="msep"></div><div class="mh">Layouts</div>' + Object.entries(DOCK_PRESETS).map(([k, [l]]) => `<button data-pre="${k}">${esc(l)}</button>`).join('') +
     Object.keys(saved).map(n => `<div class="mrow lrow"><button data-lay="${esc(n)}">${esc(n)}</button><i class="ldel" data-del="${esc(n)}" title="Delete this layout">×</i></div>`).join('') +
     '<button id="mSaveLay">Save this layout…</button>';
   m.querySelectorAll<HTMLInputElement>('[data-pan]').forEach(cb => cb.onchange = () => { if (cb.checked) openPanel(cb.dataset.pan!); else closePanel(cb.dataset.pan!); layoutMenu(); });
@@ -303,7 +299,7 @@ function layoutMenu(): void {
   m.querySelector<HTMLElement>('#mAddBible')!.onclick = () => add(addBibleView());
   m.querySelector<HTMLElement>('#mAddBook')!.onclick = () => add(addBookView());
   m.querySelector<HTMLElement>('#mHideAll')!.onclick = () => { S.sideHidden = !isHiddenAll(); save(); setHidden(!!S.sideHidden); m.classList.add('hidden'); };
-  m.querySelectorAll<HTMLElement>('[data-pre]').forEach(b => b.onclick = () => { m.classList.add('hidden'); setLayout(PRESETS.find(p => p[0] === b.dataset.pre)![2]); S.sideHidden = false; save(); });
+  m.querySelectorAll<HTMLElement>('[data-pre]').forEach(b => b.onclick = () => { m.classList.add('hidden'); setLayout(DOCK_PRESETS[b.dataset.pre!][1]); S.sideHidden = false; save(); });
   m.querySelectorAll<HTMLElement>('[data-lay]').forEach(b => b.onclick = () => { m.classList.add('hidden'); setLayout(saved[b.dataset.lay!]); S.sideHidden = false; save(); });
   m.querySelectorAll<HTMLElement>('[data-del]').forEach(b => b.onclick = e => { e.stopPropagation(); delete saved[b.dataset.del!]; save(); layoutMenu(); });
   m.querySelector<HTMLElement>('#mSaveLay')!.onclick = async () => {
@@ -397,6 +393,21 @@ async function init(): Promise<void> {
   $('#optBtn').onclick = e => { e.stopPropagation(); toggleMenu('#optMenu', optMenu); };
   $('#emptyImport').onclick = importModules;
   $('#helpBtn').onclick = () => openGuide();
+  // the books & chapters icon on the Bible text's caption
+  $('#capPick').innerHTML = icon('tree', 17);
+  $('#capPick').onclick = e => openPicker(e.currentTarget as HTMLElement, nav, { b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 },
+    async (b, c) => { const m = openBibles()[0]; return m ? ((m.books.get(b) || [])[c - 1] || 0) : (canon.kjvChapters(b)[c - 1] || 0); },
+    (b, c, v) => go(b, c, v));
+  // the topic lists of the Library and book views: drag the edge to make them wider or narrower
+  const libw = (S as unknown as { libW?: number }).libW; if (libw) document.documentElement.style.setProperty('--libw', libw + 'px');
+  document.addEventListener('pointerdown', e => {
+    const sp = (e.target as HTMLElement).closest?.<HTMLElement>('.lsplit'); if (!sp) return;
+    e.preventDefault(); sp.setPointerCapture(e.pointerId);
+    const side = sp.previousElementSibling as HTMLElement; const x0 = e.clientX, w0 = side.offsetWidth; const max = (sp.parentElement as HTMLElement).offsetWidth - 120;
+    const mv = (ev: PointerEvent) => { const w = Math.round(Math.max(100, Math.min(max, w0 + ev.clientX - x0))); (S as unknown as { libW: number }).libW = w; document.documentElement.style.setProperty('--libw', w + 'px'); };
+    const up = () => { sp.removeEventListener('pointermove', mv); sp.removeEventListener('pointerup', up); save(); };
+    sp.addEventListener('pointermove', mv); sp.addEventListener('pointerup', up);
+  });
   $('#copyBtn').onclick = () => copyDialog({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 });
   document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('.menu, .tbtn')) document.querySelectorAll('.menu').forEach(x => x.classList.add('hidden')); if (!(e.target as HTMLElement).closest('#popup, [data-strong], [data-morph], sup.fn, a.xr')) hidePopup(); });
   $('#sheet').addEventListener('click', e => { if (e.target === $('#sheet') || (e.target as HTMLElement).closest('.grab')) $('#sheet').classList.remove('open'); });

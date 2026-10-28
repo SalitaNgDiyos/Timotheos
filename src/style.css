@@ -97,8 +97,44 @@ a.bref { border-bottom: 1px dotted currentColor; }
 .dsplit { flex: none; border-radius: 3px; }
 .dsplit.v { width: 6px; cursor: col-resize; margin: 6px 0; } .dsplit.h { height: 6px; cursor: row-resize; margin: 0 6px; }
 .dsplit:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
-.zone { flex: none; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-#zone-left { width: 340px; margin: 6px 0 6px 6px; } #zone-right { width: 400px; margin: 6px 6px 6px 0; } #zone-bottom { height: 260px; margin: 0 6px 6px; }
+.zone { flex: none; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+#zone-left { width: 320px; margin: 6px 0 6px 6px; } #zone-right { width: 400px; margin: 6px 6px 6px 0; } #zone-bottom { height: 250px; margin: 0 6px 6px; flex-direction: row; }
+#work { position: relative; }
+/* panes (as in the Electron edition's workbench) */
+.dgroup { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.dcap { display: flex; align-items: center; gap: 2px; height: 31px; padding: 0 3px 0 2px; background: var(--cap); color: var(--captext); cursor: grab; user-select: none; flex: none; }
+.dgrip { display: grid; opacity: .7; padding: 0 2px; }
+.dtabs { flex: 1; display: flex; min-width: 0; overflow: hidden; gap: 1px; }
+.dtab { border: 0; background: transparent; color: inherit; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; font-size: 12px; opacity: .78; white-space: nowrap; min-width: 0; cursor: inherit; }
+.dtab span { overflow: hidden; text-overflow: ellipsis; } .dtab:hover { opacity: 1; } .dtab.on { opacity: 1; background: rgba(255,255,255,.2); font-weight: 600; flex-shrink: 0; max-width: 70%; }
+.dbtns { display: flex; flex: none; }
+.dbtn { border: 0; background: transparent; color: inherit; padding: 4px; border-radius: 5px; opacity: .72; display: grid; }
+.dbtn:hover { opacity: 1; background: rgba(255,255,255,.2); border: 0; }
+:root[data-caps="plain"] .dcap { background: var(--panel); color: var(--text); border-bottom: 1px solid var(--line); box-shadow: inset 3px 0 0 var(--cap); }
+:root[data-caps="plain"] .dtab .ic { color: var(--tc); } :root[data-caps="plain"] .dtab.on { background: var(--card); box-shadow: inset 0 -2px 0 var(--tc); } :root[data-caps="plain"] .dbtn:hover { background: var(--card); }
+.dbody { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dbody > section.ptab { flex: 1; min-height: 0; }
+.dgroup.max { position: absolute; inset: 6px; z-index: 40; box-shadow: 0 14px 40px rgba(0,0,0,.25); }
+.dfloat { position: fixed; z-index: 45; resize: both; box-shadow: 0 18px 50px rgba(0,0,0,.32); min-width: 220px; min-height: 140px; }
+.gsplit { flex: none; border-radius: 3px; } .gsplit.h { height: 6px; cursor: row-resize; } .gsplit.v { width: 6px; cursor: col-resize; }
+.gsplit:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+.dghost { position: fixed; z-index: 101; pointer-events: none; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: var(--cap); color: var(--captext); font-weight: 600; box-shadow: 0 12px 30px rgba(0,0,0,.3); transform: rotate(-2deg); }
+.dlayer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
+.dtarget { pointer-events: auto; width: 36px; height: 36px; border-radius: 9px; background: var(--card); border: 1.5px solid var(--accent); color: var(--accent); display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+.dtarget.edge { position: fixed; } .dtarget.hot { background: var(--accent); color: var(--card); } .dtarget.rot svg { transform: rotate(90deg); } .dtarget.mid { border-style: dashed; }
+.dcompass { position: fixed; display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap: 4px; padding: 4px; border-radius: 14px; background: color-mix(in srgb, var(--bg) 75%, transparent); pointer-events: none; }
+.dpreview { position: fixed; background: color-mix(in srgb, var(--accent) 20%, transparent); border: 2px solid var(--accent); border-radius: 8px; pointer-events: none; }
+.dpreview.hidden { display: none; }
+/* the books & chapters picker on a Bible pane */
+.cap .ib { color: inherit; background: transparent; border: 0; opacity: .85; } .cap .ib:hover { opacity: 1; background: rgba(255,255,255,.2); }
+.bpick { position: fixed; z-index: 80; width: min(560px, 96vw); background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.28); font: 13px var(--font-ui); }
+.bpick .vph { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); } .bpick .bpfind { width: 160px; }
+.bpick .vpcols { display: grid; grid-template-columns: 170px 1fr 1fr; height: 300px; }
+.bpick .vpbooks { list-style: none; margin: 0; padding: 4px 0; overflow: auto; border-right: 1px solid var(--line); }
+.bpick .vpbooks li { padding: 3px 10px; cursor: pointer; } .bpick .vpbooks li.on, .bpick .vpbooks li:hover { background: var(--accent-soft); } .bpick .vpbooks li.pg { font: 600 10.5px var(--font-ui); text-transform: uppercase; color: var(--muted); cursor: default; background: none; padding-top: 8px; } .bpick li.hidden { display: none; }
+.bpick .vpgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; padding: 6px; overflow: auto; align-content: start; border-right: 1px solid var(--line); }
+.bpick .vpgrid button { padding: 4px 0; font-size: 12px; } .bpick .vpgrid button.on { background: var(--accent); color: #fff; border-color: var(--accent); } .bpick .vpgrid button.wide { grid-column: 1 / -1; }
 #zone-left.zempty, #zone-right.zempty, #zone-bottom.zempty, .dsplit.zempty { display: none; }
 body.side-hidden .zone, body.side-hidden .dsplit { display: none; }
 .ptabs button[draggable="true"] { cursor: grab; } .ptabs button.dropb { box-shadow: inset 3px 0 0 var(--captext, #fff); }
@@ -129,7 +165,8 @@ a.link { color: var(--strong); cursor: pointer; text-decoration: none; } a.link:
 .libbar select { flex: 1; min-width: 0; }
 .ib { width: 30px; height: 30px; padding: 0; display: grid; place-items: center; background: transparent; border-color: transparent; }
 .ib:hover { background: var(--card); border-color: var(--line); }
-.libsplit { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(120px, 38%) 1fr; }
+.libsplit { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--libw, 38%) 6px 1fr; }
+.lsplit { cursor: col-resize; border-radius: 3px; } .lsplit:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 .libside { display: flex; flex-direction: column; min-height: 0; padding: 6px; border-right: 1px solid var(--line); }
 .libside input { width: 100%; margin-bottom: 5px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); }
 #libTopics { flex: 1; min-height: 0; overflow: auto; list-style: none; margin: 0; padding: 2px 0; background: var(--card); border: 1px solid var(--line); border-radius: 7px; outline: none; }
@@ -338,7 +375,7 @@ sup.vnum { font: 600 calc(var(--size) * .6) var(--font-ui); color: var(--accent)
   #zone-right { display: none; position: fixed; inset: 0; z-index: 40; margin: 0; border-radius: 0; border: 0; width: auto !important; height: auto !important; padding-top: env(safe-area-inset-top); }
   body.side-open #zone-right { display: flex; }
   .phoneonly { display: block; }
-  .libsplit { grid-template-columns: 1fr; grid-template-rows: 40% 1fr; }
+  .libsplit { grid-template-columns: 1fr; grid-template-rows: 40% 1fr; } .lsplit { display: none; }
   .libside { border-right: 0; border-bottom: 1px solid var(--line); }
   .phonebar .ref { flex: 1; }
   .cvm { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
@@ -347,3 +384,5 @@ sup.vnum { font: 600 calc(var(--size) * .6) var(--font-ui); color: var(--accent)
 }
 .ppcard .chip.st { font: 12px/1.7 var(--font-ui); }
 button:disabled { opacity: .5; cursor: default; }
+.vbar .ib { flex: none; display: grid; place-items: center; width: 28px; height: 28px; }
+.bpick .vpbooks li.on { background: var(--accent); color: #fff; font-weight: 600; }
