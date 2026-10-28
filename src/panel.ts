@@ -2,6 +2,7 @@
 // devotional) and Search. On a computer it sits beside the Bible text; on a phone it opens over it.
 import { focusSearch } from './search';
 import { DEFAULT_LAYOUT, Layout, PANELS, activate, initDock, layout, visible } from './dock';
+import { createView, viewClosed, viewShown, viewTitle } from './views';
 import canon from './legacy/canon.js';
 import { Bible } from './bibles';
 import { BookMod, Topic } from './books';
@@ -37,7 +38,10 @@ export function initPanel(host: PanelHost): void {
   $('#libPrev').onclick = () => stepTopic(-1); $('#libNext').onclick = () => stepTopic(1);
   $('#libBack').onclick = () => { if (lib.history.length < 2) return; lib.history.pop(); const p = lib.history[lib.history.length - 1]; if (p.id !== lib.cur) openLib(p.id, p.tid, false); else showTopic(p.tid, false); };
   $('#libTopics').addEventListener('keydown', e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); e.stopPropagation(); stepTopic(d); } });
-  initDock(st.dock, !!st.sideHidden, l => { (H.settings() as Record<string, unknown>).dock = l; H.save(); }, shown);
+  initDock(st.dock, !!st.sideHidden, {
+    save: l => { (H.settings() as Record<string, unknown>).dock = l; H.save(); },
+    shown, create: createView, title: viewTitle, closed: viewClosed,
+  });
   for (const z of ['left', 'right', 'bottom'] as const) { const a = layout()[z].active; if (a && visible(a)) shown(a, true); }
 }
 
@@ -49,6 +53,7 @@ function shown(t: string, quiet = false): void {
   if (t === 'lib') { fillLibSelect(); if (lib.cur && !lib.topics.length) openLib(lib.cur); }
   if (t === 'study') renderStudy();
   if (t === 'search' && !quiet) focusSearch();
+  if (!['cmt', 'lib', 'study', 'search'].includes(t)) viewShown(t);
 }
 
 /* ---------------------------------------------------------------- Commentary */

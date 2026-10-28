@@ -16,6 +16,15 @@
     ok(!pop.classList.contains('hidden') && /aorist active indicative/.test(pop.textContent), 'popup shows the morphology entry: ' + pop.textContent.slice(0, 90));
     ok(pop.querySelector('.entry.morphe') && pop.querySelector('.entry.morphe') === pop.querySelector('.entry'), 'morphology above the dictionary entry: ' + ents.join(' / '));
     ok(ents.some(e => /G25/.test(e)), "and the Strong's entry below it");
+    // the popup goes when the mouse leaves the word (not into the popup); its size is remembered both ways
+    w.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.getElementById('view') })); await sleep(500);
+    ok(pop.classList.contains('hidden'), 'popup gone after the mouse left the word');
+    T.S().popup = { w: 500, h: 520 }; await T.showWord(w); await sleep(400);
+    ok(Math.abs(pop.offsetWidth - 500) < 3 && pop.offsetHeight <= 521 && getComputedStyle(pop).resize === 'both' && getComputedStyle(pop).maxHeight !== '360px', 'popup uses the size you gave it: ' + pop.offsetWidth + '×' + pop.offsetHeight + ', resize ' + getComputedStyle(pop).resize + ', max-height ' + getComputedStyle(pop).maxHeight);
+    pop.dispatchEvent(new MouseEvent('mouseenter')); w.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: pop })); await sleep(500);
+    ok(!pop.classList.contains('hidden'), 'moving into the popup keeps it open');
+    pop.dispatchEvent(new MouseEvent('mouseleave')); await sleep(500);
+    ok(pop.classList.contains('hidden'), 'and leaving the popup closes it');
     ok(!/could not be opened/.test(document.getElementById('status').textContent) && T.locked().length + T.books().filter(m => m.locked).length > 0, 'status line quiet about modules that cannot be opened (' + (T.locked().length + T.books().filter(m => m.locked).length) + ' skipped): ' + document.getElementById('status').textContent);
     document.getElementById('biblesBtn').click(); await sleep(200);
     ok(!/Cannot be opened/i.test(document.getElementById('bibleMenu').textContent), 'Bibles menu quiet too');

@@ -25,8 +25,11 @@ What it does now (proof of concept):
   theWord-style queries (AND/OR/NOT, "phrases", wildcards, G/H Strong's numbers, morphology, NEAR) –
   the same engine as the Electron version – with predefined and custom ranges (saved by name), options,
   Books and Statistics views, and earlier searches;
-- **rearrangeable panels**: Commentary, Library, Search and My Study can each go to the left, right or
-  bottom (drag a tab, or right-click it); resize by dragging the edges; one full-screen panel on a phone;
+- **panels and layouts** (Layouts menu): Commentary, Library, Search, My Study, Dictionary (follows the word
+  under the mouse), Books & chapters, and any number of extra Bible views (following the main text or not)
+  and book views; each goes to the left, right or bottom (drag a tab, or right-click it), closes with ×,
+  resizes by dragging the edges; ready-made layouts and your own saved ones; one full-screen panel on a phone;
+- **Options menu**: what to show, text size, order of the books, the Options window;
 - **your study**: highlights (selection or whole verse, five colours, underline, bold), notes under the
   verses (typed references become links), verse lists, a **My Study** tab; right-click a
   verse (long-press on a phone) for the verse menu; the same data file layout as Tanglaw 0.4, with a
@@ -91,4 +94,4 @@ module properties and the import report (on copies of the test modules).
 
 ## Not yet moved over from 0.4.x
 Text-size buttons on each panel and Ctrl+mouse wheel; the option to put the Apocrypha after the New
-Testament; the "Books & chapters" tree and "Lookup" panels; printing.
+Testament; printing.

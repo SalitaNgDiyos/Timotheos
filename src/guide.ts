@@ -11,9 +11,9 @@ const SECTIONS: [string, string, string][] = [
 <li>Tick the Bibles you want to read. Several ticked Bibles are shown side by side.</li></ol>
 <p>If Tanglaw 0.4 (the earlier edition) is on the same computer, its module folders, open Bibles, place, skin, highlights, notes, verse lists and your own cross-references are taken over automatically the first time. Tanglaw 0.4 itself is not changed.</p>`],
   ['screen', 'The screen', `
-<p><b>Top bar:</b> Bibles menu · book, chapter and verse lists · previous/next chapter · Copy verses · Skin menu · Study (show or hide the panels) · ? (this guide).</p>
+<p><b>Top bar:</b> Bibles menu · book, chapter and verse lists · previous/next chapter · Copy verses · Skin · ? (this guide) · Options · Layouts.</p>
 <p><b>Middle:</b> the Bible text. Under each verse you may see cross-references and your notes. A small <b>c</b> beside a verse number means a commentary has something on that verse; click it to open the Commentary.</p>
-<p><b>Panels:</b> Commentary, Library, Search and My Study. At first they share one panel on the right; you can spread them out (see <a data-go="panels">Arranging the panels</a>).</p>
+<p><b>Panels:</b> Commentary, Library, Search and My Study at first, sharing the right side. More can be added – Dictionary, Books &amp; chapters, more Bible views and book views – and every panel can go to the left, the right or the bottom (see <a data-go="panels">Panels and layouts</a>).</p>
 <p><b>Bottom line:</b> how many modules were found.</p>`],
   ['reading', 'Reading the Bible', `
 <h4>Going to a passage</h4>
@@ -22,11 +22,11 @@ const SECTIONS: [string, string, string][] = [
 <li>${K('Alt+←')} / ${K('Alt+→')} or ${K('Backspace')} go back and forward through the places you visited.</li>
 <li>Click any Bible reference in a commentary, dictionary, book, note or cross-reference to go there. Resting the mouse on a reference shows the verse.</li></ul>
 <h4>Several Bibles</h4><p>Tick more than one Bible in the Bibles menu to read them side by side. The order is the order you ticked them in.</p>
-<h4>What to show</h4><p>In the <b>Skin</b> menu under <b>Show</b>: Strong's numbers, morphology, footnotes, headings, words of Jesus in red, added words in italics, cross-references, your highlighting and your notes.</p>
+<h4>What to show</h4><p>In the <b>Options</b> menu under <b>Show</b>: Strong's numbers, morphology, footnotes, headings, words of Jesus in red, added words in italics, cross-references, your highlighting and your notes.</p>
 <h4>The Apocrypha and the order of the books</h4><p>Books such as Tobit, Judith and the Maccabees appear where the 1611 King James Bible placed them (between the Testaments). In <b>Options → Order of the books</b> you can choose instead the <b>Septuagint order of NETS</b> (A New English Translation of the Septuagint) or the order of the <b>Greek Orthodox</b> Old Testament: then these books stand among the other Old Testament books (e.g. Judith and Tobit after Esther, Baruch after Jeremiah), not as a separate section. In the Greek Orthodox order, 4 Maccabees, the Prayer of Manasseh, the Psalms of Solomon and 2 Esdras (4 Ezra) follow as an appendix. Search ranges and reading plans keep their usual meaning whichever order you choose.</p>
 <p>e-Sword's Daniel 13–14 are shown as Susanna and Bel and the Dragon, and its Esther 11–16 as the Additions to Esther.</p>`],
   ['words', "Strong's numbers and dictionaries", `
-<p>With a Bible that has Strong's numbers and a Strong's dictionary or lexicon among your modules, rest the mouse on a word (tap it on a phone) to see its entry. In the entry, <b>Find in Bible</b> lists every verse with that Strong's number.</p>
+<p>With a Bible that has Strong's numbers and a Strong's dictionary or lexicon among your modules, rest the mouse on a word (tap it on a phone) to see its entry. The popup goes away when you move the mouse off the word (moving into the popup keeps it); clicking a word keeps its popup until you click elsewhere. Drag the popup's corner to make it wider or taller; the next popups use that size. In the entry, <b>Find in Bible</b> lists every verse with that Strong's number.</p>
 <p>If the Bible is tagged with morphology codes (e.g. V-AAI-3S) and you have a morphology dictionary (Robinson, Packard or similar), the popup shows the meaning of the code first, above the dictionary entry.</p>
 <p>Some dictionaries draw Hebrew or Greek with a special font of their own (for example the Ancient Hebrew Lexicon of the Bible). Tanglaw uses that font when it is installed on your computer; without it you see the Latin letters the font is built on.</p>
 <p>Greek entries are looked up in your Greek dictionaries first, Hebrew in your Hebrew ones.</p>`],
@@ -35,11 +35,12 @@ const SECTIONS: [string, string, string][] = [
 <p>The <b>Library</b> shows any commentary, dictionary, book or devotional. Choose it in the list; its topics are on the left. Use the filter box to find a topic, the arrows (or ${K('↑')} ${K('↓')} in the topic list) for the previous or next topic, and ← to go back.</p>
 <p>Bible references in these modules are links, including plain written ones such as “John 3:16”, “1 Cor. 13:4-7” or e-Sword's “Joh_3:16”. Links to other modules (e.g. a dictionary entry) open in the Library.</p>
 <p>The ⓘ button shows the module's <a data-go="props">properties</a>.</p>`],
-  ['panels', 'Arranging the panels', `
+  ['panels', 'Panels and layouts', `
 <ul><li><b>Move a panel:</b> drag its tab to the left, right or bottom of the window (drop zones appear while you drag), or onto another tab. Or right-click the tab → <b>Move to the left / right / bottom</b>.</li>
-<li>Panels in different places are on screen together, e.g. the Library on the left, the Commentary on the right and Search at the bottom.</li>
 <li><b>Resize:</b> drag the thin edge between a panel and the Bible text.</li>
-<li><b>Study</b> (top bar) hides or shows all panels. <b>Skin → Put all panels back on the right</b> undoes your arrangement.</li>
+<li><b>Close a panel:</b> the × on its tab. The <b>Layouts</b> menu (top right) opens it again: tick it under Panels.</li>
+<li><b>Add panels</b> (Layouts menu): <b>Dictionary</b> shows the entry of the word under the mouse; <b>Books &amp; chapters</b> lists every book (click one, then a chapter); <b>+ New Bible view</b> adds another Bible, which follows the main text (untick “follow” to read elsewhere in it); <b>+ New book view</b> adds another commentary, dictionary or book beside the Library. Add as many Bible and book views as you like.</li>
+<li><b>Layouts:</b> Standard, Study, Word study and Reading (the Bible only) are ready-made. <b>Save this layout…</b> keeps the places and sizes of your panels under a name; choose it later in the Layouts menu (× deletes a saved layout). <b>Hide all panels</b> gives the whole window to the Bible.</li>
 <li>On a phone there is one panel at a time, full screen; the buttons at the bottom open it.</li></ul>`],
   ['study', 'Your study: highlights, notes, lists, cross-references, reading plans', `
 <p>Right-click a verse (long-press on a phone) for the verse menu.</p>
@@ -65,7 +66,7 @@ const SECTIONS: [string, string, string][] = [
 <ul><li>Click <b>From</b> or <b>To</b> to choose book → chapter → verse. With the mouse over a button, the wheel (or ${K('PgUp')} / ${K('PgDn')}) adds or removes a verse; with ${K('Shift')}, a chapter.</li>
 <li>Choose the Bible and the format; the preview shows exactly what will be copied. Under Templates you can make your own format. The window can be resized, and it remembers your choices.</li></ul>`],
   ['options', 'Skins and Options', `
-<p><b>Skin</b> menu: eight colour skins, what to show, text size. <b>Options…</b> (${K('Ctrl+,')}):</p>
+<p><b>Skin</b> menu: the eight colour skins. <b>Options</b> menu: what to show (Strong's numbers, morphology, footnotes, headings, red letters, italics, cross-references, your highlighting and notes), text size, the order of the books, and <b>Options…</b> (${K('Ctrl+,')}), the window with everything else:</p>
 <ul><li>coloured or plain captions;</li><li>the font of the Bible text, and separate fonts for Greek and for Hebrew (fonts “Included with Tanglaw” work everywhere; others must be installed on your computer);</li>
 <li>text size, line spacing, text width (fill the window or narrower columns);</li><li>background: the skin's colour or your own, with or without a paper texture;</li>
 <li>verse numbers: in a column at the left, in the text, or hidden; plain, bold or in a circle;</li><li>the order of the books: 1611 King James, Septuagint (NETS) or Greek Orthodox.</li></ul>`],
