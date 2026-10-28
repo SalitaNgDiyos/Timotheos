@@ -26,11 +26,22 @@ What it does now (proof of concept):
   verses (typed references become links), bookmarks 1–0, verse lists, a **My Study** tab; right-click a
   verse (long-press on a phone) for the verse menu; the same data file layout as Tanglaw 0.4, with a
   copy kept for each of the last 7 days;
+- **Copy Verses** window (F5 or the copy button): From/To pickers (book → chapter → verse), mouse wheel
+  or PageUp/PageDown to widen the range (Shift: by chapter), formats with templates, live preview,
+  resizable; the format is remembered;
+- **cross-references** under each verse from theWord `.xrefs.twm` sets in your module folders
+  ([brackets] = verses that point here; hover for the text); add your own from the verse menu, kept in
+  the same open format, and remove them with ×;
+- **reading plans** (My Study → Reading): whole Bible, NT, Psalms/Proverbs and more, by days, end date or
+  chapters per sitting, catch up, restart, schedule;
+- **Options** (Skin menu → Options…, or Ctrl+,): skin, coloured captions, Bible text font, size, line
+  spacing, text width, background colour and paper texture, verse numbers in a column, in the text or
+  hidden, plain/bold/circled;
 - **first start on a computer that has Tanglaw 0.4**: its module folders, open Bibles, place, skin and
   all study data are taken over automatically (from `%APPDATA%\Tanglaw Bible`); Tanglaw 0.4 itself is
   not changed;
 - keys: ← → chapter, Ctrl+← → book, ↑ ↓ verse, type a number for a verse (Shift: chapter), Alt+← →
-  or Backspace for history, Ctrl+1…0 / Ctrl+Shift+1…0 bookmarks, Ctrl+L add to list, Ctrl+C copy verse.
+  or Backspace for history, Ctrl+1…0 / Ctrl+Shift+1…0 bookmarks, Ctrl+L add to list, Ctrl+C copy verse, F5 Copy Verses, Ctrl+, Options.
 Encrypted modules are listed as "cannot be opened" and never decoded.
 
 ## How it is built
@@ -57,9 +68,10 @@ npx tauri android init && npx tauri android build --apk   # Android (Android SDK
 `test/run.sh test/ui.js shot.png 30` starts the release build under a virtual screen with the test
 module folders, runs `test/ui.js` in the window (env `TANGLAW_SCRIPT`), prints the results and saves a
 screenshot. Add `400 800` at the end for a phone-sized window. `LEGACY=1 test/run.sh test/study.js shot.png 30`
-checks the study tools and taking over data from Tanglaw 0.4.
+checks the study tools and taking over data from Tanglaw 0.4; `test/features.js` checks Copy Verses,
+cross-references, reading plans and Options.
 
 ## Not yet moved over from 0.4.x
-Reading plans, Copy Verses window, search statistics and
-custom ranges, cross-references, docking panels, Options window, user guide, module properties. The plan
+Search statistics and custom ranges, separate Greek/Hebrew fonts, docking panels, user guide, module
+properties, import report. The plan
 is to move them module by module, in TypeScript.

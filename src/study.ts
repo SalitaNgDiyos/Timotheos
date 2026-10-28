@@ -5,6 +5,9 @@ import TWRender from './legacy/render.js';
 import { Bible } from './bibles';
 import { loadStudy, saveStudy } from './native';
 import { $, copyText, dialog, esc, flash, isPhone } from './ui';
+import { copyDialog, quickCopy } from './copy';
+import { addXref } from './xrefs';
+import { renderPlans } from './plans';
 
 export interface Ref { b: number; c: number; v: number; v2?: number }
 export interface StudyHost {
@@ -23,6 +26,7 @@ let H: StudyHost;
 export let ud: StudyData = EMPTY();
 let saveT = 0;
 const save = (now = false) => { clearTimeout(saveT); if (now) saveStudy(ud).catch(() => {}); else saveT = window.setTimeout(() => saveStudy(ud).catch(() => {}), 300); };
+export const saveUD = () => save(true);
 const vkey = (b: number, c: number, v: number) => `${b}.${c}.${v}`;
 const parseKey = (k: string): Ref => { const [b, c, v] = k.split('.').map(Number); return { b, c, v }; };
 export const refName = (r: Ref) => `${canon.book(r.b, '1611').abbr} ${r.c}:${r.v}${r.v2 && r.v2 > r.v ? '–' + r.v2 : ''}`;
@@ -164,11 +168,7 @@ async function verseText(r: Ref): Promise<{ abbr: string; text: string } | null>
   }
   return null;
 }
-export async function copyVerse(r: Ref): Promise<void> {
-  const t = await verseText(r); if (!t) return;
-  await copyText(`${t.text} (${refName(r)} ${t.abbr})`);
-  flash('Copied ' + refName(r));
-}
+export async function copyVerse(r: Ref): Promise<void> { await quickCopy(r); }
 
 /* ---------------------------------------------------------------- verse menu (right-click / long press) */
 function verseMenu(x: number, y: number, rowEl: HTMLElement, cellEl: HTMLElement | null): void {
@@ -177,10 +177,12 @@ function verseMenu(x: number, y: number, rowEl: HTMLElement, cellEl: HTMLElement
   const m = $('#vmenu');
   m.innerHTML = `<div class="mh">${esc(refName(r))}</div>
     <button data-a="copy">Copy verse <kbd>Ctrl+C</kbd></button>
+    <button data-a="copydlg">Copy verses… <kbd>F5</kbd></button>
     <button data-a="list">Add to “${esc(ud.currentList)}” <kbd>Ctrl+L</kbd></button>
     <div class="mrow"><span>${t?.partial ? 'Highlight selection' : 'Highlight verse'}</span>${['yellow', 'green', 'blue', 'pink', 'orange'].map(s => `<button data-a="hl" data-s="${s}" class="sw hl-${s}" title="${s}"></button>`).join('')}<button data-a="hl" data-s="ul" class="sw" title="Underline"><u>U</u></button><button data-a="hl" data-s="bold" class="sw" title="Bold"><b>B</b></button><button data-a="hl" data-s="" class="sw" title="Remove highlighting">✕</button></div>
     <div class="mrow"><span>Bookmark</span>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => `<button data-a="bm" data-d="${d}" class="sw" title="${ud.bookmarks[slot(d)] ? 'replaces ' + refName(ud.bookmarks[slot(d)]!) : 'empty'}">${d}</button>`).join('')}</div>
     <button data-a="note">${ud.notes[k] ? 'Edit my note…' : 'Add a note…'}</button>
+    <button data-a="xref">Add a cross-reference…</button>
     <button data-a="cmt">Commentaries</button>`;
   m.classList.remove('hidden');
   const W = innerWidth, Hh = innerHeight;
@@ -194,6 +196,8 @@ function verseMenu(x: number, y: number, rowEl: HTMLElement, cellEl: HTMLElement
     if (a === 'bm') setBookmark(+b.dataset.d!, r);
     if (a === 'note') editNote(k);
     if (a === 'cmt') H.showPanel('cmt');
+    if (a === 'copydlg') { const sv = selectedVerses(); copyDialog(sv ? { ...r, v: sv[0] } : r, sv ? { ...r, v: sv[1] } : r); }
+    if (a === 'xref') askXref(r);
   });
 }
 function wire(): void {
@@ -209,6 +213,24 @@ function wire(): void {
   view.addEventListener('click', e => { const n = (e.target as HTMLElement).closest<HTMLElement>('.unote, .noteicon'); if (n) { e.stopPropagation(); editNote(n.dataset.note!); } }, true);
   document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('#vmenu')) $('#vmenu').classList.add('hidden'); });
   $('#studyTabs').querySelectorAll<HTMLButtonElement>('[data-st]').forEach(b => b.onclick = () => { seg = b.dataset.st!; renderStudy(); });
+}
+
+/** verses covered by the mouse selection */
+function selectedVerses(): [number, number] | null {
+  const sel = window.getSelection(); if (!sel || !sel.rangeCount || !String(sel).trim()) return null;
+  const rg = sel.getRangeAt(0); const vs = [...$('#view').querySelectorAll<HTMLElement>('[data-v]')].filter(el => rg.intersectsNode(el)).map(el => +el.dataset.v!);
+  return vs.length ? [Math.min(...vs), Math.max(...vs)] : null;
+}
+async function askXref(from: Ref): Promise<void> {
+  let val = '';
+  const r = await dialog(`Cross-reference from ${refName(from)}`, '<input id="xrIn" class="txt" placeholder="e.g. Rom 5:8 or 1 John 4:9-10"><p class="small">Kept in your own cross-reference set (theWord format), shown under the verse.</p>',
+    [{ label: 'Cancel', value: null }, { label: 'Add', value: 'ok', primary: true }], b => { const i = b.querySelector<HTMLInputElement>('#xrIn')!; i.focus(); i.oninput = () => { val = i.value; }; i.onkeydown = e => { if (e.key === 'Enter') (b.parentElement!.querySelector('.primary') as HTMLElement).click(); }; });
+  if (!r || !val.trim()) return;
+  const m = /^(.*\d+:\d+)\s*[-–]\s*(\d+)\s*$/.exec(val.trim());
+  const t = canon.parseRef(m ? m[1] : val.trim());
+  if (!t || !t.v) { flash('Could not read that reference'); return; }
+  await addXref(from, { b: t.b, c: t.c, v: t.v, v2: m ? +m[2] : t.v });
+  H.show().xrefs = true; H.rerender(); flash('Cross-reference added');
 }
 
 /* ---------------------------------------------------------------- the "My Study" panel tab */
@@ -237,6 +259,8 @@ export async function renderStudy(): Promise<void> {
     body.innerHTML = ks.length ? `<ul class="vlist">${ks.map(k => `<li><a data-k="${k}">${esc(refName(parseKey(k)))}</a><div class="unote" data-note="${k}">${ud.notes[k].html}</div></li>`).join('')}</ul>` : '<p class="hint">No notes yet. Right-click (or long-press) a verse → Add a note.</p>';
     body.querySelectorAll<HTMLElement>('a[data-k]').forEach(a => a.onclick = () => { const r = parseKey(a.dataset.k!); H.go(r.b, r.c, r.v); });
     body.querySelectorAll<HTMLElement>('.unote').forEach(n => n.onclick = () => editNote(n.dataset.note!));
+  } else if (seg === 'plans') {
+    await renderPlans(body, { openBibles: H.openBibles, go: H.go, rerender: H.rerender }, renderStudy);
   } else {
     body.innerHTML = `<ul class="vlist">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => { const r = ud.bookmarks[slot(d)]; return `<li><b class="bmn">${d}</b> ${r ? `<a data-d="${d}">${esc(refName(r))}</a>` : '<span class="hint">empty</span>'}</li>`; }).join('')}</ul><p class="hint">Ctrl+Shift+number sets a bookmark at the selected verse, Ctrl+number goes there.</p>`;
     body.querySelectorAll<HTMLElement>('a[data-d]').forEach(a => a.onclick = () => gotoBookmark(+a.dataset.d!));

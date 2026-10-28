@@ -10,12 +10,15 @@ import { BookMod, guessKind, isBookFile, openBook } from './books';
 import type { ModFile } from './native';
 import { commentaryMarks, initPanel, show as showPanel, strongEntry, updateCommentary, forgetSearchCache } from './panel';
 import { importBytes, legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
-import { addToList, afterRender, copyVerse, gotoBookmark, initStudy, setBookmark } from './study';
+import { addToList, afterRender, copyVerse, gotoBookmark, initStudy, saveUD, setBookmark } from './study';
+import { copyDialog, initCopy } from './copy';
+import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
 import { flash } from './ui';
-import { SKINS, applySkin } from './skins';
+import { SKINS } from './skins';
+import { LOOK, Look, applyLook, optionsDialog } from './options';
 
-interface Settings { folders: string[]; open: string[]; ref: { b: number; c: number; v?: number }; sideW?: number; sideHidden?: boolean; skin: string; show: Record<string, boolean>; fontSize: number }
-const DEFAULT: Settings = { folders: [], open: [], ref: { b: 43, c: 3 }, skin: 'parchment', show: { strongs: false, morph: false, footnotes: true, headings: true, woj: true, added: true, highlights: true, notes: true }, fontSize: 18 };
+interface Settings { folders: string[]; open: string[]; ref: { b: number; c: number; v?: number }; sideW?: number; sideHidden?: boolean; look: Look; skin: string; show: Record<string, boolean>; fontSize: number }
+const DEFAULT: Settings = { folders: [], open: [], ref: { b: 43, c: 3 }, skin: 'parchment', show: { strongs: false, morph: false, footnotes: true, headings: true, woj: true, added: true, highlights: true, notes: true, xrefs: true }, fontSize: 18, look: { ...LOOK } };
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -38,6 +41,15 @@ let nav: { id: number; name: string; abbr: string; grp: string; chapters: number
 let ownDir = '';
 
 const save = () => saveSettings(S).catch(() => {});
+/** the Electron edition's appearance settings that the new one understands */
+function pickLook(a: Record<string, unknown>): Partial<Look> {
+  const o: Partial<Look> = {};
+  for (const k of ['fontText', 'lineH', 'textWidth', 'bgMode', 'bgColor', 'vnPos', 'vnStyle', 'capColor'] as const) if (a[k] != null) (o as Record<string, unknown>)[k] = a[k];
+  if (o.vnStyle && !['normal', 'bold', 'circle'].includes(o.vnStyle)) o.vnStyle = 'normal';
+  if (a.texture === 'paper') o.texture = 'paper';
+  return o;
+}
+function openOptions(): void { optionsDialog(S, rr => { applyLook(S.skin, S.fontSize, S.look); save(); if (rr) rerender(); }); }
 
 /* ---------------------------------------------------------------- modules */
 async function loadModules(): Promise<void> {
@@ -53,6 +65,7 @@ async function loadModules(): Promise<void> {
   const cmts = bookFiles.filter(f => guessKind(f.name) === 'commentary');
   books = await Promise.all(cmts.map(openBook));
   restBooks = bookFiles.filter(f => !cmts.includes(f));
+  await loadXrefs(files);
   forgetSearchCache();
   S.open = S.open.filter(id => bibles.some(b => b.id === id));
   if (!S.open.length && bibles.length) S.open = [(bibles.find(b => /kjv/i.test(b.abbr)) || bibles[0]).id];
@@ -112,30 +125,52 @@ async function go(b: number, c: number, v = 1): Promise<void> {
   const show = S.show;
   const marks = commentaryMarks(bk.id, c);
   const cell = (m: Bible, raw: string | undefined) => raw == null ? '' : TWRender.render(raw, m, show, { fn: { n: 0 } });
+  const vin = (v: number) => S.look.vnPos === 'inline' ? `<sup class="vnum">${v}</sup>` : '';
   const font = (m: Bible) => m.font ? ` style="font-family:'TwGreek','${esc(m.font)}',var(--font-text)"` : '';
   let html = '';
   if (isPhone() || list.length === 1) {
     html = '<div class="rows">';
     for (let v = 1; v <= vmax; v++) {
-      html += `<div class="vrow${v === S.ref.v ? ' sel' : ''}" data-v="${v}"><span class="vn">${v}${marks.has(v) ? '<i class="cm">c</i>' : ''}</span><div class="vtexts">`;
-      list.forEach((m, i) => { const r = chapters[i].find(x => x.v === v); if (r) html += `<div class="vt${m.rtl ? ' rtl' : ''}" data-col="${i}"${font(m)}>${list.length > 1 ? `<span class="ab">${esc(m.abbr)}</span>` : ''}${cell(m, r.raw)}</div>`; });
+      html += `<div class="vrow${v === S.ref.v ? ' sel' : ''}" data-v="${v}"><span class="vn"><span class="vno">${v}</span>${marks.has(v) ? '<i class="cm">c</i>' : ''}</span><div class="vtexts">`;
+      list.forEach((m, i) => { const r = chapters[i].find(x => x.v === v); if (r) html += `<div class="vt${m.rtl ? ' rtl' : ''}" data-col="${i}"${font(m)}>${list.length > 1 ? `<span class="ab">${esc(m.abbr)}</span>` : ''}${vin(v)}${cell(m, r.raw)}</div>`; });
       html += '</div></div>';
     }
     html += '</div>';
   } else {
     html = `<table class="chap"><thead><tr><th class="vn"></th>${list.map(m => `<th title="${esc(m.title)}">${esc(m.abbr)}</th>`).join('')}</tr></thead><tbody>`;
     for (let v = 1; v <= vmax; v++) {
-      html += `<tr data-v="${v}"${v === S.ref.v ? ' class="sel"' : ''}><td class="vn">${v}${marks.has(v) ? '<i class="cm" title="Commentary">c</i>' : ''}</td>`;
-      list.forEach((m, i) => { const r = chapters[i].find(x => x.v === v); html += `<td class="${m.rtl ? 'rtl' : ''}" data-col="${i}"${font(m)}>${cell(m, r?.raw)}</td>`; });
+      html += `<tr data-v="${v}"${v === S.ref.v ? ' class="sel"' : ''}><td class="vn"><span class="vno">${v}</span>${marks.has(v) ? '<i class="cm" title="Commentary">c</i>' : ''}</td>`;
+      list.forEach((m, i) => { const r = chapters[i].find(x => x.v === v); html += `<td class="${m.rtl ? 'rtl' : ''}" data-col="${i}"${font(m)}>${r ? vin(v) : ''}${cell(m, r?.raw)}</td>`; });
       html += '</tr>';
     }
     html += '</tbody></table>';
   }
   const view = $('#view'); const keepTop = view.scrollTop; view.innerHTML = html; view.scrollTop = rerendering ? keepTop : 0;
   afterRender(bk.id, c);
+  if (show.xrefs) await decorateXrefs(bk.id, c, my);
   if (!rerendering && (S.ref.v || 1) > 1) { const el = view.querySelector(`[data-v="${S.ref.v}"]`); if (el) el.scrollIntoView({ block: 'center' }); }
   updateCommentary(); rerendering = false;
   $('#timing').textContent = `${Math.round(performance.now() - t0)} ms`;
+}
+/** cross-references under each verse; [brackets] = verses that point here; yours can be removed */
+async function decorateXrefs(b: number, c: number, my: number): Promise<void> {
+  const xr = await chapterXrefs(b, c); if (my !== seq) return;
+  for (const [v, refs] of Object.entries(xr)) {
+    const cell = $('#view').querySelector(`[data-v="${v}"] [data-col="0"]`); if (!cell || !refs.length) continue;
+    const label = (r: { b: number; c: number; v: number; span: number }) => `${canon.book(r.b, '1611').abbr} ${r.c}:${r.v}${r.span ? '–' + (r.v + r.span) : ''}`;
+    const shown = refs.slice(0, 8);
+    cell.insertAdjacentHTML('beforeend', `<div class="xrs">${shown.map(r => `<a class="xr${r.back ? ' back' : ''}${r.user ? ' mine' : ''}" data-ref="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' + label(r) + ']' : label(r)}</a>${r.user ? `<i class="rmx" data-from="${b}.${c}.${v}" data-to="${r.b}.${r.c}.${r.v}" title="Remove my cross-reference">×</i>` : ''}`).join('; ')}${refs.length > 8 ? ` <a class="xrmore" data-v="${v}">+${refs.length - 8} more</a>` : ''}</div>`);
+    if (refs.length > 8) cell.querySelector<HTMLElement>('.xrmore')!.onclick = e => { e.stopPropagation(); const d = cell.querySelector('.xrs')!; d.innerHTML = refs.map(r => `<a class="xr${r.back ? ' back' : ''}" data-ref="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' + label(r) + ']' : label(r)}</a>`).join('; '); };
+  }
+}
+async function versePreview(ref: string): Promise<string> {
+  const [b, c, v, span] = ref.split('.').map(Number);
+  for (const m of openBibles()) {
+    const rows = (await m.chapter(b, c)).filter(r => r.v >= v && r.v <= v + span); if (!rows.length) continue;
+    const show = { ...S.show, strongs: false, morph: false, footnotes: false };
+    return `<div class="entry"><h4>${esc(canon.book(b, '1611').name)} ${c}:${v}${span ? '–' + (v + span) : ''} <span class="src">${esc(m.abbr)}</span></h4>${rows.map(r => `<sup>${r.v}</sup> ${TWRender.render(r.raw, m, show)}`).join(' ')}</div>`;
+  }
+  return '';
 }
 function stepBook(d: number): void { const i = nav.findIndex(x => x.id === S.ref.b); const n = nav[i + d]; if (n) go(n.id, n.chapters[0]); }
 function selectVerse(v: number): void {
@@ -171,7 +206,8 @@ function clean(html: string): string {
 async function showWord(el: HTMLElement): Promise<void> {
   const keys = (el.dataset.strong || '').split(/\s+/).filter(Boolean);
   let html = '';
-  if (el.matches('sup.fn')) html = `<div class="entry"><div class="src">Footnote</div>${TWRender.render(el.dataset.note || '', { rules: [] }, { ...S.show, footnotes: false })}</div>`;
+  if (el.matches('a.xr')) html = await versePreview(el.dataset.ref!);
+  else if (el.matches('sup.fn')) html = `<div class="entry"><div class="src">Footnote</div>${TWRender.render(el.dataset.note || '', { rules: [] }, { ...S.show, footnotes: false })}</div>`;
   else if (keys.length) html = await lookup(keys);
   if (!html) return;
   if (isPhone()) { $('#sheetBody').innerHTML = html; $('#sheet').classList.add('open'); return; }
@@ -200,10 +236,11 @@ function bibleMenu(): void {
 function skinMenu(): void {
   $('#skinMenu').innerHTML = '<div class="mh">Skin</div>' + Object.entries(SKINS).map(([id, s]) =>
     `<button data-skin="${id}" class="${S.skin === id ? 'on' : ''}"><span class="sw" style="background:linear-gradient(135deg, ${s.v.textbg} 0 50%, ${s.v['cap-bible']} 50%)"></span>${s.name}</button>`).join('') +
-    '<div class="msep"></div><div class="mh">Show</div>' + [['strongs', "Strong's numbers"], ['morph', 'Morphology'], ['footnotes', 'Footnotes'], ['headings', 'Headings'], ['woj', 'Words of Jesus in red'], ['added', 'Added words in italics'], ['highlights', 'My highlighting'], ['notes', 'My notes under the verses']]
+    '<div class="msep"></div><div class="mh">Show</div>' + [['strongs', "Strong's numbers"], ['morph', 'Morphology'], ['footnotes', 'Footnotes'], ['headings', 'Headings'], ['woj', 'Words of Jesus in red'], ['added', 'Added words in italics'], ['xrefs', 'Cross-references'], ['highlights', 'My highlighting'], ['notes', 'My notes under the verses']]
       .map(([k, l]) => `<label><input type="checkbox" data-show="${k}" ${S.show[k] ? 'checked' : ''}> ${l}</label>`).join('') +
-    `<div class="msep"></div><div class="mrow">Text size <button data-fs="-1">A−</button><button data-fs="1">A+</button></div>`;
-  $('#skinMenu').querySelectorAll<HTMLButtonElement>('[data-skin]').forEach(b => b.onclick = () => { S.skin = b.dataset.skin!; applySkin(S.skin); save(); skinMenu(); });
+    `<div class="msep"></div><div class="mrow">Text size <button data-fs="-1">A−</button><button data-fs="1">A+</button></div><div class="msep"></div><button id="mOpts">Options… <kbd>Ctrl+,</kbd></button>`;
+  $('#skinMenu').querySelectorAll<HTMLButtonElement>('[data-skin]').forEach(b => b.onclick = () => { S.skin = b.dataset.skin!; applyLook(S.skin, S.fontSize, S.look); save(); skinMenu(); });
+  $('#skinMenu').querySelector<HTMLButtonElement>('#mOpts')!.onclick = () => { $('#skinMenu').classList.add('hidden'); openOptions(); };
   $('#skinMenu').querySelectorAll<HTMLInputElement>('[data-show]').forEach(cb => cb.onchange = () => { S.show[cb.dataset.show!] = cb.checked; save(); go(S.ref.b, S.ref.c); });
   $('#skinMenu').querySelectorAll<HTMLButtonElement>('[data-fs]').forEach(b => b.onclick = () => { S.fontSize = Math.max(12, Math.min(34, S.fontSize + +b.dataset.fs!)); document.documentElement.style.setProperty('--size', S.fontSize + 'px'); save(); });
 }
@@ -254,13 +291,14 @@ async function init(): Promise<void> {
     Object.assign(stored, {
       folders: [...(L.moduleFolders || []), ...(legacy.modules ? [legacy.modules] : [])], open: L.openBibles || [], ref: L.ref || DEFAULT.ref,
       skin: (L.appearance && L.appearance.skin) || (L.theme === 'dark' ? 'slate' : 'parchment'), show: Object.assign({}, DEFAULT.show, L.show || {}), fontSize: L.fontSize || DEFAULT.fontSize,
+      look: Object.assign({ ...LOOK }, pickLook(L.appearance || {})),
     });
     migrated = 'took over your module folders, Bibles and skin from Tanglaw 0.4';
   }
   S = Object.assign({}, DEFAULT, stored);
   S.show = Object.assign({}, DEFAULT.show, S.show);
-  applySkin(S.skin);
-  document.documentElement.style.setProperty('--size', S.fontSize + 'px');
+  S.look = Object.assign({ ...LOOK }, S.look || {});
+  applyLook(S.skin, S.fontSize, S.look);
   document.body.classList.toggle('android', isAndroid);
   ownDir = await modulesDir();
   const win = getCurrentWindow();
@@ -273,16 +311,21 @@ async function init(): Promise<void> {
   $('#biblesBtn').onclick = e => { e.stopPropagation(); toggleMenu('#bibleMenu', bibleMenu); };
   $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', skinMenu); };
   $('#emptyImport').onclick = importModules;
-  document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('.menu, .tbtn')) document.querySelectorAll('.menu').forEach(x => x.classList.add('hidden')); if (!(e.target as HTMLElement).closest('#popup, [data-strong], sup.fn')) $('#popup').classList.add('hidden'); });
+  $('#copyBtn').onclick = () => copyDialog({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 });
+  document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('.menu, .tbtn')) document.querySelectorAll('.menu').forEach(x => x.classList.add('hidden')); if (!(e.target as HTMLElement).closest('#popup, [data-strong], sup.fn, a.xr')) $('#popup').classList.add('hidden'); });
   $('#sheet').addEventListener('click', e => { if (e.target === $('#sheet') || (e.target as HTMLElement).closest('.grab')) $('#sheet').classList.remove('open'); });
   // words: hover (mouse) or tap (touch)
   let timer = 0;
   $('#view').addEventListener('mouseover', e => {
     if (isPhone()) return;
-    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], sup.fn'); clearTimeout(timer);
+    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], sup.fn, a.xr'); clearTimeout(timer);
     if (t) timer = window.setTimeout(() => showWord(t), 300);
   });
   $('#view').addEventListener('click', e => {
+    const rm = (e.target as HTMLElement).closest<HTMLElement>('.rmx');
+    if (rm) { const [b, c, v] = rm.dataset.from!.split('.').map(Number); const [tb, tc, tv] = rm.dataset.to!.split('.').map(Number); removeXref({ b, c, v }, { b: tb, c: tc, v: tv }).then(rerender); return; }
+    const xr = (e.target as HTMLElement).closest<HTMLElement>('a.xr');
+    if (xr) { if (isPhone()) return void showWord(xr); const [b, c, v] = xr.dataset.ref!.split('.').map(Number); $('#popup').classList.add('hidden'); return void go(b, c, v); }
     const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], sup.fn'); if (t) return void showWord(t);
     const vn = (e.target as HTMLElement).closest<HTMLElement>('.vn'); if (!vn) return;
     const v = +vn.closest<HTMLElement>('[data-v]')!.dataset.v!;
@@ -292,6 +335,7 @@ async function init(): Promise<void> {
   });
   // the study panel (Commentary, Library, Search)
   initPanel({ books: () => books, openBibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, clean, save, settings: () => S as unknown as Record<string, unknown> });
+  initCopy({ nav: () => nav, openBibles, save: saveUD });
   const studyNote = await initStudy({ ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, rerender, openBibles, showPanel, show: () => S.show }, legacy ? legacy.study : null);
   const note = [migrated, studyNote].filter(Boolean).join('; ');
   if (note) setTimeout(() => flash('Welcome to the new Tanglaw – ' + note + '.'), 1200);
@@ -324,6 +368,8 @@ async function init(): Promise<void> {
     if (e.ctrlKey && !e.shiftKey && d != null) { e.preventDefault(); return gotoBookmark(d); }
     if (e.ctrlKey && k.toLowerCase() === 'l') { e.preventDefault(); return addToList([cur]); }
     if (e.ctrlKey && k.toLowerCase() === 'c' && !String(window.getSelection())) { e.preventDefault(); copyVerse(cur); return; }
+    if (e.ctrlKey && k === ',') { e.preventDefault(); return openOptions(); }
+    if (k === 'F5') { e.preventDefault(); copyDialog(cur); return; }
     if (e.ctrlKey && k === 'ArrowLeft') { e.preventDefault(); return stepBook(-1); }
     if (e.ctrlKey && k === 'ArrowRight') { e.preventDefault(); return stepBook(1); }
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -347,6 +393,6 @@ async function init(): Promise<void> {
   w.__tanglawFirst = Math.round(performance.now());
   await openRest();
   w.__tanglawReady = Math.round(performance.now());
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel };
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });

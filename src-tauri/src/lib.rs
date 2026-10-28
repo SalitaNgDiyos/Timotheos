@@ -212,6 +212,43 @@ fn legacy_data(app: tauri::AppHandle) -> serde_json::Value {
     serde_json::Value::Null
 }
 
+/** the user's own cross-references, in theWord's .xrefs.twm format (so theWord can use them too).
+ *  Created on first use; taken over from Tanglaw 0.4 if that left one. Returns the file's path. */
+fn user_xrefs_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let p = data_dir(app).join("My cross-references.xrefs.twm");
+    if !p.exists() {
+        if let Ok(cfg) = app.path().config_dir() {
+            let old = cfg.join("Tanglaw Bible").join("My cross-references.xrefs.twm");
+            if old.exists() { fs::copy(&old, &p).map_err(|e| e.to_string())?; return Ok(p); }
+        }
+        let c = Connection::open(&p).map_err(|e| e.to_string())?;
+        c.execute_batch("create table xrefs(id integer primary key, vi1 int, vi2 int);
+            create table config(name text, value text);
+            create index xrefs_idx_vi1 on xrefs(vi1); create index xrefs_idx_vi2 on xrefs(vi2);
+            insert into config values ('table.xrefs','xrefs'),('tables.xrefs.description','My cross-references (Tanglaw)'),('type','10');").map_err(|e| e.to_string())?;
+    }
+    Ok(p)
+}
+
+#[tauri::command]
+fn user_xrefs(app: tauri::AppHandle) -> Result<String, String> { Ok(user_xrefs_file(&app)?.to_string_lossy().to_string()) }
+
+/** add (op "add") or remove (op "remove") the cross-reference vi1 → vi2 in the user's own set */
+#[tauri::command]
+fn user_xref_change(app: tauri::AppHandle, store: State<Store>, op: String, vi1: i64, vi2: i64) -> Result<usize, String> {
+    let p = user_xrefs_file(&app)?;
+    store.db.lock().unwrap().remove(&p.to_string_lossy().to_string()); // the read-only copy is out of date now
+    let c = Connection::open(&p).map_err(|e| e.to_string())?;
+    let n = if op == "add" {
+        let has: i64 = c.query_row("select count(*) from xrefs where vi1 = ? and vi2 = ?", [vi1, vi2], |r| r.get(0)).map_err(|e| e.to_string())?;
+        if has > 0 { 0 } else { c.execute("insert into xrefs(vi1, vi2) values (?, ?)", [vi1, vi2]).map_err(|e| e.to_string())? }
+    } else {
+        // vi2 may carry a span; match it on book, chapter and verse only
+        c.execute("delete from xrefs where vi1 = ? and (vi2 >> 8) = (? >> 8)", [vi1, vi2]).map_err(|e| e.to_string())?
+    };
+    Ok(n)
+}
+
 /** test hook: a test script reports its results here (printed on the console) */
 #[tauri::command]
 fn test_report(text: String) { println!("RESULT {}", text); }
@@ -222,7 +259,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(Store::default())
-        .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, ud_load, ud_save, legacy_data, test_report])
+        .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, ud_load, ud_save, legacy_data, user_xrefs, user_xref_change, test_report])
         .setup(|app| {
             // test hook (like the Electron version's): TANGLAW_SCRIPT runs a script in the window after start
             if let (Ok(sz), Some(w)) = (std::env::var("TANGLAW_SIZE"), app.get_webview_window("main")) {
