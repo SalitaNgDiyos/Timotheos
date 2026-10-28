@@ -5,6 +5,7 @@ import { dialog, esc } from './ui';
 export interface Look {
   fontText: string; fontGreek: string; fontHebrew: string; lineH: number; textWidth: number; bgMode: 'skin' | 'color'; bgColor: string; texture: 'none' | 'paper';
   vnPos: 'margin' | 'inline' | 'hidden'; vnStyle: 'normal' | 'bold' | 'circle'; capColor: boolean; bookOrder: '1611' | 'nets' | 'orthodox';
+  fnStyle?: 'num' | 'letter' | 'star'; fnPlace?: 'text' | 'chapter';
 }
 export const LOOK: Look = { fontText: 'Gentium Plus', fontGreek: 'Gentium Plus', fontHebrew: 'Noto Serif Hebrew', lineH: 1.65, textWidth: 0, bgMode: 'skin', bgColor: '#fffdf8', texture: 'none', vnPos: 'margin', vnStyle: 'normal', capColor: true, bookOrder: '1611' };
 const BUNDLED = ['Gentium Plus', 'Literata', 'Source Serif 4', 'Inter', 'Noto Serif Hebrew'];
@@ -61,6 +62,9 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     <label class="fl">Background <span class="srow"><select id="oBg"><option value="skin">Skin colour</option><option value="color">My colour</option></select><input type="color" id="oBgC" value="${l.bgMode === 'color' ? l.bgColor : sk.v.textbg}"><select id="oTex"><option value="none">No texture</option><option value="paper">Paper</option></select></span></label>
     <h4>Order of the books</h4>
     <label class="fl">Old Testament <select id="oOrder"><option value="1611">1611 King James Bible – the Apocrypha between the Testaments</option><option value="nets">Septuagint (NETS order) – all books in one Old Testament</option><option value="orthodox">Greek Orthodox Old Testament (4 Maccabees etc. as appendix)</option></select></label>
+    <h4>Footnotes</h4>
+    <label class="fl">Marks <select id="oFnS"><option value="num">Numbers 1 2 3</option><option value="letter">Letters a b c</option><option value="star">A star *</option></select></label>
+    <label class="fl">Text <select id="oFnP"><option value="text">Shown when the mark is pointed at</option><option value="chapter">Also listed under the chapter</option></select></label>
     <h4>Verse numbers</h4>
     <label class="fl">Where <select id="oVp"><option value="margin">In a column at the left</option><option value="inline">In the text</option><option value="hidden">Hidden</option></select></label>
     <label class="fl">Style <select id="oVs"><option value="normal">Normal</option><option value="bold">Bold</option><option value="circle">In a circle</option></select></label>
@@ -69,6 +73,9 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     const q = <T extends HTMLElement>(s: string) => b.querySelector(s) as T;
     q<HTMLSelectElement>('#oW').value = String(l.textWidth); q<HTMLSelectElement>('#oBg').value = l.bgMode; q<HTMLSelectElement>('#oTex').value = l.texture;
     q<HTMLSelectElement>('#oOrder').value = l.bookOrder || '1611';
+    q<HTMLSelectElement>('#oFnS').value = l.fnStyle || 'num'; q<HTMLSelectElement>('#oFnP').value = l.fnPlace || 'text';
+    q<HTMLSelectElement>('#oFnS').onchange = () => { l.fnStyle = q<HTMLSelectElement>('#oFnS').value as Look['fnStyle']; change(true); };
+    q<HTMLSelectElement>('#oFnP').onchange = () => { l.fnPlace = q<HTMLSelectElement>('#oFnP').value as Look['fnPlace']; change(true); };
     q<HTMLSelectElement>('#oVp').value = l.vnPos; q<HTMLSelectElement>('#oVs').value = l.vnStyle;
     b.querySelectorAll<HTMLButtonElement>('[data-skin]').forEach(x => x.onclick = () => { st.skin = x.dataset.skin!; b.querySelectorAll('.skin').forEach(y => y.classList.toggle('on', y === x)); change(false); });
     q<HTMLInputElement>('#oCap').onchange = () => { l.capColor = q<HTMLInputElement>('#oCap').checked; change(false); };

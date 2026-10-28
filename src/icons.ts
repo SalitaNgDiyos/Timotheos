@@ -33,6 +33,7 @@ export const ICONS: Record<string, string> = {
   max: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   restore: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  pin: '<path d="M9 3h6l-1 6 4 4H6l4-4-1-6zM12 13v8"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   folder: '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/>',

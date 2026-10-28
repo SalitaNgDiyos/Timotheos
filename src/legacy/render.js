@@ -122,7 +122,7 @@
       if (/^<RF\b/.test(t)) {
         let body = ''; k++;
         while (k < toks.length && toks[k] !== '<Rf>') body += toks[k++];
-        if (show.footnotes) { const q = attr(t, 'q'); const n = ++ctx.fn.n; emit(`<sup class="fn" data-note="${esc(body)}">${esc(q || n)}</sup>`); }
+        if (show.footnotes) { const q = attr(t, 'q'); const n = ++ctx.fn.n; emit(`<sup class="fn"${q ? ` data-q="${esc(q)}"` : ''} data-note="${esc(body)}">${esc(q || n)}</sup>`); }
         continue;
       }
       if (/^<TS\d?>/.test(t)) {

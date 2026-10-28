@@ -162,13 +162,16 @@ function stepTopic(d: number): void {
 /** a morphology code (e.g. V-PAI-3S): the entry from the morphology dictionaries */
 export async function morphEntry(code: string): Promise<{ subject: string; html: string; src: string } | null> {
   const keys = [...new Set([code, code.toUpperCase(), code.replace(/\s+/g, ' ').trim(), code.replace(/\s+/g, ''), code.replace(/^[A-Z]{2,3}:/, '')])];
-  for (const d of H.books().filter(m => m.kind === 'dictionary' && m.isMorph && !m.locked)) for (const k of keys) { const e = await d.lookup(k); if (e) return { ...e, src: d.title }; }
+  const pref = ((H.settings() as { dictPref?: { morph?: string } }).dictPref || {}).morph;
+  for (const d of H.books().filter(m => m.kind === 'dictionary' && m.isMorph && !m.locked).sort((a, b) => Number(b.id === pref) - Number(a.id === pref))) for (const k of keys) { const e = await d.lookup(k); if (e) return { ...e, src: d.title }; }
   return null;
 }
 /** a word or Strong's number: show the entry from the Strong's dictionaries */
 export async function strongEntry(key: string): Promise<{ subject: string; html: string; src: string } | null> {
   const want = key[0].toUpperCase() === 'H' ? 'hebrew' : 'greek';
-  const dicts = H.books().filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked).sort((a, b) => Number(b[want]) - Number(a[want]));
+  // the dictionary chosen in the Options menu first, then those made for this language
+  const pref = ((H.settings() as { dictPref?: Record<string, string> }).dictPref || {})[want];
+  const dicts = H.books().filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked).sort((a, b) => Number(b.id === pref) - Number(a.id === pref) || Number(b[want]) - Number(a[want]));
   for (const d of dicts) { const e = await d.lookup(key); if (e) return { ...e, src: d.title }; }
   return null;
 }

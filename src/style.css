@@ -386,3 +386,33 @@ sup.vnum { font: 600 calc(var(--size) * .6) var(--font-ui); color: var(--accent)
 button:disabled { opacity: .5; cursor: default; }
 .vbar .ib { flex: none; display: grid; place-items: center; width: 28px; height: 28px; }
 .bpick .vpbooks li.on { background: var(--accent); color: #fff; font-weight: 600; }
+/* paragraph mode, footnote list, lemmas */
+.paraview { display: grid; gap: 28px; }
+.pcol .pabbr { font: 600 12px var(--font-ui); color: var(--muted); margin-bottom: 6px; }
+.ppara { margin: 0 0 .9em; text-indent: 1.2em; }
+.ppara:empty { display: none; }
+.pv.sel { background: var(--sel, color-mix(in srgb, var(--accent) 14%, transparent)); border-radius: 3px; }
+.pvn { cursor: pointer; }
+.fnlist { margin-top: 24px; padding-top: 10px; border-top: 1px solid var(--line, #0002); font-size: .85em; }
+.fnlist h4 { margin: 0 0 6px; font: 600 13px var(--font-ui); }
+.fnlist h5 { margin: 8px 0 2px; font: 600 12px var(--font-ui); color: var(--muted); }
+.fnlist ol { list-style: none; margin: 0; padding: 0; }
+.fnlist li { margin: 3px 0; cursor: pointer; }
+.fnlist li b { color: var(--fn); margin-right: 4px; }
+sup.lemma { font: italic 400 .62em var(--font-text); color: var(--muted); margin: 0 2px; }
+.menu .brow.bhid label { opacity: .5; }
+.menu .brow .ib[disabled] { opacity: .2; }
+.menu .mset { flex: 1; text-align: left; }
+.menu .bshow { display: block; padding: 4px 12px; }
+/* popup bar, original word */
+.popup .ptools { position: sticky; top: -10px; margin: -10px -14px 6px; padding: 3px 6px; display: flex; gap: 2px; align-items: center; background: var(--card); border-bottom: 1px solid var(--line); z-index: 1; }
+.popup .ptools .sp { flex: 1; }
+.popup .ptools .ib { width: 24px; height: 22px; opacity: .6; } .popup .ptools .ib:hover { opacity: 1; }
+.popup.pinned .ptools [data-pt="pin"] { opacity: 1; color: var(--accent); }
+.orig { font-size: 1.25em; margin: 2px 0 6px; } .orig .ow { font-family: 'TwGreek', 'TwHebrew', var(--font-text); } .orig .tl { color: var(--muted); font-size: .8em; }
+.pvb { margin: 4px 0; } .pvb .src { font: 600 11px var(--font-ui); margin-right: 4px; }
+.menu .msel select { max-width: 150px; margin-left: auto; }
+#searchResults.refview .rgroup { padding: 6px 4px; border-bottom: 1px solid var(--line); list-style: none; }
+#searchResults.refview .rgh { font: 600 12.5px var(--font-ui); margin-bottom: 3px; } #searchResults.refview .rgh .n { color: var(--muted); font-weight: 400; margin-left: 4px; }
+#searchResults .rref { display: inline-block; padding: 1px 5px; margin: 1px; border-radius: 4px; font: 12.5px var(--font-ui); cursor: pointer; background: color-mix(in srgb, var(--accent) 9%, transparent); }
+#searchResults .rref:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }

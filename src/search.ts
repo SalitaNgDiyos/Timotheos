@@ -33,7 +33,7 @@ export function initSearch(host: SearchHost): void {
         <label>NEAR = within <input id="optNearW" type="number" min="1" class="num"> words / <input id="optNearV" type="number" min="0" class="num"> verses</label>
         <p class="small">AND, OR, NOT, brackets, "a phrase", love* (wildcard), G26 / H157 (Strong's), m/ V-AAI-3S (morphology), faith NEAR hope, faith NEARv2 hope.</p></div></details></form>
     <div id="searchStatus" class="small sstatus"></div>
-    <div id="searchTabs" class="seg hidden"><button data-sp="res" class="on">Verses</button><button data-sp="books">Books</button><button data-sp="stats">Statistics</button><span class="grow"></span><button id="searchToList" title="Add the verses shown to the current verse list">+ List</button><button id="searchCopy" title="Copy the verses shown">Copy</button></div>
+    <div id="searchTabs" class="seg hidden"><button data-sp="res" class="on">Verses</button><button data-sp="refs" title="Only the references, by book: point at one to read the verse">References</button><button data-sp="books">Books</button><button data-sp="stats">Statistics</button><span class="grow"></span><button id="searchToList" title="Add the verses shown to the current verse list">+ List</button><button id="searchCopy" title="Copy the verses shown">Copy</button></div>
     <ol id="searchResults" class="results pbody"></ol><div id="searchBooks" class="pbody hidden"></div><div id="searchStats" class="pbody hidden"></div>`;
   const o = opts();
   fillScopes(o.scope);
@@ -50,10 +50,10 @@ export function initSearch(host: SearchHost): void {
   q('searchCopy').onclick = async () => { const v = visible(); await copyText(v.map(x => `${x.ref} ${x.text}`).join('\n')); flash(`Copied ${v.length} verse${v.length === 1 ? '' : 's'}`); };
   q('searchResults').onclick = e => {
     const fa = (e.target as HTMLElement).closest('[data-all]'); if (fa) { filterBook = null; renderResults(); return; }
-    const li = (e.target as HTMLElement).closest<HTMLElement>('li[data-b]'); if (!li) return;
+    const li = (e.target as HTMLElement).closest<HTMLElement>('li[data-b], a.rref'); if (!li) return; e.preventDefault(); e.stopPropagation();
     H.go(+li.dataset.b!, +li.dataset.c!, +li.dataset.v!); if (window.matchMedia('(max-width: 720px)').matches) document.body.classList.remove('side-open');
   };
-  q('searchBooks').onclick = e => { const r = (e.target as HTMLElement).closest<HTMLElement>('[data-fb]'); if (r) { filterBook = r.dataset.fb!; renderResults(); part('res'); } };
+  q('searchBooks').onclick = e => { const r = (e.target as HTMLElement).closest<HTMLElement>('[data-fb]'); if (r) { filterBook = r.dataset.fb!; part(listView()); } };
   q('searchStats').onclick = e => { const c = (e.target as HTMLElement).closest<HTMLElement>('[data-find]'); if (c) find(c.dataset.find!); };
 }
 
@@ -139,7 +139,7 @@ async function run(): Promise<void> {
     const h = ((ud.searchHistory as string[]) || []); ud.searchHistory = [text, ...h.filter(x => x !== text)].slice(0, 50); saveUD();
     status.innerHTML = `<b>${r.total}</b> verse${r.total === 1 ? '' : 's'}${list.length > 1 ? ` in ${list.length} Bibles` : ''}${r.total > r.results.length ? ` (first ${r.results.length} listed)` : ''} · ${esc(r.explanation)} · ${r.ms} ms`;
     q('searchTabs').classList.toggle('hidden', !r.total);
-    renderResults(); renderBooks(); renderStats(); part('res');
+    renderBooks(); renderStats(); part(listView());
   } catch (e) { status.innerHTML = `<span class="bad">${esc(String((e as Error).message || e))}</span>`; }
 }
 function visible(): Hit[] { if (!last) return []; return filterBook ? last.results.filter(x => `${x.id}|${x.b}` === filterBook) : last.results; }
@@ -147,11 +147,19 @@ function marked(text: string, marks: [number, number][]): string {
   let out = '', p = 0; for (const [s, e] of marks || []) { if (s < p) continue; out += esc(text.slice(p, s)) + '<mark>' + esc(text.slice(s, e)) + '</mark>'; p = e; }
   return out + esc(text.slice(p));
 }
-function renderResults(): void {
+function renderResults(refs = q('searchResults').classList.contains('refview')): void {
   const list = visible(); const fb = filterBook && last ? last.books.find(b => `${b.id}|${b.b}` === filterBook) : null;
-  q('searchResults').innerHTML = (fb ? `<li class="filter">${list.length} in ${esc(fb.name)} · <a data-all="1">show all ${last!.results.length}</a></li>` : '') +
-    list.map(x => `<li data-b="${x.b}" data-c="${x.c}" data-v="${x.v}"><span class="r">${esc(x.ref)}</span>${nBibles > 1 ? `<span class="small">${esc(x.abbr)}</span> ` : ''}${x.other ? `<span class="small"> near ${esc(x.other)}</span> ` : ''}${marked(x.text, x.marks)}</li>`).join('') +
-    (!fb && last && last.total > last.results.length ? `<li class="small">… ${last.total - last.results.length} more not listed</li>` : '');
+  const head = fb ? `<li class="filter">${list.length} in ${esc(fb.name)} · <a data-all="1">show all ${last!.results.length}</a></li>` : '';
+  const more = !fb && last && last.total > last.results.length ? `<li class="small">… ${last.total - last.results.length} more not listed</li>` : '';
+  if (refs) {
+    // references grouped by book with the number found; pointing at one shows the verse
+    const groups: { key: string; name: string; abbr: string; hits: Hit[] }[] = [];
+    for (const x of list) { const key = x.id + '|' + x.b; let g = groups[groups.length - 1]; if (!g || g.key !== key) { g = { key, name: last!.books.find(k => `${k.id}|${k.b}` === key)?.name || x.ref.replace(/\s*\d+:\d+.*$/, ''), abbr: x.abbr, hits: [] }; groups.push(g); } g.hits.push(x); }
+    q('searchResults').innerHTML = head + groups.map(g => `<li class="rgroup"><div class="rgh">${esc(g.name)}${nBibles > 1 ? ` <span class="small">${esc(g.abbr)}</span>` : ''} <span class="n">${g.hits.length}</span></div>${g.hits.map(x => `<a class="xr rref" data-ref="${x.b}.${x.c}.${x.v}.${x.v2 && x.v2 > x.v ? x.v2 - x.v : 0}" data-b="${x.b}" data-c="${x.c}" data-v="${x.v}">${x.c}:${x.v}${x.v2 && x.v2 > x.v ? '–' + x.v2 : ''}</a>`).join(' ')}</li>`).join('') + more;
+    return;
+  }
+  q('searchResults').innerHTML = head +
+    list.map(x => `<li data-b="${x.b}" data-c="${x.c}" data-v="${x.v}"><span class="r">${esc(x.ref)}</span>${nBibles > 1 ? `<span class="small">${esc(x.abbr)}</span> ` : ''}${x.other ? `<span class="small"> near ${esc(x.other)}</span> ` : ''}${marked(x.text, x.marks)}</li>`).join('') + more;
 }
 function renderBooks(): void {
   const r = last!; const max = Math.max(1, ...r.books.map(b => b.n));
@@ -167,9 +175,11 @@ function renderStats(): void {
   if (r.words.length) html += '<div class="phead">Word forms found</div><div class="stg">' + r.words.slice(0, 120).map(s => `<span class="chip st">${esc(s.text)} <span class="small">${s.n}</span></span>`).join(' ') + '</div>';
   q('searchStats').innerHTML = html || '<p class="hint">No statistics for this search.</p>';
 }
+const listView = () => (H.settings() as { searchView?: string }).searchView === 'refs' ? 'refs' : 'res';
 function part(p: string): void {
   q('searchTabs').querySelectorAll<HTMLElement>('[data-sp]').forEach(b => b.classList.toggle('on', b.dataset.sp === p));
-  q('searchResults').classList.toggle('hidden', p !== 'res'); q('searchBooks').classList.toggle('hidden', p !== 'books'); q('searchStats').classList.toggle('hidden', p !== 'stats');
+  q('searchResults').classList.toggle('hidden', p !== 'res' && p !== 'refs'); q('searchResults').classList.toggle('refview', p === 'refs');
+  if (last && (p === 'res' || p === 'refs')) { renderResults(p === 'refs'); (H.settings() as { searchView?: string }).searchView = p; H.save(); } q('searchBooks').classList.toggle('hidden', p !== 'books'); q('searchStats').classList.toggle('hidden', p !== 'stats');
 }
 function historyMenu(btn: HTMLElement): void {
   const h = ((ud.searchHistory as string[]) || []).slice(0, 25); const m = $('#vmenu');

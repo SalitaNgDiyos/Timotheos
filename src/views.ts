@@ -11,7 +11,7 @@ import { icon } from './icons';
 import { booksOf, openPicker } from './picker';
 
 export interface ViewsHost {
-  bibles(): Bible[]; openBibles(): Bible[]; books(): BookMod[];
+  bibles(): Bible[]; openBibles(): Bible[]; books(): BookMod[]; bibleStyle(m: Bible): string; hiddenBibles(): string[];
   nav(): { id: number; name: string; abbr: string; grp: string; chapters: number[] }[];
   ref(): { b: number; c: number; v: number };
   go(b: number, c: number, v?: number): Promise<void>;
@@ -22,7 +22,7 @@ export interface ViewsHost {
   retitle(): void;
 }
 interface BibleCfg { bible: string; follow: boolean; b: number; c: number }
-interface BookCfg { mod: string; tid: Topic['id'] | null }
+interface BookCfg { mod: string; tid: Topic['id'] | null; follow?: boolean }
 let H: ViewsHost;
 const cfgs = (): Record<string, BibleCfg | BookCfg> => (H.settings().views as Record<string, BibleCfg | BookCfg>) || ((H.settings().views = {}) as Record<string, BibleCfg | BookCfg>);
 const park = () => document.getElementById('parked')!;
@@ -33,6 +33,9 @@ export function initViews(host: ViewsHost): void {
   // the main text moved: following Bible views and the tree follow
   document.addEventListener('tanglaw-ref', () => { for (const id of Object.keys(cfgs())) if (id.startsWith('bible-')) { const c = cfgs()[id] as BibleCfg; if (c.follow) renderBible(id); } });
   // a word's entry was looked up: the Dictionary panel shows it
+  // book views that follow: a commentary the verse, a dictionary the word
+  document.addEventListener('tanglaw-ref', () => { for (const [id, c] of Object.entries(cfgs())) if (id.startsWith('book-') && (c as BookCfg).follow) followBook(id, null); });
+  document.addEventListener('tanglaw-key', e => { for (const [id, c] of Object.entries(cfgs())) if (id.startsWith('book-') && (c as BookCfg).follow) followBook(id, (e as CustomEvent).detail); });
   document.addEventListener('tanglaw-word', e => { const d = document.getElementById('dictBody'); if (d) { d.innerHTML = (e as CustomEvent).detail; d.scrollTop = 0; } });
 }
 const newId = (kind: string) => { let n = 1; while (cfgs()[`${kind}-${n}`] || document.getElementById(`p-${kind}-${n}`)) n++; return `${kind}-${n}`; };
@@ -64,7 +67,7 @@ export function createView(id: string): HTMLElement | null {
     sec.innerHTML = `<div class="vbar"><select class="vbible" title="Bible"></select><button class="ib vpick" title="Books and chapters: choose where to read">${icon('tree', 16)}</button><button class="ib vprevc" title="Previous chapter">${icon('prev', 16)}</button><button class="ib vnextc" title="Next chapter">${icon('next', 16)}</button><label class="vfollow" title="Follow the main Bible text (untick to read elsewhere in this Bible)"><input type="checkbox" class="vfol"> follow</label></div><div class="vtext pbody"></div>`;
     wireBible(id, sec);
   } else if (/^book-\d+$/.test(id) && cfgs()[id]) {
-    sec.innerHTML = `<div class="vbar"><select class="vmod" title="Module"></select><button class="ib vprev" title="Previous topic">‹</button><button class="ib vnext" title="Next topic">›</button></div><div class="libsplit"><div class="libside"><input class="vfilter" type="search" placeholder="Find a topic…" spellcheck="false"><ul class="vtopics"></ul><div class="vcount small"></div></div><div class="lsplit" title="Drag to make the topic list wider or narrower"></div><div class="vbody pbody entrybody"><p class="hint">Choose a commentary, dictionary or book.</p></div></div>`;
+    sec.innerHTML = `<div class="vbar"><select class="vmod" title="Module"></select><button class="ib vprev" title="Previous topic">‹</button><button class="ib vnext" title="Next topic">›</button><label class="vfollow vfolb" title="A commentary follows the verse you read; a dictionary follows the word you point at"><input type="checkbox" class="vfol"> follow</label></div><div class="libsplit"><div class="libside"><input class="vfilter" type="search" placeholder="Find a topic…" spellcheck="false"><ul class="vtopics"></ul><div class="vcount small"></div></div><div class="lsplit" title="Drag to make the topic list wider or narrower"></div><div class="vbody pbody entrybody"><p class="hint">Choose a commentary, dictionary or book.</p></div></div>`;
     wireBook(id, sec);
   }
   return sec;
@@ -84,7 +87,7 @@ export function viewsReload(): void {
 function fillBibles(id: string): void {
   const sec = document.getElementById('p-' + id)!; const c = cfgs()[id] as BibleCfg;
   const sel = sec.querySelector<HTMLSelectElement>('.vbible')!;
-  sel.innerHTML = H.bibles().map(b => `<option value="${esc(b.id)}">${esc(b.abbr)} – ${esc(b.title)}</option>`).join('');
+  sel.innerHTML = H.bibles().filter(b => b.id === c.bible || !H.hiddenBibles().includes(b.id)).map(b => `<option value="${esc(b.id)}">${esc(b.abbr)} – ${esc(b.title)}</option>`).join('');
   if (!H.bibles().some(b => b.id === c.bible) && H.bibles()[0]) c.bible = H.bibles()[0].id;
   sel.value = c.bible;
 }
@@ -124,7 +127,7 @@ async function renderBible(id: string, at = 0): Promise<void> {
   if (!m) { body.innerHTML = '<p class="hint">No Bible.</p>'; return; }
   const my = ++bseq; const rows = await m.chapter(c.b, c.c); if (my !== bseq) return;
   const r = H.ref(); const show = H.show();
-  body.innerHTML = rows.length ? `<div class="vhead">${esc(canon.book(c.b).name)} ${c.c} <span class="small">${esc(m.abbr)}</span></div>` + rows.map(x => `<div class="vrow${c.follow && x.v === r.v ? ' sel' : ''}${m.rtl ? ' rtl' : ''}" data-v="${x.v}"${m.font ? ` style="font-family:'TwGreek','TwHebrew','${esc(m.font)}',var(--font-text)"` : ''}><span class="vn">${x.v}</span> ${TWRender.render(x.raw, m, show, { fn: { n: 0 } })}</div>`).join('')
+  body.innerHTML = rows.length ? `<div class="vhead">${esc(canon.book(c.b).name)} ${c.c} <span class="small">${esc(m.abbr)}</span></div>` + rows.map(x => `<div class="vrow${c.follow && x.v === r.v ? ' sel' : ''}${m.rtl ? ' rtl' : ''}" data-v="${x.v}"${H.bibleStyle(m)}><span class="vn">${x.v}</span> ${TWRender.render(x.raw, m, show, { fn: { n: 0 } })}</div>`).join('')
     : `<p class="hint">${esc(m.abbr)} does not have ${esc(canon.book(c.b).name)} ${c.c}.</p>`;
   const sel = body.querySelector<HTMLElement>('.vrow.sel') || (at > 1 ? body.querySelector<HTMLElement>(`.vrow[data-v="${at}"]`) : null); if (sel) sel.scrollIntoView({ block: 'center' }); else body.scrollTop = 0;
 }
@@ -151,8 +154,18 @@ function wireBook(id: string, sec: HTMLElement): void {
     st.rows = (q ? await m.searchTopics(q) : st.all).map(t => ({ id: t.id, subject: t.subject || '(untitled)' })); ul.scrollTop = 0; drawTopics(id); count(id);
   }, 180); };
   const step = (d: number) => { const st = bookState.get(id); if (!st) return; const i = st.rows.findIndex(r => r.id === c.tid); const j = Math.max(0, Math.min(st.rows.length - 1, i < 0 ? 0 : i + d)); if (st.rows[j]) showBookTopic(id, st.rows[j].id); };
+  const fb = sec.querySelector<HTMLInputElement>('.vfol')!; fb.checked = !!c.follow; fb.onchange = () => { c.follow = fb.checked; H.save(); if (c.follow) followBook(id, null); };
   sec.querySelector<HTMLElement>('.vprev')!.onclick = () => step(-1); sec.querySelector<HTMLElement>('.vnext')!.onclick = () => step(1);
   fillMods(id);
+}
+/** a following book view: the commentary on the current verse, or the dictionary entry for a word (Strong's number, lemma or the word) */
+async function followBook(id: string, key: { strong?: string[]; lemma?: string; word?: string } | null): Promise<void> {
+  const c = cfgs()[id] as BookCfg; const m = H.books().find(x => x.id === c.mod); if (!m || !document.getElementById('p-' + id)) return;
+  if (!bookState.has(id)) await openBookMod(id, c.mod, c.tid);
+  if (m.kind === 'commentary' && !key) { const r = H.ref(); const t = m.forVerse(r.b, r.c, r.v); if (t && t.id !== c.tid) showBookTopic(id, t.id); return; }
+  if (m.kind === 'dictionary' && key) {
+    for (const k of [...(key.strong || []), key.lemma, key.word].filter((x): x is string => !!x)) { const e = await m.lookup(k); if (e) { if (e.id !== c.tid) showBookTopic(id, e.id); return; } }
+  }
 }
 const count = (id: string) => { const sec = document.getElementById('p-' + id)!; sec.querySelector('.vcount')!.textContent = `${bookState.get(id)?.rows.length || 0} topics`; };
 async function openBookMod(id: string, mod: string, tid: Topic['id'] | null): Promise<void> {
