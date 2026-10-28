@@ -17,7 +17,15 @@ export interface BookMod {
   topics(): Promise<Topic[]>; topic(id: number | string): Promise<Entry | null>;
   forVerse(b: number, c: number, v: number): Hit | null; verseMarks(b: number, c: number): Set<number>;
   lookup(key: string): Promise<Entry | null>; today(m: number, d: number): Promise<Topic[]>; searchTopics(q: string): Promise<Topic[]>;
+  /** every topic as plain text, for searching (read in one go; progress 0..1) */
+  texts?(progress?: (f: number) => void): Promise<TopicText[]>;
 }
+export interface TopicText { id: number | string; subject: string; text: string }
+/** html → plain text without a DOM (fast enough for whole modules) */
+export function plain(html: string): string {
+  return html.replace(/<(br|p|div|li|h\d|tr)\b[^>]*>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&amp;/g, '&').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+}
+const tick = () => new Promise(r => setTimeout(r, 0));
 
 const BOOK_EXT = /\.(twm|cmt[xi]|dct[xi]|lex[xi]|top[xi]|ref[xi]|dev[xi])$/i;
 export function isBookFile(name: string): boolean { return BOOK_EXT.test(name) && !/\.(xrefs|rdp)\.twm$/i.test(name); }
@@ -128,6 +136,25 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
     if (!t && b2) t = (await inflate(b2)) || text(data2);
     return t;
   }
+  async function texts(progress?: (f: number) => void): Promise<TopicText[]> {
+    const list = await topics(); const subj = new Map(list.map(t => [t.id, t.subject]));
+    const all = await rows(f.path, 'select topic_id, data, data2 from content');
+    const cts = new Map<unknown, string>();
+    if (hasCT) for (const [id, ct] of await rows(f.path, `select id, content_type from ${tabs.topics}`)) if (ct) cts.set(id, String(ct).toLowerCase());
+    const zl = (b: Uint8Array | null) => !!b && b.length > 2 && b[0] === 0x78 && [0x01, 0x5e, 0x9c, 0xda].includes(b[1]);
+    const out: TopicText[] = [];
+    for (let i = 0; i < all.length; i++) {
+      const [id, data, data2] = all[i]; if (subj.size && !subj.has(id as number)) continue;
+      const b1 = bytes(data), b2 = bytes(data2); let t = '';
+      if (compressed && b2) t = (await inflate(b2)) || '';
+      if (!t && data != null) { t = text(data); if (!/^\s*[{<]/.test(t) && b1 && (compressed || zl(b1))) t = (await inflate(b1)) || t; }
+      if (!t && b2) t = (await inflate(b2)) || text(data2);
+      const ct = cts.get(id) || defType;
+      if (ct !== 'rvf' && ct !== 'meta' && !/^-8 ?RichView/.test(t)) out.push({ id: id as number, subject: subj.get(id as number) || String(id), text: plain(toHtml(t, ct)) });
+      if (i % 300 === 299) { progress?.(i / all.length); await tick(); }
+    }
+    return out;
+  }
   async function topic(id: number | string): Promise<Entry | null> {
     const list = await topics(); const t = list.find(x => x.id === id);
     const raw = await body(id); if (raw == null && !t) return null;
@@ -172,7 +199,7 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
     if (!tabs.topics) return (await topics()).filter(t => t.subject.toLowerCase().includes(q.toLowerCase())).slice(0, 300);
     return (await rows(f.path, `select id, pid, subject from ${tabs.topics} where subject like ? order by (subject like ?) desc, subject limit 300`, ['%' + q + '%', q + '%'])).map(([id, pid, s]) => ({ id: id as number, pid: (pid as number) || 0, subject: text(s) }));
   }
-  return Object.assign(mod, { locked: false, topics, topic, forVerse, verseMarks, lookup, today, searchTopics });
+  return Object.assign(mod, { locked: false, topics, topic, forVerse, verseMarks, lookup, today, searchTopics, texts });
 }
 
 /* ------------------------------------------------------------------ e-Sword */
@@ -272,8 +299,24 @@ async function openESword(f: ModFile, tabs: Record<string, string>, stub: BookMo
     for (const k of strongKeys(key, true)) { const it = byKey.get(k.toLowerCase()); if (it) return topic(it.id); }
     return null;
   }
+  async function texts(progress?: (f: number) => void): Promise<TopicText[]> {
+    const out: TopicText[] = []; const groups = new Map<string, Item[]>();
+    for (const it of items) { const k = it.table + '|' + it.col; if (!groups.has(k)) groups.set(k, []); groups.get(k)!.push(it); }
+    let n = 0;
+    for (const [k, list] of groups) {
+      const [table, col] = k.split('|'); const byRow = new Map(list.map(i => [i.rowid, i]));
+      for (const [rowid, v] of await rows(f.path, `select rowid, ${col} from ${table}`)) {
+        const it = byRow.get(rowid as number); if (!it) continue;
+        let raw = ''; const b = bytes(v);
+        if (b) { const t = text(v); raw = (!/^[\s\S]{0,40}[{<\w]/.test(t) || t.includes('\ufffd')) ? ((await inflate(b)) || t) : t; } else raw = text(v);
+        if (raw && (raw.match(/[\u0000-\u0008\ufffd]/g) || []).length <= 3) out.push({ id: it.id, subject: it.subject, text: plain(esw.eswordToHtml(raw)) });
+        if (++n % 300 === 0) { progress?.(n / items.length); await tick(); }
+      }
+    }
+    return out;
+  }
   return Object.assign(mod, {
-    locked: false, topic, forVerse, verseMarks, lookup,
+    locked: false, topic, forVerse, verseMarks, lookup, texts,
     topics: async () => items.map(({ id, pid, subject }) => ({ id, pid, subject })),
     today: async (m: number, d: number) => items.filter(i => i.md && +i.md[0] === m && +i.md[1] === d).map(({ id, pid, subject }) => ({ id, pid, subject })),
     searchTopics: async (q: string) => { const l = q.toLowerCase(); return items.filter(i => i.subject.toLowerCase().includes(l)).sort((a, b) => Number(b.subject.toLowerCase().startsWith(l)) - Number(a.subject.toLowerCase().startsWith(l))).slice(0, 300).map(({ id, pid, subject }) => ({ id, pid, subject })); },

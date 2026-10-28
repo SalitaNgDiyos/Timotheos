@@ -6,9 +6,13 @@ import TWRender from './legacy/render.js';
 import canon from './legacy/canon.js';
 import type { Bible } from './bibles';
 import type { BookMod, Topic } from './books';
-import { esc } from './ui';
+import { dialog, esc } from './ui';
 import { icon } from './icons';
 import { booksOf, openPicker } from './picker';
+import { applyMarks, bodyHtml } from './annotate';
+import { exportTopics } from './export';
+import { printHtml } from './tools';
+import { createSearchView, moduleSets, modsOfSet, searchViewClosed, searchViewShown } from './search';
 
 export interface ViewsHost {
   bibles(): Bible[]; openBibles(): Bible[]; books(): BookMod[]; bibleStyle(m: Bible): string; hiddenBibles(): string[];
@@ -45,6 +49,10 @@ export function addBibleView(): string {
   const id = newId('bible'); const r = H.ref(); const open = H.openBibles()[0];
   cfgs()[id] = { bible: (H.bibles().find(b => b !== open) || open)?.id || '', follow: true, b: r.b, c: r.c }; H.save(); return id;
 }
+/** another search panel */
+export function addSearchView(): string {
+  const id = newId('search'); cfgs()[id] = { search: true } as unknown as BookCfg; H.save(); return id;
+}
 export function addBookView(): string {
   const id = newId('book'); cfgs()[id] = { mod: '', tid: null }; H.save(); return id;
 }
@@ -53,21 +61,23 @@ export function viewTitle(id: string): string {
   const c = cfgs()[id];
   if (id.startsWith('bible-')) { const b = H.bibles().find(x => x.id === (c as BibleCfg)?.bible); return b ? b.abbr : 'Bible'; }
   if (id.startsWith('book-')) { const m = H.books().find(x => x.id === (c as BookCfg)?.mod); return m ? (m.abbr || m.title).slice(0, 18) : 'Book'; }
+  if (id.startsWith('search-')) return 'Search ' + (+id.slice(7) + 1);
   return id;
 }
-export function viewClosed(id: string): void { delete cfgs()[id]; H.save(); }
+export function viewClosed(id: string): void { if (id.startsWith('search-')) searchViewClosed(id); delete cfgs()[id]; H.save(); }
 
 /** the section of a panel this module makes (null: not one of ours) */
 export function createView(id: string): HTMLElement | null {
   const sec = document.createElement('section'); sec.className = 'ptab hidden'; sec.id = 'p-' + id;
-  if (id !== 'dict' && !(/^(bible|book)-\d+$/.test(id) && cfgs()[id])) return null;
+  if (id !== 'dict' && !(/^(bible|book|search)-\d+$/.test(id) && cfgs()[id])) return null;
   park().appendChild(sec); // in the page before it is wired
   if (id === 'dict') sec.innerHTML = '<div id="dictBody" class="pbody entrybody"><p class="hint">Rest the mouse on a word with a Strong\'s number or morphology code: its dictionary entry shows here.</p></div>';
   else if (/^bible-\d+$/.test(id) && cfgs()[id]) {
     sec.innerHTML = `<div class="vbar"><select class="vbible" title="Bible"></select><button class="ib vpick" title="Books and chapters: choose where to read">${icon('tree', 16)}</button><button class="ib vprevc" title="Previous chapter">${icon('prev', 16)}</button><button class="ib vnextc" title="Next chapter">${icon('next', 16)}</button><label class="vfollow" title="Follow the main Bible text (untick to read elsewhere in this Bible)"><input type="checkbox" class="vfol"> follow</label></div><div class="vtext pbody"></div>`;
     wireBible(id, sec);
+  } else if (/^search-\d+$/.test(id)) { sec.classList.add('searchview'); createSearchView(sec, id);
   } else if (/^book-\d+$/.test(id) && cfgs()[id]) {
-    sec.innerHTML = `<div class="vbar"><select class="vmod" title="Module"></select><button class="ib vprev" title="Previous topic">‹</button><button class="ib vnext" title="Next topic">›</button><label class="vfollow vfolb" title="A commentary follows the verse you read; a dictionary follows the word you point at"><input type="checkbox" class="vfol"> follow</label></div><div class="libsplit"><div class="libside"><input class="vfilter" type="search" placeholder="Find a topic…" spellcheck="false"><ul class="vtopics"></ul><div class="vcount small"></div></div><div class="lsplit" title="Drag to make the topic list wider or narrower"></div><div class="vbody pbody entrybody"><p class="hint">Choose a commentary, dictionary or book.</p></div></div>`;
+    sec.innerHTML = `<div class="vbar"><select class="vset" title="Module set: which modules to choose from"></select><select class="vmod" title="Module"></select><button class="ib vprev" title="Previous topic">‹</button><button class="ib vnext" title="Next topic">›</button><button class="ib vprint" title="Print this topic">${icon('print', 15)}</button><button class="ib vexport" title="Export this topic or the whole module">${icon('import', 15)}</button><label class="vfollow vfolb" title="A commentary follows the verse you read; a dictionary follows the word you point at"><input type="checkbox" class="vfol"> follow</label></div><div class="libsplit"><div class="libside"><input class="vfilter" type="search" placeholder="Find a topic…" spellcheck="false"><ul class="vtopics"></ul><div class="vcount small"></div></div><div class="lsplit" title="Drag to make the topic list wider or narrower"></div><div class="vbody pbody entrybody"><p class="hint">Choose a commentary, dictionary or book.</p></div></div>`;
     wireBook(id, sec);
   }
   return sec;
@@ -76,6 +86,7 @@ export function createView(id: string): HTMLElement | null {
 export function viewShown(id: string): void {
   if (id.startsWith('bible-')) renderBible(id);
   if (id.startsWith('book-')) fillMods(id);
+  if (id.startsWith('search-')) searchViewShown(id);
 }
 /** modules were read again */
 export function viewsReload(): void {
@@ -137,13 +148,19 @@ const ROW = 24;
 const bookState = new Map<string, { rows: { id: Topic['id']; subject: string }[]; all: Topic[] }>();
 function fillMods(id: string): void {
   const sec = document.getElementById('p-' + id)!; const c = cfgs()[id] as BookCfg; const sel = sec.querySelector<HTMLSelectElement>('.vmod')!;
-  const mods = H.books().filter(m => !m.locked);
+  const sets = moduleSets(); const ss = sec.querySelector<HTMLSelectElement>('.vset')!;
+  ss.innerHTML = '<option value="all">All</option>' + (Object.keys(sets).length ? `<optgroup label="Module sets">${Object.keys(sets).map(n => `<option value="set:${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>` : '');
+  ss.value = (c as BookCfg & { set?: string }).set || 'all'; if (ss.selectedIndex < 0) ss.value = 'all';
+  ss.classList.toggle('hidden', !Object.keys(sets).length);
+  const inSet = new Set(modsOfSet(ss.value).map(m => m.id));
+  const mods = H.books().filter(m => !m.locked && (inSet.has(m.id) || m.id === c.mod));
   sel.innerHTML = '<option value="">Choose a module…</option>' + ['commentary', 'dictionary', 'book', 'devotional', 'map'].map(k => { const l = mods.filter(m => m.kind === k).sort((a, b) => a.title.localeCompare(b.title)); return l.length ? `<optgroup label="${KIND[k]}">${l.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join('')}</optgroup>` : ''; }).join('');
   sel.value = c.mod;
   if (c.mod && !bookState.has(id)) openBookMod(id, c.mod, c.tid);
 }
 function wireBook(id: string, sec: HTMLElement): void {
   const c = cfgs()[id] as BookCfg;
+  sec.querySelector<HTMLSelectElement>('.vset')!.onchange = e => { (c as BookCfg & { set?: string }).set = (e.target as HTMLSelectElement).value; H.save(); fillMods(id); };
   sec.querySelector<HTMLSelectElement>('.vmod')!.onchange = e => { c.mod = (e.target as HTMLSelectElement).value; c.tid = null; H.save(); H.retitle(); openBookMod(id, c.mod, null); };
   const ul = sec.querySelector<HTMLElement>('.vtopics')!;
   ul.onscroll = () => drawTopics(id);
@@ -154,6 +171,12 @@ function wireBook(id: string, sec: HTMLElement): void {
     st.rows = (q ? await m.searchTopics(q) : st.all).map(t => ({ id: t.id, subject: t.subject || '(untitled)' })); ul.scrollTop = 0; drawTopics(id); count(id);
   }, 180); };
   const step = (d: number) => { const st = bookState.get(id); if (!st) return; const i = st.rows.findIndex(r => r.id === c.tid); const j = Math.max(0, Math.min(st.rows.length - 1, i < 0 ? 0 : i + d)); if (st.rows[j]) showBookTopic(id, st.rows[j].id); };
+  sec.querySelector<HTMLElement>('.vprint')!.onclick = () => { const e = sec.querySelector('.vbody .entry'); if (!e) return; const c2 = e.cloneNode(true) as HTMLElement; const h = c2.querySelector('h4')?.textContent || ''; c2.querySelector('h4')?.remove(); printHtml(h, c2.innerHTML); };
+  sec.querySelector<HTMLElement>('.vexport')!.onclick = async () => {
+    const m = H.books().find(x => x.id === c.mod); if (!m) return; const all = await m.topics();
+    const r = all.length > 1 ? await dialog('Export topics', `<p>What should be exported from <b>${esc(m.title)}</b>?</p>`, [{ label: 'Cancel', value: null }, { label: `All ${all.length} topics`, value: 'all' }, ...(c.tid != null ? [{ label: 'This topic', value: 'one', primary: true }] : [])]) : 'one';
+    if (r) exportTopics(r === 'all' ? all.map(t => ({ mod: m, id: t.id })) : [{ mod: m, id: c.tid! }], H.clean);
+  };
   const fb = sec.querySelector<HTMLInputElement>('.vfol')!; fb.checked = !!c.follow; fb.onchange = () => { c.follow = fb.checked; H.save(); if (c.follow) followBook(id, null); };
   sec.querySelector<HTMLElement>('.vprev')!.onclick = () => step(-1); sec.querySelector<HTMLElement>('.vnext')!.onclick = () => step(1);
   fillMods(id);
@@ -190,7 +213,7 @@ async function showBookTopic(id: string, tid: Topic['id']): Promise<void> {
   const t = await m.topic(tid); if (!t) return;
   c.tid = tid; H.save();
   const body = sec.querySelector<HTMLElement>('.vbody')!;
-  body.innerHTML = `<div class="entry"><h4>${esc(t.subject)}</h4><div class="src">${esc(m.title)}</div>${H.clean(t.html) || '<p class="hint">(empty)</p>'}</div>`; body.scrollTop = 0;
+  body.innerHTML = `<div class="entry"><h4>${esc(t.subject)}</h4><div class="src">${esc(m.title)}</div>${bodyHtml(m.id, t.id, H.clean(t.html) || '<p class="hint">(empty)</p>')}</div>`; applyMarks(body); body.scrollTop = 0;
   const st = bookState.get(id); const ul = sec.querySelector<HTMLElement>('.vtopics')!;
   if (st) { const i = st.rows.findIndex(r => r.id === tid); if (i >= 0 && (i * ROW < ul.scrollTop || i * ROW > ul.scrollTop + ul.clientHeight - ROW)) ul.scrollTop = Math.max(0, i * ROW - ul.clientHeight / 2); }
   drawTopics(id);

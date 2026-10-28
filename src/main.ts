@@ -6,10 +6,17 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { readFile } from '@tauri-apps/plugin-fs';
 import { Bible, Locked, isBibleFile, isLocked, openBible } from './bibles';
-import { BookMod, guessKind, isBookFile, openBook } from './books';
+import { BookMod, Topic, guessKind, isBookFile, openBook } from './books';
 import type { ModFile } from './native';
-import { commentaryMarks, followBookLink, initPanel, morphEntry, libCurrent, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
-import { find, forgetSearchCache, initSearch } from './search';
+import { commentaryMarks, followBookLink, initPanel, morphEntry, openLib, libCurrent, libTopicId, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
+import { bookHitOf, find, forgetSearchCache, initSearch } from './search';
+import { exportTopics } from './export';
+import { initClipmon, clipOn, clipTestReader, setClipmon } from './clipmon';
+import { exportForTest } from './export';
+import { strFromU8, unzipSync } from 'fflate';
+import { openImage, printHtml, viewerOpen } from './tools';
+import { initAnnotate } from './annotate';
+import { defineModuleSets } from './search';
 import { firstOriginal, translit } from './translit';
 import { legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
 import { addToList, afterRender, copyVerse, initStudy, saveUD } from './study';
@@ -18,7 +25,7 @@ import { bibleTarget, linkRefs, wireRefPreview } from './refs';
 import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
 import { copyText, dialog, flash } from './ui';
 import { PRESETS as DOCK_PRESETS, Layout, PANELS, close as closePanel, isHiddenAll, isOpen, layout as currentLayout, openPanel, openPanels, retitle, setHidden, setLayout, titleOf } from './dock';
-import { addBibleView, addBookView, initViews, viewsReload } from './views';
+import { addBibleView, addBookView, addSearchView, initViews, viewsReload } from './views';
 import { icon } from './icons';
 import { openPicker } from './picker';
 import { openGuide } from './guide';
@@ -174,7 +181,8 @@ async function go(b: number, c: number, v = 1): Promise<void> {
   }
   const view = $('#view'); const keepTop = view.scrollTop; view.innerHTML = html; view.scrollTop = rerendering ? keepTop : 0;
   afterRender(bk.id, c);
-  decorateFootnotes(list); if (show.lemma) showLemmas();
+  decorateFootnotes(list); if (show.columns) columnWords(my); else if (show.lemma) showLemmas();
+  $('#view').classList.toggle('colmode', !!show.columns);
   if (show.xrefs && !show.paragraph) await decorateXrefs(bk.id, c, my);
   if (!rerendering && (S.ref.v || 1) > 1) { const el = view.querySelector(`[data-v="${S.ref.v}"]`); if (el) el.scrollIntoView({ block: 'center' }); }
   updateCommentary(); rerendering = false;
@@ -192,6 +200,45 @@ function decorateFootnotes(list: Bible[]): void {
     if (items.length) lists.push(`<div class="fnl">${list.length > 1 ? `<h5>${esc(m.abbr)}</h5>` : ''}<ol>${items.join('')}</ol></div>`);
   });
   if (S.look.fnPlace === 'chapter' && lists.length) view.insertAdjacentHTML('beforeend', `<section class="fnlist"><h4>Footnotes</h4>${lists.join('')}</section>`);
+}
+/** column text (theWord's Column Text View): each tagged word stands over its original word, transliteration,
+ *  Strong's number, morphology and lemma, like an interlinear */
+type ColSettings = { colLines?: Record<string, boolean> };
+const COL_LINES: [string, string][] = [['orig', 'Original word'], ['tl', 'Transliteration'], ['strong', "Strong's number"], ['morph', 'Morphology'], ['lemma', 'Lemma']];
+const colOn = (k: string) => ((S as unknown as ColSettings).colLines || {})[k] !== false;
+const origCache = new Map<string, string>();
+async function originalFor(key: string): Promise<string> {
+  const ck = key + '|' + JSON.stringify(WS().dictPref || {});
+  if (origCache.has(ck)) return origCache.get(ck)!;
+  const hit = await strongEntry(key); let o = '';
+  if (hit) { const t = document.createElement('div'); t.innerHTML = hit.html; o = firstOriginal(hit.subject + ' ' + (t.textContent || '').slice(0, 400), /^H/i.test(key) ? 'hebrew' : 'greek'); }
+  origCache.set(ck, o); return o;
+}
+function columnWords(my: number): void {
+  const words = [...$('#view').querySelectorAll<HTMLElement>('span.word[data-strong], span.word[data-morph], span.word[data-lemma]')];
+  const need: [HTMLElement, string][] = [];
+  for (const w of words) {
+    const st = (w.dataset.strong || '').split(/\s+/).filter(Boolean); const lem = w.dataset.lemma || '';
+    const box = document.createElement('span'); box.className = 'cw'; w.replaceWith(box); box.appendChild(w);
+    const line = (cls: string, txt: string, attrs: Record<string, string> = {}) => { const e = document.createElement('span'); e.className = 'cl ' + cls; e.textContent = txt; for (const [a, v] of Object.entries(attrs)) e.setAttribute(a, v); box.appendChild(e); return e; };
+    if (colOn('orig')) { const o = line('cl-orig', lem); if (!lem && st[0]) need.push([o, st[0]]); }
+    if (colOn('tl')) line('cl-tl', lem ? translit(lem) : '');
+    if (colOn('strong') && st.length) line('cl-strong', st.join(' '), { 'data-strong': st.join(' ') });
+    if (colOn('morph') && w.dataset.morph) line('cl-morph', w.dataset.morph, { 'data-morph': w.dataset.morph });
+    if (colOn('lemma') && lem) line('cl-lemma', lem, { 'data-lemma': lem });
+  }
+  // the original word from the Strong's dictionary, where the Bible gives no lemma (read after the text is on screen)
+  // the selected verse first, then the rest; several lookups at a time
+  const sv = String(S.ref.v || 1); need.sort((a, b) => Number(b[0].closest<HTMLElement>('[data-v]')?.dataset.v === sv) - Number(a[0].closest<HTMLElement>('[data-v]')?.dataset.v === sv));
+  const keys = [...new Set(need.map(n => n[1]))];
+  (async () => {
+    for (let i = 0; i < keys.length; i += 24) {
+      if (my !== seq) return;
+      await Promise.all(keys.slice(i, i + 24).map(originalFor));
+      const pk = '|' + JSON.stringify(WS().dictPref || {});
+      for (const [el, k] of need) if (origCache.has(k + pk) && !el.textContent) { const o = origCache.get(k + pk)!; el.textContent = o; const tl = el.nextElementSibling; if (tl && tl.classList.contains('cl-tl') && !tl.textContent) tl.textContent = translit(o); }
+    }
+  })();
 }
 /** lemmas shown after the words that carry one */
 function showLemmas(): void {
@@ -295,10 +342,12 @@ async function showWord(el: HTMLElement, pinned = false): Promise<void> {
   let html = '';
   if (el.matches('a.xr')) html = await versePreview(el.dataset.ref!);
   else if (el.matches('sup.fn')) html = `<div class="entry"><div class="src">Footnote</div>${TWRender.render(el.dataset.note || '', { rules: [] }, { ...S.show, footnotes: false })}</div>`;
+  else if (el.matches('li.bhit')) { const h = bookHitOf(el); const e = h && await h.mod.topic(h.id); if (e) html = `<div class="entry"><h4>${esc(e.subject)}</h4><div class="src">${esc(h!.mod.title)}</div>${clean(e.html)}</div>`; }
+  else if (el.dataset.wl) html = await wordLookup(el.dataset.wl, el.dataset.wlLemma || '');
   else if (keys.length || el.dataset.morph) html = await lookup(keys, (el.dataset.morph || '').split(/\s+/).filter(Boolean), el.dataset.lemma || '');
   if (!html) return;
-  if (!el.matches('a.xr, sup.fn')) document.dispatchEvent(new CustomEvent('tanglaw-word', { detail: html }));
-  if (!el.matches('a.xr, sup.fn')) document.dispatchEvent(new CustomEvent('tanglaw-key', { detail: { strong: keys, lemma: el.dataset.lemma || '', word: (el.textContent || '').trim() } }));
+  if (!el.matches('a.xr, sup.fn, li.bhit')) document.dispatchEvent(new CustomEvent('tanglaw-word', { detail: html }));
+  if (!el.matches('a.xr, sup.fn, li.bhit') && !el.dataset.wl) document.dispatchEvent(new CustomEvent('tanglaw-key', { detail: { strong: keys, lemma: el.dataset.lemma || '', word: (el.textContent || '').trim() } }));
   if (isPhone()) { $('#sheetBody').innerHTML = html; $('#sheet').classList.add('open'); return; }
   if (popWord !== el) return; // the mouse moved on meanwhile
   const p = $('#popup'); p.innerHTML = popTools(el) + html; p.scrollTop = 0; p.classList.toggle('pinned', popKeep);
@@ -311,6 +360,79 @@ async function showWord(el: HTMLElement, pinned = false): Promise<void> {
   const x = Math.min(Math.max(8, r.left), W - p.offsetWidth - 8); let y = r.bottom + 6;
   if (y + p.offsetHeight > H - 8) y = Math.max(8, r.top - p.offsetHeight - 6);
   p.style.left = x + 'px'; p.style.top = y + 'px';
+}
+
+/* ---------------------------------------------------------------- word lookup dictionaries */
+// theWord: rest the mouse on any word of the Bible text to see its entry in the dictionaries you choose (key D)
+type WLSettings = { wordLook?: { on?: boolean; dicts?: string[]; all?: boolean; lemma?: boolean } };
+const WL = () => { const w = S as unknown as WLSettings; return (w.wordLook = w.wordLook || {}); };
+/** forms of an English word to try: the word, then without common endings */
+function wordForms(w: string): string[] {
+  const l = w.toLowerCase(); const out = [w, l];
+  const add = (x: string) => { if (x.length > 2 && !out.includes(x)) out.push(x); };
+  if (/'s$/.test(l)) add(l.slice(0, -2));
+  if (/ies$/.test(l)) add(l.slice(0, -3) + 'y');
+  if (/(ches|shes|sses|xes|zes)$/.test(l)) add(l.slice(0, -2));
+  if (/s$/.test(l) && !/ss$/.test(l)) add(l.slice(0, -1));
+  for (const e of ['eth', 'est', 'ed', 'ing', 'edst', 'th']) if (l.endsWith(e)) { const st = l.slice(0, -e.length); add(st); add(st + 'e'); if (/(.)\1$/.test(st)) add(st.slice(0, -1)); if (/i$/.test(st)) add(st.slice(0, -1) + 'y'); }
+  if (/ly$/.test(l)) add(l.slice(0, -2));
+  return out;
+}
+async function wordLookup(word: string, lemma: string): Promise<string> {
+  const wl = WL(); const ids = wl.dicts || [];
+  const dicts = ids.map(id => books.find(b => b.id === id)).filter((d): d is BookMod => !!d && !d.locked);
+  const parts: string[] = [];
+  const keys = [...(wl.lemma && lemma ? [lemma] : []), ...wordForms(word)];
+  for (const d of dicts) {
+    for (const k of keys) { const e = await d.lookup(k); if (e) { parts.push(`<div class="entry"><h4>${esc(e.subject)}</h4><div class="src">${esc(d.title)}</div>${clean(e.html)}</div>`); break; } }
+    if (parts.length && !wl.all) break;
+  }
+  return parts.join('');
+}
+/** the word under the mouse in the Bible text (letters and apostrophes), with its place on screen */
+function wordAt(x: number, y: number): { word: string; rect: DOMRect; lemma: string } | null {
+  const d = document as unknown as { caretRangeFromPoint?: (x: number, y: number) => Range | null; caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null };
+  let node: Node | null = null, off = 0;
+  if (d.caretRangeFromPoint) { const r = d.caretRangeFromPoint(x, y); if (r) { node = r.startContainer; off = r.startOffset; } }
+  else if (d.caretPositionFromPoint) { const p = d.caretPositionFromPoint(x, y); if (p) { node = p.offsetNode; off = p.offset; } }
+  if (!node || node.nodeType !== 3) return null;
+  const t = node.textContent || ''; const isL = (c: string) => /[\p{L}\p{M}'’]/u.test(c);
+  let a = off, b = off; while (a > 0 && isL(t[a - 1])) a--; while (b < t.length && isL(t[b])) b++;
+  const word = t.slice(a, b).replace(/^['’]+|['’]+$/g, ''); if (word.length < 2) return null;
+  const rg = document.createRange(); rg.setStart(node, a); rg.setEnd(node, b); const rect = rg.getBoundingClientRect();
+  if (x < rect.left - 2 || x > rect.right + 2 || y < rect.top - 2 || y > rect.bottom + 2) return null;
+  const owner = (node.parentElement as HTMLElement | null)?.closest<HTMLElement>('[data-lemma]');
+  return { word, rect, lemma: owner?.dataset.lemma || '' };
+}
+let wlAt = '', wlT = 0;
+function wordLookMove(e: MouseEvent): void {
+  const wl = WL(); if (!wl.on || !(wl.dicts || []).length || isPhone()) return;
+  const t = e.target as HTMLElement;
+  if (!t.closest('#view .vt, #view td[data-col], #view .pv, #view .vrow') || t.closest('[data-strong], [data-morph], sup, a, .vn, .cl')) { if (wlAt) { wlAt = ''; clearTimeout(wlT); popupLeaveSoon(); } return; }
+  const w = wordAt(e.clientX, e.clientY);
+  const key = w ? w.word + '@' + Math.round(w.rect.left) + ',' + Math.round(w.rect.top) : '';
+  if (key === wlAt) return;
+  wlAt = key; clearTimeout(wlT); if (!w) { popupLeaveSoon(); return; }
+  wlT = window.setTimeout(() => {
+    let a = document.getElementById('wlAnchor'); if (!a) { a = document.createElement('span'); a.id = 'wlAnchor'; document.body.appendChild(a); }
+    Object.assign(a.style, { position: 'fixed', left: w.rect.left + 'px', top: w.rect.top + 'px', width: w.rect.width + 'px', height: w.rect.height + 'px', pointerEvents: 'none' });
+    a.dataset.wl = w.word; a.dataset.wlLemma = w.lemma; showWord(a);
+  }, 450);
+}
+async function wordLookDialog(): Promise<void> {
+  const wl = WL(); const ds = books.filter(d => d.kind === 'dictionary' && !d.locked && !d.isMorph);
+  let order = (wl.dicts || []).filter(id => ds.some(d => d.id === id));
+  const html = `<p class="small">Rest the mouse on a word of the Bible text to see it in these dictionaries. Tick the ones to use; the first that has the word is shown${''}.</p><div class="wldicts">${ds.map(d => `<label><input type="checkbox" data-wld="${esc(d.id)}" ${order.includes(d.id) ? 'checked' : ''}> ${esc(d.title)}${d.isStrong ? ' <span class="small">(Strong\'s)</span>' : ''}</label>`).join('') || '<p class="hint">No dictionaries yet.</p>'}</div>
+    <label class="ck"><input type="checkbox" id="wlAll" ${wl.all ? 'checked' : ''}> Show every dictionary that has the word, not only the first</label>
+    <label class="ck"><input type="checkbox" id="wlLem" ${wl.lemma ? 'checked' : ''}> If the word has a lemma, look up the lemma</label>
+    <label class="ck"><input type="checkbox" id="wlOn" ${wl.on ? 'checked' : ''}> Word lookup on (key D)</label>`;
+  const r = await dialog('Word lookup dictionaries', html, [{ label: 'Cancel', value: null }, { label: 'Done', value: 'ok', primary: true }], b => {
+    b.querySelectorAll<HTMLInputElement>('[data-wld]').forEach(cb => cb.onchange = () => { order = cb.checked ? [...order, cb.dataset.wld!] : order.filter(x => x !== cb.dataset.wld); });
+    b.querySelector<HTMLInputElement>('#wlAll')!.onchange = e => { wl.all = (e.target as HTMLInputElement).checked; };
+    b.querySelector<HTMLInputElement>('#wlLem')!.onchange = e => { wl.lemma = (e.target as HTMLInputElement).checked; };
+    b.querySelector<HTMLInputElement>('#wlOn')!.onchange = e => { wl.on = (e.target as HTMLInputElement).checked; };
+  });
+  if (r === 'ok') { wl.dicts = order; if (order.length && wl.on == null) wl.on = true; save(); optMenu(); }
 }
 
 /* ---------------------------------------------------------------- menus & pickers */
@@ -379,6 +501,22 @@ function skinMenu(): void {
     `<button data-skin="${id}" class="${S.skin === id ? 'on' : ''}"><span class="sw" style="background:linear-gradient(135deg, ${s.v.textbg} 0 50%, ${s.v['cap-bible']} 50%)"></span>${s.name}</button>`).join('');
   $('#skinMenu').querySelectorAll<HTMLButtonElement>('[data-skin]').forEach(b => b.onclick = () => { S.skin = b.dataset.skin!; applyLook(S.skin, S.fontSize, S.look); save(); skinMenu(); });
 }
+/** switches defined by the open Bibles themselves (theWord "user toggles"), e.g. V for variants */
+function customToggleList(): { name: string; label: string; abbr: string }[] {
+  const out: { name: string; label: string; abbr: string }[] = [];
+  for (const m of openBibles()) for (const n of TWRender.customToggles(m) as string[]) {
+    if (out.some(x => x.name === n)) continue;
+    const p = m.props || {}; const k = Object.keys(p).find(k => /toggle/i.test(k) && k.toLowerCase().endsWith('.' + n.toLowerCase()));
+    out.push({ name: n, label: (k ? p[k] : '').trim(), abbr: m.abbr });
+  }
+  return out;
+}
+function customOn(n: string): boolean { const c = (S.show as unknown as { custom?: Record<string, boolean> }).custom || {}; return c[n] !== false; }
+function setCustom(n: string, on: boolean): void { const sh = S.show as unknown as { custom?: Record<string, boolean> }; sh.custom = { ...(sh.custom || {}), [n]: on }; save(); go(S.ref.b, S.ref.c, S.ref.v); }
+function moduleToggles(): string {
+  const l = customToggleList(); if (!l.length) return '';
+  return '<div class="msep"></div><div class="mh">This Bible\'s own switches</div>' + l.map(t => `<label title="Defined by ${esc(t.abbr)}${t.name.length === 1 ? ` – key ${esc(t.name.toUpperCase())}` : ''}"><input type="checkbox" data-ctog="${esc(t.name)}" ${customOn(t.name) ? 'checked' : ''}> ${esc(t.label || t.name)}${t.label ? ` <span class="small">${esc(t.name)}</span>` : ''}</label>`).join('');
+}
 /** a choice of dictionary for word popups (theWord: which Strong's dictionary for Greek and for Hebrew) */
 function dictPick(k: 'greek' | 'hebrew' | 'morph', label: string, f: (d: BookMod) => boolean): string {
   const ds = books.filter(d => d.kind === 'dictionary' && !d.locked && f(d)); if (ds.length < 2) return '';
@@ -388,8 +526,11 @@ function dictPick(k: 'greek' | 'hebrew' | 'morph', label: string, f: (d: BookMod
 /** the Options menu: what to show, text size, order of the books, the Options window */
 function optMenu(): void {
   const m = $('#optMenu');
-  m.innerHTML = '<div class="mh">Show</div>' + [['strongs', "Strong's numbers"], ['morph', 'Morphology'], ['footnotes', 'Footnotes'], ['headings', 'Headings'], ['woj', 'Words of Jesus in red'], ['added', 'Added words in italics'], ['xrefs', 'Cross-references'], ['highlights', 'My highlighting'], ['notes', 'My notes under the verses'], ['lemma', 'Lemmas'], ['paragraph', 'Paragraph mode (P)']]
+  m.innerHTML = '<div class="mh">Show</div>' + [['strongs', "Strong's numbers"], ['morph', 'Morphology'], ['footnotes', 'Footnotes'], ['headings', 'Headings'], ['woj', 'Words of Jesus in red'], ['added', 'Added words in italics'], ['xrefs', 'Cross-references'], ['highlights', 'My highlighting'], ['notes', 'My notes under the verses'], ['lemma', 'Lemmas'], ['paragraph', 'Paragraph mode (P)'], ['columns', 'Column text – words over their originals (Alt+I)']]
       .map(([k, l]) => `<label><input type="checkbox" data-show="${k}" ${S.show[k] ? 'checked' : ''}> ${l}</label>`).join('') +
+    (S.show.columns ? '<div class="mh">Column text lines</div>' + COL_LINES.map(([k, l]) => `<label class="sub"><input type="checkbox" data-coll="${k}" ${colOn(k) ? 'checked' : ''}> ${l}</label>`).join('') : '') +
+    moduleToggles() +
+    `<div class="msep"></div><label><input type="checkbox" id="mWl" ${WL().on ? 'checked' : ''}> Word lookup (D)</label><button id="mWlD" class="sub">Word lookup dictionaries…</button>` +
     '<div class="msep"></div><div class="mh">Word popups</div>' +
     `<label><input type="checkbox" id="mOrig" ${S.show.origWord !== false ? 'checked' : ''}> Original word and transliteration</label>` +
     `<label><input type="radio" name="mwo" data-wo="morph" ${WS().wordOrder !== 'strong' ? 'checked' : ''}> Morphology first</label><label><input type="radio" name="mwo" data-wo="strong" ${WS().wordOrder === 'strong' ? 'checked' : ''}> Strong's entry first</label>` +
@@ -398,22 +539,58 @@ function optMenu(): void {
     `<div class="msep"></div><div class="mrow">Text size <button data-fs="-1">A−</button><b class="fsv">${S.fontSize}</b><button data-fs="1">A+</button></div>` +
     '<div class="msep"></div><div class="mh">Order of the books</div>' + [['1611', '1611 King James (Apocrypha between)'], ['nets', 'Septuagint – NETS'], ['orthodox', 'Greek Orthodox']].map(([k, l]) => `<label><input type="radio" name="mord" data-ord="${k}" ${S.look.bookOrder === k ? 'checked' : ''}> ${l}</label>`).join('') +
     `<div class="msep"></div><button id="mOpts">Options… <kbd>Ctrl+,</kbd></button>`;
+  m.querySelectorAll<HTMLInputElement>('[data-coll]').forEach(cb => cb.onchange = () => { const cs = S as unknown as ColSettings; cs.colLines = { ...(cs.colLines || {}), [cb.dataset.coll!]: cb.checked }; save(); go(S.ref.b, S.ref.c, S.ref.v); });
+  m.querySelector<HTMLInputElement>('#mWl')!.onchange = e => { WL().on = (e.target as HTMLInputElement).checked; save(); if (WL().on && !(WL().dicts || []).length) { m.classList.add('hidden'); wordLookDialog(); } };
+  m.querySelector<HTMLButtonElement>('#mWlD')!.onclick = () => { m.classList.add('hidden'); wordLookDialog(); };
+  m.querySelectorAll<HTMLInputElement>('[data-ctog]').forEach(cb => cb.onchange = () => setCustom(cb.dataset.ctog!, cb.checked));
   m.querySelector<HTMLInputElement>('#mOrig')!.onchange = e => { S.show.origWord = (e.target as HTMLInputElement).checked; save(); };
   m.querySelector<HTMLInputElement>('#mPopAll')!.onchange = e => { WS().popAll = (e.target as HTMLInputElement).checked; save(); };
   m.querySelectorAll<HTMLInputElement>('[data-wo]').forEach(r => r.onchange = () => { WS().wordOrder = r.dataset.wo as 'morph' | 'strong'; save(); });
   m.querySelectorAll<HTMLSelectElement>('[data-dpref]').forEach(sel => sel.onchange = () => { WS().dictPref = { ...(WS().dictPref || {}), [sel.dataset.dpref!]: sel.value || undefined }; save(); });
   m.querySelector<HTMLButtonElement>('#mOpts')!.onclick = () => { m.classList.add('hidden'); openOptions(); };
-  m.querySelectorAll<HTMLInputElement>('[data-show]').forEach(cb => cb.onchange = () => { S.show[cb.dataset.show!] = cb.checked; save(); go(S.ref.b, S.ref.c, S.ref.v); });
+  m.querySelectorAll<HTMLInputElement>('[data-show]').forEach(cb => cb.onchange = () => { S.show[cb.dataset.show!] = cb.checked; save(); go(S.ref.b, S.ref.c, S.ref.v); if (cb.dataset.show === 'columns') optMenu(); });
   m.querySelectorAll<HTMLButtonElement>('[data-fs]').forEach(b => b.onclick = () => { S.fontSize = Math.max(12, Math.min(34, S.fontSize + +b.dataset.fs!)); document.documentElement.style.setProperty('--size', S.fontSize + 'px'); save(); m.querySelector('.fsv')!.textContent = String(S.fontSize); });
   m.querySelectorAll<HTMLInputElement>('[data-ord]').forEach(r => r.onchange = () => { S.look.bookOrder = r.dataset.ord as Look['bookOrder']; save(); canon.setOrder(S.look.bookOrder); buildNav(); go(S.ref.b, S.ref.c, S.ref.v); viewsReload(); });
+}
+/** the Tools menu */
+function toolsMenu(): void {
+  const m = $('#toolsMenu'); const lm = libCurrent();
+  m.innerHTML = '<div class="mh">Tools</div>' +
+    `<label><input type="checkbox" id="tClip" ${clipOn() ? 'checked' : ''}> Clipboard monitor</label>` +
+    '<button id="tWl">Word lookup dictionaries…</button><button id="tSets">Module sets…</button>' +
+    '<div class="msep"></div><button id="tPrint">Print the chapter <kbd>Ctrl+P</kbd></button>' +
+    (lm ? `<button id="tPrintT">Print the Library topic</button><button id="tExp">Export from ${esc(lm.abbr || lm.title)}…</button>` : '');
+  const hide = () => m.classList.add('hidden');
+  m.querySelector<HTMLInputElement>('#tClip')!.onchange = e => setClipmon((e.target as HTMLInputElement).checked);
+  m.querySelector<HTMLButtonElement>('#tWl')!.onclick = () => { hide(); wordLookDialog(); };
+  m.querySelector<HTMLButtonElement>('#tSets')!.onclick = () => { hide(); defineModuleSets(); };
+  m.querySelector<HTMLButtonElement>('#tPrint')!.onclick = () => { hide(); printChapter(); };
+  const pt = m.querySelector<HTMLButtonElement>('#tPrintT'); if (pt) pt.onclick = () => { hide(); printTopic($('#libBody')); };
+  const ex = m.querySelector<HTMLButtonElement>('#tExp'); if (ex) ex.onclick = () => { hide(); exportLib(); };
+}
+function printChapter(): void {
+  const v = $('#view').cloneNode(true) as HTMLElement; v.querySelectorAll('.xrefs, .noterow, .unote, .noteicon, .fnlist').forEach(x => x.remove());
+  printHtml(`${canon.book(S.ref.b).name} ${S.ref.c}${openBibles().length ? ' – ' + openBibles().map(b => b.abbr).join(', ') : ''}`, v.innerHTML);
+}
+function printTopic(body: HTMLElement): void {
+  const e = body.querySelector('.entry'); if (!e) return flash('Open a topic first');
+  const c = e.cloneNode(true) as HTMLElement; const h = c.querySelector('h4')?.textContent || ''; c.querySelector('h4')?.remove();
+  printHtml(h, c.innerHTML);
+}
+async function exportLib(m = libCurrent(), tid: Topic['id'] | null = libTopicId()): Promise<void> {
+  if (!m) return;
+  const all = await m.topics();
+  const r = all.length > 1 ? await dialog('Export topics', `<p>What should be exported from <b>${esc(m.title)}</b>?</p>`, [{ label: 'Cancel', value: null }, { label: `All ${all.length} topics`, value: 'all' }, ...(tid != null ? [{ label: 'This topic', value: 'one', primary: true }] : [])]) : (tid != null ? 'one' : 'all');
+  if (!r) return;
+  exportTopics(r === 'all' ? all.map(t => ({ mod: m, id: t.id })) : [{ mod: m, id: tid! }], clean);
 }
 /** the Layouts menu: open and close panels, add Bible and book views, layouts */
 function layoutMenu(): void {
   const m = $('#layoutMenu'); const saved = (S as unknown as { layouts?: Record<string, Layout> }).layouts || {};
   const extra = openPanels().filter(p => !PANELS.includes(p));
   m.innerHTML = '<div class="mh">Panels</div>' + PANELS.map(p => `<label><input type="checkbox" data-pan="${p}" ${isOpen(p) ? 'checked' : ''}> ${esc(titleOf(p))}</label>`).join('') +
-    extra.map(p => `<label><input type="checkbox" data-pan="${esc(p)}" checked> ${esc(p.startsWith('bible-') ? 'Bible view: ' : 'Book view: ')}${esc(titleOf(p))}</label>`).join('') +
-    '<div class="msep"></div><button id="mAddBible">+ New Bible view</button><button id="mAddBook">+ New book view</button>' +
+    extra.map(p => `<label><input type="checkbox" data-pan="${esc(p)}" checked> ${esc(p.startsWith('bible-') ? 'Bible view: ' : p.startsWith('search-') ? '' : 'Book view: ')}${esc(titleOf(p))}</label>`).join('') +
+    '<div class="msep"></div><button id="mAddBible">+ New Bible view</button><button id="mAddBook">+ New book view</button><button id="mAddSearch">+ New search view</button>' +
     `<button id="mHideAll">${isHiddenAll() ? 'Show the panels' : 'Hide all panels'}</button>` +
     '<div class="msep"></div><div class="mh">Layouts</div>' + Object.entries(DOCK_PRESETS).map(([k, [l]]) => `<button data-pre="${k}">${esc(l)}</button>`).join('') +
     Object.keys(saved).map(n => `<div class="mrow lrow"><button data-lay="${esc(n)}">${esc(n)}</button><i class="ldel" data-del="${esc(n)}" title="Delete this layout">×</i></div>`).join('') +
@@ -422,6 +599,7 @@ function layoutMenu(): void {
   const add = (id: string) => { m.classList.add('hidden'); openPanel(id); };
   m.querySelector<HTMLElement>('#mAddBible')!.onclick = () => add(addBibleView());
   m.querySelector<HTMLElement>('#mAddBook')!.onclick = () => add(addBookView());
+  m.querySelector<HTMLElement>('#mAddSearch')!.onclick = () => add(addSearchView());
   m.querySelector<HTMLElement>('#mHideAll')!.onclick = () => { S.sideHidden = !isHiddenAll(); save(); setHidden(!!S.sideHidden); m.classList.add('hidden'); };
   m.querySelectorAll<HTMLElement>('[data-pre]').forEach(b => b.onclick = () => { m.classList.add('hidden'); setLayout(DOCK_PRESETS[b.dataset.pre!][1]); S.sideHidden = false; save(); });
   m.querySelectorAll<HTMLElement>('[data-lay]').forEach(b => b.onclick = () => { m.classList.add('hidden'); setLayout(saved[b.dataset.lay!]); S.sideHidden = false; save(); });
@@ -438,7 +616,7 @@ function toggleMenu(id: string, fill: () => void): void {
   if (!was) {
     fill(); m.classList.remove('hidden');
     // a menu on the right side opens under its own button
-    const btn = { '#skinMenu': '#skinBtn', '#optMenu': '#optBtn', '#layoutMenu': '#sideBtn' }[id];
+    const btn = { '#skinMenu': '#skinBtn', '#optMenu': '#optBtn', '#layoutMenu': '#sideBtn', '#toolsMenu': '#toolsBtn' }[id];
     if (btn && !isPhone()) { const r = $(btn).getBoundingClientRect(); m.style.left = 'auto'; m.style.right = Math.max(6, innerWidth - r.right) + 'px'; }
   }
 }
@@ -515,6 +693,13 @@ async function init(): Promise<void> {
   $('#biblesBtn').onclick = e => { e.stopPropagation(); toggleMenu('#bibleMenu', bibleMenu); };
   $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', skinMenu); };
   $('#optBtn').onclick = e => { e.stopPropagation(); toggleMenu('#optMenu', optMenu); };
+  $('#toolsBtn').onclick = e => { e.stopPropagation(); toggleMenu('#toolsMenu', toolsMenu); };
+  $('#libPrint').innerHTML = icon('print', 16); $('#libExport').innerHTML = icon('import', 16);
+  $('#libPrint').onclick = () => printTopic($('#libBody'));
+  $('#libExport').onclick = () => exportLib();
+  // an image in a module: the graphics viewer
+  document.addEventListener('click', e => { const im = (e.target as HTMLElement).closest<HTMLImageElement>('.entrybody img, .entry img, #popup img, .clipwin img'); if (im) { e.preventDefault(); openImage(im); } }, true);
+  initAnnotate();
   $('#emptyImport').onclick = importModules;
   $('#helpBtn').onclick = () => openGuide();
   // the books & chapters icon on the Bible text's caption
@@ -533,18 +718,21 @@ async function init(): Promise<void> {
     sp.addEventListener('pointermove', mv); sp.addEventListener('pointerup', up);
   });
   $('#copyBtn').onclick = () => copyDialog({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 });
-  document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('.menu, .tbtn')) document.querySelectorAll('.menu').forEach(x => x.classList.add('hidden')); if (!popKeep && !(e.target as HTMLElement).closest('#popup, [data-strong], [data-morph], sup.fn, a.xr')) hidePopup(); });
+  document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('.menu, .tbtn')) document.querySelectorAll('.menu').forEach(x => x.classList.add('hidden')); if (!popKeep && !(e.target as HTMLElement).closest('#popup, [data-strong], [data-morph], sup.fn, a.xr, li.bhit')) hidePopup(); });
   $('#sheet').addEventListener('click', e => { if (e.target === $('#sheet') || (e.target as HTMLElement).closest('.grab')) $('#sheet').classList.remove('open'); });
   // words: hover (mouse) or tap (touch)
   let timer = 0;
   document.addEventListener('mouseover', e => {
-    if (isPhone() || !(e.target as HTMLElement).closest?.('#view, #searchResults')) return;
-    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn, a.xr'); clearTimeout(timer);
+    if (isPhone() || !(e.target as HTMLElement).closest?.('#view, .s-results')) return;
+    const bh = (e.target as HTMLElement).closest<HTMLElement>('li.bhit .r, li.bhit .snip')?.closest<HTMLElement>('li.bhit');
+    const t = bh || (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn, a.xr'); clearTimeout(timer);
     if (t) timer = window.setTimeout(() => showWord(t), 300);
   });
+  $('#view').addEventListener('mousemove', wordLookMove);
+  $('#view').addEventListener('mouseleave', () => { if (wlAt) { wlAt = ''; clearTimeout(wlT); popupLeaveSoon(); } });
   document.addEventListener('mouseout', e => {
-    if (!(e.target as HTMLElement).closest?.('#view, #searchResults')) return;
-    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn, a.xr'); if (!t) return;
+    if (!(e.target as HTMLElement).closest?.('#view, .s-results')) return;
+    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn, a.xr, li.bhit'); if (!t) return;
     const to = e.relatedTarget as Node | null; if (to && (t.contains(to) || $('#popup').contains(to))) return;
     clearTimeout(timer); popupLeaveSoon();
   });
@@ -583,7 +771,8 @@ async function init(): Promise<void> {
   });
   wireRefPreview(versePreview);
   // the study panel (Commentary, Library, Search)
-  initSearch({ openBibles, allBibles: () => bibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, settings: () => S as unknown as Record<string, unknown>, save });
+  initSearch({ openBibles, allBibles: () => bibles, books: () => books, openTopic: (mod, id) => { showPanel('lib'); openLib(mod, id); }, exportTopics: items => exportTopics(items, clean), ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, settings: () => S as unknown as Record<string, unknown>, save });
+  initClipmon({ bibles: () => bibles, openBibles, go, settings: () => S as unknown as Record<string, unknown>, save, show: () => S.show, style: bibleStyle });
   initViews({ bibles: () => bibles, openBibles, books: () => books, nav: () => nav, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, show: () => S.show, clean, showWord, settings: () => S as unknown as Record<string, unknown>, save, retitle, bibleStyle, hiddenBibles: () => BS().hiddenBibles || [] });
   initPanel({ books: () => books, openBibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, clean, save, settings: () => S as unknown as Record<string, unknown> });
   initCopy({ nav: () => nav, openBibles, save: saveUD });
@@ -608,14 +797,19 @@ async function init(): Promise<void> {
     if (e.ctrlKey && k.toLowerCase() === 'l') { e.preventDefault(); return addToList([cur]); }
     if (e.ctrlKey && k.toLowerCase() === 'c' && !String(window.getSelection())) { e.preventDefault(); copyVerse(cur); return; }
     if (e.ctrlKey && k === ',') { e.preventDefault(); return openOptions(); }
+    if (e.ctrlKey && k.toLowerCase() === 'p') { e.preventDefault(); return printChapter(); }
+    if (viewerOpen()) return;
     if (k === 'F1') { e.preventDefault(); return openGuide(); }
     if (k === 'F5') { e.preventDefault(); copyDialog(cur); return; }
     if (e.ctrlKey && k === 'ArrowLeft') { e.preventDefault(); return stepBook(-1); }
     if (e.ctrlKey && k === 'ArrowRight') { e.preventDefault(); return stepBook(1); }
+    if (e.altKey && !e.ctrlKey && k.toLowerCase() === 'i') { e.preventDefault(); S.show.columns = !S.show.columns; save(); optMenu(); return void go(S.ref.b, S.ref.c, S.ref.v); }
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     if (k === 'ArrowLeft') return step(-1);
     if (k === 'ArrowRight') return step(1);
     if (k === 'ArrowUp' || k === 'ArrowDown') { e.preventDefault(); return selectVerse(cur.v + (k === 'ArrowUp' ? -1 : 1)); }
+    if (k === 'd' || k === 'D') { const wl = WL(); wl.on = !wl.on; save(); optMenu(); if (wl.on && !(wl.dicts || []).length) return void wordLookDialog(); flash(wl.on ? 'Word lookup on' : 'Word lookup off'); return; }
+    if (k.length === 1 && /[a-z]/i.test(k)) { const t = customToggleList().find(x => x.name.length === 1 && x.name.toLowerCase() === k.toLowerCase()); if (t) { setCustom(t.name, !customOn(t.name)); optMenu(); flash(`${t.label || t.name}: ${customOn(t.name) ? 'on' : 'off'}`); return; } }
     if (k === 'p' || k === 'P') { S.show.paragraph = !S.show.paragraph; save(); optMenu(); flash(S.show.paragraph ? 'Paragraph mode' : 'Verse by verse'); return void go(S.ref.b, S.ref.c, S.ref.v); }
     if (d != null) { // typing a number goes to that verse (Shift: chapter)
       clearTimeout(typedT); typed += String(d);
@@ -634,6 +828,6 @@ async function init(): Promise<void> {
   w.__tanglawFirst = Math.round(performance.now());
   await openRest(); viewsReload();
   w.__tanglawReady = Math.round(performance.now());
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked };
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked, clipTestReader, setClipmon, docxText: (html: string) => strFromU8(unzipSync(exportForTest.docx(html))['word/document.xml']), rtfOf: exportForTest.rtf };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });

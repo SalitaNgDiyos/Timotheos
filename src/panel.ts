@@ -1,6 +1,7 @@
 // The study panel: Commentary (follows the selected verse), Library (any commentary, dictionary, book or
 // devotional) and Search. On a computer it sits beside the Bible text; on a phone it opens over it.
 import { focusSearch } from './search';
+import { applyMarks, bodyHtml } from './annotate';
 import { DEFAULT_LAYOUT, PANELS, activate, initDock, layout, visible } from './dock';
 import { createView, viewClosed, viewShown, viewTitle } from './views';
 import canon from './legacy/canon.js';
@@ -75,7 +76,7 @@ export async function updateCommentary(): Promise<void> {
   const t = await sel.m.topic(sel.hit.id);
   if (my !== cseq) return;
   const lvl = { verse: '', passage: 'Comment on the passage', chapter: 'Comment on the whole chapter', book: 'Introduction to the book' }[sel.hit.level];
-  body.innerHTML = `<div class="entry"><h4>${esc(sel.hit.subject)}</h4><div class="src">${esc(sel.m.title)}${lvl ? ' · ' + lvl : ''}</div>${t ? H.clean(t.html) : ''}</div>`;
+  body.innerHTML = `<div class="entry"><h4>${esc(sel.hit.subject)}</h4><div class="src">${esc(sel.m.title)}${lvl ? ' · ' + lvl : ''}</div>${t ? bodyHtml(sel.m.id, sel.hit.id, H.clean(t.html)) : ''}</div>`; applyMarks(body);
   body.scrollTop = 0;
 }
 /** verses of the chapter that have a comment (for the small "c" marks) */
@@ -148,7 +149,7 @@ async function showTopic(tid: Topic['id'], addHistory = true): Promise<void> {
   const m = H.books().find(x => x.id === lib.cur); if (!m) return;
   const t = await m.topic(tid); if (!t) return;
   if (addHistory) { lib.history.push({ id: m.id, tid }); if (lib.history.length > 100) lib.history.shift(); }
-  $('#libBody').innerHTML = `<div class="entry"><h4>${esc(t.subject)}</h4><div class="src">${esc(m.title)}</div>${H.clean(t.html) || '<p class="hint">(empty)</p>'}</div>`;
+  $('#libBody').innerHTML = `<div class="entry"><h4>${esc(t.subject)}</h4><div class="src">${esc(m.title)}</div>${bodyHtml(m.id, t.id, H.clean(t.html) || '<p class="hint">(empty)</p>')}</div>`; applyMarks($('#libBody'));
   $('#libBody').scrollTop = 0;
   curTid = tid; showRow(tid);
   document.body.classList.add('lib-reading');
@@ -197,3 +198,4 @@ export async function reloadLib(): Promise<void> {
   updateCommentary();
 }
 export const libCurrent = () => H.books().find(m => m.id === lib.cur);
+export const libTopicId = () => curTid;

@@ -29,7 +29,10 @@ export function dialog(title: string, html: string, buttons: Btn[], onOpen?: (bo
 }
 
 /** copy text (and HTML where the system allows) */
+/** the last text Tanglaw itself put on the clipboard (the clipboard monitor ignores it) */
+export let lastCopied = '';
 export async function copyText(text: string, html?: string): Promise<void> {
+  lastCopied = text;
   try {
     if (html && 'ClipboardItem' in window) {
       await navigator.clipboard.write([new ClipboardItem({ 'text/plain': new Blob([text], { type: 'text/plain' }), 'text/html': new Blob([html], { type: 'text/html' }) })]);

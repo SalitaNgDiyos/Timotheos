@@ -8,7 +8,7 @@ import { ModFile, ontInfo, ontSlice, sql, text } from './native';
 export interface Bible {
   id: string; file: string; format: 'theWord' | 'e-Sword'; abbr: string; title: string;
   books: Map<number, number[]>;          // book → verse count per chapter
-  rules: string[]; rtl: boolean; font: string; warnings: string[];
+  rules: string[]; rtl: boolean; font: string; warnings: string[]; props?: Record<string, string>;
   chapter(b: number, c: number): Promise<{ v: number; raw: string }[]>;
   /** every verse as [book, chapter, verse, raw] (for searching; read once, then kept) */
   allVerses(): Promise<[number, number, number, string][]>;
@@ -42,7 +42,7 @@ async function openOnt(f: ModFile): Promise<Bible> {
   for (let b = b0; b <= b1; b++) books.set(b, canon.kjvChapters(b));
   let allCache: [number, number, number, string][] | null = null;
   return {
-    id: 'tw:' + f.name, file: f.path, format: 'theWord', rules, warnings: [],
+    id: 'tw:' + f.name, file: f.path, format: 'theWord', rules, warnings: [], props,
     abbr: (props['short.title'] || f.name.replace(/\.[^.]+$/, '')).trim(),
     title: (props.title || props.description || props['short.title'] || f.name).split('\n')[0].trim(),
     rtl: props.r2l === '1', font: props.font || '', books,

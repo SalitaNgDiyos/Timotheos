@@ -92,3 +92,15 @@ export function wireRefPreview(preview: (ref: string) => Promise<string>): void 
   document.addEventListener('mousedown', hide, true);
   document.addEventListener('scroll', hide, true);
 }
+
+/** every Bible reference in a piece of plain text (for the clipboard monitor) */
+export function findRefs(text: string): { b: number; c: number; v: number; v2?: number; label: string }[] {
+  const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const out: { b: number; c: number; v: number; v2?: number; label: string }[] = [];
+  for (const m of linkText(esc).matchAll(/data-href="tw:\/\/bible\.\*\?id=(\d+)\.(\d+)\.(\d+)(?:-\d+\.\d+\.(\d+))?">([^<]*)<\/a>/g)) {
+    const r = { b: +m[1], c: +m[2], v: +m[3], v2: m[4] ? +m[4] : undefined, label: '' };
+    r.label = `${canon.book(r.b).name} ${r.c}:${r.v}${r.v2 ? '–' + r.v2 : ''}`;
+    if (!out.some(x => x.label === r.label)) out.push(r);
+  }
+  return out;
+}

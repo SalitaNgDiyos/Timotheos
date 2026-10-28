@@ -166,6 +166,12 @@
         case '<NB>': case '<Nb>': case '<ST>': case '<St>': continue;
       }
       let m;
+      // switchable text: <NB toggle=name>…<Nb>, <ST toggle=name>…<St> – hidden while the module's switch is off
+      if (/^<(NB|ST)\s/.test(t)) {
+        const tg = attr(t, 'toggle'); const close = t.startsWith('<NB') ? '<Nb>' : '<St>';
+        if (tg && !toggleOn(tg, show)) { let depth = 0; k++; while (k < toks.length && !(toks[k] === close && depth === 0)) { if (toks[k].startsWith(t.slice(0, 3))) depth++; else if (toks[k] === close) depth--; k++; } }
+        continue;
+      }
       if ((m = /^<PI(\d?)>$/.exec(t)) || t === '<Pi>') { const lvl = t === '<Pi>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (cur.html.replace(/<[^>]*>/g, '').trim()) newPara('pi'); cur.pi = lvl ? 20 + 20 * lvl : 0; continue; }
       if ((m = /^<PF(\d?)>$/.exec(t)) || t === '<Pf>') { const lvl = t === '<Pf>' ? 0 : (m[1] === '' ? 1 : +m[1]); cur.pf = 20 * lvl; continue; }
       if (/^<a\s/i.test(t)) {
@@ -223,7 +229,15 @@
     return out;
   }
 
-  const api = { render, hrefMeta, toggleOn };
+  /** the module's own switches: toggle names in its rules that are not the standard ones */
+  function customToggles(mod) {
+    const out = new Set();
+    for (const r of compile(mod)) {
+      for (const t of [r.toggle, ...(String(r.rep).match(/toggle\s*=\s*"?\^?[\w]+/g) || []).map(x => x.replace(/^toggle\s*=\s*"?/, ''))]) { if (!t) continue; const n = t.replace(/^\^/, ''); if (!NAMED_TOGGLES[n.toLowerCase()]) out.add(n); }
+    }
+    return [...out];
+  }
+  const api = { render, hrefMeta, toggleOn, customToggles };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TWRender = api;
 })(typeof window !== 'undefined' ? window : globalThis);

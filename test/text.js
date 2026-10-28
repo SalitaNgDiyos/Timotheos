@@ -120,7 +120,7 @@
     rr[0].dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); await sleep(900);
     ok(!pop.classList.contains('hidden') && /love/i.test(pop.textContent), 'pointing at a reference shows the verse: ' + pop.textContent.replace(/\s+/g, ' ').slice(0, 70));
     rr[0].dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body })); await sleep(400);
-    ok(S.searchView === 'refs', 'the references view is remembered');
+    ok((S.search || {}).searchView === 'refs', 'the references view is remembered');
   } catch (e) { ok(false, 'error ' + e.message + ' ' + (e.stack || '').split('\n')[1]); }
   await report();
 })();

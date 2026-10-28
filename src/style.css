@@ -416,3 +416,50 @@ sup.lemma { font: italic 400 .62em var(--font-text); color: var(--muted); margin
 #searchResults.refview .rgh { font: 600 12.5px var(--font-ui); margin-bottom: 3px; } #searchResults.refview .rgh .n { color: var(--muted); font-weight: 400; margin-left: 4px; }
 #searchResults .rref { display: inline-block; padding: 1px 5px; margin: 1px; border-radius: 4px; font: 12.5px var(--font-ui); cursor: pointer; background: color-mix(in srgb, var(--accent) 9%, transparent); }
 #searchResults .rref:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+/* column text: words over their originals */
+#view.colmode .vt, #view.colmode td, #view.colmode .pcol { line-height: 1.25; }
+#view.colmode .cw { display: inline-flex; flex-direction: column; vertical-align: top; margin: 0 3px 8px 0; }
+#view.colmode .cw .cl { font: 0.72em/1.25 var(--font-ui); color: var(--muted); white-space: nowrap; min-height: 1.25em; }
+#view.colmode .cw .cl-orig { font: 0.95em/1.3 'TwGreek', 'TwHebrew', var(--font-text); color: var(--text, inherit); }
+#view.colmode .cw .cl-tl { font-style: italic; }
+#view.colmode .cw .cl-strong, #view.colmode .cw .cl-morph, #view.colmode .cw .cl-lemma { cursor: pointer; color: var(--accent); }
+#view.colmode sup.strong, #view.colmode sup.morph { display: none; }
+.menu label.sub { padding-left: 26px; }
+/* clipboard monitor */
+.clipwin { position: fixed; right: 16px; bottom: 16px; width: min(460px, 92vw); max-height: 50vh; display: flex; flex-direction: column; z-index: 58; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.25); resize: both; overflow: hidden; min-width: 260px; min-height: 120px; }
+.clipwin.hidden { display: none; }
+.clipwin .ccap { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); cursor: move; font: 13px var(--font-ui); background: var(--cap-search, var(--tool)); }
+.clipwin .ccap b { flex: 1; }
+.clipwin .cbody { overflow: auto; padding: 6px 12px; font: 15px/1.5 var(--font-text); }
+.clipwin .cref { margin: 4px 0; } .clipwin .cgo { font: 600 12.5px var(--font-ui); cursor: pointer; color: var(--accent); margin-right: 4px; }
+/* search panels: Bibles / Books */
+.smode { margin: 6px 8px 0; } .sb-book { display: none; } .bookmode .sb-book { display: revert; } .bookmode .sb-bible { display: none; }
+.bookmode .srow.sb-book { display: flex; }
+.results .mgroup { list-style: none; font: 600 12.5px var(--font-ui); padding: 8px 4px 2px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.results .bhit .snip { font-size: .9em; color: var(--muted); }
+.mslist { max-height: 46vh; overflow: auto; columns: 2; } .mslist h5 { margin: 8px 0 2px; break-after: avoid; } .mslist label { display: block; break-inside: avoid; }
+/* graphics viewer */
+.gview { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.82); display: flex; flex-direction: column; }
+.gview.hidden { display: none; }
+.gview .gbar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--card); border-bottom: 1px solid var(--line); font: 13px var(--font-ui); }
+.gview .gcap { flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gview .gstage { flex: 1; overflow: hidden; display: grid; place-items: center; cursor: grab; touch-action: none; }
+.gview .gstage.drag { cursor: grabbing; }
+.gview .gimg { max-width: none; user-select: none; -webkit-user-drag: none; image-rendering: auto; }
+.entrybody img, .entry img, #popup img { max-width: 100%; cursor: zoom-in; }
+/* printing: only the chosen part */
+#printArea { display: none; }
+@media print {
+  body > *:not(#printArea) { display: none !important; }
+  #printArea { display: block !important; color: #000; background: #fff; font: 12pt/1.5 'Gentium Plus', Georgia, serif; }
+  #printArea .ptitle { font-size: 16pt; margin: 0 0 10pt; }
+  #printArea table.chap { width: 100%; border-collapse: collapse; } #printArea td { vertical-align: top; padding: 2pt 6pt; }
+  #printArea .vn, #printArea .vno { color: #555; } #printArea sup.strong.hide, #printArea sup.morph.hide { display: none; }
+  #printArea a { color: inherit; text-decoration: none; }
+}
+/* marks in book topics */
+.abar { position: fixed; z-index: 75; display: flex; gap: 2px; padding: 3px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.2); font: 12px var(--font-ui); }
+.abar.hidden { display: none; }
+.abar button { min-width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 5px; cursor: pointer; background: var(--card); color: inherit; }
+.abar button.hl-bold, .abar button.hl-ul { background: var(--card); }
+.bookmode .results { list-style: none; padding-left: 4px; }

@@ -22,12 +22,14 @@
   <span class="drag" data-tauri-drag-region></span>
   <button id="skinBtn" class="tbtn" title="Skin and view"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.8 1.7-1.7 0-.5-.2-.8-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2z"/></svg><span class="lbl">Skin</span></button>
   <button id="helpBtn" class="tbtn" title="User guide (F1)" aria-label="User guide"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17v.01"/></svg></button>
+  <button id="toolsBtn" class="tbtn desk" title="Tools: clipboard monitor, word lookup, module sets, print, export"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg><span class="lbl">Tools</span></button>
   <button id="optBtn" class="tbtn" title="Options: what to show, text size, order of the books, the Options window"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span class="lbl">Options</span></button>
   <button id="sideBtn" class="tbtn desk" title="Layouts: which panels are open, add panels, saved layouts"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M3 14h12"/></svg><span class="lbl">Layouts</span></button>
   <span class="winbtns desk"><button id="wMin" aria-label="Minimise"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M1 6h10" stroke="currentColor"/></svg></button><button id="wMax" aria-label="Maximise"><svg viewBox="0 0 12 12" width="11" height="11"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor"/></svg></button><button id="wClose" class="x" aria-label="Close"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor"/></svg></button></span>
   <div id="bibleMenu" class="menu hidden"></div>
   <div id="skinMenu" class="menu right hidden"></div>
   <div id="optMenu" class="menu right hidden"></div>
+  <div id="toolsMenu" class="menu right hidden"></div>
   <div id="layoutMenu" class="menu right hidden"></div>
 </header>
 <div id="work">
@@ -48,7 +50,8 @@
       <button id="libProps" class="ib" title="Properties of this module" aria-label="Properties"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
       <button id="libBack" class="ib" title="Back" aria-label="Back"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
       <button id="libPrev" class="ib" title="Previous topic" aria-label="Previous topic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <button id="libNext" class="ib" title="Next topic" aria-label="Next topic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button></div>
+      <button id="libNext" class="ib" title="Next topic" aria-label="Next topic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button id="libPrint" class="ib" title="Print this topic" aria-label="Print"></button><button id="libExport" class="ib" title="Export this topic or the whole module (Word, RTF, web page, text)" aria-label="Export"></button></div>
     <div class="libsplit"><div class="libside"><input id="libFilter" type="search" placeholder="Find a topic…" spellcheck="false"><ul id="libTopics" tabindex="0"></ul><div id="libCount" class="small"></div></div><div class="lsplit" title="Drag to make the topic list wider or narrower"></div>
       <div id="libBody" class="pbody entrybody"><p class="hint">Choose a commentary, dictionary or book.</p></div></div>
   </section>

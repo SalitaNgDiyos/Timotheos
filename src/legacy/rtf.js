@@ -72,6 +72,24 @@ function rtfToHtml(rtf, opts = {}) {
   let i = 0; const n = rtf.length; let ucSkip = 0;
   while (i < n) {
     const ch = rtf[i];
+    if (ch === '{' && (rtf.startsWith('\\pict', i + 1) || rtf.startsWith('\\*\\shppict', i + 1))) {
+      // a picture: PNG and JPEG pictures become images (other kinds, e.g. Windows metafiles, are left out)
+      let d = 0, j = i;
+      for (; j < n; j++) { const c = rtf[j]; if (c === '\\') { j++; continue; } if (c === '{') d++; else if (c === '}' && --d === 0) break; }
+      const grp = rtf.slice(i, j + 1); i = j + 1;
+      const kind = /\\(pngblip|jpegblip)/.exec(grp);
+      if (kind && !st.skip) {
+        const pict = grp.slice(grp.indexOf(kind[0]));
+        const body = pict.replace(/\{\\\*[^{}]*\}/g, '').replace(/\\[a-z]+-?\d* ?/gi, '').replace(/[^0-9a-f]/gi, '');
+        const end = body.length - (body.length % 2); let bin = '';
+        for (let k = 0; k < end; k += 2) bin += String.fromCharCode(parseInt(body.substr(k, 2), 16));
+        const wg = /\\picwgoal(\d+)/.exec(pict), sx = /\\picscalex(\d+)/.exec(pict);
+        const w = wg ? Math.round(+wg[1] / 15 * (sx ? +sx[1] / 100 : 1)) : 0;
+        const b64 = typeof btoa === 'function' ? btoa(bin) : Buffer.from(bin, 'binary').toString('base64');
+        if (bin.length > 16) { closeSpan(); out += `<img class="rtfimg" src="data:image/${kind[1] === 'pngblip' ? 'png' : 'jpeg'};base64,${b64}"${w ? ` style="width:${w}px"` : ''} alt="">`; }
+      }
+      continue;
+    }
     if (ch === '{') {
       flushBytes();
       stack.push({ ...st, fieldDepth: field ? field.depth : null });
