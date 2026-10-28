@@ -63,7 +63,7 @@
     $('#biblesBtn').click(); await sleep(200);
     $(`#bibleMenu [data-down="${kjv.id}"]`).click(); await sleep(400);
     ok(S.open[0] === lt.id && S.open[1] === kjv.id, 'Bibles menu ↓ moves a Bible to the right: ' + S.open.map(id => T.bibles().find(b => b.id === id).abbr).join(', '));
-    ok(view.querySelector('[data-col="0"]') && /LTNT/.test(view.querySelector('.ab, th, .pabbr') ? view.textContent.slice(0, 400) : view.textContent.slice(0, 400)), 'the text follows the new order');
+    ok(view.querySelector('table.chap th:nth-child(2)')?.textContent === lt.abbr, 'the text follows the new order: first column ' + view.querySelector('table.chap th:nth-child(2)')?.textContent);
     $(`#bibleMenu [data-hide="${plain.id}"]`).click(); await sleep(200);
     ok(S.hiddenBibles.includes(plain.id) && !$(`#bibleMenu input[data-id="${plain.id}"]`), 'a Bible can be hidden from the list');
     $('#mShowHid').click(); await sleep(200);
