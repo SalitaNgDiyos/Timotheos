@@ -27,14 +27,17 @@
   <div id="skinMenu" class="menu right hidden"></div>
 </header>
 <div id="work">
+<aside id="zone-left" class="zone desk-zone"></aside><div class="dsplit v desk" data-z="left" title="Drag to resize"></div>
+<div id="mid">
 <main id="center">
   <div class="cap"><span id="capRef"></span><span class="grow"></span><span id="timing" class="small"></span></div>
   <div id="view" class="view" tabindex="0"></div>
   <div id="empty" class="empty hidden"><h2>No Bibles yet</h2><p>Import theWord (.ont, .ot, .nt) or e-Sword (.bblx, .bbli) Bibles. Add a Strong's dictionary (.dct.twm, .lexi, .dctx) to see word meanings.</p><button id="emptyImport" class="primary">Import modules…</button></div>
 </main>
-<div id="sideSplit" class="desk" title="Drag to make the panel wider or narrower"></div>
-<aside id="side">
-  <div class="ptabs"><button data-ptab="cmt">Commentary</button><button data-ptab="lib">Library</button><button data-ptab="search">Search</button><button data-ptab="study">My Study</button><span class="grow"></span><button id="sideClose" class="phoneonly" aria-label="Close">✕</button></div>
+<div class="dsplit h desk" data-z="bottom" title="Drag to resize"></div><aside id="zone-bottom" class="zone desk-zone"></aside>
+</div>
+<div class="dsplit v desk" data-z="right" title="Drag to resize"></div>
+<aside id="zone-right" class="zone">
   <section class="ptab" id="p-cmt"><div class="phead" id="cmtHead"></div><div class="chips" id="cmtChips"></div><div id="cmtBody" class="pbody entrybody"></div></section>
   <section class="ptab hidden" id="p-lib">
     <div class="libbar"><select id="libMod" aria-label="Module"></select>

@@ -1,6 +1,7 @@
 // The study panel: Commentary (follows the selected verse), Library (any commentary, dictionary, book or
 // devotional) and Search. On a computer it sits beside the Bible text; on a phone it opens over it.
 import { focusSearch } from './search';
+import { DEFAULT_LAYOUT, Layout, PANELS, activate, initDock, layout, visible } from './dock';
 import canon from './legacy/canon.js';
 import { Bible } from './bibles';
 import { BookMod, Topic } from './books';
@@ -21,39 +22,39 @@ const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g,
 const KIND: Record<string, string> = { commentary: 'Commentaries', dictionary: 'Dictionaries', book: 'Books', devotional: 'Devotionals', map: 'Maps' };
 
 let H: PanelHost;
-let tab = 'cmt';
 const lib = { cur: '' as string, topics: [] as Topic[], history: [] as { id: string; tid: Topic['id'] }[] };
 let cmtSel = '';
 
 export function initPanel(host: PanelHost): void {
   H = host;
-  const st = H.settings() as { panelTab?: string; cmtSel?: string; libCur?: string };
-  tab = st.panelTab || 'cmt'; cmtSel = st.cmtSel || ''; lib.cur = st.libCur || '';
-  document.querySelectorAll<HTMLButtonElement>('[data-ptab]').forEach(b => b.onclick = () => show(b.dataset.ptab!));
+  const st = H.settings() as { panelTab?: string; cmtSel?: string; libCur?: string; dock?: Partial<Layout>; sideHidden?: boolean };
+  cmtSel = st.cmtSel || ''; lib.cur = st.libCur || '';
+  // older settings had one panel with tabs: keep the tab that was open
+  if (!st.dock && st.panelTab && PANELS.includes(st.panelTab)) { const l = DEFAULT_LAYOUT(); l.right.active = st.panelTab; st.dock = l; }
   $('#libMod').onchange = () => openLib($<HTMLSelectElement>('#libMod').value);
   let ft = 0;
   $('#libFilter').oninput = () => { clearTimeout(ft); ft = window.setTimeout(filterTopics, 180); };
   $('#libPrev').onclick = () => stepTopic(-1); $('#libNext').onclick = () => stepTopic(1);
   $('#libBack').onclick = () => { if (lib.history.length < 2) return; lib.history.pop(); const p = lib.history[lib.history.length - 1]; if (p.id !== lib.cur) openLib(p.id, p.tid, false); else showTopic(p.tid, false); };
   $('#libTopics').addEventListener('keydown', e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); e.stopPropagation(); stepTopic(d); } });
-  show(tab, false);
+  initDock(st.dock, !!st.sideHidden, l => { (H.settings() as Record<string, unknown>).dock = l; H.save(); }, shown);
+  for (const z of ['left', 'right', 'bottom'] as const) { const a = layout()[z].active; if (a && visible(a)) shown(a, true); }
 }
 
-export function show(t: string, open = true): void {
-  tab = t; (H.settings() as Record<string, unknown>).panelTab = t; H.save();
-  document.querySelectorAll('[data-ptab]').forEach(b => b.classList.toggle('on', (b as HTMLElement).dataset.ptab === t));
-  document.querySelectorAll('.ptab').forEach(p => p.classList.toggle('hidden', p.id !== 'p-' + t));
-  if (open) document.body.classList.add('side-open');
+/** show a panel (and, on a phone, open the panel screen) */
+export function show(t: string, open = true): void { activate(t, open); }
+/** a panel came on screen: bring it up to date */
+function shown(t: string, quiet = false): void {
   if (t === 'cmt') updateCommentary();
   if (t === 'lib') { fillLibSelect(); if (lib.cur && !lib.topics.length) openLib(lib.cur); }
   if (t === 'study') renderStudy();
-  if (t === 'search') focusSearch();
+  if (t === 'search' && !quiet) focusSearch();
 }
 
 /* ---------------------------------------------------------------- Commentary */
 let cseq = 0;
 export async function updateCommentary(): Promise<void> {
-  if (tab !== 'cmt') return;
+  if (!visible('cmt')) return;
   const { b, c, v } = H.ref(); const my = ++cseq;
   const list = H.books().filter(m => m.kind === 'commentary' && !m.locked).map(m => ({ m, hit: m.forVerse(b, c, v) }));
   const bk = canon.book(b, '1611').name;
@@ -90,7 +91,7 @@ function fillLibSelect(): void {
 }
 export async function openLib(id: string, tid?: Topic['id'], addHistory = true): Promise<void> {
   const m = H.books().find(x => x.id === id); if (!m) return;
-  if (tab !== 'lib') show('lib');
+  if (!visible('lib')) activate('lib');
   if (lib.cur !== id || !lib.topics.length) {
     lib.cur = id; (H.settings() as Record<string, unknown>).libCur = id; H.save();
     lib.topics = await m.topics(); fillLibSelect(); $<HTMLInputElement>('#libFilter').value = '';
@@ -177,7 +178,7 @@ export async function followBookLink(href: string): Promise<boolean> {
 export async function reloadLib(): Promise<void> {
   const cur = lib.cur; lib.topics = []; lib.history = [];
   fillLibSelect();
-  if (cur && tab === 'lib' && H.books().some(m => m.id === cur)) await openLib(cur);
+  if (cur && visible('lib') && H.books().some(m => m.id === cur)) await openLib(cur);
   updateCommentary();
 }
 export const libCurrent = () => H.books().find(m => m.id === lib.cur);

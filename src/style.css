@@ -43,6 +43,7 @@ button.primary { background: var(--accent); color: var(--card); border-color: va
 
 /* the Bible text and the study panel */
 #work { flex: 1; min-height: 0; display: flex; }
+#mid { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 #center { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; margin: 6px; background: var(--textbg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .cap { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; background: var(--cap-bible); color: var(--captext); font: 600 16px var(--font-text); flex: none; }
 .cap .small { color: inherit; opacity: .75; font: 11px var(--font-ui); }
@@ -93,10 +94,20 @@ a.bref { border-bottom: 1px dotted currentColor; }
 .status { padding: 3px 12px; font-size: 11.5px; background: var(--tool); color: var(--tooltext); opacity: .9; flex: none; }
 .fatal { color: #c00; padding: 20px; white-space: pre-wrap; }
 
-#sideSplit { width: 6px; cursor: col-resize; flex: none; margin: 6px 0; border-radius: 3px; }
-#sideSplit:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
-#side { flex: none; width: 400px; min-width: 0; margin: 6px 6px 6px 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-body.side-hidden #side, body.side-hidden #sideSplit { display: none; }
+.dsplit { flex: none; border-radius: 3px; }
+.dsplit.v { width: 6px; cursor: col-resize; margin: 6px 0; } .dsplit.h { height: 6px; cursor: row-resize; margin: 0 6px; }
+.dsplit:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.zone { flex: none; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+#zone-left { width: 340px; margin: 6px 0 6px 6px; } #zone-right { width: 400px; margin: 6px 6px 6px 0; } #zone-bottom { height: 260px; margin: 0 6px 6px; }
+#zone-left.zempty, #zone-right.zempty, #zone-bottom.zempty, .dsplit.zempty { display: none; }
+body.side-hidden .zone, body.side-hidden .dsplit { display: none; }
+.ptabs button[draggable="true"] { cursor: grab; } .ptabs button.dropb { box-shadow: inset 3px 0 0 var(--captext, #fff); }
+#dockDrop { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
+#dockDrop.hidden { display: none; }
+#dockDrop .dz { position: absolute; pointer-events: auto; display: grid; place-items: center; border: 2px dashed transparent; border-radius: 10px; color: transparent; font: 600 13px var(--font-ui); transition: background .1s; }
+#dockDrop .dz-left { left: 6px; top: 60px; bottom: 40px; width: 110px; } #dockDrop .dz-right { right: 6px; top: 60px; bottom: 40px; width: 110px; } #dockDrop .dz-bottom { left: 130px; right: 130px; bottom: 34px; height: 90px; }
+#dockDrop .dz { background: color-mix(in srgb, var(--accent) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent); }
+#dockDrop .dz.on { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .ptabs { display: flex; gap: 2px; padding: 4px; background: var(--cap-cmt); color: var(--captext); flex: none; }
 .ptabs button { background: transparent; border: 0; color: inherit; opacity: .8; padding: 6px 12px; border-radius: 7px; font-weight: 600; }
 .ptabs button.on { opacity: 1; background: rgba(255,255,255,.2); }
@@ -284,8 +295,9 @@ sup.vnum { font: 600 calc(var(--size) * .6) var(--font-ui); color: var(--accent)
   .phonebar button { background: transparent; border: 0; color: inherit; padding: 8px; }
   .phonebar .ref { flex: 1; background: color-mix(in srgb, currentColor 12%, transparent); border-radius: 20px; font: 600 15px var(--font-text); padding: 9px; }
   .status { display: none; }
-  #side { display: none; position: fixed; inset: 0; z-index: 40; margin: 0; border-radius: 0; border: 0; width: auto !important; padding-top: env(safe-area-inset-top); }
-  body.side-open #side { display: flex; }
+  .desk-zone { display: none !important; }
+  #zone-right { display: none; position: fixed; inset: 0; z-index: 40; margin: 0; border-radius: 0; border: 0; width: auto !important; height: auto !important; padding-top: env(safe-area-inset-top); }
+  body.side-open #zone-right { display: flex; }
   .phoneonly { display: block; }
   .libsplit { grid-template-columns: 1fr; grid-template-rows: 40% 1fr; }
   .libside { border-right: 0; border-bottom: 1px solid var(--line); }

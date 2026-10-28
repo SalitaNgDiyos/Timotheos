@@ -16,12 +16,13 @@ import { copyDialog, initCopy } from './copy';
 import { bibleTarget, linkRefs, wireRefPreview } from './refs';
 import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
 import { dialog, flash } from './ui';
+import { resetLayout, setHidden } from './dock';
 import { importFiles, reportHtml } from './importer';
 import { initProps, openProps } from './props';
 import { SKINS } from './skins';
 import { LOOK, Look, applyLook, optionsDialog } from './options';
 
-interface Settings { folders: string[]; open: string[]; ref: { b: number; c: number; v?: number }; sideW?: number; sideHidden?: boolean; look: Look; skin: string; show: Record<string, boolean>; fontSize: number }
+interface Settings { folders: string[]; open: string[]; ref: { b: number; c: number; v?: number }; sideHidden?: boolean; dock?: unknown; look: Look; skin: string; show: Record<string, boolean>; fontSize: number }
 const DEFAULT: Settings = { folders: [], open: [], ref: { b: 43, c: 3 }, skin: 'parchment', show: { strongs: false, morph: false, footnotes: true, headings: true, woj: true, added: true, highlights: true, notes: true, xrefs: true }, fontSize: 18, look: { ...LOOK } };
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -247,9 +248,10 @@ function skinMenu(): void {
     `<button data-skin="${id}" class="${S.skin === id ? 'on' : ''}"><span class="sw" style="background:linear-gradient(135deg, ${s.v.textbg} 0 50%, ${s.v['cap-bible']} 50%)"></span>${s.name}</button>`).join('') +
     '<div class="msep"></div><div class="mh">Show</div>' + [['strongs', "Strong's numbers"], ['morph', 'Morphology'], ['footnotes', 'Footnotes'], ['headings', 'Headings'], ['woj', 'Words of Jesus in red'], ['added', 'Added words in italics'], ['xrefs', 'Cross-references'], ['highlights', 'My highlighting'], ['notes', 'My notes under the verses']]
       .map(([k, l]) => `<label><input type="checkbox" data-show="${k}" ${S.show[k] ? 'checked' : ''}> ${l}</label>`).join('') +
-    `<div class="msep"></div><div class="mrow">Text size <button data-fs="-1">A−</button><button data-fs="1">A+</button></div><div class="msep"></div><button id="mOpts">Options… <kbd>Ctrl+,</kbd></button>`;
+    `<div class="msep"></div><div class="mrow">Text size <button data-fs="-1">A−</button><button data-fs="1">A+</button></div><div class="msep"></div><button id="mOpts">Options… <kbd>Ctrl+,</kbd></button><button id="mPanels">Put all panels back on the right</button>`;
   $('#skinMenu').querySelectorAll<HTMLButtonElement>('[data-skin]').forEach(b => b.onclick = () => { S.skin = b.dataset.skin!; applyLook(S.skin, S.fontSize, S.look); save(); skinMenu(); });
   $('#skinMenu').querySelector<HTMLButtonElement>('#mOpts')!.onclick = () => { $('#skinMenu').classList.add('hidden'); openOptions(); };
+  $('#skinMenu').querySelector<HTMLButtonElement>('#mPanels')!.onclick = () => { $('#skinMenu').classList.add('hidden'); resetLayout(); };
   $('#skinMenu').querySelectorAll<HTMLInputElement>('[data-show]').forEach(cb => cb.onchange = () => { S.show[cb.dataset.show!] = cb.checked; save(); go(S.ref.b, S.ref.c); });
   $('#skinMenu').querySelectorAll<HTMLButtonElement>('[data-fs]').forEach(b => b.onclick = () => { S.fontSize = Math.max(12, Math.min(34, S.fontSize + +b.dataset.fs!)); document.documentElement.style.setProperty('--size', S.fontSize + 'px'); save(); });
 }
@@ -373,22 +375,11 @@ async function init(): Promise<void> {
   const studyNote = await initStudy({ ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, rerender, openBibles, showPanel, show: () => S.show }, legacy ? legacy.study : null);
   const note = [migrated, studyNote].filter(Boolean).join('; ');
   if (note) setTimeout(() => flash('Welcome to the new Tanglaw – ' + note + '.'), 1200);
-  const applySide = () => {
-    document.body.classList.toggle('side-hidden', !!S.sideHidden);
-    $('#side').style.width = Math.max(260, Math.min(900, S.sideW || 400)) + 'px';
-    $('#sideBtn').classList.toggle('on', !S.sideHidden);
-  };
+  const applySide = () => { setHidden(!!S.sideHidden); $('#sideBtn').classList.toggle('on', !S.sideHidden); };
   applySide();
   $('#sideBtn').onclick = () => { S.sideHidden = !S.sideHidden; save(); applySide(); };
+  document.addEventListener('dock-unhide', () => { S.sideHidden = false; save(); $('#sideBtn').classList.add('on'); });
   document.querySelectorAll<HTMLButtonElement>('[data-open]').forEach(b => b.onclick = () => showPanel(b.dataset.open!));
-  $('#sideClose').onclick = () => document.body.classList.remove('side-open');
-  const sp = $('#sideSplit');
-  sp.addEventListener('pointerdown', e => {
-    e.preventDefault(); sp.setPointerCapture(e.pointerId); const x0 = e.clientX, w0 = $('#side').offsetWidth;
-    const move = (ev: PointerEvent) => { S.sideW = Math.round(Math.max(260, Math.min(innerWidth - 360, w0 - (ev.clientX - x0)))); applySide(); };
-    const up = () => { sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); save(); };
-    sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up);
-  });
   let typed = '', typedT = 0;
   document.addEventListener('keydown', e => {
     const tg = e.target as HTMLElement;
