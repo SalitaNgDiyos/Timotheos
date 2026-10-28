@@ -244,7 +244,7 @@ const words = (t: string) => t.toLowerCase().normalize('NFD').replace(/\p{M}/gu,
 /** mark the words of a verse that are not in the first Bible's verse */
 function markDiff(html: string, base: Set<string>): string {
   const t = document.createElement('template'); t.innerHTML = html;
-  const w = document.createTreeWalker(t.content, NodeFilter.SHOW_TEXT); const nodes: Text[] = []; let n; while ((n = w.nextNode())) if (!(n.parentElement?.closest('sup'))) nodes.push(n as Text);
+  const w = document.createTreeWalker(t.content, NodeFilter.SHOW_TEXT); const nodes: Text[] = []; let n; while ((n = w.nextNode())) if (!(n.parentElement?.closest('sup, .strong, .morph'))) nodes.push(n as Text);
   for (const tn of nodes) {
     const parts = tn.data.split(/([\p{L}\p{N}']+)/u); if (parts.length < 2) continue;
     const frag = document.createDocumentFragment();
@@ -266,7 +266,7 @@ async function renderCompare(id: string): Promise<void> {
     const rows = (await m.chapter(r.b, r.c)).filter(x => x.v >= from && x.v <= to); if (!rows.length) continue;
     const html = rows.map(x => `${c.ctx ? `<sup class="vno${x.v === r.v ? ' cur' : ''}" data-gov="${x.v}">${x.v}</sup>` : ''}${TWRender.render(x.raw, m, show)}`).join(' ');
     let shown = html;
-    if (c.diff !== false) { const t = document.createElement('div'); t.innerHTML = html; t.querySelectorAll('sup').forEach(s2 => s2.remove()); const ws = words(t.textContent || ''); if (!base) base = new Set(ws); else shown = markDiff(html, base); }
+    if (c.diff !== false) { const t = document.createElement('div'); t.innerHTML = html; t.querySelectorAll('sup, .strong, .morph').forEach(s2 => s2.remove()); const ws = words(t.textContent || ''); if (!base) base = new Set(ws); else shown = markDiff(html, base); }
     out.push(`<div class="cmprow${m.rtl ? ' rtl' : ''}"><div class="cab" title="${esc(m.title)}">${esc(m.abbr)}</div><div class="ctx"${H.bibleStyle(m)}>${shown}</div></div>`);
   }
   body.innerHTML = `<div class="vhead">${esc(canon.book(r.b).name)} ${r.c}:${from === to ? r.v : `${from}–${to}`} <span class="small">${out.length} Bible${out.length === 1 ? '' : 's'}${c.diff !== false && out.length > 1 ? ' · words not in the first Bible are marked' : ''}</span></div>` + (out.join('') || '<p class="hint">No Bible here has this verse.</p>');

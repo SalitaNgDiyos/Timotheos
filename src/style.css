@@ -65,7 +65,7 @@ td.vn, .vrow .vn { color: var(--accent); font: 600 12px var(--font-ui); text-ali
 .heading { display: block; font-weight: 700; color: var(--heading); }
 .para { display: block; } .para.cm { margin-top: .45em; }
 sup.strong, sup.morph { font: 10px var(--font-ui); margin-left: 1px; } sup.strong { color: var(--strong); } sup.morph { color: var(--morph); }
-sup.strong.hide, sup.morph.hide { display: none; }
+sup.strong.hide, sup.morph.hide, a.strong.hide { display: none; }
 sup.fn, sup.xref { color: var(--fn); font: 600 10px var(--font-ui); cursor: pointer; }
 .word[data-strong] { cursor: pointer; border-radius: 3px; }
 .word[data-strong]:hover { background: var(--accent-soft); }
