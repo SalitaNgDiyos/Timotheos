@@ -31,7 +31,7 @@
     ok(document.querySelector('tr[data-v="16"] .cm'), '"c" mark beside verses with a comment');
     // library: a dictionary topic, next/previous
     const dct = T.books().find(m => m.kind === 'dictionary' && /mounce/i.test(m.title) && m.file.endsWith('.lexi'));
-    T.showPanel('lib'); const sel = document.getElementById('libMod'); sel.value = dct.id; sel.dispatchEvent(new Event('change')); await sleep(1200);
+    T.showPanel('lib'); const sel = document.getElementById('libMod'); sel.value = dct.id; sel.dispatchEvent(new Event('change')); for (let i = 0; i < 40 && !document.querySelector('#libBody h4'); i++) await sleep(250);
     const first = document.querySelector('#libBody h4')?.textContent;
     document.getElementById('libNext').click(); await sleep(500);
     ok(first && document.querySelector('#libBody h4')?.textContent !== first && parseInt(document.getElementById('libCount').textContent) > 1000, 'Library: Mounce (' + document.getElementById('libCount').textContent + ' topics), next topic: ' + first + ' → ' + document.querySelector('#libBody h4')?.textContent);

@@ -122,7 +122,11 @@ fn sql(store: State<Store>, path: String, query: String, params: Vec<serde_json:
                 ValueRef::Null => serde_json::Value::Null,
                 ValueRef::Integer(x) => serde_json::json!(x),
                 ValueRef::Real(x) => serde_json::json!(x),
-                ValueRef::Text(t) => serde_json::Value::String(String::from_utf8_lossy(t).to_string()),
+                // text that is not UTF-8 (e.g. Windows-1252, or zlib data stored as text) goes over as bytes, unchanged
+                ValueRef::Text(t) => match std::str::from_utf8(t) {
+                    Ok(x) => serde_json::Value::String(x.to_string()),
+                    Err(_) => serde_json::json!({ "$b64": base64::engine::general_purpose::STANDARD.encode(t) }),
+                },
                 ValueRef::Blob(b) => serde_json::json!({ "$b64": base64::engine::general_purpose::STANDARD.encode(b) }),
             });
         }

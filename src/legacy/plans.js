@@ -24,7 +24,7 @@ function chaptersOf(spec, chapters) {
     const [a, z] = part.split(/\s*[-–]\s*/);
     const b1 = canon.findBook(a.replace(/\s+\d+$/, '')); const b2 = z ? canon.findBook(z.replace(/\s+\d+$/, '')) : b1;
     if (!b1 || !b2) throw new Error('Unknown book in "' + part + '"');
-    const all = canon.BOOKS.map(x => x[0]).sort((x, y) => canon.orderKey(x) - canon.orderKey(y));
+    const all = canon.BOOKS.map(x => x[0]).sort((x, y) => canon.orderKey(x, '1611') - canon.orderKey(y, '1611'));
     const i1 = all.indexOf(b1), i2 = all.indexOf(b2);
     for (let i = Math.min(i1, i2); i <= Math.max(i1, i2); i++) { const b = all[i]; const n = chapters(b); for (let c = 1; c <= n; c++) out.push({ b, c }); }
   }

@@ -10,10 +10,11 @@ What it does now (proof of concept):
 - finds theWord (.ont/.ot/.nt) and e-Sword (.bblx/.bbli) Bibles in Tanglaw's own module folder and in
   folders you add (desktop) or modules you import (desktop and Android);
 - shows a chapter, several Bibles side by side (desktop) or one under another (phone);
-- the Apocrypha in its 1611 KJV place; e-Sword's Daniel 13–14 as Susanna / Bel;
+- the Apocrypha in its 1611 KJV place, or (Options) all books in one Old Testament in the Septuagint order of
+  NETS or the Greek Orthodox order; e-Sword's Daniel 13–14 as Susanna / Bel;
 - Strong's numbers, red letters, italics, headings, footnotes (theWord tags rendered by the same
   `render.js`), Strong's popups from theWord .dct.twm and e-Sword lexicons/dictionaries
-  (popup with the mouse, bottom sheet on a phone);
+  (popup with the mouse, bottom sheet on a phone), with the morphology dictionary entry first for tagged words;
 - the eight skins; a title bar drawn in the skin (Tauri draws no system frame);
 - phone layout: book → chapter picker sheet, swipe left/right for the next/previous chapter;
 - **study panel** (beside the text on a computer, full screen on a phone): **Commentary** follows the
@@ -53,7 +54,7 @@ What it does now (proof of concept):
   not changed;
 - keys: ← → chapter, Ctrl+← → book, ↑ ↓ verse, type a number for a verse (Shift: chapter), Alt+← →
   or Backspace for history, Ctrl+L add to list, Ctrl+C copy verse, F5 Copy Verses, Ctrl+, Options, F1 guide.
-Encrypted modules are listed as "cannot be opened" and never decoded.
+Encrypted modules are skipped quietly (the import report says why) and never decoded.
 
 ## How it is built
 - `src-tauri/src/lib.rs` – the native side, kept thin: find module files, read theWord text Bibles

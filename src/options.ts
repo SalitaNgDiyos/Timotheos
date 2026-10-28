@@ -4,9 +4,9 @@ import { dialog, esc } from './ui';
 
 export interface Look {
   fontText: string; fontGreek: string; fontHebrew: string; lineH: number; textWidth: number; bgMode: 'skin' | 'color'; bgColor: string; texture: 'none' | 'paper';
-  vnPos: 'margin' | 'inline' | 'hidden'; vnStyle: 'normal' | 'bold' | 'circle'; capColor: boolean;
+  vnPos: 'margin' | 'inline' | 'hidden'; vnStyle: 'normal' | 'bold' | 'circle'; capColor: boolean; bookOrder: '1611' | 'nets' | 'orthodox';
 }
-export const LOOK: Look = { fontText: 'Gentium Plus', fontGreek: 'Gentium Plus', fontHebrew: 'Noto Serif Hebrew', lineH: 1.65, textWidth: 0, bgMode: 'skin', bgColor: '#fffdf8', texture: 'none', vnPos: 'margin', vnStyle: 'normal', capColor: true };
+export const LOOK: Look = { fontText: 'Gentium Plus', fontGreek: 'Gentium Plus', fontHebrew: 'Noto Serif Hebrew', lineH: 1.65, textWidth: 0, bgMode: 'skin', bgColor: '#fffdf8', texture: 'none', vnPos: 'margin', vnStyle: 'normal', capColor: true, bookOrder: '1611' };
 const BUNDLED = ['Gentium Plus', 'Literata', 'Source Serif 4', 'Inter', 'Noto Serif Hebrew'];
 const COMMON = ['SBL Greek', 'SBL Hebrew', 'Ezra SIL', 'Cardo', 'Cambria', 'Constantia', 'Georgia', 'Palatino Linotype', 'Book Antiqua', 'Times New Roman', 'Segoe UI', 'Calibri', 'Verdana', 'Noto Serif', 'DejaVu Serif', 'Liberation Serif', 'Roboto'];
 let installed: string[] | null = null;
@@ -59,6 +59,8 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     <label class="fl">Line spacing <span class="srow"><input type="range" id="oLh" min="1.2" max="2.4" step="0.05" value="${l.lineH}"><b id="oLhV">${l.lineH.toFixed(2)}</b></span></label>
     <label class="fl">Text width <select id="oW"><option value="0">Fill the window</option><option value="680">Narrow</option><option value="860">Medium</option><option value="1100">Wide</option></select></label>
     <label class="fl">Background <span class="srow"><select id="oBg"><option value="skin">Skin colour</option><option value="color">My colour</option></select><input type="color" id="oBgC" value="${l.bgMode === 'color' ? l.bgColor : sk.v.textbg}"><select id="oTex"><option value="none">No texture</option><option value="paper">Paper</option></select></span></label>
+    <h4>Order of the books</h4>
+    <label class="fl">Old Testament <select id="oOrder"><option value="1611">1611 King James Bible – the Apocrypha between the Testaments</option><option value="nets">Septuagint (NETS order) – all books in one Old Testament</option><option value="orthodox">Greek Orthodox Old Testament (4 Maccabees etc. as appendix)</option></select></label>
     <h4>Verse numbers</h4>
     <label class="fl">Where <select id="oVp"><option value="margin">In a column at the left</option><option value="inline">In the text</option><option value="hidden">Hidden</option></select></label>
     <label class="fl">Style <select id="oVs"><option value="normal">Normal</option><option value="bold">Bold</option><option value="circle">In a circle</option></select></label>
@@ -66,6 +68,7 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
   await dialog('Options', html, [{ label: 'Done', value: 'ok', primary: true }], b => {
     const q = <T extends HTMLElement>(s: string) => b.querySelector(s) as T;
     q<HTMLSelectElement>('#oW').value = String(l.textWidth); q<HTMLSelectElement>('#oBg').value = l.bgMode; q<HTMLSelectElement>('#oTex').value = l.texture;
+    q<HTMLSelectElement>('#oOrder').value = l.bookOrder || '1611';
     q<HTMLSelectElement>('#oVp').value = l.vnPos; q<HTMLSelectElement>('#oVs').value = l.vnStyle;
     b.querySelectorAll<HTMLButtonElement>('[data-skin]').forEach(x => x.onclick = () => { st.skin = x.dataset.skin!; b.querySelectorAll('.skin').forEach(y => y.classList.toggle('on', y === x)); change(false); });
     q<HTMLInputElement>('#oCap').onchange = () => { l.capColor = q<HTMLInputElement>('#oCap').checked; change(false); };
@@ -78,6 +81,7 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     q<HTMLSelectElement>('#oBg').onchange = () => { l.bgMode = q<HTMLSelectElement>('#oBg').value as Look['bgMode']; change(false); };
     q<HTMLInputElement>('#oBgC').oninput = () => { l.bgMode = 'color'; l.bgColor = q<HTMLInputElement>('#oBgC').value; q<HTMLSelectElement>('#oBg').value = 'color'; change(false); };
     q<HTMLSelectElement>('#oTex').onchange = () => { l.texture = q<HTMLSelectElement>('#oTex').value as Look['texture']; change(false); };
+    q<HTMLSelectElement>('#oOrder').onchange = () => { l.bookOrder = q<HTMLSelectElement>('#oOrder').value as Look['bookOrder']; change(true); };
     q<HTMLSelectElement>('#oVp').onchange = () => { l.vnPos = q<HTMLSelectElement>('#oVp').value as Look['vnPos']; change(true); };
     q<HTMLSelectElement>('#oVs').onchange = () => { l.vnStyle = q<HTMLSelectElement>('#oVs').value as Look['vnStyle']; change(false); };
   });

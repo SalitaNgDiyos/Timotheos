@@ -57,7 +57,7 @@ export async function updateCommentary(): Promise<void> {
   if (!visible('cmt')) return;
   const { b, c, v } = H.ref(); const my = ++cseq;
   const list = H.books().filter(m => m.kind === 'commentary' && !m.locked).map(m => ({ m, hit: m.forVerse(b, c, v) }));
-  const bk = canon.book(b, '1611').name;
+  const bk = canon.book(b).name;
   $('#cmtHead').textContent = `${bk} ${c}:${v}`;
   const chips = $('#cmtChips'); const body = $('#cmtBody');
   if (!list.length) { chips.innerHTML = ''; body.innerHTML = '<p class="hint">No commentaries yet. Import theWord (.cmt.twm) or e-Sword (.cmtx / .cmti) commentaries.</p>'; return; }
@@ -152,6 +152,12 @@ function stepTopic(d: number): void {
   const cur = rows.findIndex(r => r.id === curTid);
   const i = Math.max(0, Math.min(rows.length - 1, cur < 0 ? 0 : cur + d));
   if (i !== cur) showTopic(rows[i].id);
+}
+/** a morphology code (e.g. V-PAI-3S): the entry from the morphology dictionaries */
+export async function morphEntry(code: string): Promise<{ subject: string; html: string; src: string } | null> {
+  const keys = [...new Set([code, code.toUpperCase(), code.replace(/\s+/g, ' ').trim(), code.replace(/\s+/g, ''), code.replace(/^[A-Z]{2,3}:/, '')])];
+  for (const d of H.books().filter(m => m.kind === 'dictionary' && m.isMorph && !m.locked)) for (const k of keys) { const e = await d.lookup(k); if (e) return { ...e, src: d.title }; }
+  return null;
 }
 /** a word or Strong's number: show the entry from the Strong's dictionaries */
 export async function strongEntry(key: string): Promise<{ subject: string; html: string; src: string } | null> {

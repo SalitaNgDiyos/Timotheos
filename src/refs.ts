@@ -18,7 +18,7 @@ function bookOf(num: string | undefined, name: string): number | null {
   const id = canon.findBook(pre + n) || (pre ? canon.findBook(pre + ' ' + n) : null);
   if (!id) return null;
   // a short abbreviation must be a known one, not just the start of some book's name
-  const bk = canon.book(id, '1611'); const k = (pre + n).toLowerCase().replace(/\s/g, '');
+  const bk = canon.book(id); const k = (pre + n).toLowerCase().replace(/\s/g, '');
   const known = [bk.name, ...bk.abbrs].some((a: string) => a.toLowerCase().replace(/\s/g, '') === k);
   return known || n.length >= 4 ? id : null;
 }

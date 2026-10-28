@@ -73,27 +73,43 @@ const NAMES_1611 = {
   76: 'Bel and the Dragon', 80: 'Prayer of Manasses', 77: '1 Maccabees', 78: '2 Maccabees',
 };
 
-function apMode(mode) { return mode === 'end' ? 'end' : '1611'; }
+// 'nets'    : Septuagint order of the New English Translation of the Septuagint (NETS); the additional
+//             books stand among the other Old Testament books, not as a separate section.
+// 'orthodox': the order of the Old Testament in Greek Orthodox Bibles; 4 Maccabees, the Prayer of
+//             Manasseh, the Psalms of Solomon and 2 Esdras (4 Ezra) follow as an appendix.
+const ORDER_NETS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 79, 15, 16, 17, 69, 68, 67, 77, 78, 82, 84, 19, 81, 80, 85, 20, 21, 22, 18, 70, 71, 86,
+  28, 30, 33, 29, 31, 32, 34, 35, 36, 37, 38, 39, 23, 24, 72, 25, 73, 26, 75, 27, 74, 76, 83];
+const ORDER_ORTHODOX = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 79, 15, 16, 67, 68, 17, 69, 77, 78, 82, 19, 81, 85, 18, 20, 21, 22, 70, 71,
+  28, 30, 33, 29, 31, 32, 34, 35, 36, 37, 38, 39, 23, 24, 72, 25, 73, 26, 27, 74, 75, 76, 84, 80, 86, 83];
+const LXX = { nets: ORDER_NETS, orthodox: ORDER_ORTHODOX };
+// the order used when a caller does not name one (set from the user's choice)
+let current = '1611';
+function setOrder(mode) { current = ['1611', 'end', 'nets', 'orthodox'].includes(mode) ? mode : '1611'; }
+function getOrder() { return current; }
+function apMode(mode) { const m = mode || current; return m === 'end' ? 'end' : LXX[m] ? m : '1611'; }
 
-/** sort key for a book id under the chosen Apocrypha placement */
+/** sort key for a book id under the chosen order */
 function orderKey(id, mode) {
+  const m = apMode(mode);
+  if (LXX[m]) { if (id >= 40 && id <= 66) return 200 + id; if (id === 87) return 300; const i = LXX[m].indexOf(id); return i < 0 ? 150 + id : i; }
   if (id <= 39) return id;
   if (id <= 66) return 200 + id;
   let i = AP_1611.indexOf(id); if (i < 0) { i = AP_OTHER.indexOf(id); i = i < 0 ? 90 + id : 50 + i; }
-  return apMode(mode) === '1611' ? 100 + i : 400 + i;
+  return m === '1611' ? 100 + i : 400 + i;
 }
 
 /** section a book belongs to: OT, AP (1611 Apocrypha), APX (other deuterocanon), NT */
-function group(id) {
+function group(id, mode) {
   if (id <= 39) return 'OT';
-  if (id <= 66) return 'NT';
+  if (id <= 66 || id === 87) return 'NT';
+  if (LXX[apMode(mode)]) return 'OT';
   return AP_1611.includes(id) ? 'AP' : 'APX';
 }
 
 /** does a book fall inside a search scope (all | OT | NT | AP) under the chosen placement? */
 function inScope(id, scope, mode) {
   if (!scope || scope === 'all') return true;
-  if (scope === 'OT') return id <= 39 || (apMode(mode) === '1611' && id >= 67);
+  if (scope === 'OT') return id <= 39 || (apMode(mode) !== 'end' && id >= 67 && id !== 87);
   if (scope === 'OTonly') return id <= 39;
   if (scope === 'NT') return id >= 40 && id <= 66;
   if (scope === 'AP') return id >= 67;
@@ -102,7 +118,7 @@ function inScope(id, scope, mode) {
 
 function book(id, mode) {
   const b = byId.get(id) || { id, name: 'Book ' + id, abbr: 'B' + id, abbrs: [], t: 'AP' };
-  const out = { ...b, grp: group(id), order: orderKey(id, mode) };
+  const out = { ...b, grp: group(id, mode), order: orderKey(id, mode) };
   if (apMode(mode) === '1611' && NAMES_1611[id]) out.name = NAMES_1611[id];
   return out;
 }
@@ -160,4 +176,4 @@ function parseRef(s) {
   return { b, c: m[2] ? +m[2] : 1, v: m[3] ? +m[3] : 1 };
 }
 
-module.exports = { BOOKS, book, orderKey, group, inScope, AP_1611, AP_OTHER, NAMES_1611, kjvChapters, ontLine, ONT_TOTAL: ONT_INDEX.total, OT_LINES, NT_LINES, parseRef, findBook };
+module.exports = { BOOKS, setOrder, getOrder, book, orderKey, group, inScope, AP_1611, AP_OTHER, NAMES_1611, kjvChapters, ontLine, ONT_TOTAL: ONT_INDEX.total, OT_LINES, NT_LINES, parseRef, findBook };

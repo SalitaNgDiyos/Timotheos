@@ -30,7 +30,7 @@ const save = (now = false) => { clearTimeout(saveT); if (now) saveStudy(ud).catc
 export const saveUD = () => save(true);
 const vkey = (b: number, c: number, v: number) => `${b}.${c}.${v}`;
 const parseKey = (k: string): Ref => { const [b, c, v] = k.split('.').map(Number); return { b, c, v }; };
-export const refName = (r: Ref) => `${canon.book(r.b, '1611').abbr} ${r.c}:${r.v}${r.v2 && r.v2 > r.v ? '–' + r.v2 : ''}`;
+export const refName = (r: Ref) => `${canon.book(r.b).abbr} ${r.c}:${r.v}${r.v2 && r.v2 > r.v ? '–' + r.v2 : ''}`;
 
 export async function initStudy(host: StudyHost, legacy: Record<string, unknown> | null): Promise<string | null> {
   H = host;
@@ -244,7 +244,7 @@ export async function renderStudy(): Promise<void> {
     body.querySelectorAll<HTMLElement>('[data-rm]').forEach(b => b.onclick = () => { list.splice(+b.dataset.rm!, 1); save(true); renderStudy(); });
     const cp = document.getElementById('listCopy'); if (cp) cp.onclick = async () => { const parts: string[] = []; for (const r of list) { const t = await verseText(r); if (t) parts.push(`${refName(r)} ${t.text}`); } await copyText(parts.join('\n')); flash(`Copied ${parts.length} verses`); };
   } else if (seg === 'notes') {
-    const ks = Object.keys(ud.notes).sort((a, b) => { const x = parseKey(a), y = parseKey(b); return canon.orderKey(x.b, '1611') - canon.orderKey(y.b, '1611') || x.c - y.c || x.v - y.v; });
+    const ks = Object.keys(ud.notes).sort((a, b) => { const x = parseKey(a), y = parseKey(b); return canon.orderKey(x.b) - canon.orderKey(y.b) || x.c - y.c || x.v - y.v; });
     body.innerHTML = ks.length ? `<ul class="vlist">${ks.map(k => `<li><a data-k="${k}">${esc(refName(parseKey(k)))}</a><div class="unote" data-note="${k}">${ud.notes[k].html}</div></li>`).join('')}</ul>` : '<p class="hint">No notes yet. Right-click (or long-press) a verse → Add a note.</p>';
     body.querySelectorAll<HTMLElement>('a[data-k]').forEach(a => a.onclick = () => { const r = parseKey(a.dataset.k!); H.go(r.b, r.c, r.v); });
     body.querySelectorAll<HTMLElement>('.unote').forEach(n => n.onclick = () => editNote(n.dataset.note!));

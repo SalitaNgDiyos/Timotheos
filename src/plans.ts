@@ -12,7 +12,7 @@ export interface PlanHost { openBibles(): Bible[]; go(b: number, c: number, v?: 
 
 const AP_CH: Record<number, number> = { 67: 14, 68: 16, 69: 16, 70: 19, 71: 51, 72: 5, 73: 1, 74: 1, 75: 1, 76: 1, 77: 16, 78: 15, 79: 9, 80: 1, 83: 16 };
 const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-const passLabel = (p: Reading) => `${canon.book(p.b, '1611').name} ${p.c1}${p.c2 > p.c1 ? '–' + p.c2 : ''}`;
+const passLabel = (p: Reading) => `${canon.book(p.b).name} ${p.c1}${p.c2 > p.c1 ? '–' + p.c2 : ''}`;
 
 export async function renderPlans(body: HTMLElement, H: PlanHost, again: () => void): Promise<void> {
   const list = (ud.plans || (ud.plans = [])) as Plan[]; const today = todayIso(); const d = new Date();

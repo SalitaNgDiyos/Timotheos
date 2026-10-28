@@ -7,6 +7,8 @@ const CHARSET_CP = { 0: 'windows-1252', 1: 'windows-1252', 161: 'windows-1253', 
 const decoders = {};
 function dec(cp) { return decoders[cp] || (decoders[cp] = new TextDecoder(cp)); }
 
+// ordinary text fonts: their letters are Unicode, so Tanglaw's own fonts are used instead
+const PLAIN_FONT = /^(times|arial|tahoma|segoe|calibri|cambria|verdana|georgia|courier|consolas|ms sans serif|microsoft sans serif|ms shell|system|helvetica|lucida|palatino|book antiqua|garamond|gentium|cardo|sbl |ezra sil|noto|dejavu|liberation|symbol$|wingdings|trebuchet|century|franklin|candara|constantia|corbel|default|times new roman)/i;
 const SKIP_DEST = new Set(['fonttbl', 'colortbl', 'stylesheet', 'info', 'pict', 'object', 'header', 'footer', 'xmlnstbl', 'listtable', 'listoverridetable', 'rsidtbl', 'generator', 'themedata', 'colorschememapping', 'datastore', 'latentstyles', 'pgdsctbl', 'revtbl', 'filetbl']);
 
 function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -18,6 +20,10 @@ function rtfToHtml(rtf, opts = {}) {
   // pre-scan font table for charsets
   const ft = rtf.match(/\{\\fonttbl([\s\S]*?)\}\s*(?:\{\\colortbl|\\|\{\\\*)/);
   if (ft) for (const m of ft[1].matchAll(/\\f(\d+)[^;{}]*?\\fcharset(\d+)/g)) fonts[m[1]] = CHARSET_CP[+m[2]] || 'windows-1252';
+  // font names: a "special" font (e.g. a Hebrew or Greek font that draws its letters on Latin keys, such as
+  // the Ancient Hebrew Lexicon's fonts) is kept as font-family, so the text looks right where that font is installed
+  const families = {};
+  if (ft) for (const m of ft[1].matchAll(/\{?\\f(\d+)((?:\\[a-z]+-?\d* ?)*)\s*([^;{}\\]+?)\s*;/g)) { const name = m[3].trim(); if (name && !PLAIN_FONT.test(name)) families[m[1]] = name; }
   // RTF fragments without a font table (e-Sword entries): the caller may say which code page each font uses
   else if (opts.fragmentFonts) Object.assign(fonts, opts.fragmentFonts);
   const ct = rtf.match(/\{\\colortbl\s*;?([^}]*)\}/);
@@ -34,7 +40,7 @@ function rtfToHtml(rtf, opts = {}) {
   let pendingBytes = [];
   let field = null; // {inst:'', result:''}
 
-  const sig = () => `${st.b}${st.i}${st.u}${st.s}${st.sup}${st.sub}|${st.cf}`;
+  const sig = () => `${st.b}${st.i}${st.u}${st.s}${st.sup}${st.sub}|${st.cf}|${st.f !== null && families[st.f] ? st.f : ''}`;
   function emitText(t) {
     if (st.skip || !t) return;
     if (field && field.inInst) { field.inst += t; return; }
@@ -49,6 +55,7 @@ function rtfToHtml(rtf, opts = {}) {
       if (st.sub) css.push('vertical-align:sub;font-size:75%');
       const col = st.cf ? (defaultColors[st.cf] || colors[st.cf]) : null;
       if (col) css.push('color:' + col);
+      if (st.f !== null && families[st.f]) css.push(`font-family:'${families[st.f].replace(/['"<>]/g, '')}'`);
       out += css.length ? `<span style="${css.join(';')}">` : '<span>';
       open = s;
     }

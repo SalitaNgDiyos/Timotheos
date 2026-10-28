@@ -32,7 +32,7 @@ export function guessKind(name: string): Kind {
 }
 
 export function refLabel(b: number, c1: number, v1: number, c2?: number, v2?: number): string {
-  const bk = canon.book(b, '1611');
+  const bk = canon.book(b);
   if (!c1) return bk.name;
   if (!v1) return `${bk.name} ${c1}${c2 && c2 !== c1 ? '–' + c2 : ''}`;
   let s = `${bk.name} ${c1}:${v1}`;
@@ -79,7 +79,7 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
   const mod = Object.assign(stub, {
     kind, title: cfg.title || cfg.abbrev || stub.title, abbr: cfg.abbrev || cfg.id || stub.abbr,
     isStrong: cfg.strong === '1' || /strong/i.test(cfg.keywords || ''), greek: cfg['strong.g'] !== '0', hebrew: cfg['strong.h'] === '1',
-    isMorph: /morph/i.test([cfg.title, cfg.keywords, cfg.categories, stub.name].join(' ')) || cfg.morph === '1',
+    isMorph: /morph|rmac|robinson|packard|parsing/i.test([cfg.title, cfg.keywords, cfg.categories, stub.name].join(' ')) || cfg.morph === '1',
   });
   if (cfg.secure === '1' || cfg.encrypted === '1') return lockedMod(mod, 'encrypted (a locked/paid theWord module) – it opens only in theWord');
   const compressed = cfg.compressed === '1';
@@ -110,7 +110,7 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
         const subject = refLabel(r.b, r.c, r.f, r.c, r.e); const tt = byId.get(t);
         if (tt) { tt.ref = r; if (!tt.subject) tt.subject = subject; } else list.push({ id: t, pid: 0, subject, ref: r });
       }
-      const key = (x: { ref?: unknown }) => { const r = x.ref as { b: number; c: number; f: number } | undefined; return r ? canon.orderKey(r.b, '1611') * 1e6 + r.c * 1000 + r.f : 0; };
+      const key = (x: { ref?: unknown }) => { const r = x.ref as { b: number; c: number; f: number } | undefined; return r ? canon.orderKey(r.b) * 1e6 + r.c * 1000 + r.f : 0; };
       list.sort((x, y) => (x.ref && y.ref) ? key(x) - key(y) : 0);
     }
     topicList = list.map(({ id, pid, subject }) => ({ id, pid, subject }));
@@ -122,7 +122,9 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
     const [data, data2] = r[0]; const b1 = bytes(data), b2 = bytes(data2);
     let t = '';
     if (compressed && b2) t = (await inflate(b2)) || '';
-    if (!t && data != null) { t = text(data); if (!/^\s*[{<]/.test(t) && compressed && b1) t = (await inflate(b1)) || t; }
+    // zlib data starts with 0x78 (0x01, 0x5E, 0x9C or 0xDA): inflate it even where the module does not say "compressed"
+    const zl = (b: Uint8Array | null) => !!b && b.length > 2 && b[0] === 0x78 && [0x01, 0x5e, 0x9c, 0xda].includes(b[1]);
+    if (!t && data != null) { t = text(data); if (!/^\s*[{<]/.test(t) && b1 && (compressed || zl(b1))) t = (await inflate(b1)) || t; }
     if (!t && b2) t = (await inflate(b2)) || text(data2);
     return t;
   }
@@ -207,7 +209,7 @@ async function openESword(f: ModFile, tabs: Record<string, string>, stub: BookMo
       }
     };
     await add('bookcommentary', 'book'); await add('chaptercommentary', 'chapter'); await add('versecommentary', 'verse');
-    parts.sort((x, y) => canon.orderKey(x.ref!.b, '1611') - canon.orderKey(y.ref!.b, '1611') || x.ref!.c - y.ref!.c || x.ref!.f - y.ref!.f);
+    parts.sort((x, y) => canon.orderKey(x.ref!.b) - canon.orderKey(y.ref!.b) || x.ref!.c - y.ref!.c || x.ref!.f - y.ref!.f);
     items = parts;
   } else {
     const t = tabs.dictionary || tabs.lexicon || tabs.topics || tabs.topic || tabs.reference || tabs.devotions || tabs.devotion;

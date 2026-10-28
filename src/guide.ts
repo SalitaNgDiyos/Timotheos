@@ -14,7 +14,7 @@ const SECTIONS: [string, string, string][] = [
 <p><b>Top bar:</b> Bibles menu · book, chapter and verse lists · previous/next chapter · Copy verses · Skin menu · Study (show or hide the panels) · ? (this guide).</p>
 <p><b>Middle:</b> the Bible text. Under each verse you may see cross-references and your notes. A small <b>c</b> beside a verse number means a commentary has something on that verse; click it to open the Commentary.</p>
 <p><b>Panels:</b> Commentary, Library, Search and My Study. At first they share one panel on the right; you can spread them out (see <a data-go="panels">Arranging the panels</a>).</p>
-<p><b>Bottom line:</b> how many modules were found, and how many could not be opened.</p>`],
+<p><b>Bottom line:</b> how many modules were found.</p>`],
   ['reading', 'Reading the Bible', `
 <h4>Going to a passage</h4>
 <ul><li>Choose book, chapter and verse in the lists at the top, or use the arrows for the previous and next chapter.</li>
@@ -23,9 +23,12 @@ const SECTIONS: [string, string, string][] = [
 <li>Click any Bible reference in a commentary, dictionary, book, note or cross-reference to go there. Resting the mouse on a reference shows the verse.</li></ul>
 <h4>Several Bibles</h4><p>Tick more than one Bible in the Bibles menu to read them side by side. The order is the order you ticked them in.</p>
 <h4>What to show</h4><p>In the <b>Skin</b> menu under <b>Show</b>: Strong's numbers, morphology, footnotes, headings, words of Jesus in red, added words in italics, cross-references, your highlighting and your notes.</p>
-<h4>The Apocrypha</h4><p>Books such as Tobit, Judith and the Maccabees appear where the 1611 King James Bible placed them (between the Testaments). e-Sword's Daniel 13–14 are shown as Susanna and Bel and the Dragon, and its Esther 11–16 as the Additions to Esther.</p>`],
+<h4>The Apocrypha and the order of the books</h4><p>Books such as Tobit, Judith and the Maccabees appear where the 1611 King James Bible placed them (between the Testaments). In <b>Options → Order of the books</b> you can choose instead the <b>Septuagint order of NETS</b> (A New English Translation of the Septuagint) or the order of the <b>Greek Orthodox</b> Old Testament: then these books stand among the other Old Testament books (e.g. Judith and Tobit after Esther, Baruch after Jeremiah), not as a separate section. In the Greek Orthodox order, 4 Maccabees, the Prayer of Manasseh, the Psalms of Solomon and 2 Esdras (4 Ezra) follow as an appendix. Search ranges and reading plans keep their usual meaning whichever order you choose.</p>
+<p>e-Sword's Daniel 13–14 are shown as Susanna and Bel and the Dragon, and its Esther 11–16 as the Additions to Esther.</p>`],
   ['words', "Strong's numbers and dictionaries", `
 <p>With a Bible that has Strong's numbers and a Strong's dictionary or lexicon among your modules, rest the mouse on a word (tap it on a phone) to see its entry. In the entry, <b>Find in Bible</b> lists every verse with that Strong's number.</p>
+<p>If the Bible is tagged with morphology codes (e.g. V-AAI-3S) and you have a morphology dictionary (Robinson, Packard or similar), the popup shows the meaning of the code first, above the dictionary entry.</p>
+<p>Some dictionaries draw Hebrew or Greek with a special font of their own (for example the Ancient Hebrew Lexicon of the Bible). Tanglaw uses that font when it is installed on your computer; without it you see the Latin letters the font is built on.</p>
 <p>Greek entries are looked up in your Greek dictionaries first, Hebrew in your Hebrew ones.</p>`],
   ['library', 'Commentaries and the Library', `
 <p>The <b>Commentary</b> panel follows the verse you select. The buttons at the top are your commentaries; a dot means it has something for this verse (a ring: for the passage or chapter around it).</p>
@@ -65,11 +68,11 @@ const SECTIONS: [string, string, string][] = [
 <p><b>Skin</b> menu: eight colour skins, what to show, text size. <b>Options…</b> (${K('Ctrl+,')}):</p>
 <ul><li>coloured or plain captions;</li><li>the font of the Bible text, and separate fonts for Greek and for Hebrew (fonts “Included with Tanglaw” work everywhere; others must be installed on your computer);</li>
 <li>text size, line spacing, text width (fill the window or narrower columns);</li><li>background: the skin's colour or your own, with or without a paper texture;</li>
-<li>verse numbers: in a column at the left, in the text, or hidden; plain, bold or in a circle.</li></ul>`],
+<li>verse numbers: in a column at the left, in the text, or hidden; plain, bold or in a circle;</li><li>the order of the books: 1611 King James, Septuagint (NETS) or Greek Orthodox.</li></ul>`],
   ['modules', 'Modules Tanglaw reads', `
 <table><tr><td>theWord</td><td>Bibles <code>.ont .ot .nt</code>; commentaries, dictionaries, books, devotionals <code>.twm</code> (also compressed ones); cross-references <code>.xrefs.twm</code></td></tr>
 <tr><td>e-Sword</td><td>Bibles <code>.bblx .bbli</code>; commentaries <code>.cmtx .cmti</code>; dictionaries and lexicons <code>.dctx .dcti .lexx .lexi</code>; topic notes <code>.topx .topi</code>; reference books <code>.refx .refi</code>; devotionals <code>.devx .devi</code></td></tr></table>
-<p><b>Not read:</b> encrypted (paid or locked) modules such as theWord <code>.ontx</code> or locked <code>.twm</code> files and locked e-Sword modules. They are listed as “cannot be opened” and are never decoded. Also e-Sword harmonies and graphics, and e-Sword files older than version 9 (open them once in a current e-Sword to convert them). Some e-Sword 10 reference books (.refx) are stored in a form Tanglaw cannot read; the e-Sword 11 version (.refi) works.</p>`],
+<p><b>Not read:</b> encrypted (paid or locked) modules such as theWord <code>.ontx</code> or locked <code>.twm</code> files and locked e-Sword modules. Tanglaw skips them quietly and never decodes them; when you import one, the import report says why it was not added. Also e-Sword harmonies and graphics, and e-Sword files older than version 9 (open them once in a current e-Sword to convert them). Some e-Sword 10 reference books (.refx) are stored in a form Tanglaw cannot read; the e-Sword 11 version (.refi) works.</p>`],
   ['props', 'Module properties and making files smaller', `
 <p>The ⓘ button beside a Bible (in the Bibles menu) or in the Library opens <b>Properties</b>:</p>
 <ul><li><b>About:</b> the module's description as a page. <b>Edit</b> lets you change it (bold, italic, underline, lists). It is saved in the form theWord or e-Sword expects.</li>

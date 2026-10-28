@@ -8,7 +8,7 @@ import { readFile } from '@tauri-apps/plugin-fs';
 import { Bible, Locked, isBibleFile, isLocked, openBible } from './bibles';
 import { BookMod, guessKind, isBookFile, openBook } from './books';
 import type { ModFile } from './native';
-import { commentaryMarks, followBookLink, initPanel, libCurrent, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
+import { commentaryMarks, followBookLink, initPanel, morphEntry, libCurrent, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
 import { find, forgetSearchCache, initSearch } from './search';
 import { legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
 import { addToList, afterRender, copyVerse, initStudy, saveUD } from './study';
@@ -33,7 +33,7 @@ const isAndroid = /Android/i.test(navigator.userAgent);
 
 let S: Settings = DEFAULT;
 let bibles: Bible[] = [];
-let locked: Locked[] = [];
+let locked: Locked[] = []; // modules that cannot be opened (encrypted etc.): kept quiet
 let books: BookMod[] = [];
 let restBooks: ModFile[] = [];
 /** open the dictionaries, books and devotionals in the background */
@@ -55,7 +55,7 @@ function pickLook(a: Record<string, unknown>): Partial<Look> {
   if (a.texture === 'paper') o.texture = 'paper';
   return o;
 }
-function openOptions(): void { optionsDialog(S, rr => { applyLook(S.skin, S.fontSize, S.look); save(); if (rr) rerender(); }); }
+function openOptions(): void { optionsDialog(S, rr => { applyLook(S.skin, S.fontSize, S.look); save(); if (rr) { if (canon.getOrder() !== S.look.bookOrder) { canon.setOrder(S.look.bookOrder); buildNav(); go(S.ref.b, S.ref.c, S.ref.v); } else rerender(); } }); }
 
 /* ---------------------------------------------------------------- modules */
 async function loadModules(): Promise<void> {
@@ -82,16 +82,15 @@ async function loadModules(): Promise<void> {
 
 function statusLine(ms: number): void {
   const nd = books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked).length, nl = books.filter(m => !m.locked).length;
-  const bad = locked.length + books.filter(m => m.locked).length;
-  $('#status').textContent = `${bibles.length} Bible${bibles.length === 1 ? '' : 's'} · ${nl} library modules${restBooks.length ? ` (opening ${restBooks.length} more…)` : ` (${nd} Strong's dictionaries)`}${bad ? ` · ${bad} could not be opened` : ''} · ${Math.round(ms)} ms`;
+  $('#status').textContent = `${bibles.length} Bible${bibles.length === 1 ? '' : 's'} · ${nl} library modules${restBooks.length ? ` (opening ${restBooks.length} more…)` : ` (${nd} Strong's dictionaries)`} · ${Math.round(ms)} ms`;
 }
 function openBibles(): Bible[] { return S.open.map(id => bibles.find(b => b.id === id)).filter((b): b is Bible => !!b); }
 
 function buildNav(): void {
   const all = new Map<number, Set<number>>();
   for (const bb of openBibles()) for (const [b, ch] of bb.books) { const s = all.get(b) || new Set(); ch.forEach((n, i) => { if (n > 0) s.add(i + 1); }); all.set(b, s); }
-  nav = [...all.keys()].sort((a, b) => canon.orderKey(a, '1611') - canon.orderKey(b, '1611')).map(id => {
-    const bk = canon.book(id, '1611');
+  nav = [...all.keys()].sort((a, b) => canon.orderKey(a) - canon.orderKey(b)).map(id => {
+    const bk = canon.book(id);
     return { id, name: bk.name, abbr: bk.abbr, grp: bk.grp, chapters: [...all.get(id)!].sort((a, b) => a - b) };
   });
   const sel = $<HTMLSelectElement>('#bookSel'); sel.innerHTML = '';
@@ -171,13 +170,13 @@ async function decorateXrefs(b: number, c: number, my: number): Promise<void> {
   }
 }
 /** a short book name that reads well: "1 John", "2 Kgs", "Rom" */
-export function refAbbr(b: number): string { return String(canon.book(b, '1611').abbr).replace(/^(\d)(?=\D)/, '$1 '); }
+export function refAbbr(b: number): string { return String(canon.book(b).abbr).replace(/^(\d)(?=\D)/, '$1 '); }
 async function versePreview(ref: string): Promise<string> {
   const [b, c, v, span] = ref.split('.').map(Number);
   for (const m of openBibles()) {
     const rows = (await m.chapter(b, c)).filter(r => r.v >= v && r.v <= v + span); if (!rows.length) continue;
     const show = { ...S.show, strongs: false, morph: false, footnotes: false };
-    return `<div class="entry"><h4>${esc(canon.book(b, '1611').name)} ${c}:${v}${span ? '–' + (v + span) : ''} <span class="src">${esc(m.abbr)}</span></h4>${rows.map(r => `<sup>${r.v}</sup> ${TWRender.render(r.raw, m, show)}`).join(' ')}</div>`;
+    return `<div class="entry"><h4>${esc(canon.book(b).name)} ${c}:${v}${span ? '–' + (v + span) : ''} <span class="src">${esc(m.abbr)}</span></h4>${rows.map(r => `<sup>${r.v}</sup> ${TWRender.render(r.raw, m, show)}`).join(' ')}</div>`;
   }
   return '';
 }
@@ -196,8 +195,15 @@ function step(d: number): void {
 }
 
 /* ---------------------------------------------------------------- Strong's popup / sheet */
-async function lookup(keys: string[]): Promise<string> {
+async function lookup(keys: string[], morphs: string[] = [], lemma = ''): Promise<string> {
   const parts: string[] = [];
+  if (lemma) parts.push(`<div class="src">Lemma: <b>${esc(lemma)}</b></div>`);
+  // morphology first, then the dictionary entry for the Strong's number
+  const nm = books.some(m => m.kind === 'dictionary' && m.isMorph && !m.locked);
+  for (const k of morphs) {
+    const hit = await morphEntry(k);
+    parts.push(hit ? `<div class="entry morphe"><h4>${esc(hit.subject)} <a class="findw" data-find="m/ ${esc(k)}" title="Find every verse with ${esc(k)}">Find in Bible</a></h4><div class="src">${esc(hit.src)}</div>${clean(hit.html)}</div>` : `<div class="entry morphe"><h4>${esc(k)}</h4><div class="src">${nm ? 'Not in your morphology dictionaries' : 'No morphology dictionary yet – import one (e.g. Robinson or Packard codes)'}</div></div>`);
+  }
   const nd = books.some(m => m.kind === 'dictionary' && m.isStrong && !m.locked);
   for (const k of keys) {
     const hit = await strongEntry(k);
@@ -218,7 +224,7 @@ async function showWord(el: HTMLElement): Promise<void> {
   let html = '';
   if (el.matches('a.xr')) html = await versePreview(el.dataset.ref!);
   else if (el.matches('sup.fn')) html = `<div class="entry"><div class="src">Footnote</div>${TWRender.render(el.dataset.note || '', { rules: [] }, { ...S.show, footnotes: false })}</div>`;
-  else if (keys.length) html = await lookup(keys);
+  else if (keys.length || el.dataset.morph) html = await lookup(keys, (el.dataset.morph || '').split(/\s+/).filter(Boolean), el.dataset.lemma || '');
   if (!html) return;
   if (isPhone()) { $('#sheetBody').innerHTML = html; $('#sheet').classList.add('open'); return; }
   const p = $('#popup'); p.innerHTML = html; p.classList.remove('hidden');
@@ -233,7 +239,6 @@ function bibleMenu(): void {
   const m = $('#bibleMenu');
   m.innerHTML = `<div class="mh">Bibles <span class="small">(tick to read side by side)</span></div>` +
     bibles.map(b => `<div class="brow"><label><input type="checkbox" data-id="${esc(b.id)}" ${S.open.includes(b.id) ? 'checked' : ''}><b>${esc(b.abbr)}</b><span class="small">${esc(b.title)}</span><span class="fmt">${b.format}</span></label><button class="ib" data-props="${esc(b.id)}" title="Properties of ${esc(b.abbr)}">ⓘ</button></div>`).join('') +
-    (locked.length ? `<div class="mh">Cannot be opened</div>` + locked.map(l => `<div class="lk">${esc(l.title)} – ${esc(l.reason)}</div>`).join('') : '') +
     `<div class="msep"></div><button id="mImport">Import modules…</button>${isAndroid ? '' : '<button id="mFolder">Read modules from a folder…</button>'}` +
     (S.folders.length ? `<div class="small fl">${S.folders.map(esc).join('<br>')}</div>` : '');
   m.querySelectorAll<HTMLInputElement>('input[data-id]').forEach(cb => cb.onchange = () => {
@@ -320,6 +325,7 @@ async function init(): Promise<void> {
   S.show = Object.assign({}, DEFAULT.show, S.show);
   S.look = Object.assign({ ...LOOK }, S.look || {});
   applyLook(S.skin, S.fontSize, S.look);
+  canon.setOrder(S.look.bookOrder);
   document.body.classList.toggle('android', isAndroid);
   ownDir = await modulesDir();
   const win = getCurrentWindow();
@@ -341,7 +347,7 @@ async function init(): Promise<void> {
   let timer = 0;
   $('#view').addEventListener('mouseover', e => {
     if (isPhone()) return;
-    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], sup.fn, a.xr'); clearTimeout(timer);
+    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn, a.xr'); clearTimeout(timer);
     if (t) timer = window.setTimeout(() => showWord(t), 300);
   });
   $('#view').addEventListener('click', e => {
@@ -349,7 +355,7 @@ async function init(): Promise<void> {
     if (rm) { const [b, c, v] = rm.dataset.from!.split('.').map(Number); const [tb, tc, tv] = rm.dataset.to!.split('.').map(Number); removeXref({ b, c, v }, { b: tb, c: tc, v: tv }).then(rerender); return; }
     const xr = (e.target as HTMLElement).closest<HTMLElement>('a.xr');
     if (xr) { if (isPhone()) return void showWord(xr); const [b, c, v] = xr.dataset.ref!.split('.').map(Number); $('#popup').classList.add('hidden'); return void go(b, c, v); }
-    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], sup.fn'); if (t) return void showWord(t);
+    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn'); if (t) return void showWord(t);
     const vn = (e.target as HTMLElement).closest<HTMLElement>('.vn'); if (!vn) return;
     const v = +vn.closest<HTMLElement>('[data-v]')!.dataset.v!;
     $('#view').querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); vn.closest('[data-v]')!.classList.add('sel');
@@ -419,6 +425,6 @@ async function init(): Promise<void> {
   w.__tanglawFirst = Math.round(performance.now());
   await openRest();
   w.__tanglawReady = Math.round(performance.now());
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide };
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });

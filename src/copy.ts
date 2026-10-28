@@ -60,7 +60,7 @@ function chaptersBetween(from: R, to: R): { b: number; c: number; v1: number; v2
 }
 const countVerses = (from: R, to: R, id: string | null) => chaptersBetween(from, to).reduce((n, ch) => n + Math.max(0, Math.min(ch.v2, verseCount(ch.b, ch.c, id) || ch.v2) - ch.v1 + 1), 0);
 export function rangeLabel(from: R, to: R, short: boolean): string {
-  const nm = (b: number) => { const bk = canon.book(b, '1611'); return short ? bk.abbr : bk.name; };
+  const nm = (b: number) => { const bk = canon.book(b); return short ? bk.abbr : bk.name; };
   if (from.b !== to.b) return `${nm(from.b)} ${from.c}:${from.v}–${nm(to.b)} ${to.c}:${to.v}`;
   if (from.c === to.c) return `${nm(from.b)} ${from.c}:${from.v}${to.v > from.v ? '–' + to.v : ''}`;
   return `${nm(from.b)} ${from.c}:${from.v}–${to.c}:${to.v}`;
@@ -87,7 +87,7 @@ export async function buildCopy(from: R, to: R, fmt: Fmt, limit = 0): Promise<{ 
   let m = bibles.find(x => x.id === fmt.bible) || bibles[0];
   if (!m) return { text: '', html: '', count: 0, shown: 0 };
   if (!(await chapterText(m, from.b, from.c)).has(from.v)) { for (const x of bibles) if ((await chapterText(x, from.b, from.c)).has(from.v)) { m = x; break; } }
-  const bname = (b: number) => { const bk = canon.book(b, '1611'); return fmt.shortNames ? bk.abbr : bk.name; };
+  const bname = (b: number) => { const bk = canon.book(b); return fmt.shortNames ? bk.abbr : bk.name; };
   const r = rangeLabel(from, to, fmt.shortNames);
   const single = from.b === to.b && from.c === to.c && from.v === to.v;
   const fill = (tpl: string, o: { b?: number; c?: number; v?: number; T?: string }) => tpl.replace(/%n/g, '\n').replace(/%([rtbcvT])/g, (mm, k) => ({ r, t: m.abbr, b: bname(o.b || from.b), c: String(o.c ?? ''), v: String(o.v ?? ''), T: o.T ?? '' } as Record<string, string>)[k] ?? mm);
