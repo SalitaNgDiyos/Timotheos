@@ -40,6 +40,14 @@
     // reset
     $('#skinBtn').click(); await sleep(200); $('#mPanels').click(); await sleep(600);
     ok(tabs('right') === 'cmt,lib,search,study' && !shown($('#zone-left')) && !shown($('#zone-bottom')), 'all panels back on the right');
+    // user guide
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1', bubbles: true })); await sleep(400);
+    ok($('#guide') && !$('#guide').classList.contains('hidden') && document.querySelectorAll('#gMain section').length >= 12, 'F1 opens the user guide: ' + document.querySelectorAll('#gToc a').length + ' sections');
+    $('#gFind').value = 'NEARv2'; $('#gFind').dispatchEvent(new Event('input')); await sleep(400);
+    const vis = [...document.querySelectorAll('#gMain section')].filter(s => !s.classList.contains('hidden')).map(s => s.querySelector('h2').textContent);
+    ok(vis.length === 1 && vis[0] === 'Searching' && document.querySelector('#gMain mark'), 'find in the guide: ' + vis.join(', '));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await sleep(200);
+    ok($('#guide').classList.contains('hidden'), 'Esc closes the guide');
   } catch (e) { ok(false, 'error: ' + e.message + ' ' + (e.stack || '').split('\n')[1]); }
   await report();
 })();

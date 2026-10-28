@@ -17,6 +17,7 @@ import { bibleTarget, linkRefs, wireRefPreview } from './refs';
 import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
 import { dialog, flash } from './ui';
 import { resetLayout, setHidden } from './dock';
+import { openGuide } from './guide';
 import { importFiles, reportHtml } from './importer';
 import { initProps, openProps } from './props';
 import { SKINS } from './skins';
@@ -332,6 +333,7 @@ async function init(): Promise<void> {
   $('#biblesBtn').onclick = e => { e.stopPropagation(); toggleMenu('#bibleMenu', bibleMenu); };
   $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', skinMenu); };
   $('#emptyImport').onclick = importModules;
+  $('#helpBtn').onclick = () => openGuide();
   $('#copyBtn').onclick = () => copyDialog({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 });
   document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('.menu, .tbtn')) document.querySelectorAll('.menu').forEach(x => x.classList.add('hidden')); if (!(e.target as HTMLElement).closest('#popup, [data-strong], sup.fn, a.xr')) $('#popup').classList.add('hidden'); });
   $('#sheet').addEventListener('click', e => { if (e.target === $('#sheet') || (e.target as HTMLElement).closest('.grab')) $('#sheet').classList.remove('open'); });
@@ -392,6 +394,7 @@ async function init(): Promise<void> {
     if (e.ctrlKey && k.toLowerCase() === 'l') { e.preventDefault(); return addToList([cur]); }
     if (e.ctrlKey && k.toLowerCase() === 'c' && !String(window.getSelection())) { e.preventDefault(); copyVerse(cur); return; }
     if (e.ctrlKey && k === ',') { e.preventDefault(); return openOptions(); }
+    if (k === 'F1') { e.preventDefault(); return openGuide(); }
     if (k === 'F5') { e.preventDefault(); copyDialog(cur); return; }
     if (e.ctrlKey && k === 'ArrowLeft') { e.preventDefault(); return stepBook(-1); }
     if (e.ctrlKey && k === 'ArrowRight') { e.preventDefault(); return stepBook(1); }
@@ -416,6 +419,6 @@ async function init(): Promise<void> {
   w.__tanglawFirst = Math.round(performance.now());
   await openRest();
   w.__tanglawReady = Math.round(performance.now());
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean };
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });
