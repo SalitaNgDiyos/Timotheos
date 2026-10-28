@@ -8,7 +8,8 @@ import { readFile } from '@tauri-apps/plugin-fs';
 import { Bible, Locked, isBibleFile, isLocked, openBible } from './bibles';
 import { BookMod, guessKind, isBookFile, openBook } from './books';
 import type { ModFile } from './native';
-import { commentaryMarks, followBookLink, initPanel, show as showPanel, strongEntry, updateCommentary, forgetSearchCache } from './panel';
+import { commentaryMarks, followBookLink, initPanel, show as showPanel, strongEntry, updateCommentary } from './panel';
+import { find, forgetSearchCache, initSearch } from './search';
 import { importBytes, legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
 import { addToList, afterRender, copyVerse, initStudy, saveUD } from './study';
 import { copyDialog, initCopy } from './copy';
@@ -196,7 +197,7 @@ async function lookup(keys: string[]): Promise<string> {
   const nd = books.some(m => m.kind === 'dictionary' && m.isStrong && !m.locked);
   for (const k of keys) {
     const hit = await strongEntry(k);
-    parts.push(hit ? `<div class="entry"><h4>${esc(hit.subject)}</h4><div class="src">${esc(hit.src)}</div>${clean(hit.html)}</div>` : `<div class="entry"><h4>${esc(k)}</h4><div class="src">${nd ? 'Not in your Strong\'s dictionaries' : 'No Strong\'s dictionary yet – import one'}</div></div>`);
+    parts.push(hit ? `<div class="entry"><h4>${esc(hit.subject)} <a class="findw" data-find="${esc(k)}" title="Find every verse with ${esc(k)}">Find in Bible</a></h4><div class="src">${esc(hit.src)}</div>${clean(hit.html)}</div>` : `<div class="entry"><h4>${esc(k)}</h4><div class="src">${nd ? 'Not in your Strong\'s dictionaries' : 'No Strong\'s dictionary yet – import one'}</div></div>`);
   }
   return parts.join('');
 }
@@ -348,6 +349,8 @@ async function init(): Promise<void> {
   });
   // links anywhere (commentary, library, popups, notes): a Bible reference opens the verse, a book link the topic
   document.addEventListener('click', e => {
+    const fd = (e.target as HTMLElement).closest<HTMLElement>('[data-find]');
+    if (fd && !fd.closest('#p-search')) { e.preventDefault(); $('#popup').classList.add('hidden'); $('#sheet').classList.remove('open'); showPanel('search'); find(fd.dataset.find!); return; }
     const a = (e.target as HTMLElement).closest<HTMLElement>('[data-href]'); if (!a) return;
     e.preventDefault(); const href = a.dataset.href || '';
     const r = /bible/i.test(href) ? bibleTarget(href) : null;
@@ -357,6 +360,7 @@ async function init(): Promise<void> {
   });
   wireRefPreview(versePreview);
   // the study panel (Commentary, Library, Search)
+  initSearch({ openBibles, allBibles: () => bibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, settings: () => S as unknown as Record<string, unknown>, save });
   initPanel({ books: () => books, openBibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, clean, save, settings: () => S as unknown as Record<string, unknown> });
   initCopy({ nav: () => nav, openBibles, save: saveUD });
   const studyNote = await initStudy({ ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, rerender, openBibles, showPanel, show: () => S.show }, legacy ? legacy.study : null);

@@ -1,7 +1,7 @@
 // The study panel: Commentary (follows the selected verse), Library (any commentary, dictionary, book or
 // devotional) and Search. On a computer it sits beside the Bible text; on a phone it opens over it.
+import { focusSearch } from './search';
 import canon from './legacy/canon.js';
-import search from './legacy/search.js';
 import { Bible } from './bibles';
 import { BookMod, Topic } from './books';
 import { renderStudy } from './study';
@@ -36,9 +36,6 @@ export function initPanel(host: PanelHost): void {
   $('#libPrev').onclick = () => stepTopic(-1); $('#libNext').onclick = () => stepTopic(1);
   $('#libBack').onclick = () => { if (lib.history.length < 2) return; lib.history.pop(); const p = lib.history[lib.history.length - 1]; if (p.id !== lib.cur) openLib(p.id, p.tid, false); else showTopic(p.tid, false); };
   $('#libTopics').addEventListener('keydown', e => { const d = { ArrowUp: -1, ArrowDown: 1 }[e.key]; if (d) { e.preventDefault(); e.stopPropagation(); stepTopic(d); } });
-  $('#searchForm').onsubmit = e => { e.preventDefault(); runSearch(); };
-  const sc = $<HTMLSelectElement>('#searchScope');
-  sc.innerHTML = search.PREDEFINED.map(([id, label]: string[]) => `<option value="${id}">${esc(label)}</option>`).join('') + '<option value="book">Current book</option><option value="chapter">Current chapter</option>';
   show(tab, false);
 }
 
@@ -50,7 +47,7 @@ export function show(t: string, open = true): void {
   if (t === 'cmt') updateCommentary();
   if (t === 'lib') { fillLibSelect(); if (lib.cur && !lib.topics.length) openLib(lib.cur); }
   if (t === 'study') renderStudy();
-  if (t === 'search') setTimeout(() => $<HTMLInputElement>('#searchInput').focus(), 50);
+  if (t === 'search') focusSearch();
 }
 
 /* ---------------------------------------------------------------- Commentary */
@@ -144,33 +141,6 @@ export async function strongEntry(key: string): Promise<{ subject: string; html:
   return null;
 }
 
-/* ---------------------------------------------------------------- Search */
-let sseq = 0;
-async function runSearch(): Promise<void> {
-  const q = $<HTMLInputElement>('#searchInput').value.trim(); if (!q) return;
-  const my = ++sseq; const status = $('#searchStatus'); status.textContent = 'Searching…'; $('#searchResults').innerHTML = '';
-  try {
-    const mods = [];
-    for (const b of H.openBibles()) mods.push({ id: b.id, abbr: b.abbr, mod: { allVerses: () => cache.get(b.id) || [] } });
-    for (const b of H.openBibles()) if (!cache.has(b.id)) { status.textContent = `Reading ${b.abbr} for searching…`; cache.set(b.id, await b.allVerses()); }
-    if (my !== sseq) return;
-    await new Promise(r => setTimeout(r, 0));
-    const r = search.run(mods, q, {
-      scope: $<HTMLSelectElement>('#searchScope').value, current: H.ref(), mode: '1611',
-      wholeWords: $<HTMLInputElement>('#optWhole').checked, ignoreCase: !$<HTMLInputElement>('#optCase').checked, limit: 1000,
-    });
-    if (my !== sseq) return;
-    status.innerHTML = `<b>${r.total}</b> verse${r.total === 1 ? '' : 's'} · ${esc(r.explanation)} · ${r.ms} ms`;
-    $('#searchResults').innerHTML = r.results.map((x: { abbr: string; b: number; c: number; v: number; ref: string; text: string; marks: [number, number][] }) => {
-      let h = '', at = 0; for (const [s, e] of x.marks) { h += esc(x.text.slice(at, s)) + '<mark>' + esc(x.text.slice(s, e)) + '</mark>'; at = e; } h += esc(x.text.slice(at));
-      return `<li data-b="${x.b}" data-c="${x.c}" data-v="${x.v}"><span class="r">${esc(x.ref)}</span>${mods.length > 1 ? `<span class="small">${esc(x.abbr)}</span> ` : ''}${h}</li>`;
-    }).join('') + (r.total > r.results.length ? `<li class="small">… ${r.total - r.results.length} more not shown</li>` : '');
-    $('#searchResults').querySelectorAll<HTMLElement>('li[data-b]').forEach(li => li.onclick = () => { H.go(+li.dataset.b!, +li.dataset.c!, +li.dataset.v!); if (window.matchMedia('(max-width: 720px)').matches) document.body.classList.remove('side-open'); });
-  } catch (e) { status.textContent = String((e as Error).message || e); }
-}
-const cache = new Map<string, [number, number, number, string][]>();
-export function forgetSearchCache(): void { cache.clear(); }
-export { runSearch };
 
 /** theWord links to book modules: tw://dct.ABBR?t=TOPIC | ?tid=N, tw://bk.…, tw://cmt.…, tw://[self]?t=… */
 export async function followBookLink(href: string): Promise<boolean> {

@@ -127,6 +127,7 @@ a.link { color: var(--strong); cursor: pointer; text-decoration: none; } a.link:
 .srow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .srow input[type=search] { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); }
 .srow label { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.sform .srow select { flex: 1 1 120px; min-width: 0; width: auto; }
 .sstatus { padding: 6px 12px 0; }
 .results { list-style: none; margin: 0; }
 .results li { padding: 6px 4px; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); cursor: pointer; font: 14px/1.45 var(--font-text); }
@@ -212,6 +213,22 @@ a.xrmore { color: var(--accent); cursor: pointer; }
 .dlgbody .fl { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; font-size: 12.5px; color: var(--muted); }
 .dlgbody .fl label { color: var(--text); display: flex; align-items: center; gap: 5px; }
 input.num { width: 64px; padding: 3px 5px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+
+/* search */
+#searchExplain { padding: 0 2px; min-height: 1em; } #searchExplain.bad, .bad { color: #b3261e; }
+#searchMore summary { cursor: pointer; font-size: 12.5px; color: var(--muted); }
+.sopts { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 2px; font-size: 12.5px; } .sopts p { margin: 0; flex-basis: 100%; }
+.sopts .num, .opts .num { width: 54px; }
+#searchTabs { margin: 6px 8px 0; display: flex; gap: 4px; align-items: center; } #searchTabs .grow { flex: 1; }
+.results li.filter { cursor: default; font: 12.5px var(--font-ui); color: var(--muted); } .results li.filter a { color: var(--accent); cursor: pointer; }
+table.bookbars { width: 100%; border-collapse: collapse; font: 13px var(--font-ui); }
+.bookbars tr { cursor: pointer; } .bookbars tr:hover { background: var(--card); }
+.bookbars td { padding: 3px 6px; border-bottom: 1px solid color-mix(in srgb, var(--line) 50%, transparent); white-space: nowrap; }
+.bookbars td.n, .bookbars td.pc { text-align: right; color: var(--muted); width: 1%; } .bookbars td.barc { width: 45%; }
+.bookbars .barc span { display: block; height: 9px; border-radius: 5px; background: var(--accent); opacity: .75; }
+.stg { padding: 4px 6px; line-height: 2; } .stg b a { color: var(--accent); cursor: pointer; }
+.chip.st { display: inline-block; padding: 0 8px; margin: 0 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); font: 12.5px/1.7 var(--font-text); }
+a.findw { font: 500 11.5px var(--font-ui); color: var(--accent); cursor: pointer; margin-left: 8px; }
 
 /* Options: text width, background texture, verse numbers, plain captions */
 .view table.chap, .view .rows { max-width: var(--textw, none); margin-left: auto; margin-right: auto; }
