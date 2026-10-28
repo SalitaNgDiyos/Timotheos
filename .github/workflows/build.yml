@@ -1,10 +1,12 @@
 # Builds Tanglaw for Windows, Linux and Android on GitHub's machines and attaches the files to the run
 # (Actions → the run → Artifacts). Start it by hand (Actions → Build Tanglaw → Run workflow) or by pushing.
+# Pushing a tag like v0.5.0 also attaches the files to the GitHub release of that tag (made if missing).
 name: Build Tanglaw
 on:
   workflow_dispatch:
   push:
     branches: ["**"]
+    tags: ["v*"]
 
 jobs:
   desktop:
@@ -62,3 +64,25 @@ jobs:
         with:
           name: tanglaw-android
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [desktop, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dl }
+      - name: Attach the files to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir out
+          find dl -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.deb' -o -name '*.AppImage' \) -exec cp {} out/ \;
+          V="${TAG#v}"; n=0
+          for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Tanglaw-Bible_${V}_android-test$([ $n -gt 1 ] && echo -$n).apk"; done
+          ls -la out
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --title "Tanglaw Bible $V" --notes "Tanglaw Bible $V" --prerelease
+          gh release upload "$TAG" out/* -R "$GITHUB_REPOSITORY" --clobber
