@@ -8,7 +8,7 @@ import { readFile } from '@tauri-apps/plugin-fs';
 import { Bible, Locked, isBibleFile, isLocked, openBible } from './bibles';
 import { BookMod, Topic, guessKind, isBookFile, openBook } from './books';
 import type { ModFile } from './native';
-import { commentaryMarks, followBookLink, initPanel, morphEntry, openLib, libCurrent, libTopicId, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
+import { commentaryMarks, followBookLink, initPanel, morphEntry, openLib, refreshLib, libCurrent, libTopicId, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
 import { bookHitOf, find, forgetSearchCache, initSearch } from './search';
 import { exportTopics } from './export';
 import { initClipmon, clipOn, clipTestReader, setClipmon } from './clipmon';
@@ -16,6 +16,8 @@ import { exportForTest } from './export';
 import { strFromU8, unzipSync } from 'fflate';
 import { openImage, printHtml, viewerOpen } from './tools';
 import { initAnnotate } from './annotate';
+import { initUserMods, newUserModule } from './usermods';
+import { currentLang, initLang, translationTable } from './i18n';
 import { defineModuleSets } from './search';
 import { firstOriginal, translit } from './translit';
 import { legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
@@ -526,7 +528,7 @@ function dictPick(k: 'greek' | 'hebrew' | 'morph', label: string, f: (d: BookMod
 /** the Options menu: what to show, text size, order of the books, the Options window */
 function optMenu(): void {
   const m = $('#optMenu');
-  m.innerHTML = '<div class="mh">Show</div>' + [['strongs', "Strong's numbers"], ['morph', 'Morphology'], ['footnotes', 'Footnotes'], ['headings', 'Headings'], ['woj', 'Words of Jesus in red'], ['added', 'Added words in italics'], ['xrefs', 'Cross-references'], ['highlights', 'My highlighting'], ['notes', 'My notes under the verses'], ['lemma', 'Lemmas'], ['paragraph', 'Paragraph mode (P)'], ['columns', 'Column text – words over their originals (Alt+I)']]
+  m.innerHTML = `<div class="mrow msel">Language / Wika <select id="mLang"><option value="en">English</option><option value="tl"${currentLang() === 'tl' ? ' selected' : ''}>Tagalog</option></select></div><div class="msep"></div>` + '<div class="mh">Show</div>' + [['strongs', "Strong's numbers"], ['morph', 'Morphology'], ['footnotes', 'Footnotes'], ['headings', 'Headings'], ['woj', 'Words of Jesus in red'], ['added', 'Added words in italics'], ['xrefs', 'Cross-references'], ['highlights', 'My highlighting'], ['notes', 'My notes under the verses'], ['lemma', 'Lemmas'], ['paragraph', 'Paragraph mode (P)'], ['columns', 'Column text – words over their originals (Alt+I)']]
       .map(([k, l]) => `<label><input type="checkbox" data-show="${k}" ${S.show[k] ? 'checked' : ''}> ${l}</label>`).join('') +
     (S.show.columns ? '<div class="mh">Column text lines</div>' + COL_LINES.map(([k, l]) => `<label class="sub"><input type="checkbox" data-coll="${k}" ${colOn(k) ? 'checked' : ''}> ${l}</label>`).join('') : '') +
     moduleToggles() +
@@ -539,6 +541,7 @@ function optMenu(): void {
     `<div class="msep"></div><div class="mrow">Text size <button data-fs="-1">A−</button><b class="fsv">${S.fontSize}</b><button data-fs="1">A+</button></div>` +
     '<div class="msep"></div><div class="mh">Order of the books</div>' + [['1611', '1611 King James (Apocrypha between)'], ['nets', 'Septuagint – NETS'], ['orthodox', 'Greek Orthodox']].map(([k, l]) => `<label><input type="radio" name="mord" data-ord="${k}" ${S.look.bookOrder === k ? 'checked' : ''}> ${l}</label>`).join('') +
     `<div class="msep"></div><button id="mOpts">Options… <kbd>Ctrl+,</kbd></button>`;
+  m.querySelector<HTMLSelectElement>('#mLang')!.onchange = e => { LS().lang = (e.target as HTMLSelectElement).value; saveSettings(S).then(() => location.reload()); };
   m.querySelectorAll<HTMLInputElement>('[data-coll]').forEach(cb => cb.onchange = () => { const cs = S as unknown as ColSettings; cs.colLines = { ...(cs.colLines || {}), [cb.dataset.coll!]: cb.checked }; save(); go(S.ref.b, S.ref.c, S.ref.v); });
   m.querySelector<HTMLInputElement>('#mWl')!.onchange = e => { WL().on = (e.target as HTMLInputElement).checked; save(); if (WL().on && !(WL().dicts || []).length) { m.classList.add('hidden'); wordLookDialog(); } };
   m.querySelector<HTMLButtonElement>('#mWlD')!.onclick = () => { m.classList.add('hidden'); wordLookDialog(); };
@@ -552,18 +555,37 @@ function optMenu(): void {
   m.querySelectorAll<HTMLButtonElement>('[data-fs]').forEach(b => b.onclick = () => { S.fontSize = Math.max(12, Math.min(34, S.fontSize + +b.dataset.fs!)); document.documentElement.style.setProperty('--size', S.fontSize + 'px'); save(); m.querySelector('.fsv')!.textContent = String(S.fontSize); });
   m.querySelectorAll<HTMLInputElement>('[data-ord]').forEach(r => r.onchange = () => { S.look.bookOrder = r.dataset.ord as Look['bookOrder']; save(); canon.setOrder(S.look.bookOrder); buildNav(); go(S.ref.b, S.ref.c, S.ref.v); viewsReload(); });
 }
+type LangSettings = { lang?: string; tlFixes?: Record<string, string> };
+const LS = () => S as unknown as LangSettings;
+/** Tools → Tagalog translation…: every phrase with its Tagalog; change any, add the missing ones */
+async function translationDialog(): Promise<void> {
+  const rows = translationTable(); const edits: Record<string, string> = {};
+  const r = await dialog('Tagalog translation', `<p class="small tlx">The Tagalog of Tanglaw's menus and windows (the Bible text and modules are not translated). Change any translation, or fill in a missing one; empty means English. Phrases seen on screen without a translation are listed first among the empty ones. Your changes are kept in your settings. The user guide (F1) is still in English.</p>
+    <input id="tlF" class="txt" type="search" placeholder="Filter…"><div class="tltable tlx">${rows.map((x, i) => `<div class="tlrow" data-i="${i}"><span class="en">${esc(x.en)}</span><input class="txt" data-tl="${i}" value="${esc(x.tl)}"${x.mine ? ' style="font-weight:600"' : ''}></div>`).join('')}</div>`,
+    [{ label: 'Cancel', value: null }, { label: 'Save', value: 'ok', primary: true }], b => {
+      b.querySelectorAll<HTMLInputElement>('[data-tl]').forEach(i => i.oninput = () => { edits[rows[+i.dataset.tl!].en] = i.value; });
+      const f = b.querySelector<HTMLInputElement>('#tlF')!; f.oninput = () => { const q = f.value.toLowerCase(); b.querySelectorAll<HTMLElement>('.tlrow').forEach(rw => { const x = rows[+rw.dataset.i!]; rw.style.display = !q || x.en.toLowerCase().includes(q) || x.tl.toLowerCase().includes(q) ? '' : 'none'; }); };
+    });
+  if (r !== 'ok' || !Object.keys(edits).length) return;
+  const fx = { ...(LS().tlFixes || {}) }; for (const [en, tl] of Object.entries(edits)) fx[en] = tl.trim();
+  LS().tlFixes = fx; await saveSettings(S);
+  if (currentLang() === 'tl') location.reload(); else flash('Saved – choose Tagalog in the Options menu to use it');
+}
 /** the Tools menu */
 function toolsMenu(): void {
   const m = $('#toolsMenu'); const lm = libCurrent();
   m.innerHTML = '<div class="mh">Tools</div>' +
     `<label><input type="checkbox" id="tClip" ${clipOn() ? 'checked' : ''}> Clipboard monitor</label>` +
     '<button id="tWl">Word lookup dictionaries…</button><button id="tSets">Module sets…</button>' +
+    '<div class="msep"></div><button id="tNewMod">New module of your own…</button><button id="tTl">Tagalog translation…</button>' +
     '<div class="msep"></div><button id="tPrint">Print the chapter <kbd>Ctrl+P</kbd></button>' +
     (lm ? `<button id="tPrintT">Print the Library topic</button><button id="tExp">Export from ${esc(lm.abbr || lm.title)}…</button>` : '');
   const hide = () => m.classList.add('hidden');
   m.querySelector<HTMLInputElement>('#tClip')!.onchange = e => setClipmon((e.target as HTMLInputElement).checked);
   m.querySelector<HTMLButtonElement>('#tWl')!.onclick = () => { hide(); wordLookDialog(); };
   m.querySelector<HTMLButtonElement>('#tSets')!.onclick = () => { hide(); defineModuleSets(); };
+  m.querySelector<HTMLButtonElement>('#tNewMod')!.onclick = () => { hide(); newUserModule(); };
+  m.querySelector<HTMLButtonElement>('#tTl')!.onclick = () => { hide(); translationDialog(); };
   m.querySelector<HTMLButtonElement>('#tPrint')!.onclick = () => { hide(); printChapter(); };
   const pt = m.querySelector<HTMLButtonElement>('#tPrintT'); if (pt) pt.onclick = () => { hide(); printTopic($('#libBody')); };
   const ex = m.querySelector<HTMLButtonElement>('#tExp'); if (ex) ex.onclick = () => { hide(); exportLib(); };
@@ -680,6 +702,7 @@ async function init(): Promise<void> {
   S.look = Object.assign({ ...LOOK }, S.look || {});
   applyLook(S.skin, S.fontSize, S.look);
   canon.setOrder(S.look.bookOrder);
+  initLang(LS().lang || 'en', LS().tlFixes || {});
   document.body.classList.toggle('android', isAndroid);
   ownDir = await modulesDir();
   const win = getCurrentWindow();
@@ -700,6 +723,18 @@ async function init(): Promise<void> {
   // an image in a module: the graphics viewer
   document.addEventListener('click', e => { const im = (e.target as HTMLElement).closest<HTMLImageElement>('.entrybody img, .entry img, #popup img, .clipwin img'); if (im) { e.preventDefault(); openImage(im); } }, true);
   initAnnotate();
+  initUserMods({
+    books: () => books, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }),
+    async reopen(file, tid) {
+      const i = books.findIndex(m => m.file === file); if (i < 0) return;
+      const m = await openBook({ path: file, name: books[i].name, size: 0 }); books[i] = m; forgetSearchCache(m.id);
+      await refreshLib(m.id, tid); viewsReload(); if (m.kind === 'commentary') { updateCommentary(); go(S.ref.b, S.ref.c, S.ref.v); }
+    },
+    async added(file) {
+      await loadModules(); await openRest(); viewsReload();
+      const m = books.find(x => x.file === file); if (m) { showPanel('lib'); await refreshLib(m.id); }
+    },
+  });
   $('#emptyImport').onclick = importModules;
   $('#helpBtn').onclick = () => openGuide();
   // the books & chapters icon on the Bible text's caption
@@ -828,6 +863,6 @@ async function init(): Promise<void> {
   w.__tanglawFirst = Math.round(performance.now());
   await openRest(); viewsReload();
   w.__tanglawReady = Math.round(performance.now());
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked, clipTestReader, setClipmon, docxText: (html: string) => strFromU8(unzipSync(exportForTest.docx(html))['word/document.xml']), rtfOf: exportForTest.rtf };
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked, clipTestReader, setClipmon, lang: (l: string) => initLang(l, LS().tlFixes || {}), modulesDir: () => ownDir, docxText: (html: string) => strFromU8(unzipSync(exportForTest.docx(html))['word/document.xml']), rtfOf: exportForTest.rtf };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });

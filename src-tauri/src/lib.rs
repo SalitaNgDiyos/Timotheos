@@ -387,6 +387,39 @@ fn mod_restore(store: State<Store>, path: String) -> Result<(), String> {
     Ok(())
 }
 
+/** your own (user) book modules: make a new one (the file must not exist yet) */
+#[tauri::command]
+fn umod_create(app: tauri::AppHandle, store: State<Store>, name: String, statements: Vec<(String, Vec<serde_json::Value>)>) -> Result<String, String> {
+    let safe: String = name.chars().map(|c| if "\\/:*?\"<>|".contains(c) { ' ' } else { c }).collect();
+    if !safe.to_lowercase().ends_with(".twm") { return Err("a user module must be a .twm file".into()); }
+    let dir = data_dir(&app).join("modules"); fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let p = dir.join(safe.trim());
+    if p.exists() { return Err(format!("a module named {} is already there", safe.trim())); }
+    let res = (|| -> Result<(), String> {
+        let mut c = Connection::open(&p).map_err(|e| e.to_string())?;
+        let tx = c.transaction().map_err(|e| e.to_string())?;
+        for (q, ps) in &statements { let vals: Vec<rusqlite::types::Value> = ps.iter().map(to_value).collect(); tx.execute(q, rusqlite::params_from_iter(vals.iter())).map_err(|e| format!("{e} ({q})"))?; }
+        tx.commit().map_err(|e| e.to_string())
+    })();
+    if let Err(e) = res { let _ = fs::remove_file(&p); return Err(e); }
+    let ps = p.to_string_lossy().to_string(); forget(&store, &ps);
+    Ok(ps)
+}
+/** change your own (user) book module in place, in one transaction; refused for modules not marked user=1 */
+#[tauri::command]
+fn umod_exec(store: State<Store>, path: String, statements: Vec<(String, Vec<serde_json::Value>)>) -> Result<(), String> {
+    if !path.to_lowercase().ends_with(".twm") || !Path::new(&path).is_file() { return Err("not a user module".into()); }
+    forget(&store, &path);
+    let mut c = Connection::open(&path).map_err(|e| e.to_string())?;
+    let user: String = c.query_row("select value from config where name = 'user'", [], |r| r.get::<_, String>(0)).unwrap_or_default();
+    if user.trim() != "1" { return Err("this module is not a user module (it can be changed only through Properties)".into()); }
+    let tx = c.transaction().map_err(|e| e.to_string())?;
+    for (q, ps) in &statements { let vals: Vec<rusqlite::types::Value> = ps.iter().map(to_value).collect(); tx.execute(q, rusqlite::params_from_iter(vals.iter())).map_err(|e| format!("{e} ({q})"))?; }
+    tx.commit().map_err(|e| e.to_string())?;
+    forget(&store, &path);
+    Ok(())
+}
+
 /** test hook: a test script reports its results here (printed on the console) */
 #[tauri::command]
 fn test_report(text: String) { println!("RESULT {}", text); }
@@ -398,7 +431,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .manage(Store::default())
-        .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, ud_load, ud_save, legacy_data, user_xrefs, user_xref_change, mod_file, mod_read, mod_write, mod_sql_write, mod_restore, import_stage, import_commit, import_discard, test_report])
+        .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, ud_load, ud_save, legacy_data, user_xrefs, user_xref_change, mod_file, mod_read, mod_write, mod_sql_write, mod_restore, umod_create, umod_exec, import_stage, import_commit, import_discard, test_report])
         .setup(|app| {
             // test hook (like the Electron version's): TANGLAW_SCRIPT runs a script in the window after start
             if let (Ok(sz), Some(w)) = (std::env::var("TANGLAW_SIZE"), app.get_webview_window("main")) {

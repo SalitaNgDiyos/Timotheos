@@ -9,11 +9,11 @@ import { ModFile, bytes, inflate, sql, text } from './native';
 
 export type Kind = 'dictionary' | 'commentary' | 'book' | 'devotional' | 'map' | 'readingplan';
 export interface Topic { id: number | string; pid: number | string; subject: string }
-export interface Entry { id: number | string; subject: string; html: string }
+export interface Entry { id: number | string; subject: string; html: string; anchor?: string; target?: number | string }
 export interface Hit { id: number | string; subject: string; level: 'verse' | 'passage' | 'chapter' | 'book' }
 export interface BookMod {
   id: string; file: string; name: string; format: 'theWord' | 'e-Sword'; kind: Kind; title: string; abbr: string;
-  locked: boolean; reason?: string; isStrong: boolean; greek: boolean; hebrew: boolean; isMorph: boolean;
+  locked: boolean; reason?: string; user?: boolean; isStrong: boolean; greek: boolean; hebrew: boolean; isMorph: boolean;
   topics(): Promise<Topic[]>; topic(id: number | string): Promise<Entry | null>;
   forVerse(b: number, c: number, v: number): Hit | null; verseMarks(b: number, c: number): Set<number>;
   lookup(key: string): Promise<Entry | null>; today(m: number, d: number): Promise<Topic[]>; searchTopics(q: string): Promise<Topic[]>;
@@ -85,7 +85,7 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
   let kind: Kind = ({ 1: 'dictionary', 2: 'commentary', 3: 'book', 4: 'map' } as Record<string, Kind>)[cfg.type] || stub.kind;
   if (tabs.devotion) kind = 'devotional';
   const mod = Object.assign(stub, {
-    kind, title: cfg.title || cfg.abbrev || stub.title, abbr: cfg.abbrev || cfg.id || stub.abbr,
+    kind, title: cfg.title || cfg.abbrev || stub.title, abbr: cfg.abbrev || cfg.id || stub.abbr, user: cfg.user === '1',
     isStrong: cfg.strong === '1' || /strong/i.test(cfg.keywords || ''), greek: cfg['strong.g'] !== '0', hebrew: cfg['strong.h'] === '1',
     isMorph: /morph|rmac|robinson|packard|parsing/i.test([cfg.title, cfg.keywords, cfg.categories, stub.name].join(' ')) || cfg.morph === '1',
   });
@@ -160,9 +160,18 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
     const raw = await body(id); if (raw == null && !t) return null;
     let ct = defType;
     if (hasCT) { const r = await rows(f.path, `select content_type from ${tabs.topics} where id = ?`, [id as number]); if (r[0]?.[0]) ct = String(r[0][0]).toLowerCase(); }
+    // a topic link (theWord "topic links"): it shows another topic, at a bookmark in it
+    if (ct === 'meta' || /^meta=_twmgc_/.test(raw || '')) {
+      const kv: Record<string, string> = {}; for (const ln of (raw || '').split(/\r?\n/)) { const i = ln.indexOf('='); if (i > 0) kv[ln.slice(0, i).trim()] = ln.slice(i + 1).trim(); }
+      if (kv.type === 'link' && kv.id && String(kv.id) !== String(id)) {
+        const tgt = await topic(isNaN(+kv.id) ? kv.id : +kv.id);
+        if (tgt) return { id, subject: t ? t.subject : tgt.subject, html: tgt.html, anchor: kv.anchor || undefined, target: tgt.id };
+      }
+      return { id, subject: t ? t.subject : String(id), html: '' };
+    }
     let html: string;
     if (ct === 'rvf' || /^-8 ?RichView/.test(raw || '')) html = '<p class="note">This entry is stored in RichView format, which Tanglaw cannot display yet.</p>';
-    else html = ct === 'meta' ? '' : toHtml(raw || '', ct);
+    else html = toHtml(raw || '', ct);
     return { id, subject: t ? t.subject : String(id), html };
   }
   function forVerse(b: number, c: number, v: number): Hit | null {

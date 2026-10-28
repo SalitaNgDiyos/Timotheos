@@ -40,7 +40,7 @@ function selected(): { el: HTMLElement; s: number; e: number } | null {
   const sel = window.getSelection(); if (!sel || !sel.rangeCount || !String(sel).trim()) return null;
   const range = sel.getRangeAt(0);
   const el = (range.commonAncestorContainer.nodeType === 3 ? range.commonAncestorContainer.parentElement : range.commonAncestorContainer as Element)?.closest<HTMLElement>('.ebody[data-amod]');
-  if (!el) return null;
+  if (!el || el.isContentEditable) return null;
   let pos = 0, s: number | null = null, e = 0;
   for (const n of nodes(el)) {
     if (range.intersectsNode(n)) { const from = n === range.startContainer ? range.startOffset : 0, to = n === range.endContainer ? range.endOffset : n.length; if (s === null) s = pos + from; e = pos + to; }

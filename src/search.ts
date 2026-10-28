@@ -21,7 +21,7 @@ interface BookHit { mod: BookMod; id: TopicText['id']; subject: string; snip: st
 let H: SearchHost;
 const cache = new Map<string, [number, number, number, string][]>();
 const bookCache = new Map<string, TopicText[]>();
-export function forgetSearchCache(): void { cache.clear(); bookCache.clear(); }
+export function forgetSearchCache(id?: string): void { if (id) { bookCache.delete(id); return; } cache.clear(); bookCache.clear(); }
 
 const DEF: Opts = { defaultOr: false, whole: false, matchCase: false, matchDiac: false, regex: false, nearW: 30, nearV: 3, bibles: 'open', scope: 'all', mods: 'all' };
 const ranges = (): Record<string, string> => (ud.ranges as Record<string, string>) || ((ud as unknown as Record<string, unknown>).ranges = {}) as Record<string, string>;

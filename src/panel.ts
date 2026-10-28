@@ -92,11 +92,11 @@ function fillLibSelect(): void {
   const mods = H.books().filter(m => !m.locked);
   sel.innerHTML = '<option value="">Choose a module…</option>' + ['commentary', 'dictionary', 'book', 'devotional', 'map'].map(k => {
     const l = mods.filter(m => m.kind === k).sort((a, b) => a.title.localeCompare(b.title));
-    return l.length ? `<optgroup label="${KIND[k]}">${l.map(m => `<option value="${esc(m.id)}">${esc(m.title)}</option>`).join('')}</optgroup>` : '';
+    return l.length ? `<optgroup label="${KIND[k]}">${l.map(m => `<option value="${esc(m.id)}">${m.user ? '✎ ' : ''}${esc(m.title)}</option>`).join('')}</optgroup>` : '';
   }).join('');
   sel.value = keep;
 }
-export async function openLib(id: string, tid?: Topic['id'], addHistory = true): Promise<void> {
+export async function openLib(id: string, tid?: Topic['id'], addHistory = true, anchor?: string): Promise<void> {
   const m = H.books().find(x => x.id === id); if (!m) return;
   if (!visible('lib')) activate('lib');
   if (lib.cur !== id || !lib.topics.length) {
@@ -107,8 +107,11 @@ export async function openLib(id: string, tid?: Topic['id'], addHistory = true):
   if (tid == null && m.kind === 'devotional') { const d = new Date(); const t = await m.today(d.getMonth() + 1, d.getDate()); if (t[0]) tid = t[0].id; }
   if (tid == null && m.kind === 'commentary') { const { b, c, v } = H.ref(); const h = m.forVerse(b, c, v); if (h) tid = h.id; }
   if (tid == null) { const first = lib.topics.find(t => !t.pid) || lib.topics[0]; tid = first?.id; }
-  if (tid != null) await showTopic(tid, addHistory);
+  if (tid != null) await showTopic(tid, addHistory, anchor);
+  else { $('#libBody').innerHTML = `<p class="hint">${esc(m.title)} has no topics yet.</p>`; curTid = null; drawRows(); document.dispatchEvent(new CustomEvent('tanglaw-topic', { detail: { mod: m.id, tid: null } })); }
 }
+/** the module was changed (your own modules): read its topics again and show one */
+export async function refreshLib(id: string, tid?: Topic['id'] | null): Promise<void> { lib.topics = []; if (lib.cur !== id) lib.cur = ''; await openLib(id, tid ?? undefined, false); }
 /* The topic list draws only the rows in view (a commentary can have 24,000 topics; drawing them all
    froze the window). Rows have a fixed height. */
 const ROW = 24;
@@ -145,14 +148,17 @@ async function filterTopics(): Promise<void> {
   const q = $<HTMLInputElement>('#libFilter').value.trim(); const m = H.books().find(x => x.id === lib.cur); if (!m) return;
   renderTopics(q ? await m.searchTopics(q) : lib.topics);
 }
-async function showTopic(tid: Topic['id'], addHistory = true): Promise<void> {
+async function showTopic(tid: Topic['id'], addHistory = true, anchor?: string): Promise<void> {
   const m = H.books().find(x => x.id === lib.cur); if (!m) return;
   const t = await m.topic(tid); if (!t) return;
   if (addHistory) { lib.history.push({ id: m.id, tid }); if (lib.history.length > 100) lib.history.shift(); }
   $('#libBody').innerHTML = `<div class="entry"><h4>${esc(t.subject)}</h4><div class="src">${esc(m.title)}</div>${bodyHtml(m.id, t.id, H.clean(t.html) || '<p class="hint">(empty)</p>')}</div>`; applyMarks($('#libBody'));
   $('#libBody').scrollTop = 0;
+  // a topic link, or a link to a bookmark: go to that place in the topic
+  const at = anchor || t.anchor; if (at) { const a = $('#libBody').querySelector(`[id="bkm:${CSS.escape(at)}"]`); if (a) a.scrollIntoView({ block: 'start' }); }
   curTid = tid; showRow(tid);
   document.body.classList.add('lib-reading');
+  document.dispatchEvent(new CustomEvent('tanglaw-topic', { detail: { mod: m.id, tid } }));
 }
 function stepTopic(d: number): void {
   if (!rows.length) return;
@@ -181,13 +187,14 @@ export async function strongEntry(key: string): Promise<{ subject: string; html:
 /** theWord links to book modules: tw://dct.ABBR?t=TOPIC | ?tid=N, tw://bk.…, tw://cmt.…, tw://[self]?t=… */
 export async function followBookLink(href: string): Promise<boolean> {
   const m = /^tw:\/\/(?:(dct|bk|cmt|map|dev)\.([^?#|]+)|\[(self)\])\?(?:t=([^&#|]*)|tid=(\d+))/i.exec(href);
+  const anchor = (/#([^|&-]+)/.exec(href) || [])[1];
   if (!m) return false;
   let mod = m[3] ? H.books().find(x => x.id === lib.cur) : undefined;
   if (!mod) { const want = decodeURIComponent(m[2] || '').toLowerCase(); mod = H.books().find(x => !x.locked && (x.abbr.toLowerCase() === want || x.title.toLowerCase().startsWith(want))); }
   if (!mod) return false;
-  if (m[5]) { await openLib(mod.id, +m[5]); return true; }
+  if (m[5]) { await openLib(mod.id, +m[5], true, anchor); return true; }
   const e = await mod.lookup(decodeURIComponent(m[4] || '')); if (!e) return false;
-  await openLib(mod.id, e.id); return true;
+  await openLib(mod.id, e.id, true, anchor); return true;
 }
 
 /** a module file changed (Properties): forget what was read from it and show it again */

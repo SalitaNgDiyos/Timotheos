@@ -8,13 +8,14 @@ import { dialog, esc, flash } from './ui';
 
 export interface ExportItem { mod: BookMod; id: Topic['id'] }
 type Fmt = 'docx' | 'rtf' | 'html' | 'txt';
-interface Block { kind: 'h1' | 'h2' | 'p'; runs: { t: string; b?: boolean; i?: boolean; u?: boolean; sup?: boolean }[] }
+interface Run { t: string; b?: boolean; i?: boolean; u?: boolean; sup?: boolean; href?: string; anchor?: string }
+interface Block { kind: 'h1' | 'h2' | 'p' | 'li'; runs: Run[] }
 
 /** the document as blocks of formatted text (shared by .docx and .rtf) */
 function blocks(html: string): Block[] {
   const t = document.createElement('template'); t.innerHTML = html; const out: Block[] = []; let cur: Block = { kind: 'p', runs: [] };
-  const flush = () => { if (cur.runs.some(r => r.t.trim())) out.push(cur); cur = { kind: 'p', runs: [] }; };
-  const walk = (n: Node, f: { b?: boolean; i?: boolean; u?: boolean; sup?: boolean }) => {
+  const flush = () => { if (cur.runs.some(r => r.t.trim() || r.anchor)) out.push(cur); cur = { kind: 'p', runs: [] }; };
+  const walk = (n: Node, f: { b?: boolean; i?: boolean; u?: boolean; sup?: boolean; href?: string }) => {
     if (n.nodeType === 3) { const s = (n.textContent || '').replace(/\s+/g, ' '); if (s) cur.runs.push({ t: s, ...f }); return; }
     if (n.nodeType !== 1) return;
     const el = n as HTMLElement; const tag = el.tagName.toLowerCase();
@@ -23,8 +24,12 @@ function blocks(html: string): Block[] {
     if (tag === 'br') { flush(); return; }
     if (block) flush();
     if (/^h[1-6]$/.test(tag)) cur.kind = tag === 'h1' || tag === 'h2' ? 'h1' : 'h2';
+    if (tag === 'li') cur.kind = 'li';
+    if (tag === 'a' && (el.id || '').startsWith('bkm:')) cur.runs.push({ t: '', anchor: el.id.slice(4) });
+    if (el.classList.contains('hide')) return; // hidden Strong's numbers and the like
     const st = el.getAttribute('style') || '';
-    const g = { b: f.b || /^(b|strong|h\d)$/.test(tag) || /font-weight:\s*(bold|[6-9]00)/.test(st), i: f.i || /^(i|em)$/.test(tag) || /font-style:\s*italic/.test(st), u: f.u || tag === 'u' || /underline/.test(st), sup: f.sup || tag === 'sup' };
+    const href = tag === 'a' ? (el.dataset.href || el.getAttribute('href') || undefined) : f.href;
+    const g = { b: f.b || /^(b|strong|h\d)$/.test(tag) || /font-weight:\s*(bold|[6-9]00)/.test(st), i: f.i || /^(i|em)$/.test(tag) || /font-style:\s*italic/.test(st), u: f.u || tag === 'u' || /underline/.test(st), sup: f.sup || tag === 'sup' || /vertical-align:\s*super/.test(st), href };
     for (const c of [...el.childNodes]) walk(c, g);
     if (block) flush();
   };
@@ -35,6 +40,7 @@ function blocks(html: string): Block[] {
 const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function docx(blks: Block[]): Uint8Array {
   const run = (r: Block['runs'][number], size?: number) => `<w:r><w:rPr>${r.b ? '<w:b/>' : ''}${r.i ? '<w:i/>' : ''}${r.u ? '<w:u w:val="single"/>' : ''}${r.sup ? '<w:vertAlign w:val="superscript"/>' : ''}${size ? `<w:sz w:val="${size}"/>` : ''}</w:rPr><w:t xml:space="preserve">${xml(r.t)}</w:t></w:r>`;
+  blks = blks.map(b => b.kind === 'li' ? { kind: 'p', runs: [{ t: '• ' }, ...b.runs] } : b);
   const body = blks.map(b => `<w:p>${b.kind === 'p' ? '' : '<w:pPr><w:spacing w:before="240" w:after="120"/><w:keepNext/></w:pPr>'}${b.runs.map(r => run(b.kind === 'p' ? r : { ...r, b: true }, b.kind === 'h1' ? 32 : b.kind === 'h2' ? 26 : undefined)).join('')}</w:p>`).join('');
   return zipSync({
     '[Content_Types].xml': strToU8('<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'),
@@ -46,9 +52,19 @@ function rtfText(s: string): string {
   let o = ''; for (const ch of s) { const c = ch.codePointAt(0)!; if (ch === '\\' || ch === '{' || ch === '}') o += '\\' + ch; else if (c < 128) o += ch; else if (c < 0x10000) o += `\\u${c > 32767 ? c - 65536 : c}?`; else { const h = Math.floor((c - 0x10000) / 0x400) + 0xd800, l = ((c - 0x10000) % 0x400) + 0xdc00; o += `\\u${h - 65536}?\\u${l - 65536}?`; } }
   return o;
 }
-function rtf(blks: Block[]): string {
-  return '{\\rtf1\\ansi\\ansicpg1252\\deff0{\\fonttbl{\\f0\\froman Gentium Plus;}}\\f0\\fs24\n' + blks.map(b => (b.kind === 'p' ? '' : `\\sb240\\sa120\\b\\fs${b.kind === 'h1' ? 32 : 26} `) + b.runs.map(r => `{${r.b ? '\\b' : ''}${r.i ? '\\i' : ''}${r.u ? '\\ul' : ''}${r.sup ? '\\super' : ''} ${rtfText(r.t)}}`).join('') + (b.kind === 'p' ? '' : '\\b0\\fs24\\sb0\\sa0') + '\\par\n').join('') + '}';
+function rtfRun(r: Run): string {
+  if (r.anchor) return `{\\*\\bkmkstart ${rtfText(r.anchor)}}{\\*\\bkmkend ${rtfText(r.anchor)}}`;
+  const fl = `${r.b ? '\\b' : ''}${r.i ? '\\i' : ''}${r.u ? '\\ul' : ''}${r.sup ? '\\super' : ''}`;
+  const fmt = `{${fl}${fl ? ' ' : ''}${rtfText(r.t)}}`;
+  return r.href ? `{\\field{\\*\\fldinst HYPERLINK "${rtfText(r.href)}"}{\\fldrslt ${fmt}}}` : fmt;
 }
+function rtf(blks: Block[], size = 24): string {
+  // consecutive runs with the same link make one link
+  const merge = (runs: Run[]) => { const o: Run[] = []; for (const r of runs) { const l = o[o.length - 1]; if (l && r.href && l.href === r.href && !!l.b === !!r.b && !!l.i === !!r.i && !!l.u === !!r.u && !!l.sup === !!r.sup) l.t += r.t; else o.push({ ...r }); } return o; };
+  return `{\\rtf1\\ansi\\ansicpg1252\\deff0{\\fonttbl{\\f0\\froman Gentium Plus;}}\\f0\\fs${size}\n` + blks.map(b => (b.kind === 'h1' || b.kind === 'h2' ? `\\sb240\\sa120\\b\\fs${b.kind === 'h1' ? 32 : 26} ` : b.kind === 'li' ? '{\\pntext \\u8226?\\tab}' : '') + merge(b.runs).map(rtfRun).join('') + (b.kind === 'h1' || b.kind === 'h2' ? `\\b0\\fs${size}\\sb0\\sa0` : '') + '\\par\n').join('') + '}';
+}
+/** the RTF Tanglaw writes into your own modules (theWord reads it) */
+export function htmlToRtf(html: string): string { return rtf(blocks(html), 20); }
 
 /** ask how, then save the topics */
 export async function exportTopics(items: ExportItem[], clean: (html: string) => string): Promise<void> {

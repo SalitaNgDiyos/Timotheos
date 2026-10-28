@@ -463,3 +463,11 @@ sup.lemma { font: italic 400 .62em var(--font-text); color: var(--muted); margin
 .abar button { min-width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 5px; cursor: pointer; background: var(--card); color: inherit; }
 .abar button.hl-bold, .abar button.hl-ul { background: var(--card); }
 .bookmode .results { list-style: none; padding-left: 4px; }
+/* your own modules */
+.ubar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 4px 6px; margin: -4px -4px 8px; border-bottom: 1px dashed var(--line); font: 12.5px var(--font-ui); position: sticky; top: -12px; background: var(--card); z-index: 2; }
+.ubar button { padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: inherit; cursor: pointer; font: inherit; }
+.ubar button.primary { background: var(--accent); color: #fff; border-color: var(--accent); } .ubar button.danger { color: #b3261e; } .ubar .grow { flex: 1; }
+.ebody.editing { outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 4px; border-radius: 4px; min-height: 8em; padding: 2px; cursor: text; }
+.ebody.editing a { cursor: text; }
+a.bkm { scroll-margin-top: 40px; }
+.tltable { max-height: 52vh; overflow: auto; margin-top: 6px; } .tlrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; padding: 2px 0; border-bottom: 1px solid var(--line); } .tlrow .en { font-size: 13px; }

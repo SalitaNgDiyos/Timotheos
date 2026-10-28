@@ -99,6 +99,12 @@ function rtfToHtml(rtf, opts = {}) {
       if (rtf.startsWith('\\*', i)) {
         const m2 = /^\\\*\\([a-z]+)/.exec(rtf.slice(i, i + 40));
         if (m2 && m2[1] === 'fldinst' && field) { field.inInst = true; field.instDepth = stack.length; }
+        else if (m2 && m2[1] === 'bkmkstart') {
+          // a bookmark (the target of a topic link): an anchor in the text
+          const e = rtf.indexOf('}', i); const name = rtf.slice(i + m2[0].length, e).trim();
+          if (name && !st.skip) { closeSpan(); out += `<a class="bkm" id="bkm:${esc(name).replace(/"/g, '')}"></a>`; }
+          st.skip = 1;
+        }
         else st.skip = 1;
       } else if (m && SKIP_DEST.has(m[1])) st.skip = 1;
       else if (m && m[1] === 'field') { field = { inst: '', depth: stack.length, start: null }; }
