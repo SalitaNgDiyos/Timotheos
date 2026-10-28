@@ -5,7 +5,8 @@
 import canon from './legacy/canon.js';
 import esw from './legacy/eswordfmt.js';
 import rtf from './legacy/rtf.js';
-import { ModFile, bytes, inflate, sql, text } from './native';
+import { ModFile, bytes, inflate, inflateBytes, sql, text } from './native';
+import { looksRvf, rvfToHtml } from './rvf';
 
 export type Kind = 'dictionary' | 'commentary' | 'book' | 'devotional' | 'map' | 'readingplan';
 export interface Topic { id: number | string; pid: number | string; subject: string }
@@ -13,7 +14,7 @@ export interface Entry { id: number | string; subject: string; html: string; anc
 export interface Hit { id: number | string; subject: string; level: 'verse' | 'passage' | 'chapter' | 'book' }
 export interface BookMod {
   id: string; file: string; name: string; format: 'theWord' | 'e-Sword'; kind: Kind; title: string; abbr: string;
-  locked: boolean; reason?: string; user?: boolean; isStrong: boolean; greek: boolean; hebrew: boolean; isMorph: boolean;
+  locked: boolean; reason?: string; user?: boolean; lang?: string; isStrong: boolean; greek: boolean; hebrew: boolean; isMorph: boolean;
   topics(): Promise<Topic[]>; topic(id: number | string): Promise<Entry | null>;
   forVerse(b: number, c: number, v: number): Hit | null; verseMarks(b: number, c: number): Set<number>;
   lookup(key: string): Promise<Entry | null>; today(m: number, d: number): Promise<Topic[]>; searchTopics(q: string): Promise<Topic[]>;
@@ -85,7 +86,7 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
   let kind: Kind = ({ 1: 'dictionary', 2: 'commentary', 3: 'book', 4: 'map' } as Record<string, Kind>)[cfg.type] || stub.kind;
   if (tabs.devotion) kind = 'devotional';
   const mod = Object.assign(stub, {
-    kind, title: cfg.title || cfg.abbrev || stub.title, abbr: cfg.abbrev || cfg.id || stub.abbr, user: cfg.user === '1',
+    kind, title: cfg.title || cfg.abbrev || stub.title, abbr: cfg.abbrev || cfg.id || stub.abbr, user: cfg.user === '1' && (cfg['content.type'] || 'rtf').toLowerCase() === 'rtf', lang: cfg.lang,
     isStrong: cfg.strong === '1' || /strong/i.test(cfg.keywords || ''), greek: cfg['strong.g'] !== '0', hebrew: cfg['strong.h'] === '1',
     isMorph: /morph|rmac|robinson|packard|parsing/i.test([cfg.title, cfg.keywords, cfg.categories, stub.name].join(' ')) || cfg.morph === '1',
   });
@@ -150,10 +151,27 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
       if (!t && data != null) { t = text(data); if (!/^\s*[{<]/.test(t) && b1 && (compressed || zl(b1))) t = (await inflate(b1)) || t; }
       if (!t && b2) t = (await inflate(b2)) || text(data2);
       const ct = cts.get(id) || defType;
-      if (ct !== 'rvf' && ct !== 'meta' && !/^-8 ?RichView/.test(t)) out.push({ id: id as number, subject: subj.get(id as number) || String(id), text: plain(toHtml(t, ct)) });
+      if (ct === 'rvf' || /^-8 \d/.test(t)) { const bb = await bodyBytes(data, data2); if (bb && looksRvf(bb)) { try { out.push({ id: id as number, subject: subj.get(id as number) || String(id), text: plain(rvfToHtml(bb)) }); } catch { /* skip */ } } }
+      else if (ct !== 'meta') out.push({ id: id as number, subject: subj.get(id as number) || String(id), text: plain(toHtml(t, ct)) });
       if (i % 300 === 299) { progress?.(i / all.length); await tick(); }
     }
     return out;
+  }
+  /** an entry as bytes, unpacked (RichView entries are binary) */
+  async function bodyBytes(data: unknown, data2: unknown): Promise<Uint8Array | null> {
+    const b1 = bytes(data), b2 = bytes(data2);
+    const zl = (b: Uint8Array | null) => !!b && b.length > 2 && b[0] === 0x78 && [0x01, 0x5e, 0x9c, 0xda].includes(b[1]);
+    if (compressed && b2) { const o = await inflateBytes(b2); if (o) return o; }
+    if (b1 && (compressed || zl(b1))) { const o = await inflateBytes(b1); if (o && looksRvf(o)) return o; }
+    if (b1) return b1;
+    if (data != null) return new TextEncoder().encode(text(data));
+    return null;
+  }
+  async function rvfHtml(id: number | string): Promise<string> {
+    const r = await rows(f.path, 'select data, data2 from content where topic_id = ?', [id as number]); if (!r.length) return '';
+    const b = await bodyBytes(r[0][0], r[0][1]);
+    if (!b || !looksRvf(b)) return '<p class="note">This entry could not be read.</p>';
+    try { return rvfToHtml(b); } catch { return '<p class="note">This RichView entry could not be read.</p>'; }
   }
   async function topic(id: number | string): Promise<Entry | null> {
     const list = await topics(); const t = list.find(x => x.id === id);
@@ -170,7 +188,7 @@ async function openTheWord(f: ModFile, tabs: Record<string, string>, stub: BookM
       return { id, subject: t ? t.subject : String(id), html: '' };
     }
     let html: string;
-    if (ct === 'rvf' || /^-8 ?RichView/.test(raw || '')) html = '<p class="note">This entry is stored in RichView format, which Tanglaw cannot display yet.</p>';
+    if (ct === 'rvf' || /^-8 \d/.test(raw || '')) html = await rvfHtml(id);
     else html = toHtml(raw || '', ct);
     return { id, subject: t ? t.subject : String(id), html };
   }

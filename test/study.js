@@ -8,7 +8,8 @@
   try {
     const S = T.S();
     ok(S.folders.includes('/home/claude/testmods') && S.open.length === 2 && S.skin === 'sampaguita', 'settings taken over from Tanglaw 0.4: ' + S.open.join(', ') + ' · skin ' + S.skin);
-    const mk = document.querySelector('tr[data-v="16"] mark.hl-yellow');
+    ok(T.bvIds().length === 2 && document.querySelectorAll('#zone-center section.bvsec').length === 2, 'the two Bibles read side by side became two Bible views');
+    const mk = document.querySelector('#view [data-v="16"] mark.hl-yellow');
     ok(mk && mk.textContent === 'loved', 'highlight brought over lands on "' + (mk && mk.textContent) + '"');
     const un = document.querySelector('.unote'); ok(un && /Rom 5:8/.test(un.textContent), 'note brought over shows under John 3:16');
     // keyboard: verse, history
@@ -19,13 +20,13 @@
     key('2', { code: 'Digit2' }); key('1', { code: 'Digit1' }); await sleep(900); ok(S.ref.v === 21, 'typing 21 → verse ' + S.ref.v);
     key('L', { key: 'l', ctrlKey: true }); await sleep(300);
     // highlight a word by selection + verse menu
-    const td = document.querySelector('tr[data-v="21"] td[data-col="0"]');
+    const td = document.querySelector('#view [data-v="21"] [data-col="0"]');
     const w = document.createTreeWalker(td, NodeFilter.SHOW_TEXT); let n, node, off; while ((n = w.nextNode())) { const i = n.textContent.indexOf('truth'); if (i >= 0) { node = n; off = i; break; } }
     const r = document.createRange(); r.setStart(node, off); r.setEnd(node, off + 5); getSelection().removeAllRanges(); getSelection().addRange(r);
     const rc = r.getBoundingClientRect(); node.parentElement.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: rc.left + 2, clientY: rc.top + 3 })); await sleep(200);
     ok(!document.getElementById('vmenu').classList.contains('hidden') && /Highlight selection/.test(document.getElementById('vmenu').textContent), 'verse menu opens on right-click');
     document.querySelector('#vmenu [data-s="green"]').click(); await sleep(800);
-    const g = document.querySelector('tr[data-v="21"] mark.hl-green'); ok(g && g.textContent === 'truth', 'new highlight: "' + (g && g.textContent) + '"');
+    const g = document.querySelector('#view [data-v="21"] mark.hl-green'); ok(g && g.textContent === 'truth', 'new highlight: "' + (g && g.textContent) + '"');
     // My Study panel
     T.showPanel('study'); await sleep(800);
     ok(document.querySelectorAll('#studyBody .vlist li').length === 2 && /Rom 5:8/.test(document.getElementById('studyBody').textContent) && /John 3:21|Jn 3:21|John 3:21/.test(document.getElementById('studyBody').textContent) || /3:21/.test(document.getElementById('studyBody').textContent), 'verse list: ' + [...document.querySelectorAll('#studyBody .vlist a')].map(a => a.textContent).join(', '));

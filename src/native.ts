@@ -40,6 +40,11 @@ export function bytes(v: unknown): Uint8Array | null {
 /** zlib inflate (theWord "compressed" modules). Some modules (e.g. LSJ) have extra bytes after the
  *  compressed data, which the browser's own decompressor refuses; fflate stops at the end of the data. */
 export async function inflate(b: Uint8Array): Promise<string | null> {
+  const out = await inflateBytes(b); if (!out) return null;
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(out); } catch { return new TextDecoder('windows-1252').decode(out); }
+}
+/** zlib inflate to bytes (RichView entries are binary) */
+export async function inflateBytes(b: Uint8Array): Promise<Uint8Array | null> {
   let out: Uint8Array | null = null;
   const zlibHeader = b.length > 2 && (b[0] & 0x0f) === 8 && ((b[0] << 8) | b[1]) % 31 === 0;
   try { out = inflateSync(zlibHeader ? b.subarray(2) : b); } catch { out = null; }
@@ -48,6 +53,5 @@ export async function inflate(b: Uint8Array): Promise<string | null> {
       try { out = new Uint8Array(await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream(fmt))).arrayBuffer()); break; } catch { out = null; }
     }
   }
-  if (!out) return null;
-  try { return new TextDecoder('utf-8', { fatal: true }).decode(out); } catch { return new TextDecoder('windows-1252').decode(out); }
+  return out;
 }

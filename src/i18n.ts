@@ -82,12 +82,35 @@ export const TL: Record<string, string> = {
   // messages
   'No Bibles yet': 'Wala pang Biblia', 'Open a topic first': 'Magbukas muna ng paksa', 'Give the module a title': 'Bigyan ng pamagat ang module', 'Give the topic a title': 'Bigyan ng pamagat ang paksa', 'Give the set a name': 'Bigyan ng pangalan ang pangkat',
   'Tick some modules for the set': 'Lagyan ng tsek ang ilang module para sa pangkat', 'Paragraph mode': 'Parapo', 'Verse by verse': 'Talata-talata', 'Word lookup on': 'Bukas ang paghahanap ng salita', 'Word lookup off': 'Sarado ang paghahanap ng salita',
+  // Bible views, book views, reading aloud (0.7)
+  "Bible search": "Paghahanap sa Biblia", "Book search": "Paghahanap sa aklat", "+ New Bible search": "+ Bagong paghahanap sa Biblia",
+  "+ New book search": "+ Bagong paghahanap sa aklat", "Books and chapters": "Mga aklat at kabanata", "Move together with the other Bible views (untick to read on by itself)": "Sumabay sa ibang tanaw ng Biblia (alisin ang tsek para magbasa nang mag-isa)",
+  "Font and size of this view": "Font at laki ng tanaw na ito", "Read aloud": "Basahin nang malakas", "All options of this view": "Lahat ng opsyon ng tanaw na ito",
+  "Bible of this view": "Biblia ng tanaw na ito", "Verse": "Talata", "Font of this view": "Font ng tanaw na ito",
+  "Lines": "Pagitan ng linya", "As in Options": "Gaya sa Mga Opsyon", "As in Options (reset)": "Gaya sa Mga Opsyon (ibalik)",
+  "This Bible view": "Ang tanaw ng Bibliang ito", "Footnote marks": "Mga marka ng talababa", "List the footnotes under the chapter": "Ilista ang mga talababa sa ilalim ng kabanata",
+  "Added words marked": "May marka ang mga idinagdag na salita", "Paragraphs": "Mga talata-talataan", "Column text": "Teksto sa hanay",
+  "Use these for new Bible views": "Gamitin ito sa mga bagong tanaw ng Biblia", "New Bible views start with these settings": "Ganito magsisimula ang mga bagong tanaw ng Biblia", "Use these in all Bible views": "Gamitin ito sa lahat ng tanaw ng Biblia",
+  "Back to the general settings": "Bumalik sa pangkalahatang setting", "New Bible views will start like this one": "Magsisimula ang mga bagong tanaw ng Biblia na gaya nito", "All Bible views now look like this one": "Kamukha na nito ang lahat ng tanaw ng Biblia",
+  "Strong's numbers (S)": "Mga bilang ni Strong (S)", "Morphology codes (M)": "Mga code ng morpolohiya (M)", "Lemmas (L)": "Mga lema (L)",
+  "Paragraphs (P)": "Mga talata-talataan (P)", "Column text: words over their originals (Alt+I)": "Teksto sa hanay: mga salita sa ibabaw ng orihinal (Alt+I)", "Footnotes (F)": "Mga talababa (F)",
+  "Cross-references (X)": "Mga kaugnay na talata (X)", "Headings (H)": "Mga pamagat (H)", "Words of Jesus in red (J)": "Mga salita ni Jesus sa pula (J)",
+  "This view moves with the others": "Sumasabay ang tanaw na ito sa iba", "This view reads on by itself": "Nagbabasa nang mag-isa ang tanaw na ito", "Choose a Bible": "Pumili ng Biblia",
+  "New Testament": "Bagong Tipan", "Other books": "Ibang mga aklat", "This Bible has no books.": "Walang aklat ang Bibliang ito.",
+  "No Bible view open": "Walang bukas na tanaw ng Biblia", "Open a Bible view to read:": "Magbukas ng tanaw ng Biblia para magbasa:", "Layouts \u2192 + New Bible view": "Ayos \u2192 + Bagong tanaw ng Biblia",
+  "Show or hide the topic list": "Ipakita o itago ang listahan ng paksa", "Smaller text": "Mas maliit na titik", "Larger text": "Mas malaking titik",
+  "Show your own marks (highlighting) in the topics": "Ipakita ang sarili mong mga marka sa mga paksa", "Save the Bibles of the open views as a set\u2026": "I-save bilang pangkat ang mga Biblia ng mga bukas na tanaw\u2026", "What a Bible view shows is set in its own side bar.": "Ang ipinapakita ng tanaw ng Biblia ay itinatakda sa sarili nitong gilid.",
+  "Read aloud: voices\u2026": "Basahin nang malakas: mga boses\u2026", "Read aloud: voices": "Basahin nang malakas: mga boses", "System voices": "Mga boses ng system",
+  "Web-engine voices": "Mga boses ng web engine", "Other languages": "Ibang mga wika", "Another language": "Ibang wika",
+  "Add\u2026": "Idagdag\u2026", "Speed": "Bilis", "Try it": "Subukan",
+  "In a Bible, go on into the next chapter": "Sa Biblia, magpatuloy sa susunod na kabanata", "Stop reading": "Itigil ang pagbasa", "Drag to resize": "Hilahin para baguhin ang laki",
+  "Open in a Bible view": "Buksan sa tanaw ng Biblia", "No Bible here has this verse.": "Walang Biblia rito na may talatang ito.",
 };
 /** phrases with numbers or names in them */
 const PATTERNS: [RegExp, (...m: string[]) => string][] = [
   [/^(\d+) topics?$/, n => `${n} paksa`],
   [/^(\d+) Bibles? · (\d+) library modules \((\d+) Strong's dictionaries\) · (\d+) ms$/, (b, l, d, ms) => `${b} Biblia · ${l} module ng aklatan (${d} diksiyonaryo ni Strong) · ${ms} ms`],
-  [/^Bible view: (.*)$/, x => `Tanaw ng Biblia: ${x}`], [/^Book view: (.*)$/, x => `Tanaw ng aklat: ${x}`], [/^Search (\d+)$/, n => `Paghahanap ${n}`],
+  [/^Bible view: (.*)$/, x => `Tanaw ng Biblia: ${x}`], [/^Book view: (.*)$/, x => `Tanaw ng aklat: ${x}`], [/^Search (\d+)$/, n => `Paghahanap ${n}`], [/^Bible search (\d+)$/, n => `Paghahanap sa Biblia ${n}`], [/^Book search (\d+)$/, n => `Paghahanap sa aklat ${n}`],
   [/^Font for (.*)$/, x => `Font para sa ${x}`], [/^Properties of (.*)$/, x => `Mga katangian ng ${x}`], [/^Export from (.*)…$/, x => `I-export mula sa ${x}…`],
   [/^All (\d+) topics$/, n => `Lahat ng ${n} paksa`], [/^Clipboard: (\d+) references?$/, n => `Clipboard: ${n} sanggunian`],
 ];

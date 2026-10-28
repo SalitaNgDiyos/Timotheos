@@ -23,7 +23,7 @@
   }
   try {
     await sleep(800);
-    ok(panes('right') === 'cmt | lib+search+study' && !shown($('#zone-left')) && !shown($('#zone-bottom')), 'at first: two panes on the right: ' + panes('right'));
+    ok(panes('right') === 'cmt | lib+search+bsearch+study' && !shown($('#zone-left')) && !shown($('#zone-bottom')), 'at first: two panes on the right: ' + panes('right'));
     // drag the Library tab to the left edge arrow: a pane of its own on the left
     ok(await dragTab('lib', () => document.querySelector('.dtarget.edge[data-t*="left"]')), 'left edge arrow appears while dragging');
     ok(panes('left') === 'lib' && shown($('#p-lib')), 'Library dragged to the left: left ' + panes('left') + ' · right ' + panes('right'));
@@ -58,7 +58,7 @@
     ok($('#p-lib .libside').offsetWidth - tw0 >= 30, 'topic list made wider: ' + tw0 + ' → ' + $('#p-lib .libside').offsetWidth + ' px');
     // close a pane, open it again from the Layouts menu
     $('#p-search').closest('.dgroup').querySelector('[data-act="close"]').click(); await sleep(300);
-    ok(!panes('right').includes('search'), 'Search closed: ' + panes('right'));
+    ok(!panes('right').split(/[ |+]+/).includes('search'), 'Search closed: ' + panes('right'));
     $('#sideBtn').click(); await sleep(200); const cb = $('#layoutMenu [data-pan="search"]'); ok(cb && !cb.checked, 'Layouts menu shows Search closed');
     cb.checked = true; cb.dispatchEvent(new Event('change')); await sleep(300);
     ok(document.querySelector('.dtab[data-ptab="search"]'), 'and opens it again: ' + panes('right'));
@@ -70,24 +70,28 @@
     // a new Bible view gets a pane of its own; its books & chapters icon
     const before = document.querySelectorAll('.dgroup').length;
     $('#sideBtn').click(); await sleep(200); $('#mAddBible').click(); await sleep(800);
-    const bv = document.querySelector('section[id^="p-bible-"]');
-    ok(bv && shown(bv) && document.querySelectorAll('.dgroup').length === before + 1 && bv.closest('.dgroup').querySelectorAll('.dtab').length === 1, 'new Bible view in a pane of its own (' + document.querySelectorAll('.dgroup').length + ' panes)');
-    const bsel = bv.querySelector('.vbible'); bsel.value = T.bibles().find(b => /^KJV$/i.test(b.abbr)).id; bsel.dispatchEvent(new Event('change')); await sleep(700);
-    ok(/John 3/.test(bv.querySelector('.vhead').textContent) && bv.querySelector('.vrow.sel')?.dataset.v === '16', 'it follows the text: ' + bv.querySelector('.vhead').textContent);
-    bv.querySelector('.vpick').click(); await sleep(300);
-    [...document.querySelectorAll('#bpick li[data-b]')].find(li => li.textContent === 'Romans').click(); await sleep(300);
-    document.querySelector('#bpick [data-c="8"]').click(); await sleep(300); document.querySelector('#bpick [data-v="28"]').click(); await sleep(900);
-    ok(T.S().ref.b === 45 && T.S().ref.c === 8 && T.S().ref.v === 28 && /Romans 8/.test(bv.querySelector('.vhead').textContent), 'books & chapters icon: Romans 8:28 (the main text went there too)');
-    bv.querySelector('.vfol').click(); await sleep(200); bv.querySelector('.vnextc').click(); await sleep(600);
-    ok(/Romans 9/.test(bv.querySelector('.vhead').textContent) && T.S().ref.c === 8, 'not following: next chapter only in the view (' + bv.querySelector('.vhead').textContent + ')');
-    $('#capPick').click(); await sleep(300); [...document.querySelectorAll('#bpick li[data-b]')].find(li => li.textContent === 'Genesis').click(); await sleep(300);
+    const bvs = [...document.querySelectorAll('section[id^="p-bible-"]')]; const bv = bvs[bvs.length - 1];
+    ok(bvs.length === 2 && bv && shown(bv) && document.querySelectorAll('.dgroup').length === before + 1 && bv.closest('.dgroup').querySelectorAll('.dtab').length === 1 && bv.closest('#zone-center'), 'new Bible view in a pane of its own, in the middle (' + document.querySelectorAll('.dgroup').length + ' panes)');
+    bv.querySelector('.bvbible').click(); await sleep(300);
+    document.querySelector(`.bvpop [data-bb="${T.bibles().find(b => /^KJV$/i.test(b.abbr)).id}"]`).click(); await sleep(700);
+    ok(/John 3/.test(bv.querySelector('.bvref').textContent) && bv.querySelector('.vrow.sel')?.dataset.v === '16' && bv.querySelector('.bvbible').textContent === 'KJV', 'it shows KJV and moves with the other view: ' + bv.querySelector('.bvref').textContent);
+    bv.querySelector('[data-bv="tree"]').click(); await sleep(400);
+    ok(!bv.querySelector('.bvtree').classList.contains('hidden') && bv.querySelectorAll('.bvtree li[data-tb]').length > 30, 'the side bar opens the list of books beside the text');
+    bv.querySelector('.bvtree li[data-tb="45"]').click(); await sleep(600);
+    bv.querySelector('.bvtree [data-tc="8"]').click(); await sleep(800);
+    ok(T.S().ref.b === 45 && T.S().ref.c === 8 && /Romans 8/.test(bv.querySelector('.bvref').textContent) && /Romans 8/.test(document.querySelector('#p-bible-1 .bvref').textContent), 'books list: Romans 8, and the other view went there too');
+    bv.querySelector('[data-bv="tree"]').click();
+    bv.querySelector('[data-bv="follow"]').click(); await sleep(200); bv.querySelector('[data-bv="next"]').click(); await sleep(700);
+    ok(/Romans 9/.test(bv.querySelector('.bvref').textContent) && T.S().ref.c === 8 && /Romans 8/.test(document.querySelector('#p-bible-1 .bvref').textContent), 'link off: next chapter only in this view (' + bv.querySelector('.bvref').textContent + ')');
+    T.setActive('bible-1'); await sleep(200);
+    $('#capRef').click(); await sleep(300); [...document.querySelectorAll('#bpick li[data-b]')].find(li => li.textContent === 'Genesis').click(); await sleep(300);
     document.querySelector('#bpick [data-c="1"]').click(); await sleep(300); document.querySelector('#bpick [data-v="1"]').click(); await sleep(700);
-    ok(T.S().ref.b === 1 && T.S().ref.c === 1, 'books & chapters icon on the main Bible caption: ' + document.getElementById('capRef').textContent);
+    ok(T.S().ref.b === 1 && T.S().ref.c === 1 && /Romans 9/.test(bv.querySelector('.bvref').textContent), 'the place picker of the first view: ' + document.getElementById('capRef').textContent + '; the unlinked view stays');
     // a new book view: its own pane
     $('#sideBtn').click(); await sleep(200); $('#mAddBook').click(); await sleep(500);
     const kv = document.querySelector('section[id^="p-book-"]'); const ms = kv.querySelector('.vmod'); ms.value = dict.id; ms.dispatchEvent(new Event('change')); await sleep(1200);
     ok(kv.querySelector('.vbody h4') && kv.closest('.dgroup').querySelectorAll('.dtab').length === 1 && kv.querySelector('.lsplit'), 'new book view in a pane of its own: ' + kv.querySelector('.vbody h4')?.textContent);
-    ok(T.S().views && Object.keys(T.S().views).length === 2 && !document.querySelector('[data-pan="tree"]'), 'added views kept; Books & chapters panel gone');
+    ok(T.S().views && Object.keys(T.S().views).length === 3, 'added views kept: ' + Object.keys(T.S().views).join(', '));
     // layouts
     $('#sideBtn').click(); await sleep(200); $('#mSaveLay').click(); await sleep(300);
     $('#layName').value = 'Test layout'; $('#layName').dispatchEvent(new Event('input')); $('.dlgbox .primary').click(); await sleep(300);
@@ -100,10 +104,10 @@
     $('#sideBtn').click(); await sleep(200); $('#mHideAll').click(); await sleep(200);
     ok(shown($('#zone-right')), 'and show them again');
     $('#sideBtn').click(); await sleep(200); $('#layoutMenu [data-pre="standard"]').click(); await sleep(500);
-    ok(panes('right') === 'cmt | lib+search+study' && !shown($('#zone-left')), 'Layouts → Standard');
+    ok(panes('right') === 'cmt | lib+search+bsearch+study' && !shown($('#zone-left')) && document.querySelectorAll('#zone-center section.bvsec').length >= 1, 'Layouts → Standard (Bible views stay in the middle): ' + panes('right'));
     // Options menu
     $('#optBtn').click(); await sleep(200);
-    ok($('#optMenu [data-show="strongs"]') && $('#optMenu [data-ord="nets"]') && $('#optMenu #mOpts'), 'Options menu: show, text size, book order, Options…');
+    ok($('#optMenu #mLang') && $('#optMenu [data-ord="nets"]') && $('#optMenu #mOpts'), 'Options menu: language, text size, book order, Options…');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     // user guide
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1', bubbles: true })); await sleep(400);

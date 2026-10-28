@@ -67,7 +67,7 @@
     const box = document.querySelector('.opts');
     ok(box && box.querySelectorAll('.skin').length >= 4, 'Options window with ' + (box ? box.querySelectorAll('.skin').length : 0) + ' skins');
     const vp = document.getElementById('oVp'); vp.value = 'inline'; vp.dispatchEvent(new Event('change')); await sleep(700);
-    ok(document.querySelectorAll('sup.vnum').length >= 30 && document.documentElement.dataset.vnpos === 'inline', 'verse numbers in the text: ' + document.querySelectorAll('sup.vnum').length);
+    ok(document.querySelectorAll('sup.vnum').length >= 30 && document.getElementById('view').dataset.vnpos === 'inline', 'verse numbers in the text: ' + document.querySelectorAll('sup.vnum').length);
     const lh = document.getElementById('oLh'); lh.value = '2'; lh.dispatchEvent(new Event('input'));
     const w = document.getElementById('oW'); w.value = '680'; w.dispatchEvent(new Event('change')); await sleep(300);
     ok(getComputedStyle(document.querySelector('#view table.chap, #view .rows')).maxWidth === '680px', 'text width narrow: ' + getComputedStyle(document.querySelector('#view table.chap, #view .rows')).maxWidth);

@@ -11,26 +11,28 @@
 import { $, esc, isPhone } from './ui';
 import { icon } from './icons';
 
-export type ZoneId = 'left' | 'right' | 'bottom';
+export type ZoneId = 'left' | 'right' | 'bottom' | 'center';
 export interface Group { panels: string[]; active: string; size: number }
 export interface Float { panels: string[]; active: string; x: number; y: number; w: number; h: number }
 export interface Layout { v: 2; zones: Record<ZoneId, { size: number; groups: Group[] }>; floats: Float[]; hidden: string[]; zoom?: Record<string, number> }
 
 const FIXED: Record<string, [string, string, string]> = { // id → title, icon, caption colour
-  cmt: ['Commentary', 'commentary', 'cmt'], lib: ['Library', 'library', 'lib'], search: ['Search', 'search', 'search'],
+  cmt: ['Commentary', 'commentary', 'cmt'], lib: ['Library', 'library', 'lib'], search: ['Bible search', 'search', 'search'], bsearch: ['Book search', 'search', 'search'],
   study: ['My Study', 'study', 'study'], dict: ['Dictionary', 'lookup', 'dict'],
 };
 export const PANELS = Object.keys(FIXED);
 const ZONES: ZoneId[] = ['left', 'right', 'bottom'];
+/** the side zones and the middle (where the Bible views are) */
+const ALLZ: ZoneId[] = ['center', 'left', 'right', 'bottom'];
 const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
 const g1 = (panels: string[], size = 1): Group => ({ panels, active: panels[0], size });
 const lay = (left: Group[], right: Group[], bottom: Group[], hidden: string[], sizes = [300, 400, 250]): Layout =>
-  ({ v: 2, zones: { left: { size: sizes[0], groups: left }, right: { size: sizes[1], groups: right }, bottom: { size: sizes[2], groups: bottom } }, floats: [], hidden });
+  ({ v: 2, zones: { left: { size: sizes[0], groups: left }, right: { size: sizes[1], groups: right }, bottom: { size: sizes[2], groups: bottom }, center: { size: 0, groups: [] } }, floats: [], hidden });
 export const PRESETS: Record<string, [string, Layout]> = {
-  standard: ['Standard – study tools on the right', lay([], [g1(['cmt'], 1), g1(['lib', 'search', 'study'], 1.3)], [], ['dict'])],
-  study: ['Study – Library left, Commentary right, Search below', lay([g1(['lib'])], [g1(['cmt']), g1(['dict', 'study'])], [g1(['search'])], [], [340, 380, 230])],
-  words: ['Word study – Dictionary and Search', lay([], [g1(['dict'], 1.2), g1(['cmt', 'lib'])], [g1(['search']), g1(['study'])], [], [300, 400, 260])],
-  tabs: ['Compact – everything as tabs on the right', lay([], [g1(['cmt', 'lib', 'dict', 'search', 'study'])], [], [])],
+  standard: ['Standard – study tools on the right', lay([], [g1(['cmt'], 1), g1(['lib', 'search', 'bsearch', 'study'], 1.3)], [], ['dict'])],
+  study: ['Study – Library left, Commentary right, Search below', lay([g1(['lib'])], [g1(['cmt']), g1(['dict', 'study'])], [g1(['search']), g1(['bsearch'])], [], [340, 380, 230])],
+  words: ['Word study – Dictionary and Search', lay([], [g1(['dict'], 1.2), g1(['cmt', 'lib'])], [g1(['search']), g1(['bsearch', 'study'])], [], [300, 400, 260])],
+  tabs: ['Compact – everything as tabs on the right', lay([], [g1(['cmt', 'lib', 'dict', 'search', 'bsearch', 'study'])], [], [])],
   reading: ['Reading – the Bible only', lay([], [], [], [...PANELS])],
 };
 export const DEFAULT_LAYOUT = (): Layout => clone(PRESETS.standard[1]);
@@ -46,7 +48,7 @@ let H: DockHost;
 let L: Layout = DEFAULT_LAYOUT();
 let focus = false;                 // all panels hidden: the Bible text only
 let maxed: string | null = null;   // the panel whose pane is maximized
-const meta = (id: string): [string, string, string] => FIXED[id] || (id.startsWith('bible-') ? [H.title(id), 'bible', 'bible'] : [H.title(id), 'book', 'lib']);
+const meta = (id: string): [string, string, string] => FIXED[id] || (id.startsWith('bible-') ? [H.title(id), 'bible', 'bible'] : id.startsWith('bsearch') ? [H.title(id), 'search', 'search'] : id.startsWith('search-') ? [H.title(id), 'search', 'search'] : [H.title(id), 'book', 'lib']);
 export const titleOf = (id: string) => meta(id)[0];
 const section = (id: string): HTMLElement | null => document.getElementById('p-' + id) || H.create(id);
 const known = (id: string) => !!FIXED[id] || !!section(id);
@@ -63,8 +65,8 @@ function normalize(x: unknown): Layout {
   } else out = DEFAULT_LAYOUT();
   const seen = new Set<string>();
   const keep = (list: string[]) => (list || []).filter(id => !seen.has(id) && known(id) && seen.add(id));
-  for (const z of ZONES) {
-    const zone = out.zones[z] = out.zones[z] || { size: z === 'bottom' ? 250 : 320, groups: [] };
+  for (const z of ALLZ) {
+    const zone = out.zones[z] = out.zones[z] || { size: z === 'bottom' ? 250 : z === 'center' ? 0 : 320, groups: [] };
     zone.size = Math.max(140, Math.min(1200, +zone.size || 300));
     zone.groups = (zone.groups || []).map(g => ({ panels: keep(g.panels), active: g.active, size: Math.max(0.1, +g.size || 1) })).filter(g => g.panels.length);
     for (const g of zone.groups) if (!g.panels.includes(g.active)) g.active = g.panels[0];
@@ -78,7 +80,7 @@ function normalize(x: unknown): Layout {
 }
 type At = { zone: ZoneId; gi: number; g: Group } | { float: true; fi: number; g: Float } | { hidden: true } | null;
 function locate(id: string): At {
-  for (const z of ZONES) { const gs = L.zones[z].groups; for (let i = 0; i < gs.length; i++) if (gs[i].panels.includes(id)) return { zone: z, gi: i, g: gs[i] }; }
+  for (const z of ALLZ) { const gs = L.zones[z].groups; for (let i = 0; i < gs.length; i++) if (gs[i].panels.includes(id)) return { zone: z, gi: i, g: gs[i] }; }
   for (let i = 0; i < L.floats.length; i++) if (L.floats[i].panels.includes(id)) return { float: true, fi: i, g: L.floats[i] };
   if (L.hidden.includes(id)) return { hidden: true };
   return null;
@@ -94,13 +96,17 @@ function detach(id: string): void {
   }
 }
 export const isOpen = (id: string) => { const at = locate(id); return !!at && !('hidden' in at); };
-export const openPanels = () => [...ZONES.flatMap(z => L.zones[z].groups.flatMap(g => g.panels)), ...L.floats.flatMap(f => f.panels)];
+export const openPanelsAll = () => openPanels();
+export const openPanels = () => [...ALLZ.flatMap(z => L.zones[z].groups.flatMap(g => g.panels)), ...L.floats.flatMap(f => f.panels)];
+export const centerEmpty = () => !L.zones.center.groups.length;
 /** is the panel on screen? */
 export function visible(id: string): boolean {
   const at = locate(id); if (!at || 'hidden' in at) return false;
   if (isPhone()) return document.body.classList.contains('side-open') && phoneActive() === id;
+  if ('zone' in at && at.zone === 'center') return phoneOrDesk(at.g, id);
   return at.g.active === id && !(focus && !('float' in at));
 }
+const phoneOrDesk = (g: Group, id: string) => isPhone() ? centerActive() === id : g.active === id;
 export const layout = (): Layout => clone(L);
 export const isHiddenAll = () => focus;
 
@@ -110,6 +116,7 @@ function render(): void {
   const scroll = new Map<string, number>();
   for (const id of [...openPanels(), ...L.hidden]) { const s = section(id); if (s) { scroll.set(id, s.scrollTop); park().appendChild(s); } }
   document.querySelectorAll('.dfloat').forEach(f => f.remove());
+  renderCenter();
   if (isPhone()) renderPhone();
   else {
     for (const z of ZONES) {
@@ -161,12 +168,22 @@ function groupEl(g: Group | Float, where: { zone?: ZoneId; gi?: number; fi?: num
   }));
   return div;
 }
+/** the middle: the Bible views side by side (on a phone one at a time, as tabs) */
+let centerTab = '';
+const centerActive = () => { const all = L.zones.center.groups.flatMap(g => g.panels); return all.includes(centerTab) ? centerTab : (L.zones.center.groups[0]?.active || ''); };
+function renderCenter(): void {
+  const el = $('#zone-center'); el.innerHTML = ''; const gs = L.zones.center.groups;
+  el.classList.toggle('zempty', !gs.length); document.getElementById('empty')?.classList.toggle('hidden', !!gs.length);
+  if (isPhone() && gs.length) { const all = gs.flatMap(g => g.panels); const pg: Group = { panels: all, active: centerActive(), size: 1 }; const div = groupEl(pg, { zone: 'center', gi: 0 }); div.querySelectorAll<HTMLElement>('.dtab').forEach(b => b.addEventListener('click', () => { centerTab = b.dataset.ptab!; })); el.appendChild(div); return; }
+  gs.forEach((g, gi) => { if (gi) el.appendChild(groupSplitter('center', gi)); el.appendChild(groupEl(g, { zone: 'center', gi })); });
+}
 /** phone: every open panel as a tab of one full-screen panel */
 let phoneTab = '';
-const phoneActive = () => { const all = openPanels(); return all.includes(phoneTab) ? phoneTab : all[0] || ''; };
+const sidePanels = () => [...ZONES.flatMap(z => L.zones[z].groups.flatMap(g => g.panels)), ...L.floats.flatMap(f => f.panels)];
+const phoneActive = () => { const all = sidePanels(); return all.includes(phoneTab) ? phoneTab : all[0] || ''; };
 function renderPhone(): void {
   for (const z of ZONES) { const el = $('#zone-' + z); el.innerHTML = ''; el.classList.toggle('zempty', z !== 'right'); }
-  const el = $('#zone-right'); const all = openPanels(); const act = phoneActive();
+  const el = $('#zone-right'); const all = sidePanels(); const act = phoneActive();
   el.innerHTML = `<div class="ptabs">${all.map(id => `<button data-ptab="${esc(id)}" class="${id === act ? 'on' : ''}">${esc(titleOf(id))}</button>`).join('')}<span class="grow"></span><button class="sideClose" aria-label="Close">✕</button></div>`;
   for (const id of all) { const s = section(id); if (!s) continue; el.appendChild(s); s.classList.toggle('hidden', id !== act); }
   el.querySelectorAll<HTMLElement>('[data-ptab]').forEach(b => b.onclick = () => activate(b.dataset.ptab!));
@@ -183,11 +200,11 @@ export function zoom(id: string, d: number): void {
 
 /* ------------------------------------------------------------ splitters */
 function groupSplitter(z: ZoneId, gi: number): HTMLElement {
-  const s = document.createElement('div'); s.className = 'gsplit ' + (z === 'bottom' ? 'v' : 'h');
+  const s = document.createElement('div'); s.className = 'gsplit ' + (z === 'bottom' || z === 'center' ? 'v' : 'h');
   s.addEventListener('pointerdown', e => {
     e.preventDefault(); s.setPointerCapture(e.pointerId);
     const gs = L.zones[z].groups; const a = gs[gi - 1], b = gs[gi];
-    const ea = s.previousElementSibling as HTMLElement, eb = s.nextElementSibling as HTMLElement; const horiz = z === 'bottom';
+    const ea = s.previousElementSibling as HTMLElement, eb = s.nextElementSibling as HTMLElement; const horiz = z === 'bottom' || z === 'center';
     const pa = horiz ? ea.offsetWidth : ea.offsetHeight, pb = horiz ? eb.offsetWidth : eb.offsetHeight;
     const tot = a.size + b.size, start = horiz ? e.clientX : e.clientY;
     const move = (ev: PointerEvent) => {
@@ -266,6 +283,7 @@ function showEdgeTargets(): void {
   put({ edge: 'left' }, wb.left + 26, wb.top + wb.height / 2, 'prev', 'A new pane on the left');
   put({ edge: 'right' }, wb.right - 26, wb.top + wb.height / 2, 'next', 'A new pane on the right');
   put({ edge: 'bottom' }, wb.left + wb.width / 2, wb.bottom - 26, 'import', 'A new pane at the bottom');
+  const cb = $('#center').getBoundingClientRect(); put({ edge: 'center' }, cb.left + cb.width / 2, cb.top + 34, 'bible', 'Into the middle, beside the Bible views');
   const pv = document.createElement('div'); pv.className = 'dpreview hidden'; pv.id = 'dpreview'; layer.appendChild(pv);
   document.body.appendChild(layer);
 }
@@ -276,7 +294,7 @@ function showCompass(grp: HTMLElement | null): void {
   const where: Target = grp.dataset.zone ? { zone: grp.dataset.zone as ZoneId, gi: +grp.dataset.gi! } : { fi: +grp.dataset.fi! };
   const cells: [Target['kind'], string, string, number, number, boolean?][] = [['tab', 'Add as a tab here', 'plus', 1, 1]];
   if (where.zone) {
-    if (where.zone === 'bottom') cells.push(['before', 'Put it to the left of this pane', 'prev', 1, 0], ['after', 'Put it to the right of this pane', 'next', 1, 2]);
+    if (where.zone === 'bottom' || where.zone === 'center') cells.push(['before', 'Put it to the left of this pane', 'prev', 1, 0], ['after', 'Put it to the right of this pane', 'next', 1, 2]);
     else cells.push(['before', 'Put it above this pane', 'prev', 0, 1, true], ['after', 'Put it below this pane', 'next', 2, 1, true]);
   }
   for (const [kind, title, ic, row, col, rot] of cells) {
@@ -289,7 +307,8 @@ function showPreview(t: Target | null, tgtEl?: HTMLElement): void {
   const pv = $('#dpreview'); if (!pv) return;
   if (!t) { pv.classList.add('hidden'); return; }
   const wb = $('#work').getBoundingClientRect(); let r: { left: number; top: number; width: number; height: number };
-  if (t.edge) {
+  if (t.edge === 'center') { const c = $('#center').getBoundingClientRect(); r = L.zones.center.groups.length ? { left: c.right - c.width / 3, top: c.top, width: c.width / 3, height: c.height } : c; }
+  else if (t.edge) {
     const z = $('#zone-' + t.edge).getBoundingClientRect(); const size = L.zones[t.edge].size; const c = $('#center').getBoundingClientRect();
     r = t.edge === 'left' ? { left: wb.left, top: wb.top, width: z.width > 10 ? z.width : size, height: wb.height }
       : t.edge === 'right' ? { left: wb.right - (z.width > 10 ? z.width : size), top: wb.top, width: z.width > 10 ? z.width : size, height: wb.height }
@@ -298,7 +317,7 @@ function showPreview(t: Target | null, tgtEl?: HTMLElement): void {
     const grp = tgtEl?.closest('.dcompass') && drag?.over; if (!grp) { pv.classList.add('hidden'); return; }
     const g = grp.getBoundingClientRect();
     if (t.kind === 'tab') r = g;
-    else if (t.zone === 'bottom') r = { left: t.kind === 'before' ? g.left : g.left + g.width / 2, top: g.top, width: g.width / 2, height: g.height };
+    else if (t.zone === 'bottom' || t.zone === 'center') r = { left: t.kind === 'before' ? g.left : g.left + g.width / 2, top: g.top, width: g.width / 2, height: g.height };
     else r = { left: g.left, top: t.kind === 'before' ? g.top : g.top + g.height / 2, width: g.width, height: g.height / 2 };
   }
   Object.assign(pv.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }); pv.classList.remove('hidden');
@@ -316,6 +335,7 @@ function dropOn(id: string, t: Target): void {
   focus = false; commit(); activate(id);
 }
 function newPane(id: string, z: ZoneId): void {
+  if (z === 'center') { const gs = L.zones.center.groups; gs.push(g1([id], gs.length ? gs.reduce((a, g) => a + g.size, 0) / gs.length : 1)); return; }
   const gs = L.zones[z].groups; gs.push(g1([id], gs.length ? gs.reduce((a, g) => a + g.size, 0) / gs.length : 1));
 }
 
@@ -361,33 +381,36 @@ export function activate(id: string, open = true): void {
   else if (focus && open && !('float' in at)) { focus = false; document.dispatchEvent(new CustomEvent('dock-unhide')); }
   const at2 = locate(id);
   if (at2 && !('hidden' in at2)) at2.g.active = id;
-  if (isPhone()) { phoneTab = id; if (open) document.body.classList.add('side-open'); }
+  if (isPhone()) { if (at2 && 'zone' in at2 && at2.zone === 'center') { centerTab = id; document.body.classList.remove('side-open'); } else { phoneTab = id; if (open) document.body.classList.add('side-open'); } }
   commit(); H.shown(id);
 }
 /** open a panel in a pane of its own (added Bible and book views), or bring a closed panel back */
-export function openPanel(id: string, to: ZoneId = 'right'): void {
+export function openPanel(id: string, to?: ZoneId): void {
   if (!known(id)) return;
+  to = to || (id.startsWith('bible-') ? 'center' : 'right');
   if (isOpen(id)) return activate(id);
   L.hidden = L.hidden.filter(x => x !== id);
   if (FIXED[id]) placeHome(id); else newPane(id, to);
   if (focus) { focus = false; document.dispatchEvent(new CustomEvent('dock-unhide')); }
-  if (isPhone()) phoneTab = id;
+  if (isPhone()) { if (to === 'center') centerTab = id; else phoneTab = id; }
   commit(); H.shown(id);
 }
 export function close(id: string): void {
   detach(id); if (maxed === id) maxed = null;
   if (FIXED[id]) L.hidden.push(id);
   commit();
-  for (const z of ZONES) for (const g of L.zones[z].groups) H.shown(g.active);
+  for (const z of ALLZ) for (const g of L.zones[z].groups) H.shown(g.active);
   if (!FIXED[id]) { document.getElementById('p-' + id)?.remove(); delete L.zoom?.[id]; H.closed(id); }
 }
 export function setHidden(h: boolean): void { focus = h; maxed = null; render(); if (!h) for (const z of ZONES) for (const g of L.zones[z].groups) H.shown(g.active); }
 /** use a whole layout (a preset or a saved one); added views it leaves out stay out of sight */
 export function setLayout(l: unknown): void {
   const keepZoom = L.zoom;
+  const keepCenter = L.zones.center.groups;
   L = normalize(l); if (!L.zoom || !Object.keys(L.zoom).length) L.zoom = keepZoom;
+  if (!L.zones.center.groups.length) { const inUse = new Set(openPanels()); L.zones.center.groups = keepCenter.map(g => ({ ...g, panels: g.panels.filter(p => !inUse.has(p)) })).filter(g => g.panels.length); for (const g of L.zones.center.groups) if (!g.panels.includes(g.active)) g.active = g.panels[0]; }
   focus = false; maxed = null; commit();
-  for (const z of ZONES) for (const g of L.zones[z].groups) H.shown(g.active);
+  for (const z of ALLZ) for (const g of L.zones[z].groups) H.shown(g.active);
   for (const f of L.floats) H.shown(f.active);
 }
 export function resetLayout(): void { setLayout(DEFAULT_LAYOUT()); }

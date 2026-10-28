@@ -32,13 +32,13 @@
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Q', bubbles: true, cancelable: true })); await sleep(300);
     ok(d.querySelector('[data-kb="paragraph"]').textContent === 'Q' && S.keys.paragraph === 'Q', 'a key can be changed: paragraph mode → ' + S.keys.paragraph);
     [...d.querySelectorAll('button')].find(b => b.textContent === 'Close').click(); await sleep(300);
-    const was = !!S.show.paragraph; key('q'); await sleep(400);
-    ok(!!S.show.paragraph !== was, 'the new key works');
+    const was = !!T.eff().paragraph; key('q'); await sleep(400);
+    ok(!!T.eff().paragraph !== was, 'the new key works');
     key('p'); await sleep(300);
-    ok(!!S.show.paragraph !== was, 'and the old one no longer does');
+    ok(!!T.eff().paragraph !== was, 'and the old one no longer does');
     key('q'); await sleep(300); delete S.keys.paragraph;
     key('s'); await sleep(400);
-    ok(S.show.strongs === true && document.querySelector('#view sup.strong:not(.hide)'), "S shows the Strong's numbers (theWord's letter keys)");
+    ok(T.eff().strongs === true && document.querySelector('#view sup.strong:not(.hide)'), "S shows the Strong's numbers (theWord's letter keys)");
     key('s'); await sleep(300);
     // new versions: comparing version numbers (no internet in the test)
     ok(T.newer('v0.6.1', '0.6.0') && T.newer('0.10.0', '0.9.9') && !T.newer('v0.6.0', '0.6.0') && !T.newer('0.5.9', '0.6.0'), 'version numbers compared correctly');

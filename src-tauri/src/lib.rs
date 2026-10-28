@@ -434,6 +434,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_tts::init())
         .manage(Store::default())
         .invoke_handler(tauri::generate_handler![scan, ont_info, ont_slice, sql, modules_dir, import_bytes, settings_load, settings_save, ud_load, ud_save, legacy_data, user_xrefs, user_xref_change, mod_file, mod_read, mod_write, mod_sql_write, mod_restore, umod_create, umod_exec, import_stage, import_commit, import_discard, test_report, test_mode])
         .setup(|app| {

@@ -14,9 +14,6 @@
   <span class="name" data-tauri-drag-region>Tanglaw Bible</span>
   <button id="biblesBtn" class="tbtn" title="Bibles and modules"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16.5 4.6l3.8-1 3.7 15.5-3.8 1z"/></svg><span class="lbl">Bibles</span></button>
   <div class="desk tools">
-    <select id="bookSel" aria-label="Book"></select><select id="chapSel" aria-label="Chapter"></select><select id="verseSel" aria-label="Verse" title="Verse"></select>
-    <button id="prev" class="tbtn" title="Previous chapter (←)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <button id="next" class="tbtn" title="Next chapter (→)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
     <button id="copyBtn" class="tbtn" title="Copy verses (F5)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button>
   </div>
   <span class="drag" data-tauri-drag-region></span>
@@ -36,9 +33,8 @@
 <aside id="zone-left" class="zone desk-zone"></aside><div class="dsplit v desk" data-z="left" title="Drag to resize"></div>
 <div id="mid">
 <main id="center">
-  <div class="cap"><button id="capPick" class="ib" title="Books and chapters: choose where to read"></button><span id="capRef"></span><span class="grow"></span><span id="timing" class="small"></span></div>
-  <div id="view" class="view" tabindex="0"></div>
-  <div id="empty" class="empty hidden"><h2>No Bibles yet</h2><p>Import theWord (.ont, .ot, .nt) or e-Sword (.bblx, .bbli) Bibles. Add a Strong's dictionary (.dct.twm, .lexi, .dctx) to see word meanings.</p><button id="emptyImport" class="primary">Import modules…</button></div>
+  <div id="zone-center" class="czone"></div>
+  <div id="empty" class="empty hidden"><h2>No Bible view open</h2><p>Open a Bible view to read: <b>Layouts → + New Bible view</b>, or the button below. Import theWord (.ont, .ot, .nt) or e-Sword (.bblx, .bbli) Bibles from the Bibles menu.</p><button id="emptyNew" class="primary">+ New Bible view</button> <button id="emptyImport">Import modules…</button></div>
 </main>
 <div class="dsplit h desk" data-z="bottom" title="Drag to resize"></div><aside id="zone-bottom" class="zone desk-zone"></aside>
 </div>
@@ -46,16 +42,21 @@
 <aside id="zone-right" class="zone">
   <section class="ptab" id="p-cmt"><div class="phead" id="cmtHead"></div><div class="chips" id="cmtChips"></div><div id="cmtBody" class="pbody entrybody"></div></section>
   <section class="ptab hidden" id="p-lib">
-    <div class="libbar"><select id="libMod" aria-label="Module"></select>
-      <button id="libProps" class="ib" title="Properties of this module" aria-label="Properties"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
-      <button id="libBack" class="ib" title="Back" aria-label="Back"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
-      <button id="libPrev" class="ib" title="Previous topic" aria-label="Previous topic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <button id="libNext" class="ib" title="Next topic" aria-label="Next topic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
-      <button id="libPrint" class="ib" title="Print this topic" aria-label="Print"></button><button id="libExport" class="ib" title="Export this topic or the whole module (Word, RTF, web page, text)" aria-label="Export"></button></div>
+    <div class="bvwrap"><nav class="bvside bkside">
+      <button id="libList" class="ib tog on" title="Show or hide the topic list"></button>
+      <button id="libBack" class="ib" title="Back" aria-label="Back"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button><button id="libPrev" class="ib" title="Previous topic" aria-label="Previous topic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg></button><button id="libNext" class="ib" title="Next topic" aria-label="Next topic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <span class="bvsep"></span>
+      <button id="libSmall" class="ib" title="Smaller text">A−</button><button id="libLarge" class="ib" title="Larger text">A+</button>
+      <button id="libMarks" class="ib tog on" title="Show your own marks (highlighting) in the topics"></button>
+      <span class="bvsep"></span>
+      <button id="libPrint" class="ib" title="Print this topic" aria-label="Print"></button><button id="libExport" class="ib" title="Export this topic or the whole module (Word, RTF, web page, text)" aria-label="Export"></button>
+      <span class="grow"></span>
+      <button id="libSpeak" class="ib" title="Read aloud"></button><button id="libProps" class="ib" title="Properties of this module" aria-label="Properties"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg></button></nav>
+    <div class="bvmain bkmain"><div class="cap bkcap"><select id="libMod" aria-label="Module"></select></div>
     <div class="libsplit"><div class="libside"><input id="libFilter" type="search" placeholder="Find a topic…" spellcheck="false"><ul id="libTopics" tabindex="0"></ul><div id="libCount" class="small"></div></div><div class="lsplit" title="Drag to make the topic list wider or narrower"></div>
-      <div id="libBody" class="pbody entrybody"><p class="hint">Choose a commentary, dictionary or book.</p></div></div>
-  </section>
+      <div id="libBody" class="pbody entrybody"><p class="hint">Choose a commentary, dictionary or book.</p></div></div></div></div></section>
   <section class="ptab hidden" id="p-search"></section>
+  <section class="ptab hidden" id="p-bsearch"></section>
   <section class="ptab hidden" id="p-study"><div class="seg" id="studyTabs"><button data-st="lists">Verse lists</button><button data-st="notes">Notes</button><button data-st="plans">Reading</button></div><div id="studyBody" class="pbody"></div></section>
 </aside>
 </div>

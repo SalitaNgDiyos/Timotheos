@@ -77,7 +77,7 @@
     T.lang('tl'); await sleep(500);
     ok($('#biblesBtn .lbl').textContent === 'Mga Biblia' && $('#optBtn .lbl').textContent === 'Mga Opsyon' && $('#toolsBtn .lbl').textContent === 'Kagamitan', 'title bar in Tagalog: ' + $('#biblesBtn .lbl').textContent + ', ' + $('#optBtn .lbl').textContent);
     $('#optBtn').click(); await sleep(300);
-    ok(/Mga talababa/.test($('#optMenu').textContent) && /Laki ng titik/.test($('#optMenu').textContent), 'Options menu in Tagalog');
+    ok(/sarili nitong gilid/.test($('#optMenu').textContent) && /Laki ng titik/.test($('#optMenu').textContent), 'Options menu in Tagalog');
     $('#optMenu').classList.add('hidden');
     ok(/For God sent not his Son/.test($('#view').innerText), 'the Bible text is not touched: ' + $('#view [data-v="17"]')?.textContent.slice(0, 50));
     ok([...document.querySelectorAll('.dtab')].some(t => /Komentaryo|Aklatan/.test(t.textContent)), 'panel tabs in Tagalog: ' + [...document.querySelectorAll('.dtab')].map(t => t.textContent.trim()).join(', '));

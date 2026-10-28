@@ -14,6 +14,8 @@ export interface Ref { b: number; c: number; v: number; v2?: number }
 export interface StudyHost {
   ref(): Ref; go(b: number, c: number, v?: number): Promise<void>; rerender(): void;
   openBibles(): Bible[]; showPanel(t: string): void; show(): Record<string, boolean>;
+  /** the Bible of the active Bible view */
+  activeBible(): Bible | undefined;
 }
 interface Mark { s: number; e: number; style: string }
 export interface StudyData {
@@ -51,22 +53,21 @@ function coreNodes(el: Element): Text[] {
   let n; while ((n = w.nextNode())) out.push(n as Text);
   return out;
 }
-const cellFor = (v: number, col: number) => $('#view').querySelector(`[data-v="${v}"] [data-col="${col}"]`);
-
-export function afterRender(b: number, c: number): void {
-  const show = H.show();
-  if (show.highlights !== false) H.openBibles().forEach((m, col) => {
+/** your highlighting and notes in a Bible view just drawn (root: its text; bibles: its Bible(s), by column) */
+export function afterRender(b: number, c: number, root: HTMLElement = $('#view'), bibles: Bible[] = H.openBibles(), show: Record<string, boolean> = H.show()): void {
+  const cellFor = (v: number, col: number) => root.querySelector(`[data-v="${v}"] [data-col="${col}"]`);
+  if (show.highlights !== false) bibles.forEach((m, col) => {
     const hl = ud.highlights[m.id]; if (!hl) return;
     for (const k in hl) { const r = parseKey(k); if (r.b !== b || r.c !== c) continue; const el = cellFor(r.v, col); if (el) for (const mk of hl[k]) wrapRange(el, mk.s, mk.e, mk.style); }
   });
   for (const k in ud.notes) {
     const r = parseKey(k); if (r.b !== b || r.c !== c) continue;
-    const row = $('#view').querySelector(`[data-v="${r.v}"]`); if (!row) continue;
+    const row = root.querySelector(`[data-v="${r.v}"]`); if (!row) continue;
     const plain = ud.notes[k].html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     row.querySelector('.vn')?.insertAdjacentHTML('beforeend', `<i class="noteicon" data-note="${k}" title="My note: ${esc(plain.slice(0, 200))}">✎</i>`);
     if (show.notes !== false) {
       const html = `<div class="unote" data-note="${k}" title="Click to edit">${ud.notes[k].html}</div>`;
-      if (row.tagName === 'TR') row.insertAdjacentHTML('afterend', `<tr class="noterow"><td></td><td colspan="${H.openBibles().length}">${html}</td></tr>`);
+      if (row.tagName === 'TR') row.insertAdjacentHTML('afterend', `<tr class="noterow"><td></td><td colspan="${bibles.length}">${html}</td></tr>`);
       else row.querySelector('.vtexts')?.insertAdjacentHTML('beforeend', html);
     }
   }
@@ -91,7 +92,7 @@ function selectionTarget(fallback: Element | null): Target | null {
   if (sel && sel.rangeCount && String(sel).trim()) {
     const range = sel.getRangeAt(0);
     const start = (range.startContainer.nodeType === 3 ? range.startContainer.parentElement : range.startContainer as Element)?.closest('[data-col]');
-    if (start && $('#view').contains(start)) {
+    if (start && start.closest('#view')) {
       let pos = 0, s: number | null = null, e = 0;
       for (const n of coreNodes(start)) {
         if (range.intersectsNode(n)) { const from = n === range.startContainer ? range.startOffset : 0, to = n === range.endContainer ? range.endOffset : n.length; if (s === null) s = pos + from; e = pos + to; }
@@ -105,7 +106,7 @@ function selectionTarget(fallback: Element | null): Target | null {
   return null;
 }
 function highlight(t: Target, style: string | null): void {
-  const m = H.openBibles()[t.col]; if (!m) return;
+  const m = H.activeBible(); if (!m) return;
   const hl = ud.highlights[m.id] || (ud.highlights[m.id] = {});
   const r = H.ref(); const k = vkey(r.b, r.c, t.v);
   const deco = (x: string | null) => ['ul', 'bold'].includes(x || '');
@@ -190,16 +191,18 @@ function verseMenu(x: number, y: number, rowEl: HTMLElement, cellEl: HTMLElement
   });
 }
 function wire(): void {
-  const view = $('#view');
-  view.addEventListener('contextmenu', e => {
+  // in any Bible view (the one clicked becomes the active view first)
+  const inView = (e: Event) => (e.target as HTMLElement).closest?.('.bview');
+  document.addEventListener('contextmenu', e => {
+    if (!inView(e)) return;
     const row = (e.target as HTMLElement).closest<HTMLElement>('[data-v]'); if (!row) return;
     e.preventDefault(); verseMenu(e.clientX, e.clientY, row, (e.target as HTMLElement).closest<HTMLElement>('[data-col]'));
   });
   // long press on touch screens
   let lp = 0;
-  view.addEventListener('touchstart', e => { const row = (e.target as HTMLElement).closest<HTMLElement>('[data-v]'); if (!row) return; const t0 = e.touches[0]; lp = window.setTimeout(() => verseMenu(t0.clientX, t0.clientY, row, (e.target as HTMLElement).closest<HTMLElement>('[data-col]')), 550); }, { passive: true });
-  view.addEventListener('touchend', () => clearTimeout(lp)); view.addEventListener('touchmove', () => clearTimeout(lp), { passive: true });
-  view.addEventListener('click', e => { const n = (e.target as HTMLElement).closest<HTMLElement>('.unote, .noteicon'); if (n) { e.stopPropagation(); editNote(n.dataset.note!); } }, true);
+  document.addEventListener('touchstart', e => { if (!inView(e)) return; const row = (e.target as HTMLElement).closest<HTMLElement>('[data-v]'); if (!row) return; const t0 = e.touches[0]; lp = window.setTimeout(() => verseMenu(t0.clientX, t0.clientY, row, (e.target as HTMLElement).closest<HTMLElement>('[data-col]')), 550); }, { passive: true });
+  document.addEventListener('touchend', () => clearTimeout(lp)); document.addEventListener('touchmove', () => clearTimeout(lp), { passive: true });
+  document.addEventListener('click', e => { if (!inView(e)) return; const n = (e.target as HTMLElement).closest<HTMLElement>('.unote, .noteicon'); if (n) { e.stopPropagation(); editNote(n.dataset.note!); } }, true);
   document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('#vmenu')) $('#vmenu').classList.add('hidden'); });
   $('#studyTabs').querySelectorAll<HTMLButtonElement>('[data-st]').forEach(b => b.onclick = () => { seg = b.dataset.st!; renderStudy(); });
 }

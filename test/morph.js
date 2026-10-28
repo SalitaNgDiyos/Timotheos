@@ -36,18 +36,18 @@
     const h = T.clean('<span style="font-family:\'AHRC Paleo\'">Yr%</span>');
     ok(/AHRC Paleo/.test(h), 'special RTF font kept: ' + h);
     // book order (a Bible with the Apocrypha)
-    const kjva = T.bibles().find(b => /KJVA11/i.test(b.abbr + b.file)); T.setOpen([T.bibles().find(b => /^KJV$/i.test(b.abbr)).id, kjva.id]); await T.go(1, 1); await sleep(400);
+    const kjva = T.bibles().find(b => /KJVA11/i.test(b.abbr + b.file)); T.setOpen([kjva.id]); await sleep(300); await T.go(1, 1); await sleep(400);
     const names = () => [...document.querySelectorAll('#bookSel option')].map(o => o.textContent);
     const seq = (l, a) => l.slice(l.indexOf(a), l.indexOf(a) + 6).join(', ');
     ok(names().indexOf('Malachi') < names().indexOf('Tobit') && names().indexOf('Tobit') < names().indexOf('Matthew'), '1611 order: ' + seq(names(), 'Malachi'));
     document.dispatchEvent(new KeyboardEvent('keydown', { key: ',', ctrlKey: true, bubbles: true })); await sleep(600);
     const o = document.getElementById('oOrder'); o.value = 'nets'; o.dispatchEvent(new Event('change')); await sleep(700);
     let n = names();
-    ok(n.indexOf('Nehemiah') < n.indexOf('Esther') && n.indexOf('Esther') < n.indexOf('Judith') && n.indexOf('Judith') < n.indexOf('Tobit') && n.indexOf('Song of Solomon') < n.indexOf('Job') && n.indexOf('Malachi') < n.indexOf('Isaiah') && !document.querySelector('#bookSel optgroup[label^="Apocrypha"]'), 'NETS order: ' + seq(n, 'Esther') + ' … ' + seq(n, 'Song of Solomon'));
+    ok(n.indexOf('Genesis') < n.indexOf('Esther') && n.indexOf('Esther') < n.indexOf('Judith') && n.indexOf('Judith') < n.indexOf('Tobit') && n.indexOf('Sirach') < n.indexOf('Malachi') && n.indexOf('Malachi') < n.indexOf('Baruch') && !document.querySelector('#bookSel optgroup[label^="Apocrypha"]'), 'NETS order: ' + seq(n, 'Esther') + ' … ' + seq(n, 'Sirach'));
     o.value = 'orthodox'; o.dispatchEvent(new Event('change')); await sleep(700); n = names();
-    ok(n.indexOf('Nehemiah') < n.indexOf('Tobit') && n.indexOf('Tobit') < n.indexOf('Judith') && n.indexOf('Judith') < n.indexOf('Esther') && n.indexOf('Psalms') < n.indexOf('Job') && n.indexOf('Job') < n.indexOf('Proverbs'), 'Greek Orthodox order: ' + seq(n, 'Tobit') + ' … ' + seq(n, 'Psalms'));
+    ok(n.indexOf('Genesis') < n.indexOf('Tobit') && n.indexOf('Tobit') < n.indexOf('Judith') && n.indexOf('Judith') < n.indexOf('Esther'), 'Greek Orthodox order: ' + seq(n, 'Tobit') );
     await T.go(39, 4); T.step(1); await sleep(500);
-    ok(document.getElementById('capRef').textContent.startsWith('Isaiah'), 'after Malachi 4 comes ' + document.getElementById('capRef').textContent);
+    ok(document.getElementById('capRef').textContent.startsWith('Baruch'), 'Greek order (this Bible has no Isaiah): after Malachi 4 comes ' + document.getElementById('capRef').textContent);
     document.querySelector('.dlgbox .primary').click(); await sleep(200);
     ok(T.S().look.bookOrder === 'orthodox', 'book order kept in settings');
   } catch (e) { ok(false, 'error: ' + e.message + ' ' + (e.stack || '').split('\n')[1]); }

@@ -23,6 +23,7 @@
     "core:window:allow-unminimize",
     "core:window:allow-show",
     "opener:default",
+    "tts:default",
     {
       "identifier": "fs:scope",
       "allow": [

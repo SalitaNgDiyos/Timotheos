@@ -9,7 +9,7 @@ import { readFile } from '@tauri-apps/plugin-fs';
 import { Bible, Locked, isBibleFile, isLocked, openBible } from './bibles';
 import { BookMod, Topic, guessKind, isBookFile, openBook } from './books';
 import type { ModFile } from './native';
-import { commentaryMarks, followBookLink, initPanel, morphEntry, openLib, refreshLib, libCurrent, libTopicId, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
+import { followBookLink, initPanel, morphEntry, openLib, refreshLib, libCurrent, libTopicId, reloadLib, show as showPanel, strongEntry, updateCommentary } from './panel';
 import { bookHitOf, find, forgetSearchCache, initSearch } from './search';
 import { exportTopics } from './export';
 import { initClipmon, clipOn, clipTestReader, setClipmon } from './clipmon';
@@ -24,15 +24,17 @@ import { autoUpdates, checkUpdate, initUpdate, newer, setAutoUpdates } from './u
 import { defineModuleSets } from './search';
 import { firstOriginal, translit } from './translit';
 import { legacyData, loadSettings, modulesDir, saveSettings, scan } from './native';
-import { addToList, afterRender, copyVerse, initStudy, saveUD } from './study';
+import { addToList, copyVerse, initStudy, saveUD } from './study';
 import { copyDialog, initCopy } from './copy';
 import { bibleTarget, linkRefs, wireRefPreview } from './refs';
-import { addXref, chapterXrefs, loadXrefs, removeXref } from './xrefs';
+import { addXref, loadXrefs, removeXref } from './xrefs';
 import { copyText, dialog, flash } from './ui';
 import { PRESETS as DOCK_PRESETS, Layout, PANELS, close as closePanel, isHiddenAll, isOpen, layout as currentLayout, openPanel, openPanels, retitle, setHidden, setLayout, titleOf } from './dock';
-import { addBibleView, addBookView, addCompareView, addSearchView, compareViews, initViews, viewsReload } from './views';
+import { addBookView, addCompareView, addSearchView, compareViews, initViews, viewsReload } from './views';
+import { activeBible, activeId, activeRef, addBibleView, bvIds, go, historyGo, initBibleViews, renderAll, selectVerse as bvSelectVerse, setActive, setBible, stepBook as bvStepBook, stepChapter, toggleShow as bvToggle, viewBibles, effShow } from './bibleviews';
+import { booksOf } from './picker';
+import { initTts, langOf, readNextChapter, readable, speakPieces, speakTopic, stopSpeaking, isSpeaking, voicesDialog } from './tts';
 import { icon } from './icons';
-import { openPicker } from './picker';
 import { openGuide } from './guide';
 import { importFiles, reportHtml } from './importer';
 import { initProps, openProps } from './props';
@@ -71,7 +73,7 @@ function pickLook(a: Record<string, unknown>): Partial<Look> {
   if (a.texture === 'paper') o.texture = 'paper';
   return o;
 }
-function openOptions(): void { optionsDialog(S, rr => { applyLook(S.skin, S.fontSize, S.look); save(); if (rr) { if (canon.getOrder() !== S.look.bookOrder) { canon.setOrder(S.look.bookOrder); buildNav(); go(S.ref.b, S.ref.c, S.ref.v); } else rerender(); } }); }
+function openOptions(): void { optionsDialog(S, rr => { applyLook(S.skin, S.fontSize, S.look); save(); if (canon.getOrder() !== S.look.bookOrder) { canon.setOrder(S.look.bookOrder); buildNav(); } if (rr) rerender(); else renderAll(); }); }
 
 /* ---------------------------------------------------------------- modules */
 async function loadModules(): Promise<void> {
@@ -89,179 +91,24 @@ async function loadModules(): Promise<void> {
   restBooks = bookFiles.filter(f => !cmts.includes(f));
   await loadXrefs(files);
   forgetSearchCache();
-  S.open = S.open.filter(id => bibles.some(b => b.id === id));
-  if (!S.open.length && bibles.length) S.open = [(bibles.find(b => /kjv/i.test(b.abbr)) || bibles[0]).id];
   buildNav();
   statusLine(performance.now() - t0);
-  $('#empty').classList.toggle('hidden', bibles.length > 0);
 }
 
 function statusLine(ms: number): void {
   const nd = books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked).length, nl = books.filter(m => !m.locked).length;
   $('#status').textContent = `${bibles.length} Bible${bibles.length === 1 ? '' : 's'} · ${nl} library modules${restBooks.length ? ` (opening ${restBooks.length} more…)` : ` (${nd} Strong's dictionaries)`} · ${Math.round(ms)} ms`;
 }
-function openBibles(): Bible[] { return S.open.map(id => bibles.find(b => b.id === id)).filter((b): b is Bible => !!b); }
+function openBibles(): Bible[] { const v = viewBibles(); return v.length ? v : bibles.slice(0, 1); }
 
+/** the books of the active view's Bible (the copy window and the phone's book picker use them) */
 function buildNav(): void {
-  const all = new Map<number, Set<number>>();
-  for (const bb of openBibles()) for (const [b, ch] of bb.books) { const s = all.get(b) || new Set(); ch.forEach((n, i) => { if (n > 0) s.add(i + 1); }); all.set(b, s); }
-  nav = [...all.keys()].sort((a, b) => canon.orderKey(a) - canon.orderKey(b)).map(id => {
-    const bk = canon.book(id);
-    return { id, name: bk.name, abbr: bk.abbr, grp: bk.grp, chapters: [...all.get(id)!].sort((a, b) => a - b) };
-  });
-  const sel = $<HTMLSelectElement>('#bookSel'); sel.innerHTML = '';
-  let og: HTMLOptGroupElement | null = null, last = '';
-  const label: Record<string, string> = { OT: 'Old Testament', AP: 'Apocrypha (1611 KJV)', APX: 'Other books', NT: 'New Testament' };
-  for (const b of nav) {
-    if (b.grp !== last) { og = document.createElement('optgroup'); og.label = label[b.grp] || b.grp; sel.appendChild(og); last = b.grp; }
-    const o = document.createElement('option'); o.value = String(b.id); o.textContent = b.name; og!.appendChild(o);
-  }
+  const m = activeBible() || bibles[0];
+  nav = m ? booksOf(m).map(b => ({ id: b.id, name: b.name, abbr: canon.book(b.id).abbr, grp: b.grp, chapters: b.chapters })) : [];
 }
 
-/* ---------------------------------------------------------------- reading */
-let seq = 0;
-let rerendering = false;
-const rerender = () => { rerendering = true; pushHistory = false; go(S.ref.b, S.ref.c, S.ref.v || 1); };
-const back: { b: number; c: number; v: number }[] = [], fwd: { b: number; c: number; v: number }[] = [];
-let pushHistory = true;
-function historyGo(d: number): void {
-  const from = d < 0 ? back : fwd, to = d < 0 ? fwd : back; const r = from.pop(); if (!r) return;
-  to.push({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }); pushHistory = false; go(r.b, r.c, r.v);
-}
-async function go(b: number, c: number, v = 1): Promise<void> {
-  const bk = nav.find(x => x.id === b) || nav[0];
-  if (!bk) { $('#view').innerHTML = ''; return; }
-  if (!bk.chapters.includes(c)) c = bk.chapters[0];
-  if (pushHistory && (S.ref.b !== bk.id || S.ref.c !== c)) { back.push({ ...S.ref, v: S.ref.v || 1 }); if (back.length > 200) back.shift(); fwd.length = 0; }
-  pushHistory = true;
-  S.ref = { b: bk.id, c, v }; save();
-  $<HTMLSelectElement>('#bookSel').value = String(bk.id);
-  const cs = $<HTMLSelectElement>('#chapSel'); cs.innerHTML = bk.chapters.map(n => `<option>${n}</option>`).join(''); cs.value = String(c);
-  $('#refBtn').textContent = `${bk.name} ${c}`; $('#capRef').textContent = `${bk.name} ${c}`;
-  const my = ++seq; const t0 = performance.now();
-  const list = openBibles();
-  const chapters = await Promise.all(list.map(m => m.chapter(bk.id, c)));
-  if (my !== seq) return;
-  const vmax = Math.max(0, ...chapters.map(ch => ch.length ? ch[ch.length - 1].v : 0));
-  const vs = $<HTMLSelectElement>('#verseSel'); vs.innerHTML = Array.from({ length: vmax }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join(''); vs.value = String(Math.min(v, vmax) || 1);
-  const show = S.show;
-  const marks = commentaryMarks(bk.id, c);
-  const ctxs = new Map<Bible, { fn: { n: number } }>(list.map(m => [m, { fn: { n: 0 } }])); // footnotes numbered through the chapter
-  const cell = (m: Bible, raw: string | undefined) => raw == null ? '' : TWRender.render(raw, m, show, ctxs.get(m));
-  const vin = (v: number) => S.look.vnPos === 'inline' ? `<sup class="vnum">${v}</sup>` : '';
-  const font = bibleStyle;
-  let html = '';
-  if (show.paragraph) {
-    // paragraph mode: the verses run on as text; a paragraph ends where the Bible marks one (theWord's <CM>);
-    // a Bible without paragraph marks borrows them from another open Bible that has them
-    const ends = list.map(m => new Set(chapters[list.indexOf(m)].filter(r => /<CM>\s*$/.test(r.raw)).map(r => r.v)));
-    const borrowed = ends.find(e => e.size) || new Set<number>();
-    html = `<div class="paraview" style="grid-template-columns:repeat(${list.length}, minmax(0, 1fr))">`;
-    list.forEach((m, i) => {
-      const pe = ends[i].size ? ends[i] : borrowed;
-      html += `<div class="pcol${m.rtl ? ' rtl' : ''}"${font(m)}>${list.length > 1 ? `<div class="pabbr">${esc(m.abbr)}</div>` : ''}<p class="ppara">`;
-      for (const r of chapters[i]) {
-        html += `<span class="pv${r.v === S.ref.v ? ' sel' : ''}" data-v="${r.v}" data-col="${i}">${S.look.vnPos === 'hidden' ? '' : `<sup class="vnum pvn">${r.v}</sup>`}${cell(m, r.raw)}</span> `;
-        if (pe.has(r.v)) html += '</p><p class="ppara">';
-      }
-      html += '</p></div>';
-    });
-    html += '</div>';
-  } else if (isPhone() || list.length === 1) {
-    html = '<div class="rows">';
-    for (let v = 1; v <= vmax; v++) {
-      html += `<div class="vrow${v === S.ref.v ? ' sel' : ''}" data-v="${v}"><span class="vn"><span class="vno">${v}</span>${marks.has(v) ? '<i class="cm">c</i>' : ''}</span><div class="vtexts">`;
-      list.forEach((m, i) => { const r = chapters[i].find(x => x.v === v); if (r) html += `<div class="vt${m.rtl ? ' rtl' : ''}" data-col="${i}"${font(m)}>${list.length > 1 ? `<span class="ab">${esc(m.abbr)}</span>` : ''}${vin(v)}${cell(m, r.raw)}</div>`; });
-      html += '</div></div>';
-    }
-    html += '</div>';
-  } else {
-    html = `<table class="chap"><thead><tr><th class="vn"></th>${list.map(m => `<th title="${esc(m.title)}">${esc(m.abbr)}</th>`).join('')}</tr></thead><tbody>`;
-    for (let v = 1; v <= vmax; v++) {
-      html += `<tr data-v="${v}"${v === S.ref.v ? ' class="sel"' : ''}><td class="vn"><span class="vno">${v}</span>${marks.has(v) ? '<i class="cm" title="Commentary">c</i>' : ''}</td>`;
-      list.forEach((m, i) => { const r = chapters[i].find(x => x.v === v); html += `<td class="${m.rtl ? 'rtl' : ''}" data-col="${i}"${font(m)}>${r ? vin(v) : ''}${cell(m, r?.raw)}</td>`; });
-      html += '</tr>';
-    }
-    html += '</tbody></table>';
-  }
-  const view = $('#view'); const keepTop = view.scrollTop; view.innerHTML = html; view.scrollTop = rerendering ? keepTop : 0;
-  afterRender(bk.id, c);
-  decorateFootnotes(list); if (show.columns) columnWords(my); else if (show.lemma) showLemmas();
-  $('#view').classList.toggle('colmode', !!show.columns);
-  if (show.xrefs && !show.paragraph) await decorateXrefs(bk.id, c, my);
-  if (!rerendering && (S.ref.v || 1) > 1) { const el = view.querySelector(`[data-v="${S.ref.v}"]`); if (el) el.scrollIntoView({ block: 'center' }); }
-  updateCommentary(); rerendering = false;
-  document.dispatchEvent(new CustomEvent('tanglaw-ref'));
-  $('#timing').textContent = `${Math.round(performance.now() - t0)} ms`;
-}
-/** footnote markers: numbers, letters or a star; and, if chosen, every footnote listed under the chapter */
-function decorateFootnotes(list: Bible[]): void {
-  const view = $('#view'); const style = S.look.fnStyle || 'num';
-  const lab = (n: number) => style === 'letter' ? (n > 26 ? String.fromCharCode(96 + Math.ceil(n / 26) - 1) : '') + String.fromCharCode(97 + (n - 1) % 26) : style === 'star' ? '*' : String(n);
-  const lists: string[] = [];
-  list.forEach((m, i) => {
-    const fns = [...view.querySelectorAll<HTMLElement>(`[data-col="${i}"] sup.fn`)]; let n = 0; const items: string[] = [];
-    for (const f of fns) { n++; if (!f.dataset.q) f.textContent = lab(n); const v = f.closest<HTMLElement>('[data-v]')?.dataset.v; items.push(`<li data-gov="${v}"><b>${esc(f.textContent || '')}</b> <span class="small">${v}</span> ${TWRender.render(f.dataset.note || '', { rules: [] }, { ...S.show, footnotes: false })}</li>`); }
-    if (items.length) lists.push(`<div class="fnl">${list.length > 1 ? `<h5>${esc(m.abbr)}</h5>` : ''}<ol>${items.join('')}</ol></div>`);
-  });
-  if (S.look.fnPlace === 'chapter' && lists.length) view.insertAdjacentHTML('beforeend', `<section class="fnlist"><h4>Footnotes</h4>${lists.join('')}</section>`);
-}
-/** column text (theWord's Column Text View): each tagged word stands over its original word, transliteration,
- *  Strong's number, morphology and lemma, like an interlinear */
-type ColSettings = { colLines?: Record<string, boolean> };
-const COL_LINES: [string, string][] = [['orig', 'Original word'], ['tl', 'Transliteration'], ['strong', "Strong's number"], ['morph', 'Morphology'], ['lemma', 'Lemma']];
-const colOn = (k: string) => ((S as unknown as ColSettings).colLines || {})[k] !== false;
-const origCache = new Map<string, string>();
-async function originalFor(key: string): Promise<string> {
-  const ck = key + '|' + JSON.stringify(WS().dictPref || {});
-  if (origCache.has(ck)) return origCache.get(ck)!;
-  const hit = await strongEntry(key); let o = '';
-  if (hit) { const t = document.createElement('div'); t.innerHTML = hit.html; o = firstOriginal(hit.subject + ' ' + (t.textContent || '').slice(0, 400), /^H/i.test(key) ? 'hebrew' : 'greek'); }
-  origCache.set(ck, o); return o;
-}
-function columnWords(my: number): void {
-  const words = [...$('#view').querySelectorAll<HTMLElement>('span.word[data-strong], span.word[data-morph], span.word[data-lemma]')];
-  const need: [HTMLElement, string][] = [];
-  for (const w of words) {
-    const st = (w.dataset.strong || '').split(/\s+/).filter(Boolean); const lem = w.dataset.lemma || '';
-    const box = document.createElement('span'); box.className = 'cw'; w.replaceWith(box); box.appendChild(w);
-    const line = (cls: string, txt: string, attrs: Record<string, string> = {}) => { const e = document.createElement('span'); e.className = 'cl ' + cls; e.textContent = txt; for (const [a, v] of Object.entries(attrs)) e.setAttribute(a, v); box.appendChild(e); return e; };
-    if (colOn('orig')) { const o = line('cl-orig', lem); if (!lem && st[0]) need.push([o, st[0]]); }
-    if (colOn('tl')) line('cl-tl', lem ? translit(lem) : '');
-    if (colOn('strong') && st.length) line('cl-strong', st.join(' '), { 'data-strong': st.join(' ') });
-    if (colOn('morph') && w.dataset.morph) line('cl-morph', w.dataset.morph, { 'data-morph': w.dataset.morph });
-    if (colOn('lemma') && lem) line('cl-lemma', lem, { 'data-lemma': lem });
-  }
-  // the original word from the Strong's dictionary, where the Bible gives no lemma (read after the text is on screen)
-  // the selected verse first, then the rest; several lookups at a time
-  const sv = String(S.ref.v || 1); need.sort((a, b) => Number(b[0].closest<HTMLElement>('[data-v]')?.dataset.v === sv) - Number(a[0].closest<HTMLElement>('[data-v]')?.dataset.v === sv));
-  const keys = [...new Set(need.map(n => n[1]))];
-  (async () => {
-    for (let i = 0; i < keys.length; i += 24) {
-      if (my !== seq) return;
-      await Promise.all(keys.slice(i, i + 24).map(originalFor));
-      const pk = '|' + JSON.stringify(WS().dictPref || {});
-      for (const [el, k] of need) if (origCache.has(k + pk) && !el.textContent) { const o = origCache.get(k + pk)!; el.textContent = o; const tl = el.nextElementSibling; if (tl && tl.classList.contains('cl-tl') && !tl.textContent) tl.textContent = translit(o); }
-    }
-  })();
-}
-/** lemmas shown after the words that carry one */
-function showLemmas(): void {
-  $('#view').querySelectorAll<HTMLElement>('[data-lemma]:not(sup)').forEach(w => w.insertAdjacentHTML('afterend', `<sup class="lemma" data-lemma="${esc(w.dataset.lemma!)}">${esc(w.dataset.lemma!)}</sup>`));
-}
-/** cross-references under each verse; [brackets] = verses that point here; yours can be removed */
-async function decorateXrefs(b: number, c: number, my: number): Promise<void> {
-  const xr = await chapterXrefs(b, c); if (my !== seq) return;
-  for (const [v, refs] of Object.entries(xr)) {
-    const cell = $('#view').querySelector(`[data-v="${v}"] [data-col="0"]`); if (!cell || !refs.length) continue;
-    const label = (r: { b: number; c: number; v: number; span: number }) => `${refAbbr(r.b)} ${r.c}:${r.v}${r.span ? '–' + (r.v + r.span) : ''}`;
-    const shown = refs.slice(0, 8);
-    cell.insertAdjacentHTML('beforeend', `<div class="xrs">${shown.map(r => `<a class="xr${r.back ? ' back' : ''}${r.user ? ' mine' : ''}" data-ref="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' + label(r) + ']' : label(r)}</a>${r.user ? `<i class="rmx" data-from="${b}.${c}.${v}" data-to="${r.b}.${r.c}.${r.v}" title="Remove my cross-reference">×</i>` : ''}`).join('; ')}${refs.length > 8 ? ` <a class="xrmore" data-v="${v}">+${refs.length - 8} more</a>` : ''}</div>`);
-    if (refs.length > 8) cell.querySelector<HTMLElement>('.xrmore')!.onclick = e => { e.stopPropagation(); const d = cell.querySelector('.xrs')!; d.innerHTML = refs.map(r => `<a class="xr${r.back ? ' back' : ''}" data-ref="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' + label(r) + ']' : label(r)}</a>`).join('; '); };
-  }
-}
-/** a short book name that reads well: "1 John", "2 Kgs", "Rom" */
-export function refAbbr(b: number): string { return String(canon.book(b).abbr).replace(/^(\d)(?=\D)/, '$1 '); }
+/* ---------------------------------------------------------------- reading: the Bible views (bibleviews.ts) */
+const rerender = () => { renderAll(true); };
 async function versePreview(ref: string): Promise<string> {
   const [b, c, v, span] = ref.split('.').map(Number);
   const show = { ...S.show, strongs: false, morph: false, footnotes: false };
@@ -273,18 +120,15 @@ async function versePreview(ref: string): Promise<string> {
   }
   return out.length ? `<div class="entry"><h4>${esc(canon.book(b).name)} ${c}:${v}${span ? '–' + (v + span) : ''}</h4>${out.join('')}</div>` : '';
 }
-function stepBook(d: number): void { const i = nav.findIndex(x => x.id === S.ref.b); const n = nav[i + d]; if (n) go(n.id, n.chapters[0]); }
-function selectVerse(v: number): void {
-  const el = $('#view').querySelector<HTMLElement>(`[data-v="${v}"]`);
-  if (!el) { if (v < 1) step(-1); else step(1); return; }
-  $('#view').querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); el.classList.add('sel');
-  el.scrollIntoView({ block: 'nearest' }); S.ref.v = v; save(); updateCommentary(); $<HTMLSelectElement>('#verseSel').value = String(v); document.dispatchEvent(new CustomEvent('tanglaw-ref'));
-}
-function step(d: number): void {
-  const i = nav.findIndex(x => x.id === S.ref.b); if (i < 0) return;
-  const bk = nav[i]; const j = bk.chapters.indexOf(S.ref.c) + d;
-  if (j >= 0 && j < bk.chapters.length) return void go(bk.id, bk.chapters[j]);
-  const nb = nav[i + d]; if (nb) go(nb.id, d > 0 ? nb.chapters[0] : nb.chapters[nb.chapters.length - 1]);
+function stepBook(d: number): void { const id = activeId(); if (id) bvStepBook(id, d); }
+function selectVerse(v: number): void { const id = activeId(); if (id) bvSelectVerse(id, v); }
+function step(d: number): void { const id = activeId(); if (id) stepChapter(id, d); }
+/** the place of the active Bible view moved: the panels that follow it */
+function moved(): void {
+  const r = activeRef(); const m = activeBible(); buildNav();
+  const bk = canon.book(r.b); $('#refBtn').textContent = `${bk ? bk.name : ''} ${r.c}`;
+  updateCommentary(); document.dispatchEvent(new CustomEvent('tanglaw-ref'));
+  void m;
 }
 
 /* ---------------------------------------------------------------- Strong's popup / sheet */
@@ -467,39 +311,76 @@ type BibleSettings = { hiddenBibles?: string[]; bibleSets?: Record<string, strin
 const BS = () => S as unknown as BibleSettings;
 function bibleMenu(): void {
   const m = $('#bibleMenu'); const bs = BS(); const hid = new Set(bs.hiddenBibles || []); const sets = bs.bibleSets || {};
-  // the open Bibles first, in the order they are read side by side, then the others
-  const rows = [...openBibles(), ...bibles.filter(b => !S.open.includes(b.id) && (bs.showHiddenBibles || !hid.has(b.id)))];
-  const row = (b: Bible) => { const on = S.open.includes(b.id); const i = S.open.indexOf(b.id); return `<div class="brow${hid.has(b.id) ? ' bhid' : ''}"><label><input type="checkbox" data-id="${esc(b.id)}" ${on ? 'checked' : ''}><b>${esc(b.abbr)}</b><span class="small">${esc(b.title)}</span><span class="fmt">${b.format}</span></label>` +
-    (on ? `<button class="ib" data-up="${esc(b.id)}" title="Move left" ${i === 0 ? 'disabled' : ''}>↑</button><button class="ib" data-down="${esc(b.id)}" title="Move right" ${i === S.open.length - 1 ? 'disabled' : ''}>↓</button>` : `<button class="ib" data-hide="${esc(b.id)}" title="${hid.has(b.id) ? 'Show in this list again' : 'Hide from this list'}">${hid.has(b.id) ? '◌' : '⊘'}</button>`) +
-    `<button class="ib" data-font="${esc(b.id)}" title="Font for ${esc(b.abbr)}">Aa</button><button class="ib" data-props="${esc(b.id)}" title="Properties of ${esc(b.abbr)}">ⓘ</button></div>`; };
-  m.innerHTML = `<div class="mh">Bibles <span class="small">(tick to read side by side)</span></div>` + rows.map(row).join('') +
+  const cur = activeBible()?.id; const inViews = new Set(viewBibles().map(b => b.id));
+  const rows = bibles.filter(b => bs.showHiddenBibles || !hid.has(b.id) || b.id === cur);
+  const row = (b: Bible) => `<div class="brow${hid.has(b.id) ? ' bhid' : ''}${b.id === cur ? ' on' : ''}"><button class="bpick" data-use="${esc(b.id)}" title="Show ${esc(b.abbr)} in the active Bible view"><b>${esc(b.abbr)}</b><span class="small">${esc(b.title)}</span>${inViews.has(b.id) ? '<span class="dot" title="Open in a Bible view"></span>' : ''}<span class="fmt">${b.format}</span></button>` +
+    `<button class="ib" data-newv="${esc(b.id)}" title="Open ${esc(b.abbr)} in a new Bible view">＋</button>` +
+    `<button class="ib" data-hide="${esc(b.id)}" title="${hid.has(b.id) ? 'Show in this list again' : 'Hide from this list'}">${hid.has(b.id) ? '◌' : '⊘'}</button>` +
+    `<button class="ib" data-font="${esc(b.id)}" title="Font for ${esc(b.abbr)}">Aa</button><button class="ib" data-props="${esc(b.id)}" title="Properties of ${esc(b.abbr)}">ⓘ</button></div>`;
+  m.innerHTML = `<div class="mh">Bibles <span class="small">(click: show in the active view · ＋ a new view)</span></div>` + rows.map(row).join('') +
     (hid.size ? `<label class="small bshow"><input type="checkbox" id="mShowHid" ${bs.showHiddenBibles ? 'checked' : ''}> Show the ${hid.size} hidden Bible${hid.size > 1 ? 's' : ''}</label>` : '') +
-    `<div class="msep"></div><div class="mh">Bible sets</div>` +
+    `<div class="msep"></div><div class="mh">Bible sets <span class="small">(open each Bible of the set in a view of its own)</span></div>` +
     Object.entries(sets).map(([n, ids]) => `<div class="brow"><button class="mset" data-set="${esc(n)}" title="${esc(ids.map(id => bibles.find(x => x.id === id)?.abbr || '?').join(', '))}">${esc(n)}</button><button class="ib" data-delset="${esc(n)}" title="Delete this set">×</button></div>`).join('') +
-    `<button id="mSaveSet">Save the ticked Bibles as a set…</button>` +
+    `<button id="mSaveSet">Save the Bibles of the open views as a set…</button>` +
     `<div class="msep"></div><button id="mImport">Import modules…</button>${isAndroid ? '' : '<button id="mFolder">Read modules from a folder…</button>'}` +
     (S.folders.length ? `<div class="small fl">${S.folders.map(esc).join('<br>')}</div>` : '');
-  const after = () => { save(); buildNav(); go(S.ref.b, S.ref.c, S.ref.v); bibleMenu(); };
-  m.querySelectorAll<HTMLInputElement>('input[data-id]').forEach(cb => cb.onchange = () => {
-    const id = cb.dataset.id!; S.open = cb.checked ? [...S.open, id] : S.open.filter(x => x !== id); after();
-  });
-  const move = (id: string, d: number) => { const i = S.open.indexOf(id), j = i + d; if (i < 0 || j < 0 || j >= S.open.length) return; [S.open[i], S.open[j]] = [S.open[j], S.open[i]]; after(); };
-  m.querySelectorAll<HTMLButtonElement>('[data-up]').forEach(x => x.onclick = e => { e.stopPropagation(); move(x.dataset.up!, -1); });
-  m.querySelectorAll<HTMLButtonElement>('[data-down]').forEach(x => x.onclick = e => { e.stopPropagation(); move(x.dataset.down!, 1); });
+  const hide = () => m.classList.add('hidden');
+  m.querySelectorAll<HTMLButtonElement>('[data-use]').forEach(x => x.onclick = () => { hide(); const id = activeId(); if (id) setBible(id, x.dataset.use!); else openBibleView(x.dataset.use!); });
+  m.querySelectorAll<HTMLButtonElement>('[data-newv]').forEach(x => x.onclick = e => { e.stopPropagation(); hide(); openBibleView(x.dataset.newv!); });
   m.querySelectorAll<HTMLButtonElement>('[data-hide]').forEach(x => x.onclick = e => { e.stopPropagation(); const id = x.dataset.hide!; bs.hiddenBibles = hid.has(id) ? [...hid].filter(h => h !== id) : [...hid, id]; save(); bibleMenu(); });
   const sh = m.querySelector<HTMLInputElement>('#mShowHid'); if (sh) sh.onchange = () => { bs.showHiddenBibles = sh.checked; save(); bibleMenu(); };
-  m.querySelectorAll<HTMLButtonElement>('[data-set]').forEach(x => x.onclick = () => { const ids = (sets[x.dataset.set!] || []).filter(id => bibles.some(b => b.id === id)); if (!ids.length) return flash('None of the Bibles in this set are here'); S.open = ids; after(); });
+  m.querySelectorAll<HTMLButtonElement>('[data-set]').forEach(x => x.onclick = () => { const ids = (sets[x.dataset.set!] || []).filter(id => bibles.some(b => b.id === id)); if (!ids.length) return flash('None of the Bibles in this set are here'); hide(); showBibles(ids); });
   m.querySelectorAll<HTMLButtonElement>('[data-delset]').forEach(x => x.onclick = e => { e.stopPropagation(); const n = { ...sets }; delete n[x.dataset.delset!]; bs.bibleSets = n; save(); bibleMenu(); });
   m.querySelector<HTMLButtonElement>('#mSaveSet')!.onclick = async () => {
-    if (!S.open.length) return flash('Tick some Bibles first');
-    m.classList.add('hidden'); let name = '';
-    const r = await dialog('Save a Bible set', `<label class="fl">Name <input id="setName" class="txt" placeholder="e.g. Greek and English"></label><p class="small">${S.open.map(id => esc(bibles.find(b => b.id === id)?.abbr)).join(', ')} – in this order. Choose the set later in the Bibles menu.</p>`, [{ label: 'Cancel', value: null }, { label: 'Save', value: 'ok', primary: true }], bx => { const i = bx.querySelector<HTMLInputElement>('#setName')!; i.focus(); i.oninput = () => { name = i.value.trim(); }; });
-    if (r === 'ok' && name) { bs.bibleSets = { ...sets, [name]: [...S.open] }; save(); flash(`Bible set “${name}” saved`); }
+    const ids = viewBibles().map(b => b.id); if (!ids.length) return flash('Open some Bible views first');
+    hide(); let name = '';
+    const r = await dialog('Save a Bible set', `<label class="fl">Name <input id="setName" class="txt" placeholder="e.g. Greek and English"></label><p class="small">${ids.map(id => esc(bibles.find(b => b.id === id)?.abbr)).join(', ')}. Choose the set later in the Bibles menu: each Bible opens in a view of its own.</p>`, [{ label: 'Cancel', value: null }, { label: 'Save', value: 'ok', primary: true }], bx => { const i = bx.querySelector<HTMLInputElement>('#setName')!; i.focus(); i.oninput = () => { name = i.value.trim(); }; });
+    if (r === 'ok' && name) { bs.bibleSets = { ...sets, [name]: ids }; save(); flash(`Bible set “${name}” saved`); }
   };
-  m.querySelectorAll<HTMLButtonElement>('[data-font]').forEach(x => x.onclick = e => { e.stopPropagation(); const b = bibles.find(y => y.id === x.dataset.font); if (b) { m.classList.add('hidden'); bibleFontDialog(b); } });
-  m.querySelectorAll<HTMLButtonElement>('[data-props]').forEach(pb => pb.onclick = e => { e.stopPropagation(); const b = bibles.find(x => x.id === pb.dataset.props); if (b) { m.classList.add('hidden'); openProps(b.file, b.title); } });
+  m.querySelectorAll<HTMLButtonElement>('[data-font]').forEach(x => x.onclick = e => { e.stopPropagation(); const b = bibles.find(y => y.id === x.dataset.font); if (b) { hide(); bibleFontDialog(b); } });
+  m.querySelectorAll<HTMLButtonElement>('[data-props]').forEach(pb => pb.onclick = e => { e.stopPropagation(); const b = bibles.find(x => x.id === pb.dataset.props); if (b) { hide(); openProps(b.file, b.title); } });
   ($('#mImport') as HTMLButtonElement).onclick = importModules;
   const mf = document.querySelector<HTMLButtonElement>('#mFolder'); if (mf) mf.onclick = addFolder;
+}
+/** settings of an earlier version: Bibles read side by side become Bible views of their own, in the middle */
+function migrateViews(): void {
+  const views = ((S as unknown as { views?: Record<string, unknown> }).views ||= {});
+  const d = (S.dock || {}) as { v?: number; zones?: Record<string, { size: number; groups: { panels: string[]; active: string; size: number }[] }> };
+  if (d.zones?.center) return; // this version's layout already
+  const ids = S.open.length ? S.open : [''];
+  const r = S.ref; const made: string[] = [];
+  for (const bible of ids) { let n = 1; while (views[`bible-${n}`]) n++; views[`bible-${n}`] = { bible, follow: true, b: r.b, c: r.c }; made.push(`bible-${n}`); }
+  const center = { size: 0, groups: made.map(id => ({ panels: [id], active: id, size: 1 })) };
+  if (d.zones) d.zones.center = center;
+  else S.dock = { v: 2, zones: { left: { size: 300, groups: [] }, right: { size: 400, groups: [{ panels: ['cmt'], active: 'cmt', size: 1 }, { panels: ['lib', 'search', 'bsearch', 'study'], active: 'lib', size: 1.3 }] }, bottom: { size: 250, groups: [] }, center }, floats: [], hidden: ['dict'] };
+  save();
+}
+/** read a Bible view aloud from the selected verse; on into the next chapters if chosen */
+async function speakView(id: string): Promise<void> {
+  if (isSpeaking()) { stopSpeaking(); return; }
+  const sec = document.getElementById('p-' + id); const m = bibleOfView(id); if (!sec || !m) return;
+  const btn = sec.querySelector<HTMLElement>('[data-bv="speak"]');
+  for (let first = true; ; first = false) {
+    const root = sec.querySelector<HTMLElement>('.bview')!;
+    const sel = first ? +(root.querySelector<HTMLElement>('.sel')?.dataset.v || 1) : 1;
+    const rows = [...root.querySelectorAll<HTMLElement>('[data-v]')].filter(r => +r.dataset.v! >= sel);
+    const pieces = rows.map(r => ({ text: readable(r.querySelector('.vt') || r), el: r }));
+    const done = await speakPieces(pieces, langOf(m.props?.lang), btn);
+    if (!done || !readNextChapter()) return;
+    const before = sec.querySelector('.bvref')?.textContent; stepChapter(id, 1);
+    for (let i = 0; i < 40 && sec.querySelector('.bvref')?.textContent === before; i++) await new Promise(r => setTimeout(r, 100));
+    if (sec.querySelector('.bvref')?.textContent === before) return;
+  }
+}
+const bibleOfView = (id: string) => { const c = ((S as unknown as { views?: Record<string, { bible: string }> }).views || {})[id]; return c ? bibles.find(b => b.id === c.bible) : undefined; };
+/** a new Bible view in the middle, showing this Bible */
+function openBibleView(bible?: string): string { const id = addBibleView(bible); openPanel(id, 'center'); setActive(id); return id; }
+/** show these Bibles, one view each (views already open are used first) */
+function showBibles(ids: string[]): void {
+  const open = bvIds().filter(id => isOpen(id));
+  ids.forEach((bid, i) => { if (open[i]) setBible(open[i], bid); else openBibleView(bid); });
+  for (const id of open.slice(ids.length)) closePanel(id);
+  const first = bvIds().find(id => isOpen(id)); if (first) setActive(first);
 }
 function skinMenu(): void {
   $('#skinMenu').innerHTML = '<div class="mh">Skin</div>' + Object.entries(SKINS).map(([id, s]) =>
@@ -517,11 +398,7 @@ function customToggleList(): { name: string; label: string; abbr: string }[] {
   return out;
 }
 function customOn(n: string): boolean { const c = (S.show as unknown as { custom?: Record<string, boolean> }).custom || {}; return c[n] !== false; }
-function setCustom(n: string, on: boolean): void { const sh = S.show as unknown as { custom?: Record<string, boolean> }; sh.custom = { ...(sh.custom || {}), [n]: on }; save(); go(S.ref.b, S.ref.c, S.ref.v); }
-function moduleToggles(): string {
-  const l = customToggleList(); if (!l.length) return '';
-  return '<div class="msep"></div><div class="mh">This Bible\'s own switches</div>' + l.map(t => `<label title="Defined by ${esc(t.abbr)}${t.name.length === 1 ? ` – key ${esc(t.name.toUpperCase())}` : ''}"><input type="checkbox" data-ctog="${esc(t.name)}" ${customOn(t.name) ? 'checked' : ''}> ${esc(t.label || t.name)}${t.label ? ` <span class="small">${esc(t.name)}</span>` : ''}</label>`).join('');
-}
+function setCustom(n: string, on: boolean): void { const sh = S.show as unknown as { custom?: Record<string, boolean> }; sh.custom = { ...(sh.custom || {}), [n]: on }; save(); renderAll(); }
 /** a choice of dictionary for word popups (theWord: which Strong's dictionary for Greek and for Hebrew) */
 function dictPick(k: 'greek' | 'hebrew' | 'morph', label: string, f: (d: BookMod) => boolean): string {
   const ds = books.filter(d => d.kind === 'dictionary' && !d.locked && f(d)); if (ds.length < 2) return '';
@@ -531,11 +408,8 @@ function dictPick(k: 'greek' | 'hebrew' | 'morph', label: string, f: (d: BookMod
 /** the Options menu: what to show, text size, order of the books, the Options window */
 function optMenu(): void {
   const m = $('#optMenu');
-  m.innerHTML = `<div class="mrow msel">Language / Wika <select id="mLang"><option value="en">English</option><option value="tl"${currentLang() === 'tl' ? ' selected' : ''}>Tagalog</option></select></div><div class="msep"></div>` + '<div class="mh">Show</div>' + [['strongs', "Strong's numbers"], ['morph', 'Morphology'], ['footnotes', 'Footnotes'], ['headings', 'Headings'], ['woj', 'Words of Jesus in red'], ['added', 'Added words in italics'], ['xrefs', 'Cross-references'], ['highlights', 'My highlighting'], ['notes', 'My notes under the verses'], ['lemma', 'Lemmas'], ['paragraph', 'Paragraph mode (P)'], ['columns', 'Column text – words over their originals (Alt+I)']]
-      .map(([k, l]) => `<label><input type="checkbox" data-show="${k}" ${S.show[k] ? 'checked' : ''}> ${l}</label>`).join('') +
-    (S.show.columns ? '<div class="mh">Column text lines</div>' + COL_LINES.map(([k, l]) => `<label class="sub"><input type="checkbox" data-coll="${k}" ${colOn(k) ? 'checked' : ''}> ${l}</label>`).join('') : '') +
-    moduleToggles() +
-    `<div class="msep"></div><label><input type="checkbox" id="mWl" ${WL().on ? 'checked' : ''}> Word lookup (D)</label><button id="mWlD" class="sub">Word lookup dictionaries…</button>` +
+  m.innerHTML = `<div class="mrow msel">Language / Wika <select id="mLang"><option value="en">English</option><option value="tl"${currentLang() === 'tl' ? ' selected' : ''}>Tagalog</option></select></div><div class="msep"></div>` + '<div class="small" style="padding:2px 12px 6px">What a Bible view shows is set in its own side bar.</div>' +
+    `<label><input type="checkbox" id="mWl" ${WL().on ? 'checked' : ''}> Word lookup (D)</label><button id="mWlD" class="sub">Word lookup dictionaries…</button>` +
     '<div class="msep"></div><div class="mh">Word popups</div>' +
     `<label><input type="checkbox" id="mOrig" ${S.show.origWord !== false ? 'checked' : ''}> Original word and transliteration</label>` +
     `<label><input type="radio" name="mwo" data-wo="morph" ${WS().wordOrder !== 'strong' ? 'checked' : ''}> Morphology first</label><label><input type="radio" name="mwo" data-wo="strong" ${WS().wordOrder === 'strong' ? 'checked' : ''}> Strong's entry first</label>` +
@@ -545,18 +419,15 @@ function optMenu(): void {
     '<div class="msep"></div><div class="mh">Order of the books</div>' + [['1611', '1611 King James (Apocrypha between)'], ['nets', 'Septuagint – NETS'], ['orthodox', 'Greek Orthodox']].map(([k, l]) => `<label><input type="radio" name="mord" data-ord="${k}" ${S.look.bookOrder === k ? 'checked' : ''}> ${l}</label>`).join('') +
     `<div class="msep"></div><button id="mOpts">Options… <kbd>Ctrl+,</kbd></button>`;
   m.querySelector<HTMLSelectElement>('#mLang')!.onchange = e => { LS().lang = (e.target as HTMLSelectElement).value; saveSettings(S).then(() => location.reload()); };
-  m.querySelectorAll<HTMLInputElement>('[data-coll]').forEach(cb => cb.onchange = () => { const cs = S as unknown as ColSettings; cs.colLines = { ...(cs.colLines || {}), [cb.dataset.coll!]: cb.checked }; save(); go(S.ref.b, S.ref.c, S.ref.v); });
   m.querySelector<HTMLInputElement>('#mWl')!.onchange = e => { WL().on = (e.target as HTMLInputElement).checked; save(); if (WL().on && !(WL().dicts || []).length) { m.classList.add('hidden'); wordLookDialog(); } };
   m.querySelector<HTMLButtonElement>('#mWlD')!.onclick = () => { m.classList.add('hidden'); wordLookDialog(); };
-  m.querySelectorAll<HTMLInputElement>('[data-ctog]').forEach(cb => cb.onchange = () => setCustom(cb.dataset.ctog!, cb.checked));
   m.querySelector<HTMLInputElement>('#mOrig')!.onchange = e => { S.show.origWord = (e.target as HTMLInputElement).checked; save(); };
   m.querySelector<HTMLInputElement>('#mPopAll')!.onchange = e => { WS().popAll = (e.target as HTMLInputElement).checked; save(); };
   m.querySelectorAll<HTMLInputElement>('[data-wo]').forEach(r => r.onchange = () => { WS().wordOrder = r.dataset.wo as 'morph' | 'strong'; save(); });
   m.querySelectorAll<HTMLSelectElement>('[data-dpref]').forEach(sel => sel.onchange = () => { WS().dictPref = { ...(WS().dictPref || {}), [sel.dataset.dpref!]: sel.value || undefined }; save(); });
   m.querySelector<HTMLButtonElement>('#mOpts')!.onclick = () => { m.classList.add('hidden'); openOptions(); };
-  m.querySelectorAll<HTMLInputElement>('[data-show]').forEach(cb => cb.onchange = () => { S.show[cb.dataset.show!] = cb.checked; save(); go(S.ref.b, S.ref.c, S.ref.v); if (cb.dataset.show === 'columns') optMenu(); });
-  m.querySelectorAll<HTMLButtonElement>('[data-fs]').forEach(b => b.onclick = () => { S.fontSize = Math.max(12, Math.min(34, S.fontSize + +b.dataset.fs!)); document.documentElement.style.setProperty('--size', S.fontSize + 'px'); save(); m.querySelector('.fsv')!.textContent = String(S.fontSize); });
-  m.querySelectorAll<HTMLInputElement>('[data-ord]').forEach(r => r.onchange = () => { S.look.bookOrder = r.dataset.ord as Look['bookOrder']; save(); canon.setOrder(S.look.bookOrder); buildNav(); go(S.ref.b, S.ref.c, S.ref.v); viewsReload(); });
+  m.querySelectorAll<HTMLButtonElement>('[data-fs]').forEach(b => b.onclick = () => { S.fontSize = Math.max(12, Math.min(34, S.fontSize + +b.dataset.fs!)); document.documentElement.style.setProperty('--size', S.fontSize + 'px'); save(); m.querySelector('.fsv')!.textContent = String(S.fontSize); renderAll(); });
+  m.querySelectorAll<HTMLInputElement>('[data-ord]').forEach(r => r.onchange = () => { S.look.bookOrder = r.dataset.ord as Look['bookOrder']; save(); canon.setOrder(S.look.bookOrder); buildNav(); renderAll(); viewsReload(); });
 }
 type LangSettings = { lang?: string; tlFixes?: Record<string, string> };
 const LS = () => S as unknown as LangSettings;
@@ -583,7 +454,7 @@ function toolsMenu(): void {
     `<label><input type="checkbox" id="tClip" ${clipOn() ? 'checked' : ''}> Clipboard monitor</label>` +
     '<button id="tWl">Word lookup dictionaries…</button><button id="tSets">Module sets…</button>' +
     '<div class="msep"></div><button id="tNewMod">New module of your own…</button><button id="tTl">Tagalog translation…</button>' +
-    '<button id="tKeys">Keyboard shortcuts… <kbd>Ctrl+/</kbd></button><button id="tCmp">Compare the verse <kbd>Ctrl+M</kbd></button><button id="tUpd">Check for a new version…</button>' + `<label class="sub"><input type="checkbox" id="tAuto" ${autoUpdates() ? 'checked' : ''}> Look for new versions when Tanglaw starts</label>` +
+    '<button id="tVoices">Read aloud: voices…</button><button id="tKeys">Keyboard shortcuts… <kbd>Ctrl+/</kbd></button><button id="tCmp">Compare the verse <kbd>Ctrl+M</kbd></button><button id="tUpd">Check for a new version…</button>' + `<label class="sub"><input type="checkbox" id="tAuto" ${autoUpdates() ? 'checked' : ''}> Look for new versions when Tanglaw starts</label>` +
     '<div class="msep"></div><button id="tPrint">Print the chapter <kbd>Ctrl+P</kbd></button>' +
     (lm ? `<button id="tPrintT">Print the Library topic</button><button id="tExp">Export from ${esc(lm.abbr || lm.title)}…</button>` : '');
   const hide = () => m.classList.add('hidden');
@@ -591,6 +462,7 @@ function toolsMenu(): void {
   m.querySelector<HTMLButtonElement>('#tWl')!.onclick = () => { hide(); wordLookDialog(); };
   m.querySelector<HTMLButtonElement>('#tSets')!.onclick = () => { hide(); defineModuleSets(); };
   m.querySelector<HTMLButtonElement>('#tNewMod')!.onclick = () => { hide(); newUserModule(); };
+  m.querySelector<HTMLButtonElement>('#tVoices')!.onclick = () => { hide(); voicesDialog(); };
   m.querySelector<HTMLButtonElement>('#tKeys')!.onclick = () => { hide(); keysDialog(); };
   m.querySelector<HTMLButtonElement>('#tCmp')!.onclick = () => { hide(); openCompare(); };
   m.querySelector<HTMLButtonElement>('#tUpd')!.onclick = () => { hide(); checkUpdate(true); };
@@ -622,7 +494,7 @@ function layoutMenu(): void {
   const extra = openPanels().filter(p => !PANELS.includes(p));
   m.innerHTML = '<div class="mh">Panels</div>' + PANELS.map(p => `<label><input type="checkbox" data-pan="${p}" ${isOpen(p) ? 'checked' : ''}> ${esc(titleOf(p))}</label>`).join('') +
     extra.map(p => `<label><input type="checkbox" data-pan="${esc(p)}" checked> ${esc(p.startsWith('bible-') ? 'Bible view: ' : p.startsWith('search-') ? '' : 'Book view: ')}${esc(titleOf(p))}</label>`).join('') +
-    '<div class="msep"></div><button id="mAddBible">+ New Bible view</button><button id="mAddBook">+ New book view</button><button id="mAddSearch">+ New search view</button><button id="mAddCompare">+ Compare view</button>' +
+    '<div class="msep"></div><button id="mAddBible">+ New Bible view</button><button id="mAddBook">+ New book view</button><button id="mAddSearch">+ New Bible search</button><button id="mAddBSearch">+ New book search</button><button id="mAddCompare">+ Compare view</button>' +
     `<button id="mHideAll">${isHiddenAll() ? 'Show the panels' : 'Hide all panels'}</button>` +
     '<div class="msep"></div><div class="mh">Layouts</div>' + Object.entries(DOCK_PRESETS).map(([k, [l]]) => `<button data-pre="${k}">${esc(l)}</button>`).join('') +
     Object.keys(saved).map(n => `<div class="mrow lrow"><button data-lay="${esc(n)}">${esc(n)}</button><i class="ldel" data-del="${esc(n)}" title="Delete this layout">×</i></div>`).join('') +
@@ -631,7 +503,8 @@ function layoutMenu(): void {
   const add = (id: string) => { m.classList.add('hidden'); openPanel(id); };
   m.querySelector<HTMLElement>('#mAddBible')!.onclick = () => add(addBibleView());
   m.querySelector<HTMLElement>('#mAddBook')!.onclick = () => add(addBookView());
-  m.querySelector<HTMLElement>('#mAddSearch')!.onclick = () => add(addSearchView());
+  m.querySelector<HTMLElement>('#mAddSearch')!.onclick = () => add(addSearchView('search'));
+  m.querySelector<HTMLElement>('#mAddBSearch')!.onclick = () => add(addSearchView('bsearch'));
   m.querySelector<HTMLElement>('#mAddCompare')!.onclick = () => { m.classList.add('hidden'); openCompare(); };
   m.querySelector<HTMLElement>('#mHideAll')!.onclick = () => { S.sideHidden = !isHiddenAll(); save(); setHidden(!!S.sideHidden); m.classList.add('hidden'); };
   m.querySelectorAll<HTMLElement>('[data-pre]').forEach(b => b.onclick = () => { m.classList.add('hidden'); setLayout(DOCK_PRESETS[b.dataset.pre!][1]); S.sideHidden = false; save(); });
@@ -719,24 +592,31 @@ async function init(): Promise<void> {
   ownDir = await modulesDir();
   const win = getCurrentWindow();
   $('#wMin').onclick = () => win.minimize(); $('#wMax').onclick = () => win.toggleMaximize(); $('#wClose').onclick = () => win.close();
-  $('#bookSel').onchange = () => go(+$<HTMLSelectElement>('#bookSel').value, 1);
-  $('#chapSel').onchange = () => go(S.ref.b, +$<HTMLSelectElement>('#chapSel').value);
-  $('#verseSel').onchange = () => { const v = +$<HTMLSelectElement>('#verseSel').value; selectVerse(v); $('#view').querySelector(`[data-v="${v}"]`)?.scrollIntoView({ block: 'center' }); };
-  $('#prev').onclick = $('#pPrev').onclick = () => step(-1);
-  $('#next').onclick = $('#pNext').onclick = () => step(1);
+  $('#pPrev').onclick = () => step(-1);
+  $('#pNext').onclick = () => step(1);
   $('#refBtn').onclick = picker;
   $('#biblesBtn').onclick = e => { e.stopPropagation(); toggleMenu('#bibleMenu', bibleMenu); };
   $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', skinMenu); };
   $('#optBtn').onclick = e => { e.stopPropagation(); toggleMenu('#optMenu', optMenu); };
   $('#toolsBtn').onclick = e => { e.stopPropagation(); toggleMenu('#toolsMenu', toolsMenu); };
   $('#libPrint').innerHTML = icon('print', 16); $('#libExport').innerHTML = icon('import', 16);
+  // the Library's side bar: topic list, text size, your marks, read aloud
+  $('#libList').innerHTML = icon('menu', 16); $('#libMarks').innerHTML = icon('edit', 16); $('#libSpeak').innerHTML = icon('speaker', 16);
+  const LL = () => ((S as unknown as { libLook?: { list?: boolean; size?: number; nomarks?: boolean } }).libLook ||= {});
+  const libLooks = () => { const l = LL(); $('#p-lib .libsplit').classList.toggle('nolist', l.list === false); $('#libList').classList.toggle('on', l.list !== false); $('#libBody').style.fontSize = l.size && l.size !== 100 ? l.size + '%' : ''; $('#libBody').classList.toggle('nomarks', !!l.nomarks); $('#libMarks').classList.toggle('on', !l.nomarks); };
+  libLooks();
+  $('#libList').onclick = () => { LL().list = LL().list === false; save(); libLooks(); };
+  $('#libSmall').onclick = () => { LL().size = Math.max(60, (LL().size || 100) - 10); save(); libLooks(); };
+  $('#libLarge').onclick = () => { LL().size = Math.min(220, (LL().size || 100) + 10); save(); libLooks(); };
+  $('#libMarks').onclick = () => { LL().nomarks = !LL().nomarks; save(); libLooks(); };
+  $('#libSpeak').onclick = () => speakTopic($('#libBody').querySelector<HTMLElement>('.entry'), langOf(libCurrent()?.lang), $('#libSpeak'));
   $('#libPrint').onclick = () => printTopic($('#libBody'));
   $('#libExport').onclick = () => exportLib();
   // an image in a module: the graphics viewer
   document.addEventListener('click', e => { const im = (e.target as HTMLElement).closest<HTMLImageElement>('.entrybody img, .entry img, #popup img, .clipwin img'); if (im) { e.preventDefault(); openImage(im); } }, true);
   initAnnotate();
   initUserMods({
-    books: () => books, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }),
+    books: () => books, ref: activeRef,
     async reopen(file, tid) {
       const i = books.findIndex(m => m.file === file); if (i < 0) return;
       const m = await openBook({ path: file, name: books[i].name, size: 0 }); books[i] = m; forgetSearchCache(m.id);
@@ -749,11 +629,7 @@ async function init(): Promise<void> {
   });
   $('#emptyImport').onclick = importModules;
   $('#helpBtn').onclick = () => openGuide();
-  // the books & chapters icon on the Bible text's caption
-  $('#capPick').innerHTML = icon('tree', 17);
-  $('#capPick').onclick = e => openPicker(e.currentTarget as HTMLElement, nav, { b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 },
-    async (b, c) => { const m = openBibles()[0]; return m ? ((m.books.get(b) || [])[c - 1] || 0) : (canon.kjvChapters(b)[c - 1] || 0); },
-    (b, c, v) => go(b, c, v));
+  $('#emptyNew').onclick = () => openBibleView();
   // the topic lists of the Library and book views: drag the edge to make them wider or narrower
   const libw = (S as unknown as { libW?: number }).libW; if (libw) document.documentElement.style.setProperty('--libw', libw + 'px');
   document.addEventListener('pointerdown', e => {
@@ -764,21 +640,20 @@ async function init(): Promise<void> {
     const up = () => { sp.removeEventListener('pointermove', mv); sp.removeEventListener('pointerup', up); save(); };
     sp.addEventListener('pointermove', mv); sp.addEventListener('pointerup', up);
   });
-  $('#copyBtn').onclick = () => copyDialog({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 });
+  $('#copyBtn').onclick = () => copyDialog(activeRef());
   document.addEventListener('mousedown', e => { if (!(e.target as HTMLElement).closest('.menu, .tbtn')) document.querySelectorAll('.menu').forEach(x => x.classList.add('hidden')); if (!popKeep && !(e.target as HTMLElement).closest('#popup, [data-strong], [data-morph], sup.fn, a.xr, li.bhit')) hidePopup(); });
   $('#sheet').addEventListener('click', e => { if (e.target === $('#sheet') || (e.target as HTMLElement).closest('.grab')) $('#sheet').classList.remove('open'); });
   // words: hover (mouse) or tap (touch)
   let timer = 0;
   document.addEventListener('mouseover', e => {
-    if (isPhone() || !(e.target as HTMLElement).closest?.('#view, .s-results')) return;
+    if (isPhone() || !(e.target as HTMLElement).closest?.('.bview, .s-results')) return;
     const bh = (e.target as HTMLElement).closest<HTMLElement>('li.bhit .r, li.bhit .snip')?.closest<HTMLElement>('li.bhit');
     const t = bh || (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn, a.xr'); clearTimeout(timer);
     if (t) timer = window.setTimeout(() => showWord(t), 300);
   });
-  $('#view').addEventListener('mousemove', wordLookMove);
-  $('#view').addEventListener('mouseleave', () => { if (wlAt) { wlAt = ''; clearTimeout(wlT); popupLeaveSoon(); } });
+  document.addEventListener('mousemove', e => { if ((e.target as HTMLElement).closest?.('.bview')) wordLookMove(e); else if (wlAt) { wlAt = ''; clearTimeout(wlT); popupLeaveSoon(); } });
   document.addEventListener('mouseout', e => {
-    if (!(e.target as HTMLElement).closest?.('#view, .s-results')) return;
+    if (!(e.target as HTMLElement).closest?.('.bview, .s-results')) return;
     const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn, a.xr, li.bhit'); if (!t) return;
     const to = e.relatedTarget as Node | null; if (to && (t.contains(to) || $('#popup').contains(to))) return;
     clearTimeout(timer); popupLeaveSoon();
@@ -792,23 +667,23 @@ async function init(): Promise<void> {
     const up = () => { document.removeEventListener('mouseup', up); popResizing = false;
       if (pop.offsetWidth !== w0 || pop.offsetHeight !== h0) { (S as unknown as Record<string, unknown>).popup = { w: pop.offsetWidth, h: pop.offsetHeight }; save(); } };
     document.addEventListener('mouseup', up); });
-  $('#view').addEventListener('click', e => {
+  document.addEventListener('click', e => {
+    const bv = (e.target as HTMLElement).closest?.<HTMLElement>('.bview'); if (!bv) return;
+    const vid = bv.dataset.bvid!;
     const rm = (e.target as HTMLElement).closest<HTMLElement>('.rmx');
     if (rm) { const [b, c, v] = rm.dataset.from!.split('.').map(Number); const [tb, tc, tv] = rm.dataset.to!.split('.').map(Number); removeXref({ b, c, v }, { b: tb, c: tc, v: tv }).then(rerender); return; }
     const xr = (e.target as HTMLElement).closest<HTMLElement>('a.xr');
     if (xr) { if (isPhone()) return void showWord(xr); const [b, c, v] = xr.dataset.ref!.split('.').map(Number); $('#popup').classList.add('hidden'); return void go(b, c, v); }
     const t = (e.target as HTMLElement).closest<HTMLElement>('[data-strong], [data-morph], sup.fn'); if (t) return void showWord(t, true);
-    const fl = (e.target as HTMLElement).closest<HTMLElement>('.fnlist li[data-gov]'); if (fl) return void selectVerse(+fl.dataset.gov!);
+    const fl = (e.target as HTMLElement).closest<HTMLElement>('.fnlist li[data-gov]'); if (fl) return void bvSelectVerse(vid, +fl.dataset.gov!);
     const vn = (e.target as HTMLElement).closest<HTMLElement>('.vn, .pvn'); if (!vn) return;
-    const v = +vn.closest<HTMLElement>('[data-v]')!.dataset.v!;
-    $('#view').querySelectorAll('.sel').forEach(x => x.classList.remove('sel')); vn.closest('[data-v]')!.classList.add('sel');
-    S.ref.v = v; save(); updateCommentary(); $<HTMLSelectElement>('#verseSel').value = String(v); document.dispatchEvent(new CustomEvent('tanglaw-ref'));
+    bvSelectVerse(vid, +vn.closest<HTMLElement>('[data-v]')!.dataset.v!);
     if ((e.target as HTMLElement).closest('.cm')) showPanel('cmt');
   });
   // links anywhere (commentary, library, popups, notes): a Bible reference opens the verse, a book link the topic
   document.addEventListener('click', e => {
     const fd = (e.target as HTMLElement).closest<HTMLElement>('[data-find]');
-    if (fd && !fd.closest('#p-search')) { e.preventDefault(); $('#popup').classList.add('hidden'); $('#sheet').classList.remove('open'); showPanel('search'); find(fd.dataset.find!); return; }
+    if (fd && !fd.closest('#p-search, #p-bsearch')) { e.preventDefault(); $('#popup').classList.add('hidden'); $('#sheet').classList.remove('open'); showPanel('search'); find(fd.dataset.find!); return; }
     const a = (e.target as HTMLElement).closest<HTMLElement>('[data-href]'); if (!a) return;
     e.preventDefault(); const href = a.dataset.href || '';
     const r = /bible/i.test(href) ? bibleTarget(href) : null;
@@ -818,14 +693,21 @@ async function init(): Promise<void> {
   });
   wireRefPreview(versePreview);
   // the study panel (Commentary, Library, Search)
-  initSearch({ openBibles, allBibles: () => bibles, books: () => books, openTopic: (mod, id) => { showPanel('lib'); openLib(mod, id); }, exportTopics: items => exportTopics(items, clean), ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, settings: () => S as unknown as Record<string, unknown>, save });
+  initSearch({ openBibles, allBibles: () => bibles, books: () => books, openTopic: (mod, id) => { showPanel('lib'); openLib(mod, id); }, exportTopics: items => exportTopics(items, clean), ref: activeRef, go, settings: () => S as unknown as Record<string, unknown>, save });
+  initBibleViews({
+    settings: () => S as never, save, bibles: () => bibles, hidden: () => BS().hiddenBibles || [], bibleStyle, retitle, flash, moved,
+    customToggles: m => customToggleList().filter(t => (TWRender.customToggles(m) as string[]).includes(t.name)), customOn, setCustom, speak: id => speakView(id),
+  });
+  // a first start of this version: the Bibles that were read side by side become Bible views of their own
+  migrateViews();
+  initTts(S, save);
   initClipmon({ bibles: () => bibles, openBibles, go, settings: () => S as unknown as Record<string, unknown>, save, show: () => S.show, style: bibleStyle });
-  initViews({ bibles: () => bibles, openBibles, books: () => books, nav: () => nav, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, show: () => S.show, clean, showWord, settings: () => S as unknown as Record<string, unknown>, save, retitle, bibleStyle, hiddenBibles: () => BS().hiddenBibles || [] });
-  initPanel({ books: () => books, openBibles, ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, clean, save, settings: () => S as unknown as Record<string, unknown> });
+  initViews({ bibles: () => bibles, openBibles, books: () => books, nav: () => nav, ref: activeRef, go, show: () => S.show, clean, showWord, settings: () => S as unknown as Record<string, unknown>, save, retitle, bibleStyle, hiddenBibles: () => BS().hiddenBibles || [], speakEl: (el, mod) => speakTopic(el, langOf(mod?.lang), null), props: (f, t) => openProps(f, t) });
+  initPanel({ books: () => books, openBibles, ref: activeRef, go, clean, save, settings: () => S as unknown as Record<string, unknown> });
   initCopy({ nav: () => nav, openBibles, save: saveUD });
-  initProps(async () => { await loadModules(); await go(S.ref.b, S.ref.c, S.ref.v); await openRest(); await reloadLib(); viewsReload(); });
+  initProps(async () => { await loadModules(); await renderAll(); await openRest(); await reloadLib(); viewsReload(); });
   $('#libProps').onclick = () => { const m = libCurrent(); if (m) openProps(m.file, m.title); else flash('Choose a module first'); };
-  const studyNote = await initStudy({ ref: () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 }), go, rerender, openBibles, showPanel, show: () => S.show }, legacy ? legacy.study : null);
+  const studyNote = await initStudy({ ref: activeRef, go, rerender, openBibles, showPanel, show: () => { const id = activeId(); return id ? effShow(id) : S.show; }, activeBible }, legacy ? legacy.study : null);
   const note = [migrated, studyNote].filter(Boolean).join('; ');
   if (note) setTimeout(() => flash('Welcome to the new Tanglaw – ' + note + '.'), 1200);
   if (S.sideHidden) setHidden(true);
@@ -834,8 +716,8 @@ async function init(): Promise<void> {
   document.querySelectorAll<HTMLButtonElement>('[data-open]').forEach(b => b.onclick = () => showPanel(b.dataset.open!));
   let typed = '', typedT = 0;
   // keyboard: the actions and their keys (Tools → Keyboard shortcuts… changes them)
-  const cur = () => ({ b: S.ref.b, c: S.ref.c, v: S.ref.v || 1 });
-  const toggleShow = (k: string, label: string) => () => { S.show[k] = !S.show[k]; save(); optMenu(); flash(`${label}: ${S.show[k] ? 'on' : 'off'}`); go(S.ref.b, S.ref.c, S.ref.v); };
+  const cur = () => activeRef();
+  const toggleShow = (k: string, label: string) => () => { const id = activeId(); if (!id) return; const on = bvToggle(id, k); flash(`${label}: ${on ? 'on' : 'off'}`); };
   initKeys([
     { id: 'prevChapter', label: 'Previous chapter', group: 'Moving around', def: '←', run: () => step(-1) },
     { id: 'nextChapter', label: 'Next chapter', group: 'Moving around', def: '→', run: () => step(1) },
@@ -850,13 +732,14 @@ async function init(): Promise<void> {
     { id: 'copyDialog', label: 'Copy verses…', group: 'Verses', def: 'F5', run: () => { copyDialog(cur()); } },
     { id: 'addToList', label: 'Add the verse to the current list', group: 'Verses', def: 'Ctrl+L', run: () => addToList([cur()]) },
     { id: 'print', label: 'Print the chapter', group: 'Verses', def: 'Ctrl+P', run: () => printChapter() },
-    { id: 'search', label: 'Search', group: 'Panels and windows', def: 'Ctrl+F', run: () => { showPanel('search'); } },
+    { id: 'search', label: 'Bible search', group: 'Panels and windows', def: 'Ctrl+F', run: () => { showPanel('search'); } },
+    { id: 'bsearch', label: 'Book search', group: 'Panels and windows', def: 'Ctrl+Shift+F', run: () => { showPanel('bsearch'); } },
     { id: 'compare', label: 'Compare the verse in all Bibles', group: 'Panels and windows', def: 'Ctrl+M', run: () => openCompare() },
     { id: 'options', label: 'Options…', group: 'Panels and windows', def: 'Ctrl+,', run: () => openOptions() },
     { id: 'guide', label: 'User guide', group: 'Panels and windows', def: 'F1', run: () => openGuide() },
     { id: 'keys', label: 'Keyboard shortcuts', group: 'Panels and windows', def: 'Ctrl+/', run: () => { keysDialog(); } },
-    { id: 'paragraph', label: 'Paragraph mode', group: 'What to show', def: 'P', run: () => { S.show.paragraph = !S.show.paragraph; save(); optMenu(); flash(S.show.paragraph ? 'Paragraph mode' : 'Verse by verse'); go(S.ref.b, S.ref.c, S.ref.v); } },
-    { id: 'columns', label: 'Column text', group: 'What to show', def: 'Alt+I', run: () => { S.show.columns = !S.show.columns; save(); optMenu(); go(S.ref.b, S.ref.c, S.ref.v); } },
+    { id: 'paragraph', label: 'Paragraph mode', group: 'What to show', def: 'P', run: () => { const id = activeId(); if (id) flash(bvToggle(id, 'paragraph') ? 'Paragraph mode' : 'Verse by verse'); } },
+    { id: 'columns', label: 'Column text', group: 'What to show', def: 'Alt+I', run: () => { const id = activeId(); if (id) bvToggle(id, 'columns'); } },
     { id: 'wordLook', label: 'Word lookup', group: 'What to show', def: 'D', run: () => { const wl = WL(); wl.on = !wl.on; save(); optMenu(); if (wl.on && !(wl.dicts || []).length) return void wordLookDialog(); flash(wl.on ? 'Word lookup on' : 'Word lookup off'); } },
     { id: 'strongs', label: "Strong's numbers", group: 'What to show', def: 'S', run: toggleShow('strongs', "Strong's numbers") },
     { id: 'morph', label: 'Morphology', group: 'What to show', def: 'M', run: toggleShow('morph', 'Morphology') },
@@ -881,20 +764,21 @@ async function init(): Promise<void> {
     if (d != null) { // typing a number goes to that verse (Shift: chapter)
       clearTimeout(typedT); typed += String(d);
       const shift = e.shiftKey;
-      typedT = window.setTimeout(() => { const n = +typed; typed = ''; if (shift) go(S.ref.b, n); else selectVerse(n); }, 600);
+      typedT = window.setTimeout(() => { const n = +typed; typed = ''; if (shift) go(activeRef().b, n); else selectVerse(n); }, 600);
     }
   });
   // swipe left/right on a phone
   let sx = 0, sy = 0;
-  $('#view').addEventListener('touchstart', e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
-  $('#view').addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; if (Math.abs(dx) > 80 && Math.abs(dx) > 2 * Math.abs(dy)) step(dx < 0 ? 1 : -1); });
-  let last = isPhone(); window.addEventListener('resize', () => { if (isPhone() !== last) { last = isPhone(); go(S.ref.b, S.ref.c); } });
+  document.addEventListener('touchstart', e => { if (!(e.target as HTMLElement).closest?.('.bview')) return; sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  document.addEventListener('touchend', e => { if (!(e.target as HTMLElement).closest?.('.bview')) return; const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy; if (Math.abs(dx) > 80 && Math.abs(dx) > 2 * Math.abs(dy)) step(dx < 0 ? 1 : -1); });
+  let last = isPhone(); window.addEventListener('resize', () => { if (isPhone() !== last) { last = isPhone(); renderAll(); } });
   await loadModules();
-  await go(S.ref.b, S.ref.c, S.ref.v || 1);
+  { const first = activeId(); if (first) setActive(first); }
+  await renderAll(false); moved();
   const w = window as unknown as Record<string, unknown>;
   w.__tanglawFirst = Math.round(performance.now());
   await openRest(); viewsReload();
   w.__tanglawReady = Math.round(performance.now());
-  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => { S.open = ids; buildNav(); }, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked, clipTestReader, setClipmon, newer, applyLookNow: () => applyLook(S.skin, S.fontSize, S.look), lang: (l: string) => initLang(l, LS().tlFixes || {}), modulesDir: () => ownDir, docxText: (html: string) => strFromU8(unzipSync(exportForTest.docx(html))['word/document.xml']), rtfOf: exportForTest.rtf };
+  (window as unknown as Record<string, unknown>).__tanglaw = { setOpen: (ids: string[]) => showBibles(ids), activeId, bvIds, setActive, eff: () => effShow(activeId()!), openBibleView, go, step, S: () => S, bibles: () => bibles, books: () => books, dicts: () => books.filter(m => m.kind === 'dictionary' && m.isStrong && !m.locked), showWord, picker, showPanel, addXref, removeXref, rerender, importPaths, openProps, clean, openGuide, locked: () => locked, clipTestReader, setClipmon, newer, applyLookNow: () => applyLook(S.skin, S.fontSize, S.look), lang: (l: string) => initLang(l, LS().tlFixes || {}), modulesDir: () => ownDir, docxText: (html: string) => strFromU8(unzipSync(exportForTest.docx(html))['word/document.xml']), rtfOf: exportForTest.rtf };
 }
 init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre class="fatal">${esc((e as Error).stack || e)}</pre>`); });

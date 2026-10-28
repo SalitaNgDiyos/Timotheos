@@ -1,7 +1,7 @@
 # Timotheos
 Open Source Bible App that supports theWord and e-Sword
 
-## Tanglaw Bible – Tauri edition (0.6.0)
+## Tanglaw Bible – Tauri edition (0.7.0)
 
 The next Tanglaw: the same look and the same module readers as the Electron version (0.4.x), on
 **Tauri 2** + **TypeScript**, so one code base builds for **Windows, Linux and Android**.
@@ -9,7 +9,8 @@ The next Tanglaw: the same look and the same module readers as the Electron vers
 What it does now (proof of concept):
 - finds theWord (.ont/.ot/.nt) and e-Sword (.bblx/.bbli) Bibles in Tanglaw's own module folder and in
   folders you add (desktop) or modules you import (desktop and Android);
-- shows a chapter, several Bibles side by side (desktop) or one under another (phone);
+- shows a chapter in **Bible views**: one Bible per view; open as many views as you like (Layouts → + New Bible view)
+  and they sit side by side in the middle (desktop) or as tabs (phone);
 - the Apocrypha in its 1611 KJV place, or (Options) all books in one Old Testament in the Septuagint order of
   NETS or the Greek Orthodox order; e-Sword's Daniel 13–14 as Susanna / Bel;
 - Strong's numbers, red letters, italics, headings, footnotes (theWord tags rendered by the same
@@ -79,6 +80,19 @@ What it does now (proof of concept):
   - Tagalog menus and windows (Options → Language / Wika) with a table to correct the translation;
   - keyboard shortcuts you can change (Ctrl+/); a once-a-day check for a newer release on GitHub
     (only tells you and opens the download page; can be switched off).
+- **0.7.0 – the screen laid out as in theWord:**
+  - each Bible view has its own side bar (books and chapters, previous/next, move together with the other views
+    or read on alone, font and size, verse numbers, Strong's, morphology, lemmas, paragraphs, column text,
+    footnotes, cross-references, headings, words of Jesus, read aloud, all options) and its own caption
+    (Bible, book, chapter, verse); the book/chapter controls left the title bar;
+  - the Library (book view) has its own side bar too (topic list, back, previous/next, text size, your marks,
+    print, export, read aloud, properties);
+  - Bible search and Book search are two separate panels;
+  - **RichView book modules** (theWord .twm with content.type=rvf, e.g. many user-made commentaries) are read:
+    text styles, paragraphs, links, bookmarks, pictures and tables (read only – Tanglaw does not edit them);
+  - **reading aloud** for Bibles (verse by verse, on into the next chapter) and book topics, with the voices of
+    the computer or phone (Windows' natural voices where installed) and of the web engine; choose a voice per
+    language in Tools → Read aloud: voices….
 Encrypted modules are skipped quietly (the import report says why) and never decoded.
 
 ## How it is built
@@ -88,7 +102,7 @@ Encrypted modules are skipped quietly (the import report says why) and never dec
 - `src/*.ts` – everything that understands modules and the screen, in TypeScript:
   `bibles.ts` (theWord + e-Sword Bibles), `books.ts` (commentaries, dictionaries, books, devotionals –
   port of lib/bookmod.js), `panel.ts` (Commentary, Library), `search.ts`, `dock.ts` (panel places),
-  `study.ts`, `copy.ts`, `xrefs.ts`, `refs.ts` (references in text), `plans.ts`, `options.ts`,
+  `study.ts`, `copy.ts`, `xrefs.ts`, `refs.ts` (references in text), `plans.ts`, `options.ts`, `bibleviews.ts` (the Bible views), `rvf.ts` (RichView), `tts.ts` (reading aloud),
   `modprops.ts` + `props.ts` (module properties), `importer.ts`, `guide.ts`, `main.ts` (screen),
   `skins.ts`, `native.ts` (calls to the native side). The native side only writes to a module when you
   save its properties or make it smaller (on a copy that is then swapped in; the original is kept once).
@@ -116,7 +130,9 @@ module properties and the import report (on copies of the test modules). 0.6.0 a
 (footnotes, paragraphs, lemmas, Bibles menu, word popups, search references), `test/tools.js` (switches,
 column text, word lookup, book search, module sets, search panels, clipboard monitor, graphics viewer,
 printing, marks, export), `test/user.js` (your own modules, section links, Tagalog), `test/own.js`
-(compare view, keyboard shortcuts, versions, text styles), and `test/morph.js`.
+(compare view, keyboard shortcuts, versions, text styles), and `test/morph.js`. 0.7.0 adds `test/newui.js`
+(RichView, Library side bar, the two search panels, the Bible view side bar, reading aloud); its RichView
+test module is made by `python3 test/make-rvf.py <folder>`.
 
 ## Not yet moved over from 0.4.x
 The option to put the Apocrypha after the New Testament.

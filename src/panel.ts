@@ -1,6 +1,6 @@
 // The study panel: Commentary (follows the selected verse), Library (any commentary, dictionary, book or
 // devotional) and Search. On a computer it sits beside the Bible text; on a phone it opens over it.
-import { focusSearch } from './search';
+import { focusSearch, searchViewShown } from './search';
 import { applyMarks, bodyHtml } from './annotate';
 import { DEFAULT_LAYOUT, PANELS, activate, initDock, layout, visible } from './dock';
 import { createView, viewClosed, viewShown, viewTitle } from './views';
@@ -55,6 +55,7 @@ function shown(t: string, quiet = false): void {
   if (t === 'lib') { fillLibSelect(); if (lib.cur && !lib.topics.length) openLib(lib.cur); }
   if (t === 'study') renderStudy();
   if (t === 'search' && !quiet) focusSearch();
+  if (t === 'bsearch' && !quiet) searchViewShown('bsearch');
   if (!['cmt', 'lib', 'study', 'search'].includes(t)) viewShown(t);
 }
 

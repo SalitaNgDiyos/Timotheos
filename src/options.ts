@@ -24,7 +24,7 @@ export function applyLook(skin: string, size: number, l: Look): void {
   if (l.bgMode === 'color') r.setProperty('--textbg', l.bgColor);
   const d = document.documentElement.dataset; d.added = l.addedStyle || 'italic'; d.head = l.headStyle || 'normal';
   if (l.wojColor) r.setProperty('--woj', l.wojColor); else r.removeProperty('--woj');
-  d.texture = l.texture; d.vnpos = l.vnPos; d.vnstyle = l.vnStyle; d.caps = l.capColor ? 'color' : 'plain';
+  d.texture = l.texture; d.caps = l.capColor ? 'color' : 'plain';
 }
 
 /** "TwGreek"/"TwHebrew" cover only Greek/Hebrew letters, so Greek and Hebrew can have their own font */

@@ -46,11 +46,12 @@ class SearchView {
   last: Result | null = null; filterBook: string | null = null; seq = 0; timer = 0; nBibles = 1;
   bookHits: BookHit[] = []; bookFilter: string | null = null; cancel = false;
   constructor(root: HTMLElement, key: string) {
-    this.root = root; this.key = key; this.main = key === 'search';
-    const a = (n: string) => `class="s-${n}"${this.main ? ` id="${IDS[n]}"` : ''}`;
-    const sv = this.store(); this.mode = sv.mode === 'book' ? 'book' : 'bible';
+    this.root = root; this.key = key; this.main = key === 'search' || key === 'bsearch';
+    // Bible search and Book search are separate panels (theWord: Bible search view / Book search view)
+    this.mode = key.startsWith('bsearch') ? 'book' : 'bible';
+    const pre = this.mode === 'book' ? 'b' : '';
+    const a = (n: string) => `class="s-${n}"${this.main ? ` id="${pre ? pre + IDS[n][0].toUpperCase() + IDS[n].slice(1) : IDS[n]}"` : ''}`;
     root.innerHTML = `
-    <div ${a('mode')} class="s-mode seg smode"><button data-mode="bible">Bibles</button><button data-mode="book" title="Search the commentaries, dictionaries and books">Books</button></div>
     <form ${a('form')} class="s-form sform"><div class="srow"><input ${a('input')} type="search" placeholder="e.g. faith hope · &quot;a phrase&quot; · G26 · love*" spellcheck="false" autocomplete="off"><button type="button" ${a('hist')} class="s-hist ib" title="Earlier searches">▾</button><button type="submit" class="primary">Find</button></div>
       <div ${a('explain')} class="s-explain small"></div>
       <div class="srow sb-bible"><select ${a('scope')} aria-label="Range" title="Where to search"></select><select ${a('bibles')} title="Which Bibles"></select></div>
@@ -73,7 +74,6 @@ class SearchView {
     this.q('input').oninput = () => this.explainSoon();
     for (const id of ['optDefault', 'optWhole', 'optCase', 'optDiac', 'optRegex', 'optNearW', 'optNearV', 'bibles', 'mods']) this.q(id).onchange = () => { this.saveOpts(); this.explainSoon(); };
     this.q('scope').onchange = async () => { const s = this.q<HTMLSelectElement>('scope'); if (s.value === '__custom') await this.customRange(); else if (s.value === '__forget') await this.forgetRanges(); this.saveOpts(); };
-    this.q('mode').onclick = e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-mode]'); if (b) this.setMode(b.dataset.mode as 'bible' | 'book'); };
     this.root.querySelector<HTMLElement>('.s-defsets')!.onclick = () => defineModuleSets().then(() => allViews.forEach(v => v.fillMods(v.opts().mods || 'all')));
     this.q('hist').onclick = e => { e.stopPropagation(); this.historyMenu(e.currentTarget as HTMLElement); };
     this.q('tabs').onclick = e => { const b = (e.target as HTMLElement).closest<HTMLElement>('[data-sp]'); if (b) this.part(b.dataset.sp!); };
@@ -96,31 +96,29 @@ class SearchView {
     };
     this.q('stats').onclick = e => { const c = (e.target as HTMLElement).closest<HTMLElement>('[data-find]'); if (c) this.find(c.dataset.find!); };
     this.root.addEventListener('keydown', e => { if (e.key === 'Escape' && this.q('status').textContent?.startsWith('Reading')) { this.cancel = true; e.stopPropagation(); } });
-    this.setMode(this.mode, true);
+    this.setMode(this.mode);
   }
   q<T extends HTMLElement = HTMLElement>(n: string): T { return this.root.querySelector(`.s-${n}`) as T; }
   /** each panel keeps its own options; the main panel uses the settings it always had */
   store(): Opts & { mode?: string } {
     const st = H.settings();
-    if (this.main) return Object.assign({ ...DEF }, (st.search as Partial<Opts>) || {}) as Opts & { mode?: string };
+    if (this.main) return Object.assign({ ...DEF }, (st[this.key] as Partial<Opts>) || {}) as Opts & { mode?: string };
     const all = (st.searchViews as Record<string, Partial<Opts>>) || {}; return Object.assign({ ...DEF }, (st.search as Partial<Opts>) || {}, all[this.key] || {}) as Opts & { mode?: string };
   }
   opts(): Opts { return this.store(); }
   put(o: Partial<Opts> & { mode?: string }): void {
     const st = H.settings();
-    if (this.main) st.search = { ...((st.search as object) || {}), ...o };
+    if (this.main) st[this.key] = { ...((st[this.key] as object) || {}), ...o };
     else { const all = ((st.searchViews as Record<string, unknown>) || {}); all[this.key] = { ...((all[this.key] as object) || {}), ...o }; st.searchViews = all; }
     H.save();
   }
-  setMode(m: 'bible' | 'book', quiet = false): void {
+  setMode(m: 'bible' | 'book'): void {
     this.mode = m; this.root.classList.toggle('bookmode', m === 'book');
-    this.q('mode').querySelectorAll<HTMLElement>('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
     this.q<HTMLInputElement>('input').placeholder = m === 'book' ? 'e.g. grace · "born again" · covenant*' : 'e.g. faith hope · "a phrase" · G26 · love*';
-    if (!quiet) this.put({ mode: m });
     this.q('results').innerHTML = ''; this.q('books').innerHTML = ''; this.q('stats').innerHTML = ''; this.q('status').textContent = ''; this.q('tabs').classList.add('hidden');
     this.explainSoon();
   }
-  find(text: string): void { this.setMode('bible'); this.q<HTMLInputElement>('input').value = text; this.run(); }
+  find(text: string): void { this.q<HTMLInputElement>('input').value = text; this.run(); }
   focus(): void { this.fillScopes(this.q<HTMLSelectElement>('scope').value || this.opts().scope); this.fillBibles(this.opts().bibles); this.fillMods(this.opts().mods || 'all'); setTimeout(() => this.q<HTMLInputElement>('input').focus(), 50); }
 
   saveOpts(): Opts {
@@ -389,14 +387,15 @@ let active: SearchView | null = null;
 export function initSearch(host: SearchHost): void {
   H = host;
   const v = new SearchView(document.getElementById('p-search')!, 'search'); allViews.push(v); active = v;
-  document.addEventListener('focusin', e => { const r = (e.target as HTMLElement).closest?.('.searchview, #p-search'); const x = r && allViews.find(y => y.root === r); if (x) active = x; });
+  allViews.push(new SearchView(document.getElementById('p-bsearch')!, 'bsearch'));
+  document.addEventListener('focusin', e => { const r = (e.target as HTMLElement).closest?.('.searchview, #p-search, #p-bsearch'); const x = r && allViews.find(y => y.root === r); if (x) active = x; });
 }
 /** another search panel (theWord: several search views) */
 export function createSearchView(root: HTMLElement, id: string): void {
   root.classList.add('searchview'); const v = new SearchView(root, id); allViews.push(v);
 }
 export function searchViewClosed(id: string): void {
-  const i = allViews.findIndex(v => v.key === id); if (i > 0) { if (active === allViews[i]) active = allViews[0]; allViews.splice(i, 1); }
+  const i = allViews.findIndex(v => v.key === id); if (i > 1) { if (active === allViews[i]) active = allViews[0]; allViews.splice(i, 1); }
   const st = H.settings(); const sv = st.searchViews as Record<string, unknown> | undefined; if (sv) { delete sv[id]; H.save(); }
 }
 export function searchViewShown(id: string): void { allViews.find(v => v.key === id)?.focus(); }
