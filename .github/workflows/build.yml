@@ -1,12 +1,13 @@
 # Builds Tanglaw for Windows, Linux and Android on GitHub's machines and attaches the files to the run
 # (Actions → the run → Artifacts). Start it by hand (Actions → Build Tanglaw → Run workflow) or by pushing.
-# Pushing a tag like v0.5.0 also attaches the files to the GitHub release of that tag (made if missing).
+# Publishing a release on GitHub (tag like v0.5.0) builds again and attaches the files to that release.
 name: Build Tanglaw
 on:
   workflow_dispatch:
   push:
     branches: ["**"]
-    tags: ["v*"]
+  release:
+    types: [published]
 
 jobs:
   desktop:
@@ -66,7 +67,7 @@ jobs:
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'release'
     needs: [desktop, android]
     runs-on: ubuntu-latest
     permissions:
