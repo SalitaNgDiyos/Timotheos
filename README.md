@@ -1,7 +1,25 @@
 # Timotheos
 Open Source Bible App that supports theWord and e-Sword
 
-## Tanglaw Bible – Tauri edition (0.7.0)
+## Tanglaw Bible 0.8.0
+
+**On a PC, Tanglaw is the Electron edition** (`electron/`). It has the same screens as the phone
+edition (everything in `src/`), and Electron does the file work that Tauri does on the phone:
+`electron/main.cjs` finds module files, reads theWord text Bibles, answers read-only SQLite queries
+straight from disk (Node's built-in SQLite, so modules are never copied into memory whole), and keeps
+settings and study data in `%APPDATA%\Tanglaw Bible\data`. Imported modules stay in
+`%APPDATA%\Tanglaw Bible\modules`, the folder Tanglaw 0.4 used. On the first start it takes over the settings
+and study data of Tanglaw 0.4 or of the Tauri edition, whichever was used more recently, and leaves the old
+files as they are. `vite build --mode electron` swaps the Tauri packages for small stand-ins (`src/shim/`).
+```
+npm ci
+npm run electron:start        # try it
+npm run electron:pack         # Windows build in dist-electron/ (node electron/build.cjs linux for Linux)
+```
+Reading aloud in the Electron edition uses the voices Windows offers to the web engine (no separate
+"system" engine). **The Tauri edition** (below) is kept for Android.
+
+## Tanglaw Bible – Tauri edition
 
 The next Tanglaw: the same look and the same module readers as the Electron version (0.4.x), on
 **Tauri 2** + **TypeScript**, so one code base builds for **Windows, Linux and Android**.
@@ -119,6 +137,7 @@ npx tauri android init && npx tauri android build --apk   # Android (Android SDK
 `.github/workflows/build.yml` builds all three on GitHub's machines (Actions → Build Tanglaw).
 
 ## Test
+Every test below also runs on the Electron edition: `ELECTRON=1 test/run.sh …` (after `npm run electron:web`).
 `test/run.sh test/ui.js shot.png 30` starts the release build under a virtual screen with the test
 module folders, runs `test/ui.js` in the window (env `TANGLAW_SCRIPT`), prints the results and saves a
 screenshot. Add `400 800` at the end for a phone-sized window. `LEGACY=1 test/run.sh test/study.js shot.png 30`
@@ -134,5 +153,3 @@ printing, marks, export), `test/user.js` (your own modules, section links, Tagal
 (RichView, Library side bar, the two search panels, the Bible view side bar, reading aloud); its RichView
 test module is made by `python3 test/make-rvf.py <folder>`.
 
-## Not yet moved over from 0.4.x
-The option to put the Apocrypha after the New Testament.

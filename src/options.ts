@@ -4,7 +4,7 @@ import { dialog, esc } from './ui';
 
 export interface Look {
   fontText: string; fontGreek: string; fontHebrew: string; lineH: number; textWidth: number; bgMode: 'skin' | 'color'; bgColor: string; texture: 'none' | 'paper';
-  vnPos: 'margin' | 'inline' | 'hidden'; vnStyle: 'normal' | 'bold' | 'circle'; capColor: boolean; bookOrder: '1611' | 'nets' | 'orthodox';
+  vnPos: 'margin' | 'inline' | 'hidden'; vnStyle: 'normal' | 'bold' | 'circle'; capColor: boolean; bookOrder: '1611' | 'end' | 'nets' | 'orthodox';
   fnStyle?: 'num' | 'letter' | 'star'; fnPlace?: 'text' | 'chapter';
   wojColor?: string; addedStyle?: 'italic' | 'brackets' | 'grey'; headStyle?: 'normal' | 'caps' | 'small';
 }
@@ -64,7 +64,7 @@ export async function optionsDialog(st: { skin: string; fontSize: number; look: 
     <label class="fl">Text width <select id="oW"><option value="0">Fill the window</option><option value="680">Narrow</option><option value="860">Medium</option><option value="1100">Wide</option></select></label>
     <label class="fl">Background <span class="srow"><select id="oBg"><option value="skin">Skin colour</option><option value="color">My colour</option></select><input type="color" id="oBgC" value="${l.bgMode === 'color' ? l.bgColor : sk.v.textbg}"><select id="oTex"><option value="none">No texture</option><option value="paper">Paper</option></select></span></label>
     <h4>Order of the books</h4>
-    <label class="fl">Old Testament <select id="oOrder"><option value="1611">1611 King James Bible – the Apocrypha between the Testaments</option><option value="nets">Septuagint (NETS order) – all books in one Old Testament</option><option value="orthodox">Greek Orthodox Old Testament (4 Maccabees etc. as appendix)</option></select></label>
+    <label class="fl">Old Testament <select id="oOrder"><option value="1611">1611 King James Bible – the Apocrypha between the Testaments</option><option value="end">The Apocrypha after the New Testament</option><option value="nets">Septuagint (NETS order) – all books in one Old Testament</option><option value="orthodox">Greek Orthodox Old Testament (4 Maccabees etc. as appendix)</option></select></label>
     <h4>Words of Jesus, added words, headings</h4>
     <label class="fl">Words of Jesus <span class="srow"><select id="oWojM"><option value="skin">The skin's red</option><option value="mine">My colour</option></select><input type="color" id="oWoj" value="${l.wojColor || '#b3261e'}"></span></label>
     <label class="fl">Added words <select id="oAdd"><option value="italic">In italics (as printed in the KJV)</option><option value="brackets">In [brackets]</option><option value="grey">In grey</option></select></label>

@@ -1,7 +1,9 @@
 #!/bin/bash
 # run.sh <script.js> <shot.png> [seconds] [width height]: start the release build under a virtual screen,
 # run the script in the window, take a screenshot of the screen, print the RESULT line.
+# ELECTRON=1 runs the Electron edition (electron/, built with `npm run electron:web`) instead of the Tauri build.
 H=/tmp/claude-0/th; rm -rf $H; mkdir -p "$H/.local/share/org.tanglaw.bible"
+SD="$H/.local/share/org.tanglaw.bible"; [ -n "$ELECTRON" ] && SD="$H/.config/Tanglaw Bible/data"; mkdir -p "$SD"
 if [ -n "$LEGACY" ]; then
   # an Electron Tanglaw 0.4 on this computer, and no settings of the new one yet
   mkdir -p "$H/.config/Tanglaw Bible"
@@ -13,11 +15,14 @@ J
 J
 else
 DEF='["/home/claude/testmods","/home/claude/esreal"]'; F=${FOLDERS:-$DEF}
-cat > "$H/.local/share/org.tanglaw.bible/settings.json" <<J
+cat > "$SD/settings.json" <<J
 {"folders":$F,"ref":{"b":43,"c":3},"skin":"${SKIN:-parchment}"}
 J
 fi
-BIN=${TANGLAW_BIN:-$(cd "$(dirname "$0")/.." && pwd)/src-tauri/target/release/tanglaw}
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+BIN=${TANGLAW_BIN:-$ROOT/src-tauri/target/release/tanglaw}
+[ -n "$ELECTRON" ] && BIN="$ROOT/node_modules/electron/dist/electron --no-sandbox $ROOT/electron"
+[ -n "$LEGACY" ] && [ -n "$ELECTRON" ] && rmdir "$SD" 2>/dev/null
 W=${4:-1280}; HH=${5:-860}
 cat > /tmp/claude-0/th-run.sh <<R
 HOME=$H TANGLAW_SIZE=${4:+${4}x${5}} TANGLAW_SCRIPT="$1" WEBKIT_DISABLE_COMPOSITING_MODE=1 $BIN > /tmp/claude-0/th-out.log 2>&1 &

@@ -537,3 +537,14 @@ p.rvp { margin-top: 0; } table.rvtable { border-collapse: collapse; margin: 6px 
 .bkmain .bkcap { background: var(--cap-lib); }
 .bvcap .bvtime { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
 .bvcap .bvref { flex: 0 1 auto; min-width: 0; }
+
+/* Electron edition: the title bar moves the window; on Windows the window buttons are Windows' own
+   (drawn over the right end of the title bar, so Tanglaw's own buttons are hidden and room is left for them) */
+html.electron .titlebar { -webkit-app-region: drag; }
+html.electron .titlebar button, html.electron .titlebar select, html.electron .titlebar input, html.electron .titlebar a,
+html.electron .titlebar .tools, html.electron .titlebar [role="button"] { -webkit-app-region: no-drag; }
+html.wco .titlebar .winbtns { display: none; }
+html.wco .titlebar { padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 4px); }
+body.dropping::after { content: 'Drop theWord or e-Sword modules to import them'; position: fixed; inset: 12px; display: flex; align-items: center; justify-content: center; border: 3px dashed var(--accent, #8a5a12); border-radius: 14px; background: color-mix(in srgb, var(--bg, #fff) 85%, transparent); font-size: 1.2em; z-index: 9999; pointer-events: none; }
+/* F11: reading focus – only the Bible views */
+body.readfocus #zone-left, body.readfocus #zone-right, body.readfocus #zone-bottom, body.readfocus .dsplit { display: none !important; }

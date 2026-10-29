@@ -40,4 +40,7 @@ export function applySkin(id: string): void {
   root.dataset.theme = sk.dark ? 'dark' : 'light';
   root.dataset.skin = id;
   const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', sk.v.tool);
+  // Electron edition on Windows: the window buttons are Windows' own; give them the skin's title bar colours
+  const N = (window as unknown as { tanglawNative?: { overlay?: boolean; invoke(c: string, a: unknown): Promise<unknown> } }).tanglawNative;
+  if (N?.overlay) N.invoke('titlebar', { color: sk.v.tool, symbol: sk.v.tooltext }).catch(() => {});
 }

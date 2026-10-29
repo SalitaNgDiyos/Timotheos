@@ -416,7 +416,7 @@ function optMenu(): void {
     `<label><input type="checkbox" id="mPopAll" ${WS().popAll !== false ? 'checked' : ''}> Verse popups: all open Bibles</label>` +
     dictPick('greek', "Greek Strong's", d => d.isStrong) + dictPick('hebrew', "Hebrew Strong's", d => d.isStrong) + dictPick('morph', 'Morphology', d => d.isMorph) +
     `<div class="msep"></div><div class="mrow">Text size <button data-fs="-1">A−</button><b class="fsv">${S.fontSize}</b><button data-fs="1">A+</button></div>` +
-    '<div class="msep"></div><div class="mh">Order of the books</div>' + [['1611', '1611 King James (Apocrypha between)'], ['nets', 'Septuagint – NETS'], ['orthodox', 'Greek Orthodox']].map(([k, l]) => `<label><input type="radio" name="mord" data-ord="${k}" ${S.look.bookOrder === k ? 'checked' : ''}> ${l}</label>`).join('') +
+    '<div class="msep"></div><div class="mh">Order of the books</div>' + [['1611', '1611 King James (Apocrypha between)'], ['end', 'Apocrypha after the New Testament'], ['nets', 'Septuagint – NETS'], ['orthodox', 'Greek Orthodox']].map(([k, l]) => `<label><input type="radio" name="mord" data-ord="${k}" ${S.look.bookOrder === k ? 'checked' : ''}> ${l}</label>`).join('') +
     `<div class="msep"></div><button id="mOpts">Options… <kbd>Ctrl+,</kbd></button>`;
   m.querySelector<HTMLSelectElement>('#mLang')!.onchange = e => { LS().lang = (e.target as HTMLSelectElement).value; saveSettings(S).then(() => location.reload()); };
   m.querySelector<HTMLInputElement>('#mWl')!.onchange = e => { WL().on = (e.target as HTMLInputElement).checked; save(); if (WL().on && !(WL().dicts || []).length) { m.classList.add('hidden'); wordLookDialog(); } };
@@ -560,6 +560,22 @@ async function importPaths(list: string[]): Promise<void> {
   else statusLine(0);
   await dialog('Import report', reportHtml(r), [{ label: 'OK', value: 'ok', primary: true }], b => b.parentElement!.classList.add('wide'));
 }
+/** modules dropped on the window are imported (as in Tanglaw 0.4) */
+function wireDrop(): void {
+  const isFiles = (e: DragEvent) => !!e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  document.addEventListener('dragover', e => { if (isFiles(e)) { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; document.body.classList.add('dropping'); } });
+  document.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dropping'); });
+  document.addEventListener('drop', async e => {
+    document.body.classList.remove('dropping');
+    if (!isFiles(e)) return; e.preventDefault();
+    const files = [...e.dataTransfer!.files].map(f => ({ name: f.name, data: async () => new Uint8Array(await f.arrayBuffer()) }));
+    if (!files.length) return;
+    const r = await importFiles(files, t => { $('#status').textContent = t; });
+    if (r.some(x => x.status === 'imported' || x.status === 'updated')) { await loadModules(); await go(S.ref.b, S.ref.c); openRest().then(viewsReload); }
+    else statusLine(0);
+    await dialog('Import report', reportHtml(r), [{ label: 'OK', value: 'ok', primary: true }], b => b.parentElement!.classList.add('wide'));
+  });
+}
 async function addFolder(): Promise<void> {
   const d = await openDialog({ directory: true, title: 'Choose a folder with theWord or e-Sword modules' });
   if (!d || S.folders.includes(String(d))) return;
@@ -577,7 +593,7 @@ async function init(): Promise<void> {
     Object.assign(stored, {
       folders: [...(L.moduleFolders || []), ...(legacy.modules ? [legacy.modules] : [])], open: L.openBibles || [], ref: L.ref || DEFAULT.ref,
       skin: (L.appearance && L.appearance.skin) || (L.theme === 'dark' ? 'slate' : 'parchment'), show: Object.assign({}, DEFAULT.show, L.show || {}), fontSize: L.fontSize || DEFAULT.fontSize,
-      look: Object.assign({ ...LOOK }, pickLook(L.appearance || {})),
+      look: Object.assign({ ...LOOK }, pickLook(L.appearance || {}), L.apocryphaPlacement === 'end' ? { bookOrder: 'end' } : {}),
     });
     migrated = 'took over your module folders, Bibles and skin from Tanglaw 0.4';
   }
@@ -706,6 +722,7 @@ async function init(): Promise<void> {
   initPanel({ books: () => books, openBibles, ref: activeRef, go, clean, save, settings: () => S as unknown as Record<string, unknown> });
   initCopy({ nav: () => nav, openBibles, save: saveUD });
   initProps(async () => { await loadModules(); await renderAll(); await openRest(); await reloadLib(); viewsReload(); });
+  wireDrop();
   $('#libProps').onclick = () => { const m = libCurrent(); if (m) openProps(m.file, m.title); else flash('Choose a module first'); };
   const studyNote = await initStudy({ ref: activeRef, go, rerender, openBibles, showPanel, show: () => { const id = activeId(); return id ? effShow(id) : S.show; }, activeBible }, legacy ? legacy.study : null);
   const note = [migrated, studyNote].filter(Boolean).join('; ');
@@ -738,6 +755,7 @@ async function init(): Promise<void> {
     { id: 'options', label: 'Options…', group: 'Panels and windows', def: 'Ctrl+,', run: () => openOptions() },
     { id: 'guide', label: 'User guide', group: 'Panels and windows', def: 'F1', run: () => openGuide() },
     { id: 'keys', label: 'Keyboard shortcuts', group: 'Panels and windows', def: 'Ctrl+/', run: () => { keysDialog(); } },
+    { id: 'focus', label: 'Reading focus (only the Bible views)', group: 'Panels and windows', def: 'F11', run: () => { flash(document.body.classList.toggle('readfocus') ? 'Reading focus – F11 shows the panels again' : 'Panels shown'); } },
     { id: 'paragraph', label: 'Paragraph mode', group: 'What to show', def: 'P', run: () => { const id = activeId(); if (id) flash(bvToggle(id, 'paragraph') ? 'Paragraph mode' : 'Verse by verse'); } },
     { id: 'columns', label: 'Column text', group: 'What to show', def: 'Alt+I', run: () => { const id = activeId(); if (id) bvToggle(id, 'columns'); } },
     { id: 'wordLook', label: 'Word lookup', group: 'What to show', def: 'D', run: () => { const wl = WL(); wl.on = !wl.on; save(); optMenu(); if (wl.on && !(wl.dicts || []).length) return void wordLookDialog(); flash(wl.on ? 'Word lookup on' : 'Word lookup off'); } },

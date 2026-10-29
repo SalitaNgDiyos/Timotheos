@@ -19,6 +19,9 @@ function safe(html: string): string {
 export async function openProps(file: string, title: string, page = 'about'): Promise<void> {
   let info: Info;
   try { info = await readProps(file); } catch (e) { await dialog('Properties', `<p>${esc((e as Error).message || String(e))}</p>`, [{ label: 'OK', value: 'ok', primary: true }]); return; }
+  // Electron edition: a module imported into Tanglaw's own folder can be removed again (as in Tanglaw 0.4)
+  const N = (window as unknown as { tanglawNative?: { electron?: boolean; invoke(c: string, a: unknown): Promise<unknown> } }).tanglawNative;
+  const removable = !!N?.electron && !!(await N.invoke('is_imported', { path: file }).catch(() => false));
   let dirty: Record<string, string> = {}; let aboutDirty = false;
   const wrap = document.createElement('div'); wrap.className = 'dlg';
   wrap.innerHTML = `<div class="dlgbox ppbox" role="dialog" aria-label="Properties"><h3 id="ppTitle"></h3><div class="ppcard" id="ppCard"></div>
@@ -50,7 +53,8 @@ export async function openProps(file: string, title: string, page = 'about'): Pr
           <label class="ppopt"><input type="checkbox" checked disabled> <span><b>Compact</b> – removes unused space inside the file. Nothing in the module changes; theWord and e-Sword read it as before.</span></label>
           ${i.ext === 'twm' ? `<label class="ppopt"><input type="checkbox" id="ppZlib"${i.canZlib ? '' : ' disabled'}> <span><b>Compress the text</b> (zlib, theWord's “compressed” setting)${i.compressed ? ' – already compressed' : ''}. Tanglaw reads such modules; whether theWord reads a module compressed by Tanglaw has not been checked, so try it in theWord and keep the original until you have.</span></label>` : '<p class="small">e-Sword has no compressed form for this kind of module, so only compacting is offered.</p>'}
           <div class="srow"><button id="ppCompress" class="primary">Make smaller</button><span id="ppResult" class="small"></span></div>`}
-        ${i.backup && !ro ? '<h4>Undo all changes</h4><div class="srow"><button id="ppRestore">Put the original file back</button></div>' : ''}</section>`;
+        ${i.backup && !ro ? '<h4>Undo all changes</h4><div class="srow"><button id="ppRestore">Put the original file back</button></div>' : ''}
+        ${removable ? '<h4>Remove</h4><div class="srow"><button id="ppRemove">Remove this module from Tanglaw</button><span class="small">The file goes to the Recycle Bin, so it can still be brought back.</span></div>' : ''}</section>`;
     show(cur);
     q('#ppPages').querySelectorAll<HTMLInputElement>('[data-key]').forEach(el => el.oninput = () => { dirty[el.dataset.key!] = el.value; upd(); });
     const ed = wrap.querySelector<HTMLButtonElement>('#ppEdit');
@@ -63,6 +67,7 @@ export async function openProps(file: string, title: string, page = 'about'): Pr
     wrap.querySelectorAll<HTMLElement>('#ppFmt [data-cmd]').forEach(b => b.onmousedown = e => { e.preventDefault(); document.execCommand(b.dataset.cmd!); aboutDirty = true; upd(); });
     const cb = wrap.querySelector<HTMLButtonElement>('#ppCompress'); if (cb) cb.onclick = compress;
     const rb = wrap.querySelector<HTMLButtonElement>('#ppRestore'); if (rb) rb.onclick = restore;
+    const rm = wrap.querySelector<HTMLButtonElement>('#ppRemove'); if (rm) rm.onclick = remove;
     q('#ppNote').textContent = info.editable ? 'Before the first change Tanglaw keeps a copy of the original file.' : '';
     upd();
   };
@@ -93,6 +98,11 @@ export async function openProps(file: string, title: string, page = 'about'): Pr
     if (await dialog('Put the original back', '<p>Replace this module with the copy kept before your first change? All changes made in Tanglaw are undone.</p>', [{ label: 'Cancel', value: null }, { label: 'Put it back', value: 'ok', primary: true }]) !== 'ok') return;
     try { await restoreModule(file); info = await readProps(file); await afterChange(file); render(); q('#ppNote').textContent = 'The original file is back.'; }
     catch (e) { flash('Could not put it back: ' + (e as Error).message); }
+  };
+  const remove = async () => {
+    if (await dialog('Remove this module', `<p>Remove <b>${esc(info.name)}</b> from Tanglaw? The file goes to the Recycle Bin.</p>`, [{ label: 'Cancel', value: null }, { label: 'Remove', value: 'ok', primary: true }]) !== 'ok') return;
+    try { await N!.invoke('remove_imported', { path: file }); document.removeEventListener('keydown', key, true); wrap.remove(); await afterChange(file); flash('Removed: ' + info.name); }
+    catch (e) { flash('Could not remove it: ' + ((e as Error).message || String(e))); }
   };
   const close = async () => {
     if ((Object.keys(dirty).length || aboutDirty) && await dialog('Unsaved changes', '<p>Close without saving your changes?</p>', [{ label: 'Keep editing', value: null }, { label: 'Close', value: 'ok', primary: true }]) !== 'ok') return;

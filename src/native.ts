@@ -21,7 +21,7 @@ export const userXrefs = () => invoke<string>('user_xrefs');
 export const userXrefChange = (op: 'add' | 'remove', vi1: number, vi2: number) => invoke<number>('user_xref_change', { op, vi1, vi2 });
 export const legacyData = () => invoke<Legacy | null>('legacy_data');
 
-/** text of a SQLite value (blobs arrive as {$b64}) */
+/** text of a SQLite value (blobs arrive as {$b64} from Tauri, as Uint8Array from Electron) */
 export function text(v: unknown): string {
   if (v == null) return '';
   if (typeof v === 'string') return v;
@@ -30,6 +30,8 @@ export function text(v: unknown): string {
   try { return new TextDecoder('utf-8', { fatal: true }).decode(b); } catch { return new TextDecoder('windows-1252').decode(b); }
 }
 export function bytes(v: unknown): Uint8Array | null {
+  if (v instanceof Uint8Array) return v; // the Electron edition sends bytes as they are
+  if (v instanceof ArrayBuffer) return new Uint8Array(v);
   if (v && typeof v === 'object' && '$b64' in (v as Record<string, string>)) {
     const s = atob((v as Record<string, string>).$b64); const out = new Uint8Array(s.length);
     for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
