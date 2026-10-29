@@ -1,0 +1,80 @@
+# Builds Tanglaw for Windows (Electron) and Android (Tauri) on GitHub's machines and attaches the files to the run
+# (Actions → the run → Artifacts). Start it by hand (Actions → Build Tanglaw → Run workflow) or by pushing.
+# Publishing a release on GitHub (tag like v0.5.0) builds again and attaches the files to that release.
+name: Build Tanglaw
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+  release:
+    types: [published]
+
+jobs:
+  windows:
+    # The PC edition is the Electron one (electron/): the same screens as the phone edition, with Electron
+    # doing the file work. It is packed as a folder in a zip (unpack, run TanglawBible.exe).
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: npm run electron:web
+      - run: node electron/build.cjs win32
+      - name: Zip
+        shell: pwsh
+        run: |
+          $v = (Get-Content electron/package.json | ConvertFrom-Json).version
+          Compress-Archive -Path "dist-electron/Tanglaw Bible-win32-x64/*" -DestinationPath "TanglawBible-$v-win32-x64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tanglaw-windows
+          path: TanglawBible-*-win32-x64.zip
+
+  android:
+    # GitHub's Ubuntu machines come with the Android SDK and NDK installed (ANDROID_HOME, ANDROID_NDK_LATEST_HOME)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: 17 }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: "aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android" }
+      - uses: swatinem/rust-cache@v2
+        with: { workspaces: src-tauri }
+      - run: npm ci
+        env: { ELECTRON_SKIP_BINARY_DOWNLOAD: "1" }
+      - name: Build the APK (debug-signed, for testing)
+        run: |
+          export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
+          echo "Android SDK: $ANDROID_HOME, NDK: $NDK_HOME"
+          npx tauri android init --ci
+          npx tauri android build --apk --debug --target aarch64 --target armv7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tanglaw-android
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+
+  release:
+    if: github.event_name == 'release'
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dl }
+      - name: Attach the files to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir out
+          find dl -type f -name '*.zip' -exec cp {} out/ \;
+          V="${TAG#v}"; n=0
+          for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Tanglaw-Bible_${V}_android-test$([ $n -gt 1 ] && echo -$n).apk"; done
+          ls -la out
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --title "Tanglaw Bible $V" --notes "Tanglaw Bible $V" --prerelease
+          gh release upload "$TAG" out/* -R "$GITHUB_REPOSITORY" --clobber

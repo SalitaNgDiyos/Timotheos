@@ -1,0 +1,8 @@
+{
+  "name": "tanglaw-bible",
+  "productName": "Tanglaw Bible",
+  "version": "0.8.0",
+  "description": "Offline Bible study app that reads theWord and e-Sword modules.",
+  "main": "main.cjs",
+  "license": "GPL-3.0-or-later"
+}

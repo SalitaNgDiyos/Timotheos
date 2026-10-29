@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "target": "ES2021", "module": "ESNext", "moduleResolution": "bundler", "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    "strict": true, "noUnusedLocals": true, "noUnusedParameters": true, "skipLibCheck": true, "allowJs": false,
+    "resolveJsonModule": true, "isolatedModules": true, "noEmit": true
+  },
+  "include": ["src"]
+}

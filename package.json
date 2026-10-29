@@ -1,0 +1,29 @@
+{
+  "name": "tanglaw-next",
+  "private": true,
+  "version": "0.8.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "tauri": "tauri",
+    "electron:web": "tsc --noEmit && vite build --mode electron",
+    "electron:start": "npm run electron:web && electron electron",
+    "electron:pack": "npm run electron:web && node electron/build.cjs"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.0",
+    "@tauri-apps/plugin-clipboard-manager": "^2.5.0",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-fs": "^2",
+    "@tauri-apps/plugin-opener": "^2.7.2",
+    "fflate": "^0.8.2",
+    "tauri-plugin-tts-api": "^0.2.1"
+  },
+  "devDependencies": {
+    "@electron/packager": "18.3.6",
+    "@tauri-apps/cli": "^2.12.0",
+    "electron": "37.10.3",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}
