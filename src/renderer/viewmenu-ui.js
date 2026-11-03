@@ -49,7 +49,7 @@
   /* ---------------- Bible chooser: opens on click or hover, stays while the mouse travels to it ---------------- */
   let openFor = null, leaveTimer = null;
   const keepOpen = () => clearTimeout(leaveTimer);
-  function armClose(m) { clearTimeout(leaveTimer); leaveTimer = setTimeout(() => { const f = m.querySelector('input:focus'); if (!f && !m.matches(':hover')) { m.remove(); openFor = null; } }, 550); }
+  function armClose(m) { clearTimeout(leaveTimer); leaveTimer = setTimeout(() => { const f = m.querySelector('input:focus'); if (!f) { m.remove(); openFor = null; } }, 550); }
   function bibleMenu(btn, i) {
     const v = views()[i]; if (!v) return;
     const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}</span></button>`; }).join('');
@@ -74,16 +74,16 @@
     const m = document.querySelector('.bvmenu.biblemenu'); if (m) { const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 'px'; m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px'; }
   }
   function wireBibleHover() {
-    const host = $('#view'); let intent = null;
+    const host = $('#view'); let intent = null, over = null;
     host.addEventListener('mouseover', e => {
       const b = e.target.closest('.bvbible'); if (!b) return;
-      keepOpen(); clearTimeout(intent);
+      keepOpen(); clearTimeout(intent); over = b;
       if (openFor === b) return;
-      intent = setTimeout(() => { if (b.matches(':hover') && openFor !== b) bibleMenu(b, +b.closest('#view > .bv').dataset.i); }, 220);
+      intent = setTimeout(() => { if (over === b && openFor !== b) bibleMenu(b, +b.closest('#view > .bv').dataset.i); }, 220);
     });
     host.addEventListener('mouseout', e => {
       const b = e.target.closest('.bvbible'); if (!b) return;
-      clearTimeout(intent);
+      clearTimeout(intent); over = null;
       const m = document.querySelector('.bvmenu.biblemenu'); if (m && !(e.relatedTarget && m.contains(e.relatedTarget))) armClose(m);
     });
     document.addEventListener('mousedown', e => { if (!e.target.closest('.bvmenu')) openFor = null; }, true);

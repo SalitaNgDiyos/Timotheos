@@ -518,20 +518,20 @@ function renderModuleList() {
 function flashMsg(m) { if (window.TimotheosStudy) TimotheosStudy.flash(m); }
 
 /* ---------------- Options → Modules: every installed module, take it out of the lists or delete its file ---------------- */
-const KIND_LABEL = { bible: 'Bibles', commentary: 'Commentaries', dictionary: 'Dictionaries', book: 'Books', devotional: 'Devotionals', map: 'Maps', other: 'Other' };
+const MOD_KINDS = { bible: 'Bibles', commentary: 'Commentaries', dictionary: 'Dictionaries', book: 'Books', devotional: 'Devotionals', map: 'Maps', other: 'Other' };
 function renderModuleManager() {
   const box = $('#modMgr'); if (!box) return;
   const all = state.allModules || state.modules;
   const rows = [
     ...(all.bibles || []).map(m => ({ id: m.id, kind: 'bible', name: m.title || m.abbr || m.name, file: m.name, fmt: m.format || '', hidden: !!m.hidden })),
-    ...(all.books || []).map(m => ({ id: m.id, kind: KIND_LABEL[m.kind] ? m.kind : 'other', name: m.title && m.opened !== false ? m.title : m.name, file: m.name, fmt: m.format || '', hidden: !!m.hidden, locked: !!m.locked }))
+    ...(all.books || []).map(m => ({ id: m.id, kind: MOD_KINDS[m.kind] ? m.kind : 'other', name: m.title && m.opened !== false ? m.title : m.name, file: m.name, fmt: m.format || '', hidden: !!m.hidden, locked: !!m.locked }))
   ];
   const q = (($('#modFilter') || {}).value || '').trim().toLowerCase();
   const shown = rows.filter(r => !q || `${r.name} ${r.file} ${r.fmt}`.toLowerCase().includes(q));
   let html = '';
-  for (const k of Object.keys(KIND_LABEL)) {
+  for (const k of Object.keys(MOD_KINDS)) {
     const list = shown.filter(r => r.kind === k).sort((a, b) => a.name.localeCompare(b.name)); if (!list.length) continue;
-    html += `<div class="mmk"><b>${KIND_LABEL[k]}</b> <span class="small">${list.length}</span></div>` + list.map(r => `<div class="mmrow${r.hidden ? ' off' : ''}" data-id="${esc(r.id)}"><label title="Untick to take this module out of every list; the file stays"><input type="checkbox" class="mmshow"${r.hidden ? '' : ' checked'}> <span class="mmname">${esc(r.name)}</span></label><span class="small mmfile" title="${esc(r.file)}">${esc(r.file)}</span><button type="button" class="mminfo" title="Properties">${TimotheosIcons.icon('info', 13)}</button><button type="button" class="mmdel" title="Move the file of this module to the Recycle Bin">Delete file…</button></div>`).join('');
+    html += `<div class="mmk"><b>${MOD_KINDS[k]}</b> <span class="small">${list.length}</span></div>` + list.map(r => `<div class="mmrow${r.hidden ? ' off' : ''}" data-id="${esc(r.id)}"><label title="Untick to take this module out of every list; the file stays"><input type="checkbox" class="mmshow"${r.hidden ? '' : ' checked'}> <span class="mmname">${esc(r.name)}</span></label><span class="small mmfile" title="${esc(r.file)}">${esc(r.file)}</span><button type="button" class="mminfo" title="Properties">${TimotheosIcons.icon('info', 13)}</button><button type="button" class="mmdel" title="Move the file of this module to the Recycle Bin">Delete file…</button></div>`).join('');
   }
   box.innerHTML = html || '<p class="hint">No modules.</p>';
   const nh = rows.filter(r => r.hidden).length;
@@ -713,7 +713,7 @@ function ensurePanes() {
         <div class="bvtext view" tabindex="0"></div></div>`;
     host.appendChild(sec);
     const tx = sec.querySelector('.bvtext');
-    new ResizeObserver(() => tx.style.setProperty('--half', Math.floor(tx.clientHeight / 2) + 'px')).observe(tx);
+    let raf = 0; new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => tx.style.setProperty('--half', Math.floor(tx.clientHeight / 2) + 'px')); }).observe(tx);
   }
   host.classList.toggle('centered', centerOn());
   [...host.children].forEach((sec, i) => {
@@ -1239,7 +1239,7 @@ function about() {
     <tr><th>Module folders</th><td>${(s.moduleFolders || []).map(esc).join('<br>') || 'none'}</td></tr></table>
     <blockquote id="aboutVerse" class="aboutverse" tabindex="0" role="button" title="Click to switch between Filipino and English" data-l="${lang0}">${verse(lang0)}</blockquote>
     <p class="small">Click the verse to switch between Filipino (AMB) and English (KJV).</p></div>`;
-  const p = TanglawModules.modal('About Timotheos', html, [{ label: 'OK', value: true, primary: true }], true);
+  const p = TimotheosModules.modal('About Timotheos', html, [{ label: 'OK', value: true, primary: true }], true);
   setTimeout(() => {
     const q = $('#aboutVerse'); if (!q) return;
     const flip = () => { const l = q.dataset.l === 'fil' ? 'en' : 'fil'; q.dataset.l = l; q.innerHTML = verse(l); save({ aboutVerse: l }); };
