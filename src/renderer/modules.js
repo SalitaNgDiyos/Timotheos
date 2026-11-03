@@ -225,6 +225,7 @@ async function fillLibSelect() {
 }
 
 async function openBookModule(id, topicId, addHistory = true, anchor = null) {
+  if (window.hideLookupFeed) window.hideLookupFeed();
   openTab('lib');
   let info;
   try { info = await api.bookOpen(id); } catch (e) { $('#libBody').innerHTML = `<p class="note">${esc(e.message)}</p>`; return; }
@@ -816,8 +817,8 @@ async function showAllXrefs(v) {
     parts.push(prev.replace('<div class="entry">', `<div class="entry">${r.user ? `<button class="rmx" data-from="${b}.${c}.${v}" data-to="${r.b}.${r.c}.${r.v}" title="Delete this cross-reference">×</button>` : ''}${r.back ? '<span class="small">[points here]</span> ' : ''}${r.user ? '★ ' : ''}`));
   }
   parts.push(`<div class="row"><button class="addx" data-v="${v}">Add a cross-reference…</button></div>`);
-  setLookupHtml(parts.join(''));
-  openTab('lookup');
+  setLookupHtml(parts.join(''), true, 'Cross-references');
+  openTab('lib');
 }
 
 async function addXref(v) {
@@ -838,13 +839,7 @@ async function addXref(v) {
 async function lookupWord(word) {
   const w = word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
   if (!w || w.length < 2) return;
-  const res = await api.wordLookup(w, true).catch(() => []);
-  if (!res.length) { setLookupHtml(`<div class="entry"><h4>${esc(w)}</h4><div class="src">No topic called “${esc(w)}” in your dictionaries or books.</div></div>`); return openTab('lookup'); }
-  const first = res[0];
-  const t = await api.bookTopic(first.id, first.hits[0].id);
-  const others = res.map(r => r.hits.map(h => `<a class="link" data-book="${esc(r.id)}" data-tid="${esc(String(h.id))}">${esc(r.abbr)}: ${esc(h.subject)}${h.exact ? '' : ' ~'}</a>`).join(' · ')).join(' · ');
-  setLookupHtml(`<div class="entry"><h4>${esc(t ? t.subject : w)}</h4><div class="src">${esc(first.title)}</div>${t ? sanitize(t.html) : ''}</div><div class="entry"><div class="src">“${esc(w)}” in your library (~ = similar word)</div>${others}</div>`);
-  openTab('lookup');
+  return window.showLookup({ word: w });
 }
 
 function wordAt(e) {

@@ -22,24 +22,24 @@
     classic: { label: 'Classic (Books & modules left, study tools right, search below)', layout: {
       v: 1, zones: {
         left: { size: 250, groups: [{ panels: ['tree'], active: 'tree', size: 1.3 }, { panels: ['library'], active: 'library', size: 1 }] },
-        right: { size: 370, groups: [{ panels: ['cmt'], active: 'cmt', size: 1 }, { panels: ['lookup', 'lib', 'study', 'compare'], active: 'lookup', size: 1 }] },
+        right: { size: 370, groups: [{ panels: ['cmt'], active: 'cmt', size: 1 }, { panels: ['lib', 'study', 'compare'], active: 'lib', size: 1 }] },
         bottom: { size: 230, groups: [{ panels: ['search', 'bsearch'], active: 'search', size: 1 }] } },
       floats: [], hidden: [] } },
     tabs: { label: 'Compact (everything as tabs on the right)', layout: {
       v: 1, zones: {
         left: { size: 245, groups: [{ panels: ['tree', 'library'], active: 'tree', size: 1 }] },
-        right: { size: 380, groups: [{ panels: ['lookup', 'cmt', 'lib', 'search', 'bsearch', 'study', 'compare'], active: 'lookup', size: 1 }] },
+        right: { size: 380, groups: [{ panels: ['lib', 'cmt', 'search', 'bsearch', 'study', 'compare'], active: 'lib', size: 1 }] },
         bottom: { size: 220, groups: [] } },
       floats: [], hidden: [] } },
-    study: { label: 'Word study (commentary and lookup side by side below)', layout: {
+    study: { label: 'Word study (commentary and library side by side below)', layout: {
       v: 1, zones: {
         left: { size: 245, groups: [{ panels: ['tree', 'library'], active: 'tree', size: 1 }] },
         right: { size: 360, groups: [{ panels: ['search', 'bsearch'], active: 'search', size: 1.3 }, { panels: ['study'], active: 'study', size: 1 }] },
-        bottom: { size: 280, groups: [{ panels: ['cmt'], active: 'cmt', size: 1 }, { panels: ['lookup', 'lib', 'compare'], active: 'lookup', size: 1 }] } },
+        bottom: { size: 280, groups: [{ panels: ['cmt'], active: 'cmt', size: 1 }, { panels: ['lib', 'compare'], active: 'lib', size: 1 }] } },
       floats: [], hidden: [] } },
     reading: { label: 'Reading (Bible only; panels hidden)', layout: {
       v: 1, zones: { left: { size: 250, groups: [] }, right: { size: 370, groups: [] }, bottom: { size: 220, groups: [] } },
-      floats: [], hidden: ['library', 'tree', 'cmt', 'lookup', 'lib', 'study', 'search', 'bsearch', 'compare'] } }
+      floats: [], hidden: ['library', 'tree', 'cmt', 'lib', 'study', 'search', 'bsearch', 'compare'] } }
   };
 
   /* ------------------------------------------------------------ registry & state */

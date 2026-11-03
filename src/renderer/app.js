@@ -5,20 +5,23 @@ const state = { settings: null, modules: { bibles: [], books: [], dicts: [], err
 const lookupCache = new Map();
 const EMPTY_MOD = { rules: [] };
 
-// [D3] Lookup panel history stack (Back / Forward)
-const lkpState = { back: [], fwd: [], cur: '' };
-function setLookupHtml(html, pushHistory = true) {
-  const box = $('#lookup');
-  if (!box) return;
-  if (pushHistory && lkpState.cur && lkpState.cur !== html) {
+// Lookup: clicking a word puts the dictionaries that know it into the Library panel, one card per dictionary,
+// cascaded like the Commentary panel. Back / Forward step through your lookups.
+const lkpState = { back: [], fwd: [], cur: null };
+function showFeed(on) { const t = $('#tab-lib'); if (t) t.classList.toggle('lookfeed', !!on); }
+window.hideLookupFeed = () => showFeed(false);
+function setLookupHtml(html, pushHistory = true, title = '') {
+  const box = $('#libFeed'); if (!box) return;
+  if (pushHistory && lkpState.cur && lkpState.cur.html !== html) {
     lkpState.back.push(lkpState.cur);
     if (lkpState.back.length > 80) lkpState.back.shift();
     lkpState.fwd = [];
   }
-  lkpState.cur = html;
-  box.innerHTML = html;
-  box.scrollTop = 0;
-  syncLookupButtons();
+  lkpState.cur = { html, title };
+  box.innerHTML = html; box.scrollTop = 0;
+  $('#lkpTitle').textContent = title || '';
+  showFeed(true); syncLookupButtons();
+  if (window.TimotheosTools) try { TimotheosTools.applyMarks(box); } catch (e) { /* no marks here */ }
 }
 function lookupStep(d) {
   const from = d < 0 ? lkpState.back : lkpState.fwd;
@@ -26,7 +29,7 @@ function lookupStep(d) {
   if (!from.length) return;
   if (lkpState.cur) to.push(lkpState.cur);
   const next = from.pop();
-  setLookupHtml(next, false);
+  setLookupHtml(next.html, false, next.title);
 }
 function syncLookupButtons() {
   const b = $('#lkpBack'), f = $('#lkpFwd');
@@ -35,6 +38,45 @@ function syncLookupButtons() {
 }
 window.setLookupHtml = setLookupHtml;
 window.lookupStep = lookupStep;
+function lookupCard(abbr, title, subject, body, bookId, tid, extra = '') {
+  return `<article class="cmtcard" data-cid="${esc(bookId || abbr)}"><header class="cmtcard-hdr" data-toggle-card><span class="cc-chev">▾</span><b class="cc-abbr">${esc(abbr)}</b><span class="cc-title">${esc(title || '')}</span><span class="grow"></span><span class="cm-scope verse">${esc(subject || '')}</span>${bookId ? `<a class="cc-btn" data-book="${esc(bookId)}" data-tid="${esc(String(tid))}" title="Open this topic in the Library">Open</a>` : ''}</header><div class="cmtcard-body entry">${body}${extra}</div></article>`;
+}
+/** what a click on a word shows: {word, lemma, strongs[], morphs[]} → dictionaries cascaded in the Library panel */
+async function showLookup(o) {
+  const strongs = (o.strongs || []).filter(Boolean), morphs = (o.morphs || []).filter(Boolean);
+  const word = (o.word || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  const activeBible = (views()[state.active] || {}).bible || '';
+  const cards = []; const seen = new Set();
+  const title = [word, ...strongs, ...morphs].filter(Boolean).join(' · ') || 'Lookup';
+  setLookupHtml('<p class="hint">Looking up…</p>', true, title);
+  const lookupOne = async (kind, key) => {
+    const r = await api.lookup(kind, key, activeBible).catch(() => null);
+    if (!r) return lookupCard(kind === 'strong' ? "Strong's" : 'Morph', '', key, `<div class="src">${kind === 'strong' ? "No Strong's dictionary entry found" : 'No morphology dictionary entry found'}</div>`);
+    return lookupCard(r.dict, kind === 'strong' ? "Strong's number" : 'Morphology', r.subject || key, sanitize(r.html), null, null, `<p><a class="findlink" data-find="${esc(key)}" title="Search the open Bibles for ${esc(key)}">Find ${kind === 'morph' ? 'm/ ' : ''}${esc(key)}</a></p>`);
+  };
+  if (o.lemma) cards.push(`<div class="src lkplemma">Lemma: <b>${esc(o.lemma)}</b></div>`);
+  for (const m of morphs) cards.push(await lookupOne('morph', m));
+  for (const s of strongs) cards.push(await lookupOne('strong', s));
+  const tryWords = [...new Set([word, (o.lemma || '').trim(), ...strongs].filter(w => w && (w.length >= 2) ))];
+  const others = [];
+  for (const w of tryWords) {
+    const res = await api.wordLookup(w, true).catch(() => []);
+    for (const r of res || []) {
+      const hit = r.hits[0]; const key = r.id + '|' + hit.id; if (seen.has(key)) continue; seen.add(key);
+      if (r.kind === 'dictionary' && cards.length < 24) {
+        const t = await api.bookTopic(r.id, hit.id).catch(() => null);
+        cards.push(lookupCard(r.abbr, r.title, (t && t.subject) || hit.subject + (hit.exact ? '' : ' ~'), t ? sanitize(t.html) : '<p class="hint">(empty)</p>', r.id, hit.id));
+      } else others.push(r.hits.map(h => `<a class="link" data-book="${esc(r.id)}" data-tid="${esc(String(h.id))}">${esc(r.abbr)}: ${esc(h.subject)}${h.exact ? '' : ' ~'}</a>`).join(' · '));
+    }
+  }
+  const nDict = cards.filter(c => c.startsWith('<article')).length;
+  if (!nDict) cards.push(`<p class="hint">No dictionary has a topic called “${esc(word || strongs[0] || '')}”.</p>`);
+  if (others.length) cards.push(`<div class="entry"><div class="src">“${esc(word || strongs[0] || '')}” in your books and maps (~ = similar word)</div>${others.join(' · ')}</div>`);
+  setLookupHtml(`<div class="cmtfeed">${cards.join('')}</div>`, false, title);
+  lkpState.cur = { html: $('#libFeed').innerHTML, title };
+  openTab('lib');
+}
+window.showLookup = showLookup;
 
 async function init() {
   state.settings = await api.getSettings();
@@ -118,7 +160,7 @@ window.runCommand = runCommand;
 /* ---------------- docked panels ---------------- */
 function initDock() {
   const P = [['tree', 'Books & chapters', 'tree', 'bible', '#pane-tree'], ['library', 'Modules', 'library', 'lib', '#pane-library'],
-    ['lookup', 'Lookup', 'lookup', 'dict', '#tab-lookup'], ['cmt', 'Commentary', 'commentary', 'cmt', '#tab-cmt'], ['lib', 'Library', 'book', 'lib', '#tab-lib'],
+    ['cmt', 'Commentary', 'commentary', 'cmt', '#tab-cmt'], ['lib', 'Library', 'book', 'lib', '#tab-lib'],
     ['search', 'Bible search', 'search', 'search', '#tab-search'], ['bsearch', 'Book search', 'search', 'search', '#tab-bsearch'], ['study', 'My Study', 'study', 'study', '#tab-study'], ['compare', 'Compare', 'copy', 'bible', '#tab-compare']];
   for (const [id, title, icon, cap, sel] of P) TimotheosDock.register({ id, title, icon, cap, el: $(sel) });
   TimotheosDock.init(state.settings.dock, {
@@ -132,12 +174,12 @@ function initDock() {
 /* ---------------- text size per panel (A− / A+ buttons, Ctrl + mouse wheel) ---------------- */
 const ZOOM_TARGETS = {
   bibles: ['#bvBiblesDrawer', '#pane-bibles'], tree: ['#bibleTree'], library: ['#pane-library'], study: ['#studyBody'],
-  compare: ['#cmpBody'], cmt: ['#cmtBody'], lookup: ['#lookup'], lib: ['.libsplit'],
+  compare: ['#cmpBody'], cmt: ['#cmtBody'], lib: ['.libsplit', '#libFeed'],
   search: ['#searchResults', '#searchBooks', '#searchStats'], bsearch: ['#bsResults']
 };
 const ZOOM_NAMES = {
   bibles: 'Bibles list', tree: 'Bible tree', library: 'Modules list', study: 'My Study',
-  compare: 'Compare', cmt: 'Commentary', lookup: 'Lookup', lib: 'Library',
+  compare: 'Compare', cmt: 'Commentary', lib: 'Library',
   search: 'Bible search results', bsearch: 'Book search results'
 };
 function zoomPanel(id, d) {
@@ -1079,28 +1121,10 @@ function showPopupHtml(el, html) {
 }
 
 async function pin(el) {
-  let html = el.matches('sup.fn,sup.xref') ? await noteHtml(el) : await lookupHtml(el);
-  if (!el.matches('sup.fn,sup.xref')) {
-    const rawW = (el.classList.contains('word') ? el.textContent : '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
-    const lemmaW = (el.dataset.lemma || '').trim();
-    const wordsToTry = [...new Set([rawW, lemmaW].filter(w => w && w.length >= 2 && !/^[GH]\d+$/i.test(w)))];
-    for (const w of wordsToTry) {
-      const res = await api.wordLookup(w, true).catch(() => []);
-      if (res && res.length) {
-        const first = res[0];
-        const t = await api.bookTopic(first.id, first.hits[0].id).catch(() => null);
-        const others = res.map(r => r.hits.map(h => `<a class="link" data-book="${esc(r.id)}" data-tid="${esc(String(h.id))}">${esc(r.abbr)}: ${esc(h.subject)}${h.exact ? '' : ' ~'}</a>`).join(' · ')).join(' · ');
-        if (t && t.html) {
-          html += `<div class="entry"><h4>${esc(t.subject || w)}</h4><div class="src">${esc(first.title)}</div>${sanitize(t.html)}</div>`;
-        }
-        if (others) {
-          html += `<div class="entry"><div class="src">“${esc(w)}” in your dictionaries &amp; books</div>${others}</div>`;
-        }
-      }
-    }
-  }
-  setLookupHtml(html || '<p class="hint">Nothing to show.</p>');
-  openTab('lookup');
+  if (el.matches('sup.fn,sup.xref')) { setLookupHtml(await noteHtml(el) || '<p class="hint">Nothing to show.</p>', true, el.classList.contains('fn') ? 'Footnote' : 'Cross-reference'); return openTab('lib'); }
+  const split = k => (el.dataset[k] || '').split(/\s+/).filter(Boolean);
+  const word = (el.classList.contains('word') ? el.textContent : '');
+  return showLookup({ word, lemma: el.dataset.lemma, strongs: split('strong'), morphs: split('morph') });
 }
 
 async function followLink(href) {
@@ -1178,6 +1202,9 @@ function wireUi() {
   $('#nextBtn').onclick = () => step(1);
   $('#backBtn').onclick = () => historyGo(-1);
   $('#fwdBtn').onclick = () => historyGo(1);
+  $('#lkpClose').onclick = () => showFeed(false);
+  $('#tab-lib .libbar').addEventListener('mousedown', () => showFeed(false));
+  $('#tab-lib #libFeed').addEventListener('click', e => { const h = e.target.closest('[data-toggle-card]'); if (h && !e.target.closest('a, button')) { const c = h.closest('.cmtcard'); c.classList.toggle('collapsed'); h.querySelector('.cc-chev').textContent = c.classList.contains('collapsed') ? '▸' : '▾'; } });
   if ($('#lkpBack')) $('#lkpBack').onclick = () => lookupStep(-1);
   if ($('#lkpFwd')) $('#lkpFwd').onclick = () => lookupStep(1);
   $('#searchBtn').onclick = () => openTab('search', true);

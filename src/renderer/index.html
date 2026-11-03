@@ -176,14 +176,6 @@
       <button id="newUserModBtn" title="Create your own commentary, dictionary or book module">New user module…</button>
     </div>
   </div>
-  <div class="tab" id="tab-lookup">
-    <div class="lkpbar">
-      <button id="lkpBack" class="lbtn" data-icon="back" data-icon-size="15" title="Previous lookup" aria-label="Previous lookup" disabled></button>
-      <button id="lkpFwd" class="lbtn" data-icon="forward" data-icon-size="15" title="Next lookup" aria-label="Next lookup" disabled></button>
-      <span class="small">Lookup history</span>
-    </div>
-    <div id="lookup" class="lookup"><p class="hint">Hover a word or Strong's number to preview it. Click to keep it here.</p></div>
-  </div>
   <div class="tab cmttab" id="tab-cmt">
     <div id="cmtBar" class="cmtbar">
       <span id="cmtHead" class="cmthead"></span>
@@ -231,6 +223,16 @@
       <button id="libExport" class="lbtn" data-icon="import" data-icon-size="16" title="Export topics (.docx, .rtf, .html, .txt)" aria-label="Export"></button>
       <button id="libInfo" class="lbtn" data-icon="info" data-icon-size="16" title="Properties of this module (view and edit)" aria-label="Properties"></button>
       <button id="libCompress" class="lbtn" data-icon="compress" data-icon-size="16" title="Make this module file smaller" aria-label="Compress"></button>
+    </div>
+    <div class="libfeedwrap" id="libFeedWrap">
+      <div class="lkpbar">
+        <button id="lkpBack" class="lbtn" data-icon="back" data-icon-size="15" title="Previous lookup" aria-label="Previous lookup" disabled></button>
+        <button id="lkpFwd" class="lbtn" data-icon="forward" data-icon-size="15" title="Next lookup" aria-label="Next lookup" disabled></button>
+        <span id="lkpTitle" class="lkptitle"></span>
+        <span class="grow"></span>
+        <button id="lkpClose" class="nplink" type="button" title="Back to the module you were reading">Back to the library</button>
+      </div>
+      <div id="libFeed" class="lookup cmtbody" aria-live="polite"></div>
     </div>
     <div class="libsplit" id="libSplit">
       <div class="libside" id="libSide">
