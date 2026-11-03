@@ -380,7 +380,7 @@ function wireLibrary() {
   };
   window.applyLibSide = applySide;
   applySide();
-  $('#libSideBtn').onclick = () => { const a = ap(); a.libSideHidden = !a.libSideHidden; window.save({ appearance: a }); applySide(); };
+  $('#libSideBtn').onclick = () => { const a = ap(); a.libSideHidden = !a.libSideHidden; a.libSideW = 230; window.save({ appearance: a }); applySide(); };
   const sp = $('#libSplitter');
   sp.addEventListener('pointerdown', e => {
     e.preventDefault(); try { sp.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ }

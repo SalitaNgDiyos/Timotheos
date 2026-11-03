@@ -3,7 +3,7 @@
  * ("bv0", "bv1", …), can sit in any area, be tabbed together with others, float as its own window,
  * be maximized or closed. Areas may span several cells; column and row sizes are dragged at the gutters.
  *
- * layout = { v: 2, cols: [fr×4], rows: [fr×3], areas: [{ c, r, cs, rs, panels: [id], active }],
+ * layout = { v: 3, areas: [{ x0, y0, x1, y1, panels: [id], active }],   (x 0–4 across the columns, y 0–3 down the rows)
  *            floats: [{ panels, active, x, y, w, h }], hidden: [id] }
  */
 /* global TimotheosIcons */
@@ -19,23 +19,24 @@
   const clone = o => JSON.parse(JSON.stringify(o));
   const isBible = id => /^bv\d+$/.test(id);
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const A = (c, r, cs, rs, panels, active) => ({ c, r, cs, rs, panels, active: active || panels[0] });
+  const A = (c, r, cs, rs, panels, active) => ({ x0: c, y0: r, x1: c + cs, y1: r + rs, panels, active: active || panels[0] });
+  const EPS = 1e-3, MINW = 0.2, MINH = 0.25;
 
   const PRESETS = {
     classic: { label: 'Classic (Books left, Bible views in the middle, study tools right, search below)', layout: {
-      v: 2, cols: [1, 1, 1, 1], rows: [1, 1, 1],
+      v: 3,
       areas: [A(0, 0, 1, 3, ['tree']), A(1, 0, 2, 2, ['bv0']), A(3, 0, 1, 1, ['cmt']), A(3, 1, 1, 2, ['lib', 'study']), A(1, 2, 2, 1, ['search', 'bsearch'])],
       floats: [], hidden: [] } },
     tabs: { label: 'Compact (Bible views in the middle, everything else as tabs on the right)', layout: {
-      v: 2, cols: [1, 1, 1, 1], rows: [1, 1, 1],
+      v: 3,
       areas: [A(0, 0, 1, 3, ['tree']), A(1, 0, 2, 3, ['bv0']), A(3, 0, 1, 3, ['lib', 'cmt', 'search', 'bsearch', 'study'], 'lib')],
       floats: [], hidden: [] } },
     study: { label: 'Word study (commentary and library side by side below)', layout: {
-      v: 2, cols: [1, 1, 1, 1], rows: [1, 1, 1],
+      v: 3,
       areas: [A(0, 0, 1, 3, ['tree']), A(1, 0, 2, 2, ['bv0']), A(3, 0, 1, 2, ['search', 'bsearch', 'study'], 'search'), A(1, 2, 1, 1, ['cmt']), A(2, 2, 2, 1, ['lib'])],
       floats: [], hidden: [] } },
     reading: { label: 'Reading (Bible views only; panels hidden)', layout: {
-      v: 2, cols: [1, 1, 1, 1], rows: [1, 1, 1],
+      v: 3,
       areas: [A(0, 0, 4, 3, ['bv0'])],
       floats: [], hidden: ['tree', 'cmt', 'lib', 'study', 'search', 'bsearch'] } }
   };
@@ -43,14 +44,18 @@
   /* ------------------------------------------------------------ registry & state */
   function register(p) { PANELS.set(p.id, p); p.el.classList.add('dpanel'); p.el.dataset.panel = p.id; }
 
-  const covers = (a, r, c) => c >= a.c && c < a.c + a.cs && r >= a.r && r < a.r + a.rs;
+  const covers = (a, r, c) => c + 0.5 > a.x0 + EPS && c + 0.5 < a.x1 - EPS && r + 0.5 > a.y0 + EPS && r + 0.5 < a.y1 - EPS;
   const areaAt = (lay, r, c) => lay.areas.find(a => covers(a, r, c));
   const free = (lay, r, c) => !areaAt(lay, r, c);
+  const same = (a, b) => Math.abs(a - b) < EPS;
+  const ovl = (a0, a1, b0, b1) => Math.min(a1, b1) - Math.max(a0, b0);                 // length two ranges share
+  const hit = (a, b) => ovl(a.x0, a.x1, b.x0, b.x1) > EPS && ovl(a.y0, a.y1, b.y0, b.y1) > EPS;
+  const wOf = a => a.x1 - a.x0, hOf = a => a.y1 - a.y0;
 
   /** a saved v1 layout (left / right / bottom zones around the Bible views) becomes a grid layout */
   function fromV1(old) {
-    const out = { v: 2, cols: [1, 1, 1, 1], rows: [1, 1, 1], areas: [], floats: old.floats || [], hidden: old.hidden || [] };
-    const put = (col, list, rows) => list.forEach((g, i) => out.areas.push(A(col, Math.min(i, 2), 1, i === list.length - 1 ? 3 - Math.min(i, 2) : 1, g.panels.filter(x => x !== 'compare'), g.active)));
+    const out = { v: 3, areas: [], floats: old.floats || [], hidden: old.hidden || [] };
+    const put = (col, list) => list.forEach((g, i) => out.areas.push(A(col, Math.min(i, 2), 1, i === list.length - 1 ? 3 - Math.min(i, 2) : 1, g.panels.filter(x => x !== 'compare'), g.active)));
     const z = old.zones || {};
     put(0, (z.left || {}).groups || []);
     put(3, (z.right || {}).groups || []);
@@ -62,24 +67,29 @@
     out.hidden = out.hidden.filter(x => x !== 'compare');
     return out;
   }
+  /** 0.6.2 layouts: cells with column / row weights → rectangles */
+  function fromV2(old) {
+    const edges = (w, n) => { const f = Array.from({ length: n }, (_, i) => Math.max(0.15, +(w || [])[i] || 1)); const t = f.reduce((x, y) => x + y, 0); let acc = 0; return [0, ...f.map(v => (acc += v * n / t))]; };
+    const xs = edges(old.cols, NC), ys = edges(old.rows, NR);
+    const ix = (v, n) => Math.max(0, Math.min(n, v | 0));
+    return { v: 3, floats: old.floats, hidden: old.hidden, areas: (old.areas || []).map(a => ({ x0: xs[ix(a.c, NC)], y0: ys[ix(a.r, NR)], x1: xs[ix((a.c | 0) + (a.cs | 0 || 1), NC)], y1: ys[ix((a.r | 0) + (a.rs | 0 || 1), NR)], panels: a.panels, active: a.active })) };
+  }
 
   /** make any stored layout safe: unknown panels dropped, missing panels put back where they belong */
   function normalize(lay) {
-    let out = lay && lay.v === 2 && Array.isArray(lay.areas) ? clone(lay) : lay && lay.v === 1 && lay.zones ? fromV1(lay) : clone(PRESETS.classic.layout);
+    let out = lay && lay.v === 3 && Array.isArray(lay.areas) ? clone(lay) : lay && lay.v === 2 && Array.isArray(lay.areas) ? fromV2(clone(lay)) : lay && lay.v === 1 && lay.zones ? fromV1(lay) : clone(PRESETS.classic.layout);
     const seen = new Set();
     const known = id => PANELS.has(id) || (isBible(id) && !PANELS.size);
     const keep = list => (list || []).filter(id => known(id) && !seen.has(id) && seen.add(id));
-    out.cols = Array.from({ length: NC }, (_, i) => Math.max(0.15, +(out.cols || [])[i] || 1));
-    out.rows = Array.from({ length: NR }, (_, i) => Math.max(0.15, +(out.rows || [])[i] || 1));
-    const taken = [];
-    out.areas = (out.areas || []).map(a => {
-      const c = Math.max(0, Math.min(NC - 1, a.c | 0)), r = Math.max(0, Math.min(NR - 1, a.r | 0));
-      return { c, r, cs: Math.max(1, Math.min(NC - c, a.cs | 0 || 1)), rs: Math.max(1, Math.min(NR - r, a.rs | 0 || 1)), panels: keep(a.panels), active: a.active };
-    }).filter(a => a.panels.length).filter(a => { // areas may not overlap
-      for (let r = a.r; r < a.r + a.rs; r++) for (let c = a.c; c < a.c + a.cs; c++) if (taken.includes(r * 9 + c)) return false;
-      for (let r = a.r; r < a.r + a.rs; r++) for (let c = a.c; c < a.c + a.cs; c++) taken.push(r * 9 + c);
-      return true;
-    });
+    const num = (v, lo, hi) => Math.max(lo, Math.min(hi, +v || 0));
+    const okAreas = [];
+    for (const a of out.areas || []) {
+      const r = { x0: num(a.x0, 0, NC), y0: num(a.y0, 0, NR), x1: num(a.x1, 0, NC), y1: num(a.y1, 0, NR), panels: a.panels, active: a.active };
+      if (r.x1 - r.x0 < MINW - EPS || r.y1 - r.y0 < MINH - EPS || okAreas.some(o => hit(o, r))) continue; // too small, or on top of another area
+      okAreas.push(r);
+    }
+    out.areas = okAreas.map(a => ({ ...a, panels: keep(a.panels) })).filter(a => a.panels.length);
+    delete out.cols; delete out.rows; out.v = 3;
     for (const a of out.areas) if (!a.panels.includes(a.active)) a.active = a.panels[0];
     out.floats = (out.floats || []).map(f => ({ panels: keep(f.panels), active: f.active, x: +f.x || 80, y: +f.y || 80, w: +f.w || 360, h: +f.h || 320 })).filter(f => f.panels.length);
     for (const f of out.floats) if (!f.panels.includes(f.active)) f.active = f.panels[0];
@@ -88,17 +98,35 @@
     return out;
   }
 
+  /** a one-cell area at [r, c], trimmed so it never overlaps an area that was dragged to odd sizes; false when no room */
+  function tryCell(lay, id, r, c) {
+    if (!free(lay, r, c)) return false;
+    const n = { x0: c, y0: r, x1: c + 1, y1: r + 1 }; const cx = c + 0.5, cy = r + 0.5;
+    for (const a of lay.areas) {
+      if (!hit(a, n)) continue;
+      if (a.x1 <= cx) n.x0 = Math.max(n.x0, a.x1); else if (a.x0 >= cx) n.x1 = Math.min(n.x1, a.x0);
+      else if (a.y1 <= cy) n.y0 = Math.max(n.y0, a.y1); else n.y1 = Math.min(n.y1, a.y0);
+    }
+    if (n.x1 - n.x0 < MINW || n.y1 - n.y0 < MINH || lay.areas.some(a => hit(a, n))) return false;
+    lay.areas.push({ ...n, panels: [id], active: id }); return true;
+  }
+  /** the new area takes up to one cell from the right / bottom edge of an area that is big enough to share */
+  function splitOff(lay, a, id) {
+    if (wOf(a) > 1 + EPS) { const w = Math.min(1, wOf(a) / 2); a.x1 -= w; lay.areas.push({ x0: a.x1, y0: a.y0, x1: a.x1 + w, y1: a.y1, panels: [id], active: id }); return true; }
+    if (hOf(a) > 1 + EPS) { const h = Math.min(1, hOf(a) / 2); a.y1 -= h; lay.areas.push({ x0: a.x0, y0: a.y1, x1: a.x1, y1: a.y1 + h, panels: [id], active: id }); return true; }
+    return false;
+  }
+
   /** where a new Bible view goes: it takes half of the area of the Bible view it follows, else a free cell, else a tab */
   function placeBible(lay, id, quiet) {
     const bvArea = [...lay.areas].reverse().find(a => a.panels.some(isBible));
     if (bvArea) {
-      if (bvArea.cs > 1) { bvArea.cs--; lay.areas.push(A(bvArea.c + bvArea.cs, bvArea.r, 1, bvArea.rs, [id])); return; }
-      if (bvArea.rs > 1) { bvArea.rs--; lay.areas.push(A(bvArea.c, bvArea.r + bvArea.rs, bvArea.cs, 1, [id])); return; }
-      for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) if (free(lay, r, c)) { lay.areas.push(A(c, r, 1, 1, [id])); return; }
+      if (splitOff(lay, bvArea, id)) return;
+      for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) if (tryCell(lay, id, r, c)) return;
       bvArea.panels.push(id); if (!quiet) bvArea.active = id; return;
     }
-    for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) if (free(lay, r, c)) { lay.areas.push(A(c, r, 1, 1, [id])); return; }
-    lay.areas[0].panels.push(id);
+    for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) if (tryCell(lay, id, r, c)) return;
+    if (lay.areas.length) lay.areas[0].panels.push(id); else lay.areas.push(A(0, 0, 4, 3, [id]));
   }
 
   /** where a panel goes when it is shown again: its own place in the classic layout, else beside what is there */
@@ -106,13 +134,29 @@
     if (isBible(id)) return placeBible(lay, id, quiet);
     const home = PRESETS.classic.layout.areas.find(a => a.panels.includes(id));
     if (home) {
-      const mate = lay.areas.find(a => a.c === home.c && a.r === home.r);
+      const mate = lay.areas.find(a => Math.abs(a.x0 - home.x0) < 0.5 && Math.abs(a.y0 - home.y0) < 0.5);
       if (mate) { mate.panels.push(id); if (!quiet) mate.active = id; return; }
-      let ok = true; for (let r = home.r; r < home.r + home.rs; r++) for (let c = home.c; c < home.c + home.cs; c++) if (!free(lay, r, c)) ok = false;
-      if (ok) { lay.areas.push(A(home.c, home.r, home.cs, home.rs, [id])); return; }
+      if (!lay.areas.some(a => hit(a, home))) { lay.areas.push({ x0: home.x0, y0: home.y0, x1: home.x1, y1: home.y1, panels: [id], active: id }); return; }
     }
-    for (let r = 0; r < NR; r++) for (let c = NC - 1; c >= 0; c--) if (free(lay, r, c)) { lay.areas.push(A(c, r, 1, 1, [id])); return; }
+    for (let r = 0; r < NR; r++) for (let c = NC - 1; c >= 0; c--) if (tryCell(lay, id, r, c)) return;
     const last = lay.areas[lay.areas.length - 1]; if (last) { last.panels.push(id); if (!quiet) last.active = id; } else lay.areas.push(A(0, 0, 4, 3, [id]));
+  }
+
+  /** a closed area leaves a hole: the neighbours along one whole side grow into it (if they fit it exactly) */
+  function fillHole(lay, h) {
+    if (lay.areas.some(a => hit(a, h))) return;
+    const sides = [
+      [a => same(a.x1, h.x0) && ovl(a.y0, a.y1, h.y0, h.y1) > EPS, a => a.y0 >= h.y0 - EPS && a.y1 <= h.y1 + EPS, a => { a.x1 = h.x1; }, h.y1 - h.y0],
+      [a => same(a.x0, h.x1) && ovl(a.y0, a.y1, h.y0, h.y1) > EPS, a => a.y0 >= h.y0 - EPS && a.y1 <= h.y1 + EPS, a => { a.x0 = h.x0; }, h.y1 - h.y0],
+      [a => same(a.y1, h.y0) && ovl(a.x0, a.x1, h.x0, h.x1) > EPS, a => a.x0 >= h.x0 - EPS && a.x1 <= h.x1 + EPS, a => { a.y1 = h.y1; }, h.x1 - h.x0],
+      [a => same(a.y0, h.y1) && ovl(a.x0, a.x1, h.x0, h.x1) > EPS, a => a.x0 >= h.x0 - EPS && a.x1 <= h.x1 + EPS, a => { a.y0 = h.y0; }, h.x1 - h.x0]
+    ];
+    for (const [touch, inside, grow, len] of sides) {
+      const ns = lay.areas.filter(touch);
+      if (!ns.length || !ns.every(inside)) continue;
+      const cover = ns.reduce((t, a) => t + (touch === sides[0][0] || touch === sides[1][0] ? hOf(a) : wOf(a)), 0);
+      if (Math.abs(cover - len) < 0.02) { ns.forEach(grow); return; }
+    }
   }
 
   function locate(id) {
@@ -123,12 +167,17 @@
     return null;
   }
 
-  function detach(id) {
-    const at = locate(id); if (!at) return;
-    if (at.hidden) { L.hidden = L.hidden.filter(x => x !== id); return; }
+  /** takes a panel out of where it is; an emptied area is closed and its neighbours grow into the hole (unless keepHole: then the hole is returned) */
+  function detach(id, keepHole) {
+    const at = locate(id); if (!at) return null;
+    if (at.hidden) { L.hidden = L.hidden.filter(x => x !== id); return null; }
     const g = at.g; g.panels = g.panels.filter(x => x !== id);
     if (g.active === id) g.active = g.panels[0];
-    if (!g.panels.length) { if (at.float) L.floats.splice(at.fi, 1); else L.areas.splice(at.ai, 1); }
+    if (!g.panels.length) {
+      if (at.float) L.floats.splice(at.fi, 1);
+      else { L.areas.splice(at.ai, 1); const h = { x0: g.x0, y0: g.y0, x1: g.x1, y1: g.y1 }; if (keepHole) return h; fillHole(L, h); }
+    }
+    return null;
   }
 
   function isVisible(id) {
@@ -137,35 +186,42 @@
 
   /* ------------------------------------------------------------ rendering */
   let holder;
-  function usedTracks(areas) {
-    const cols = [], rows = [];
-    for (let c = 0; c < NC; c++) if (areas.some(a => c >= a.c && c < a.c + a.cs)) cols.push(c);
-    for (let r = 0; r < NR; r++) if (areas.some(a => r >= a.r && r < a.r + a.rs)) rows.push(r);
-    return { cols, rows };
-  }
-  function span(used, from, n) { // grid line range of cells from..from+n-1, with the gutter tracks between used cells
-    const idx = used.map((u, k) => [u, k]).filter(([u]) => u >= from && u < from + n).map(([, k]) => k);
-    return `${2 * idx[0] + 1} / ${2 * idx[idx.length - 1] + 2}`;
+  let view = { x: 0, y: 0, w: NC, h: NR };   // the part of the 4×3 area the shown areas are stretched over
+  let groupEls = [], gutEls = [];
+  const pct = (v, o, n) => ((v - o) / n * 100);
+  /** put every area and divider where the layout says (also while a divider is dragged) */
+  function place() {
+    const V = view;
+    for (const { el, a } of groupEls) {
+      Object.assign(el.style, { left: `calc(${pct(a.x0, V.x, V.w)}% + 3px)`, top: `calc(${pct(a.y0, V.y, V.h)}% + 3px)`,
+        width: `calc(${(a.x1 - a.x0) / V.w * 100}% - 6px)`, height: `calc(${(a.y1 - a.y0) / V.h * 100}% - 6px)` });
+    }
+    for (const gt of gutEls) {
+      const { el, a, b, col } = gt;
+      if (col) { const y0 = Math.max(a.y0, b.y0), y1 = Math.min(a.y1, b.y1); Object.assign(el.style, { left: `calc(${pct(a.x1, V.x, V.w)}% - 3px)`, width: '6px', top: `calc(${pct(y0, V.y, V.h)}% + 3px)`, height: `calc(${(y1 - y0) / V.h * 100}% - 6px)` }); }
+      else { const x0 = Math.max(a.x0, b.x0), x1 = Math.min(a.x1, b.x1); Object.assign(el.style, { top: `calc(${pct(a.y1, V.y, V.h)}% - 3px)`, height: '6px', left: `calc(${pct(x0, V.x, V.w)}% + 3px)`, width: `calc(${(x1 - x0) / V.w * 100}% - 6px)` }); }
+    }
   }
   function render() {
     const wb = $('#workbench'); const grid = $('#grid');
     const scroll = new Map();
     for (const p of PANELS.values()) { scroll.set(p.id, p.el.scrollTop); holder.appendChild(p.el); }
-    grid.innerHTML = '';
+    grid.innerHTML = ''; groupEls = []; gutEls = [];
     const shown = L.areas.filter(a => a.panels.some(id => PANELS.has(id))).filter(a => !focusMode || a.panels.some(isBible));
-    const { cols, rows } = usedTracks(shown);
-    grid.style.gridTemplateColumns = cols.map(c => `minmax(0, ${L.cols[c]}fr)`).join(' 6px ');
-    grid.style.gridTemplateRows = rows.map(r => `minmax(0, ${L.rows[r]}fr)`).join(' 6px ');
+    if (focusMode && shown.length) { // reading focus: the Bible views grow over the whole workbench
+      const x = Math.min(...shown.map(a => a.x0)), y = Math.min(...shown.map(a => a.y0));
+      view = { x, y, w: Math.max(...shown.map(a => a.x1)) - x, h: Math.max(...shown.map(a => a.y1)) - y };
+    } else view = { x: 0, y: 0, w: NC, h: NR };
     for (const a of shown) {
-      const g = { ...a, panels: a.panels.filter(id => PANELS.has(id)) };
       const el = groupEl(a, { area: true });
-      el.style.gridColumn = span(cols, a.c, a.cs); el.style.gridRow = span(rows, a.r, a.rs);
-      grid.appendChild(el);
+      grid.appendChild(el); groupEls.push({ el, a });
     }
-    // a gutter is drawn only where two different areas touch (not through an area that spans both sides)
-    const spans = (a, i, j, isCol) => isCol ? a.c <= cols[i] && a.c + a.cs - 1 >= cols[i + 1] && a.r <= rows[j] && a.r + a.rs - 1 >= rows[j] : a.r <= rows[i] && a.r + a.rs - 1 >= rows[i + 1] && a.c <= cols[j] && a.c + a.cs - 1 >= cols[j];
-    cols.slice(0, -1).forEach((c, k) => rows.forEach((r, j) => { if (!shown.some(a => spans(a, k, j, true))) grid.appendChild(gutter('col', k, cols, rows, j)); }));
-    rows.slice(0, -1).forEach((r, k) => cols.forEach((c, j) => { if (!shown.some(a => spans(a, k, j, false))) grid.appendChild(gutter('row', k, cols, rows, j)); }));
+    // a divider sits on every edge two areas share; it moves only those two areas (and any area that would otherwise be overrun)
+    for (const a of shown) for (const b of shown) {
+      if (a !== b && same(a.x1, b.x0) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS) addGut(grid, a, b, true);
+      if (a !== b && same(a.y1, b.y0) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS) addGut(grid, a, b, false);
+    }
+    place();
     document.querySelectorAll('.dfloat').forEach(f => f.remove());
     L.floats.forEach((f, fi) => {
       const w = groupEl(f, { float: true, fi });
@@ -226,25 +282,45 @@
     return div;
   }
 
-  /** the draggable line between two columns or two rows: it changes the sizes of the columns / rows beside it */
-  function gutter(kind, k, cols, rows, seg) {
-    const s = document.createElement('div'); const isCol = kind === 'col';
-    s.className = 'gut ' + (isCol ? 'h' : 'v'); s.title = isCol ? 'Drag to change the column widths' : 'Drag to change the row heights';
-    if (isCol) { s.style.gridColumn = String(2 * k + 2); s.style.gridRow = String(2 * seg + 1); } else { s.style.gridRow = String(2 * k + 2); s.style.gridColumn = String(2 * seg + 1); }
+  /** the draggable line between two touching areas: it moves the edge of those two only, not the rest of the row / column */
+  function addGut(grid, a, b, col) {
+    const s = document.createElement('div');
+    s.className = 'gut ' + (col ? 'h' : 'v'); s.title = col ? 'Drag to change the width of the panels beside this line' : 'Drag to change the height of the panels above and below this line';
+    grid.appendChild(s); gutEls.push({ el: s, a, b, col });
     s.addEventListener('pointerdown', e => {
       e.preventDefault(); s.setPointerCapture(e.pointerId);
-      const grid = $('#grid'); const tracks = getComputedStyle(grid)[isCol ? 'gridTemplateColumns' : 'gridTemplateRows'].split(' ').map(parseFloat);
-      const list = isCol ? cols : rows; const arr = isCol ? L.cols : L.rows;
-      const ia = list[k], ib = list[k + 1]; const pa = tracks[2 * k], pb = tracks[2 * k + 2]; const tot = arr[ia] + arr[ib]; const start = isCol ? e.clientX : e.clientY;
+      const at = col ? a.x1 : a.y1;
+      // the two areas, plus every area that touches the same line and would be overrun when it moves
+      const lo = new Set([a]), hi = new Set([b]);
+      for (let grew = true; grew;) {
+        grew = false;
+        for (const o of L.areas) {
+          const ends = col ? same(o.x1, at) : same(o.y1, at), starts = col ? same(o.x0, at) : same(o.y0, at);
+          const meets = (p, q, t) => (col ? ovl(p.y0, p.y1, q.y0, q.y1) : ovl(p.x0, p.x1, q.x0, q.x1)) > t;
+          if (ends && !lo.has(o) && [...hi].some(q => meets(o, q, 0.3))) { lo.add(o); grew = true; }
+          if (starts && !hi.has(o) && [...lo].some(q => meets(o, q, 0.3))) { hi.add(o); grew = true; }
+        }
+      }
+      // a neighbour that only touches a little is left alone; the line just may not run into it
+      let stopHi = Infinity, stopLo = -Infinity;
+      for (const o of L.areas) {
+        const meets = (p, q) => (col ? ovl(p.y0, p.y1, q.y0, q.y1) : ovl(p.x0, p.x1, q.x0, q.x1)) > EPS;
+        if (!lo.has(o) && !hi.has(o) && (col ? same(o.x0, at) : same(o.y0, at)) && [...lo].some(q => meets(o, q))) stopHi = at;
+        if (!lo.has(o) && !hi.has(o) && (col ? same(o.x1, at) : same(o.y1, at)) && [...hi].some(q => meets(o, q))) stopLo = at;
+      }
+      const min = col ? MINW : MINH;
+      const from = Math.max(stopLo, Math.max(...[...lo].map(o => (col ? o.x0 : o.y0))) + min), to = Math.min(stopHi, Math.min(...[...hi].map(o => (col ? o.x1 : o.y1))) - min);
+      const rect = $('#grid').getBoundingClientRect(); const perPx = (col ? view.w / rect.width : view.h / rect.height);
+      const start = col ? e.clientX : e.clientY;
       const move = ev => {
-        const d = (isCol ? ev.clientX : ev.clientY) - start; const na = Math.max(70, Math.min(pa + pb - 70, pa + d));
-        arr[ia] = tot * na / (pa + pb); arr[ib] = tot - arr[ia];
-        grid.style[isCol ? 'gridTemplateColumns' : 'gridTemplateRows'] = list.map(i => `minmax(0, ${arr[i]}fr)`).join(' 6px ');
+        const x = Math.max(from, Math.min(to, at + ((col ? ev.clientX : ev.clientY) - start) * perPx)); if (!(x >= from && x <= to)) return;
+        for (const o of lo) o[col ? 'x1' : 'y1'] = x;
+        for (const o of hi) o[col ? 'x0' : 'y0'] = x;
+        place();
       };
       const up = () => { s.removeEventListener('pointermove', move); s.removeEventListener('pointerup', up); s.removeEventListener('pointercancel', up); s.removeEventListener('lostpointercapture', up); saveSoon(); };
       s.addEventListener('pointermove', move); s.addEventListener('pointerup', up); s.addEventListener('pointercancel', up); s.addEventListener('lostpointercapture', up);
     });
-    return s;
   }
 
   function clampFloat(w) {
@@ -341,23 +417,15 @@
 
   function clearTargets() { const l = $('#dlayer'); if (l) l.remove(); }
 
-  /** which cut makes room at a covered cell of an area that spans several cells: [kind, …] or null (then: a tab) */
-  function sliceFor(a, r, c) {
-    if (a.cs > 1 && c === a.c + a.cs - 1) return 'right';
-    if (a.cs > 1 && c === a.c) return 'left';
-    if (a.rs > 1 && r === a.r + a.rs - 1) return 'bottom';
-    if (a.rs > 1 && r === a.r) return 'top';
-    return null;
-  }
-  /** put a panel into grid cell [r, c]: a free cell gets its own area, a single cell becomes a tab, a spanning area gives up its edge */
+  /** put a panel into grid cell [r, c]: a free cell gets its own area, a one-cell area gets a tab, a bigger area gives up its edge */
   function placeAt(lay, id, r, c) {
     const a = areaAt(lay, r, c);
-    if (!a) { lay.areas.push(A(c, r, 1, 1, [id])); return; }
-    const cut = a.cs * a.rs > 1 ? sliceFor(a, r, c) : null;
-    if (cut === 'right') { a.cs--; lay.areas.push(A(a.c + a.cs, a.r, 1, a.rs, [id])); }
-    else if (cut === 'left') { a.c++; a.cs--; lay.areas.push(A(a.c - 1, a.r, 1, a.rs, [id])); }
-    else if (cut === 'bottom') { a.rs--; lay.areas.push(A(a.c, a.r + a.rs, a.cs, 1, [id])); }
-    else if (cut === 'top') { a.r++; a.rs--; lay.areas.push(A(a.c, a.r - 1, a.cs, 1, [id])); }
+    if (!a) { if (!tryCell(lay, id, r, c)) { const near = lay.areas.find(o => o.x0 < c + 1 && o.x1 > c && o.y0 < r + 1 && o.y1 > r); if (near) { near.panels.push(id); near.active = id; } else lay.areas.push(A(c, r, 1, 1, [id])); } return; }
+    const cx = c + 0.5, cy = r + 0.5, w = wOf(a), h = hOf(a);
+    if (w > 1 + EPS && cx > a.x1 - 1) { const k = Math.min(1, w / 2); a.x1 -= k; lay.areas.push({ x0: a.x1, y0: a.y0, x1: a.x1 + k, y1: a.y1, panels: [id], active: id }); }
+    else if (w > 1 + EPS && cx < a.x0 + 1) { const k = Math.min(1, w / 2); a.x0 += k; lay.areas.push({ x0: a.x0 - k, y0: a.y0, x1: a.x0, y1: a.y1, panels: [id], active: id }); }
+    else if (h > 1 + EPS && cy > a.y1 - 1) { const k = Math.min(1, h / 2); a.y1 -= k; lay.areas.push({ x0: a.x0, y0: a.y1, x1: a.x1, y1: a.y1 + k, panels: [id], active: id }); }
+    else if (h > 1 + EPS && cy < a.y0 + 1) { const k = Math.min(1, h / 2); a.y0 += k; lay.areas.push({ x0: a.x0, y0: a.y0 - k, x1: a.x1, y1: a.y0, panels: [id], active: id }); }
     else { a.panels.push(id); a.active = id; }
   }
 
@@ -366,8 +434,9 @@
     if (t.cell) {
       const own = areaAt(L, t.cell[0], t.cell[1]);
       if (own && own.panels.includes(id)) return; // onto its own area
-      detach(id); maxed = null;
+      const hole = detach(id, true); maxed = null;
       placeAt(L, id, t.cell[0], t.cell[1]);
+      if (hole) fillHole(L, hole);
     }
     if (focusMode) focusMode = false;
     commit(); activate(id);
@@ -439,26 +508,22 @@
 
   /** Bible views side by side (cols) or one under another (rows), inside the space they now take */
   function arrangeBible(kind) {
-    const ids = [...PANELS.keys()].filter(isBible).sort((a, b) => +a.slice(2) - +b.slice(2)).filter(id => { const at = locate(id); return at && at.area; });
+    const ids = [...PANELS.keys()].filter(isBible).sort((a, b) => +a.slice(2) - +b.slice(2)).filter(id => { const at = locate(id); return at && at.area && at.g.panels.every(isBible); });
     if (ids.length < 2) return;
     const areas = [...new Set(ids.map(id => locate(id).g))];
-    let c0 = Math.min(...areas.map(a => a.c)), r0 = Math.min(...areas.map(a => a.r));
-    let c1 = Math.max(...areas.map(a => a.c + a.cs - 1)), r1 = Math.max(...areas.map(a => a.r + a.rs - 1));
-    for (const id of ids) detach(id);
-    const empty = (c, r) => free(L, r, c);
-    const n = ids.length; // widen / heighten the space while the cells next to it are free
-    const grow = () => {
-      if (kind === 'cols') while (c1 - c0 + 1 < n && c1 + 1 < NC && Array.from({ length: r1 - r0 + 1 }, (_, i) => empty(c1 + 1, r0 + i)).every(Boolean)) c1++;
-      else while (r1 - r0 + 1 < n && r1 + 1 < NR && Array.from({ length: c1 - c0 + 1 }, (_, i) => empty(c0 + i, r1 + 1)).every(Boolean)) r1++;
-    };
-    grow();
-    const cnt = kind === 'cols' ? c1 - c0 + 1 : r1 - r0 + 1;
-    const per = Math.min(cnt, n);
+    const box = { x0: Math.min(...areas.map(a => a.x0)), y0: Math.min(...areas.map(a => a.y0)), x1: Math.max(...areas.map(a => a.x1)), y1: Math.max(...areas.map(a => a.y1)) };
+    for (const id of ids) { const at = locate(id); at.g.panels = at.g.panels.filter(x => x !== id); if (at.g.active === id) at.g.active = at.g.panels[0]; }
+    L.areas = L.areas.filter(a => a.panels.length);
+    const n = ids.length;
+    // widen / heighten the box while the space next to it is free, up to one cell per view
+    const room = b => !L.areas.some(a => hit(a, b));
+    if (kind === 'cols') while (box.x1 - box.x0 < n - EPS && box.x1 + 1 <= NC + EPS && room({ x0: box.x1, x1: Math.min(NC, box.x1 + 1), y0: box.y0, y1: box.y1 })) box.x1 = Math.min(NC, box.x1 + 1);
+    else while (box.y1 - box.y0 < n - EPS && box.y1 + 1 <= NR + EPS && room({ y0: box.y1, y1: Math.min(NR, box.y1 + 1), x0: box.x0, x1: box.x1 })) box.y1 = Math.min(NR, box.y1 + 1);
     ids.forEach((id, i) => {
-      const k = Math.min(i, per - 1);
-      const mate = L.areas.find(a => a.panels.some(isBible) && (kind === 'cols' ? a.c === c0 + k : a.r === r0 + k) && a.r >= r0 && a.r <= r1 && a.c >= c0 && a.c <= c1);
-      if (mate) { mate.panels.push(id); return; }
-      L.areas.push(kind === 'cols' ? A(c0 + k, r0, 1, r1 - r0 + 1, [id]) : A(c0, r0 + k, c1 - c0 + 1, 1, [id]));
+      const f0 = i / n, f1 = (i + 1) / n;
+      L.areas.push(kind === 'cols'
+        ? { x0: box.x0 + (box.x1 - box.x0) * f0, x1: box.x0 + (box.x1 - box.x0) * f1, y0: box.y0, y1: box.y1, panels: [id], active: id }
+        : { y0: box.y0 + (box.y1 - box.y0) * f0, y1: box.y0 + (box.y1 - box.y0) * f1, x0: box.x0, x1: box.x1, panels: [id], active: id });
     });
     maxed = null; commit();
   }

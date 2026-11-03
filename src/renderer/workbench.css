@@ -31,9 +31,9 @@ button.tb.on { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 
 /* workbench */
 #workbench { flex: 1; display: block; min-height: 0; position: relative; padding: 6px; background: var(--bg); }
-#grid { position: absolute; inset: 6px; display: grid; min-width: 0; min-height: 0; }
-#grid > .dgroup { min-width: 0; min-height: 0; }
-.gut { position: relative; z-index: 2; border-radius: 3px; }
+#grid { position: absolute; inset: 3px; min-width: 0; min-height: 0; }
+#grid > .dgroup { position: absolute; min-width: 0; min-height: 0; box-sizing: border-box; }
+.gut { position: absolute; z-index: 2; border-radius: 3px; }
 .gut.h { cursor: col-resize; } .gut.v { cursor: row-resize; }
 .gut:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 #empty { position: absolute; inset: 6px; z-index: 3; background: var(--bg); }
@@ -354,7 +354,7 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .bvmenu .bvlist button:hover, .bvmenu .bvlist button.on { background: var(--card); }
 .bvmenu select { width: 100%; }
 .modlist .use { border: 0; background: transparent; cursor: pointer; color: var(--accent); font-weight: 700; padding: 0 4px; }
-@media print { #grid { display: block; position: static; } .bvside, .bvcap .dbtn, .bvzoom { display: none !important; } 
+@media print { #grid { display: block; position: static; } #grid > .dgroup { position: static !important; width: auto !important; height: auto !important; } .gut { display: none !important; } .bvside, .bvcap .dbtn, .bvzoom { display: none !important; } 
 .bv { border: 0; box-shadow: none; } }
 
 
@@ -617,7 +617,7 @@ body.altkeys .tmenu u { text-decoration: underline; }
 @media print { .bvside { display: none !important; } }
 
 /* the active verse stays in the middle: room above the first verse and below the last */
-body.centered .bv > .bvbody > .bvtext { padding-top: var(--half, 0px); padding-bottom: var(--half, 0px); box-sizing: border-box; }
+body.centered .bv > .bvbody > .bvtext { padding-bottom: var(--half, 0px); box-sizing: border-box; }
 
 /* lookup hits inside the Library panel */
 .libfeedwrap { display: none; flex-direction: column; flex: 1; min-height: 0; }
@@ -672,13 +672,12 @@ body.centered .bv > .bvbody > .bvtext { padding-top: var(--half, 0px); padding-b
 .pzbar button:hover { background: var(--bg); }
 .pzbar .pzv { color: var(--muted); min-width: 30px; text-align: center; font-weight: 400; }
 
-/* panel colours: menu font and label font */
-.pmenuc button, .pmenuc select, .pmenuc input, .pmenuc .seg button, .pmenuc .menu { color: var(--pmenu); }
-.plabelc label, .plabelc .small, .plabelc .mh, .plabelc th, .plabelc .hint, .plabelc .paneHead, .plabelc h3, .plabelc h4 { color: var(--plabel); }
-.dgroup.dmenuc .dbtn { color: var(--dmenu); }
+/* panel colours: headings and titles, notes / hints / field labels */
+.pheadc h1, .pheadc h2, .pheadc h3, .pheadc h4, .pheadc .mh, .pheadc th, .pheadc .paneHead { color: var(--phead); }
+.pnotec label, .pnotec .small, .pnotec .hint, .pnotec .muted, .pnotec .note { color: var(--pnote); }
 
 /* topic list: can be dragged to the edge of the panel and so hidden completely */
 #libSide { min-width: 0; overflow: hidden; }
 .lsplitter { min-width: 6px; }
-#grid > .dgroup.max { grid-row: 1 / -1 !important; grid-column: 1 / -1 !important; inset: 0; }
+#grid > .dgroup.max { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; }
 #libSide.collapsed { display: none; }

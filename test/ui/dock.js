@@ -6,7 +6,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const out = [];
 const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
 const D = TimotheosDock;
-const where = id => { const a = D.located(id); return !a ? 'none' : a.hidden ? 'hidden' : a.float ? 'float' : a.g.c + ',' + a.g.r; };
+const where = id => { const a = D.located(id); return !a ? 'none' : a.hidden ? 'hidden' : a.float ? 'float' : Math.round(a.g.x0) + ',' + Math.round(a.g.y0); };
 const ctr = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
 const pe = (type, x, y, tgt = document) => tgt.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0, pointerId: 1, isPrimary: true }));
 /** drag a panel tab; `to` returns the point to drop on, after the drag has started (targets exist then) */
@@ -31,7 +31,7 @@ async function drag(id, to, via) {
   const bar = async () => { const tab = document.querySelector('.dtab[data-id="lib"]'); const [sx, sy] = ctr(tab); pe('pointerdown', sx, sy, tab); pe('pointermove', sx + 20, sy + 20); await sleep(80); const n = document.querySelectorAll('.dtarget.cell').length; pe('pointerup', sx + 20, sy + 20); await sleep(200); return n; };
   const n = await bar(); ok(n === 12, 'a dragged panel is offered all 12 grid areas (' + n + ')');
   await drag('lib', cell(2, 0));
-  ok(where('lib') === '0,2' && D.located('tree').g.rs === 2, 'drag Library to the bottom-left area → ' + where('lib') + ', Books now ' + D.located('tree').g.rs + ' rows');
+  ok(where('lib') === '0,2' && (D.located('tree').g.y1 - D.located('tree').g.y0) < 2.5, 'drag Library to the bottom-left area → ' + where('lib') + ', Books now ' + D.located('tree').g.rs + ' rows');
   // 2. drag Commentary onto the single-cell area of Library, as a tab
   await drag('cmt', cell(2, 0));
   ok(D.located('cmt').g.panels.includes('lib'), 'drop Commentary on an occupied area → tab beside Library: ' + where('cmt'));
@@ -62,17 +62,17 @@ async function drag(id, to, via) {
   const mx = document.querySelector('.dgroup.max'); ok(mx && mx.getBoundingClientRect().width > 1000, 'maximize fills the window (' + (mx && Math.round(mx.getBoundingClientRect().width)) + 'px)');
   mx.querySelector('.dbtn[data-act="max"]').click(); await sleep(150);
   // 9. resize columns with a gutter
-  const s = document.querySelector('.gut.h'); const [lx, ly] = ctr(s); const c0 = D.state().cols.slice();
+  const s = document.querySelector('.gut.h'); const [lx, ly] = ctr(s); const c0 = [D.state().areas.find(a => a.panels.includes('tree')).x1];
   s.setPointerCapture = () => {};
   pe('pointerdown', lx, ly, s); pe('pointermove', lx + 60, ly, s); pe('pointerup', lx + 60, ly, s); await sleep(400);
-  ok(D.state().cols[0] > c0[0], 'column gutter: ' + c0[0].toFixed(2) + ' → ' + D.state().cols[0].toFixed(2));
+  { const n = D.state().areas.find(a => a.panels.includes('tree')).x1; ok(n > c0[0], 'column gutter: ' + c0[0].toFixed(2) + ' → ' + n.toFixed(2)); }
   // 10. focus mode: only Bible views stay
   D.toggleFocus(true); await sleep(100);
   ok(document.querySelectorAll('#grid > .dgroup').length > 0 && document.querySelectorAll('#grid > .dgroup:not(.isbv)').length === 0, 'F11 reading focus keeps only the Bible views');
   D.toggleFocus(false); await sleep(100);
   // 11. layout is saved
   await sleep(500);
-  const st = await api.getSettings(); ok(st.dock && JSON.stringify(st.dock) === JSON.stringify(D.state()) && st.dock.v === 2, 'layout saved in settings (grid v2)');
+  const st = await api.getSettings(); ok(st.dock && JSON.stringify(st.dock) === JSON.stringify(D.state()) && st.dock.v === 3, 'layout saved in settings (grid v3)');
   // 12. presets
   D.applyPreset('reading'); await sleep(150); ok(D.panels().filter(p => !D.isBible(p.id)).every(p => where(p.id) === 'hidden') && D.isVisible('bv0'), 'Reading preset hides all panels but the Bible views');
   D.applyPreset('tabs'); await sleep(150); ok(D.located('search').g.panels.length === 5, 'Compact preset: 5 tabs on the right');

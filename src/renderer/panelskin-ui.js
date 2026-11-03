@@ -1,6 +1,6 @@
 'use strict';
 /* Every panel has its own look: font, text colour, link colour (verse references, Strong's numbers) and background.
- * Colours: text, menu (buttons, lists and boxes of the panel and the buttons of its caption), label (its tab name and captions), verse links, background.
+ * Colours: text, tab name (in the caption), headings & titles, notes / hints / field labels, verse numbers, verse links, page background.
  * Set from the palette button in the panel's caption; kept in settings.panelSkins and applied only to that panel. */
 /* global state, save, esc, paneMenu, TimotheosDock, TimotheosOptions, TimotheosStudy */
 (function () {
@@ -15,21 +15,22 @@
   function apply(id) {
     const el = elOf(id); if (!el) return;
     const k = skins()[id] || {};
-    for (const p of ['--font-ui', '--font-text', '--text', '--strong', '--fn', '--bg', '--card', '--panel', '--pmenu', '--plabel']) el.style.removeProperty(p);
+    for (const p of ['--font-ui', '--font-text', '--text', '--strong', '--fn', '--bg', '--card', '--panel', '--muted', '--vnum']) el.style.removeProperty(p);
     el.style.fontFamily = ''; el.style.color = ''; el.style.background = '';
     if (k.font) { const f = `'${String(k.font).replace(/['\\]/g, '')}', 'TwGreek', 'TwHebrew', sans-serif`; el.style.fontFamily = f; el.style.setProperty('--font-ui', f); el.style.setProperty('--font-text', f); }
-    if (k.color) { el.style.color = k.color; el.style.setProperty('--text', k.color); el.style.setProperty('--heading', k.color); }
+    if (k.color) { el.style.color = k.color; el.style.setProperty('--text', k.color); if (!k.head) el.style.setProperty('--heading', k.color); }
+    if (k.head) el.style.setProperty('--heading', k.head);
+    if (k.note) el.style.setProperty('--muted', k.note);
+    if (k.vnum) el.style.setProperty('--vnum', k.vnum);
     if (k.link) { el.style.setProperty('--strong', k.link); el.style.setProperty('--fn', k.link); }
     if (k.bg) { el.style.background = k.bg; el.style.setProperty('--bg', k.bg); el.style.setProperty('--panel', k.bg); el.style.setProperty('--card', `color-mix(in srgb, ${k.bg} 90%, ${k.color || 'gray'} 10%)`); }
     el.style.zoom = k.scale && k.scale !== 1 ? k.scale : '';
-    if (k.menu) el.style.setProperty('--pmenu', k.menu);
-    if (k.label) el.style.setProperty('--plabel', k.label);
-    el.classList.toggle('pskin', !!(k.font || k.color || k.link || k.bg || k.menu || k.label || k.scale));
-    el.classList.toggle('pmenuc', !!k.menu); el.classList.toggle('plabelc', !!k.label);
-    // the caption of the area belongs to the panel that is in front: its tab name and its buttons
+    el.classList.toggle('pskin', !!(k.font || k.color || k.link || k.bg || k.head || k.note || k.vnum || k.tab || k.scale));
+    el.classList.toggle('pheadc', !!k.head); el.classList.toggle('pnotec', !!k.note);
+    el.style.setProperty('--phead', k.head || ''); el.style.setProperty('--pnote', k.note || '');
+    // the tab name sits in the caption of the area, which belongs to the panel in front
     const grp = el.closest('.dgroup'); const tab = grp && grp.querySelector(`.dtab[data-id="${id}"]`);
-    if (tab) tab.style.color = k.label || '';
-    if (grp && grp.querySelector('.dtab.on') && grp.querySelector('.dtab.on').dataset.id === id) { if (k.menu) grp.style.setProperty('--dmenu', k.menu); else grp.style.removeProperty('--dmenu'); grp.classList.toggle('dmenuc', !!k.menu); }
+    if (tab) tab.style.color = k.tab || '';
   }
   function applyAll() { for (const id of allIds()) apply(id); }
   function set(id, key, val) {
@@ -48,7 +49,7 @@
     paneMenu(btn, `<div class="mh">${esc(nameOf(id))} – own fonts and colours</div>
       <label class="pskfont">Font <select><option value="">As in Options</option>${fonts.map(f => `<option value="${esc(f)}" style="font-family:'${esc(String(f).replace(/['\\]/g, ''))}'"${f === k.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select></label>
       <label class="pskfont" title="Makes the whole panel (its fonts, buttons and boxes) smaller or larger">Size of everything in this panel <input type="range" class="pskscale" min="60" max="220" step="5" value="${Math.round((k.scale || 1) * 100)}"> <b class="pskpct">${Math.round((k.scale || 1) * 100)}%</b></label>
-      ${row('color', 'Text')}${row('menu', 'Menu font')}${row('label', 'Label font')}${row('link', 'Verse links')}${row('bg', 'Background')}
+      ${row('color', 'Text')}${row('tab', 'Tab name')}${row('head', 'Headings &amp; titles')}${row('note', 'Notes, hints &amp; field labels')}${row('vnum', 'Verse numbers')}${row('link', 'Verse links')}${row('bg', 'Page Background Color')}
       <div class="swrow"><button type="button" class="pskdef" title="This panel goes back to the colours of the skin">Default Colors</button></div>`, m => {
       m.classList.add('pskmenu');
       const sc = m.querySelector('.pskscale'); sc.oninput = () => { m.querySelector('.pskpct').textContent = sc.value + '%'; set(id, 'scale', +sc.value === 100 ? null : +sc.value / 100); };
