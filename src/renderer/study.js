@@ -6,7 +6,9 @@
 // Copy Verses dialog, compare differences, paragraph mode, Bible tree, reading plans (with .rdp.twm export).
 
 const study = { ud: null, timers: {}, textCache: new Map(), treeSig: '', seg: 'lists', typed: '', typedTimer: null, typedChapter: false };
-const HL_STYLES = [['yellow', 'Yellow'], ['green', 'Green'], ['blue', 'Blue'], ['pink', 'Pink'], ['orange', 'Orange'], ['ul', 'Underline'], ['bold', 'Bold']];
+const HL_STYLES = [['yellow', 'Yellow'], ['green', 'Green'], ['blue', 'Blue'], ['pink', 'Pink'], ['orange', 'Orange'], ['purple', 'Purple'], ['teal', 'Teal'], ['red', 'Red'], ['gray', 'Grey'], ['ul', 'Underline'], ['bold', 'Bold']];
+/** underline and bold sit on top of a colour highlight; colours replace each other */
+const isDeco = s => s === 'bold' || (typeof s === 'string' && s.startsWith('ul'));
 const vkey = (b, c, v) => `${b}.${c}.${v}`;
 const parseKey = k => { const [b, c, v] = k.split('.').map(Number); return { b, c, v }; };
 const orderOf = b => { const i = state.nav.findIndex(x => x.id === b); return i < 0 ? 1000 + b : i; };
@@ -184,7 +186,7 @@ function highlight(t, style) {
   const hl = study.ud.highlights[id] || (study.ud.highlights[id] = {});
   const sec = document.querySelectorAll('#view > .bv')[t.col]; const [rb, rc] = sec && sec.dataset.ref ? sec.dataset.ref.split('.').map(Number) : [state.ref.b, state.ref.c];
   const k = vkey(rb, rc, t.v);
-  let list = (hl[k] || []).filter(m => m.e <= t.s || m.s >= t.e || (style !== null && m.style !== style && ['ul', 'bold'].includes(m.style) !== ['ul', 'bold'].includes(style)));
+  let list = (hl[k] || []).filter(m => m.e <= t.s || m.s >= t.e || (style !== null && m.style !== style && isDeco(m.style) !== isDeco(style)));
   if (style) list.push({ s: t.s, e: t.e, style });
   list.sort((a, b) => a.s - b.s);
   if (list.length) hl[k] = list; else delete hl[k];
@@ -813,4 +815,4 @@ function showKeys() {
   setTimeout(() => { const b = $('#editKeysFromHelp'); if (b) b.onclick = () => { $('#modal').classList.add('hidden'); TimotheosOptions.open('keys'); }; }, 30);
 }
 
-window.TimotheosStudy = { init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, flash, verseText, study };
+window.TimotheosStudy = { highlight, selectionTarget, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, flash, verseText, study };

@@ -50,7 +50,7 @@ async function init() {
   applyToolbarItems();
   syncViewMenu();
   wireUi();
-  wireViews();
+  wireViews(); wireScrollSync(); TimotheosViewUI.init();
   TimotheosModules.wireModules();
   await TimotheosStudy.init();
   if (window.TimotheosNav) TimotheosNav.init();
@@ -505,6 +505,9 @@ function initViews() {
   state.linkRef = state.settings.ref || state.ref;
   state.ref = refOfView(state.active);
 }
+/** the name shown on a view: your own label, else the Bible's abbreviation */
+function viewName(i) { const v = views()[i]; if (!v) return ''; const inf = state.infos.get(v.bible); return v.label || (inf ? inf.abbr : v.bible.replace(/^\w+:/, '')); }
+window.viewName = viewName;
 function refOfView(i) { const v = views()[i]; return v && !v.linked && v.ref ? v.ref : state.linkRef; }
 function syncOpen() { state.settings.openBibles = views().map(v => v.bible); }
 function storeViews() { syncOpen(); save({ views: views(), openBibles: state.settings.openBibles, activeView: state.active }); }
@@ -570,7 +573,7 @@ function zoomView(i, d) {
   const z = Math.round(Math.min(2.5, Math.max(0.6, (v.zoom || 1) + d * 0.1)) * 10) / 10;
   v.zoom = z; state.settings.bibleZoom = z; save({ bibleZoom: z }); storeViews();
   const sec = document.querySelectorAll('#view > .bv')[i]; if (sec) applyPaneLook(sec, i);
-  flashMsg(`${(state.infos.get(v.bible) || {}).abbr || 'Bible'} text ${Math.round(z * 100)}%`);
+  flashMsg(`${viewName(i)}: text ${d > 0 ? 'larger' : 'smaller'}`);
 }
 const baseSize = () => state.settings.fontSize || 17;
 function applyPaneLook(sec, i) {
@@ -579,62 +582,93 @@ function applyPaneLook(sec, i) {
   t.style.fontFamily = v.font ? `'TwGreek', 'TwHebrew', '${String(v.font).replace(/['\\]/g, '')}', var(--font-text)` : '';
   if (v.font) t.style.setProperty('--font-text', `'TwGreek', 'TwHebrew', '${String(v.font).replace(/['\\]/g, '')}', 'Gentium Plus', Georgia, serif`); else t.style.removeProperty('--font-text');
   t.dataset.vnpos = v.vnPos || ap.vnPos; t.dataset.vnstyle = ap.vnStyle;
-  const z = sec.querySelector('.bvzoom'); if (z) z.textContent = Math.round((v.zoom || 1) * 100) + '%';
+  if (v.color) t.style.color = v.color; else t.style.removeProperty('color');
+  if (v.selBg) t.style.setProperty('--sel', v.selBg); else t.style.removeProperty('--sel');
+  const bar = (q, c) => { const b = sec.querySelector(q + ' .bar'); if (b) b.style.background = c || 'transparent'; };
+  bar('.bvfcolor', v.color); bar('.bvselbg', v.selBg); bar('.bvpen', state.pen && state.pen.color);
+  const pb = sec.querySelector('.bvpen'); if (pb) pb.classList.toggle('on', !!(state.pen && state.pen.kind === 'hl'));
+  const ub = sec.querySelector('.bvul'); if (ub) ub.classList.toggle('on', !!(state.pen && state.pen.kind === 'ul'));
 }
 function ensurePanes() {
   const host = $('#view'); const vs = views();
   while (host.children.length > vs.length) host.lastElementChild.remove();
   while (host.children.length < vs.length) {
     const sec = document.createElement('section'); sec.className = 'bv';
-    sec.innerHTML = `<header class="bvcap"><button class="bvbible" data-a="bible" title="Choose the Bible of this view"></button><span class="bvref"></span><span class="grow"></span>
-      <button class="dbtn bvlink" data-a="link" title="Move together with the other Bible views (click to let this view read on by itself)">${TimotheosIcons.icon('link', 14)}</button>
-      <button class="dbtn" data-a="zout" title="Smaller text in this view (Ctrl + mouse wheel down)">${TimotheosIcons.icon('textDown', 14)}</button><span class="bvzoom" title="Text size of this view"></span><button class="dbtn" data-a="zin" title="Larger text in this view (Ctrl + mouse wheel up)">${TimotheosIcons.icon('textUp', 14)}</button>
+    sec.innerHTML = `<header class="bvcap"><button class="bvbible" data-a="bible" title="Choose the Bible of this view (double-click to rename this view)"></button><span class="bvref"></span><span class="grow"></span>
       <button class="dbtn" data-a="close" title="Close this Bible view">${TimotheosIcons.icon('close', 14)}</button></header>
-      <div class="bvbody"><nav class="bvside" aria-label="What this view shows">${SIDE.map(([k, l, t]) => `<button data-k="${k}" title="${esc(t)}">${l}</button>`).join('')}
-        <span class="bvsep"></span><button data-a="vnum" title="Verse numbers in this view: column, in the text, hidden">#</button><button data-a="font" title="Font of this view">Aa</button><button data-a="speak" class="bvspeak" title="Read this chapter aloud (again: stop)">${TimotheosIcons.icon('speaker', 14)}</button><button data-a="opts" title="More options of this view: footnote marks, intralinear view lines, this Bible's own switches">${TimotheosIcons.icon('gear', 14)}</button></nav>
+      <div class="bvbody"><nav class="bvside" aria-label="Settings of this view">
+        <button data-a="menu" class="bvmenubtn" title="What this view shows, and its options" aria-haspopup="true">${TimotheosIcons.icon('menu', 16)}</button>
+        <span class="bvsep"></span>
+        <button data-a="info" title="Bible info: about this module">${TimotheosIcons.icon('info', 15)}</button>
+        <button data-a="link" class="bvlink" title="Sync: move together with the other Bible views (click to let this view read on by itself)">${TimotheosIcons.icon('link', 15)}</button>
+        <button data-a="zin" title="Font up (Ctrl + mouse wheel up)">${TimotheosIcons.icon('textUp', 15)}</button>
+        <button data-a="zout" title="Font down (Ctrl + mouse wheel down)">${TimotheosIcons.icon('textDown', 15)}</button>
+        <button data-a="fcolor" class="bvfcolor" title="Font colour">${TimotheosIcons.icon('fontColor', 15)}<i class="bar"></i></button>
+        <button data-a="font" title="Font of this view">${TimotheosIcons.icon('type', 15)}</button>
+        <button data-a="selbg" class="bvselbg" title="Background of the active verse">${TimotheosIcons.icon('verseBg', 15)}<i class="bar"></i></button>
+        <button data-a="pen" class="bvpen" title="Highlighter: choose a colour, then select text">${TimotheosIcons.icon('highlighter', 15)}<i class="bar"></i></button>
+        <button data-a="ul" class="bvul" title="Underline: choose a style and colour, then select text">${TimotheosIcons.icon('underline', 15)}</button>
+      </nav>
         <div class="bvtext view" tabindex="0"></div></div>`;
     host.appendChild(sec);
+    const tx = sec.querySelector('.bvtext');
+    new ResizeObserver(() => tx.style.setProperty('--half', Math.floor(tx.clientHeight / 2) + 'px')).observe(tx);
   }
+  host.classList.toggle('centered', centerOn());
   [...host.children].forEach((sec, i) => {
     const v = vs[i]; const inf = state.infos.get(v.bible);
     sec.dataset.i = i; sec.dataset.linked = v.linked ? '1' : '0';
     sec.classList.toggle('active', i === state.active);
-    sec.querySelector('.bvbible').textContent = inf ? inf.abbr : v.bible.replace(/^\w+:/, '');
-    sec.querySelector('.bvbible').title = (inf ? inf.title + ' – ' : '') + 'click to choose another Bible for this view';
+    sec.querySelector('.bvbible').textContent = viewName(i);
+    sec.querySelector('.bvbible').title = (inf ? inf.title + ' – ' : '') + 'click to choose another Bible for this view · double-click to rename this view';
     sec.querySelector('.bvlink').classList.toggle('on', !!v.linked);
-    const sh = viewShow(i);
-    sec.querySelectorAll('.bvside [data-k]').forEach(b => b.classList.toggle('on', !!sh[b.dataset.k]));
     applyPaneLook(sec, i);
   });
 }
 function paneMenu(btn, html, wire) {
   document.querySelectorAll('.bvmenu').forEach(m => m.remove());
   const m = document.createElement('div'); m.className = 'menu bvmenu'; m.innerHTML = html; document.body.appendChild(m);
-  const r = btn.getBoundingClientRect(); m.style.left = Math.min(r.left, innerWidth - 300) + 'px'; m.style.top = r.bottom + 4 + 'px';
+  const r = btn.getBoundingClientRect(); const side = !!btn.closest('.bvside');
+  m.style.left = Math.max(4, Math.min(side ? r.right + 4 : r.left, innerWidth - m.offsetWidth - 8)) + 'px';
+  m.style.top = Math.max(4, Math.min(side ? r.top : r.bottom + 2, innerHeight - m.offsetHeight - 8)) + 'px';
   wire(m);
   setTimeout(() => document.addEventListener('mousedown', function off(e) { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('mousedown', off, true); } }, true), 0);
+}
+function toggleLink(i) {
+  const v = views()[i]; if (!v) return;
+  v.linked = !v.linked;
+  if (!v.linked) v.ref = { ...refOfView(i) }; else delete v.ref;
+  if (i === state.active) state.ref = refOfView(i);
+  storeViews(); ensurePanes(); flashMsg(v.linked ? 'Sync on: this view moves with the others' : 'Sync off: this view reads on by itself');
+  renderChapter(false); syncNavControls();
+}
+/** switch several things of one view on or off with a single redraw */
+function setViewShowMany(i, obj) {
+  const v = views()[i]; if (!v) return;
+  v.show = Object.assign({}, v.show, obj);
+  for (const k of Object.keys(obj)) if (!!obj[k] === !!state.settings.show[k]) delete v.show[k];
+  storeViews(); syncViewMenu(); renderChapter(false);
+}
+function setVerseNumbers(i, on) {
+  const v = views()[i]; const ap = TimotheosOptions.appearance();
+  if (!on) v.vnPos = 'hidden'; else if (ap.vnPos === 'hidden') v.vnPos = 'margin'; else delete v.vnPos;
+  if (v.vnPos === ap.vnPos) delete v.vnPos;
+  storeViews(); renderChapter(false);
 }
 function wireViews() {
   const host = $('#view');
   host.addEventListener('mousedown', e => { const sec = e.target.closest('#view > .bv'); if (sec) setActive(+sec.dataset.i); }, true);
+  host.addEventListener('dblclick', e => { const b = e.target.closest('.bvbible'); if (b) { const sec = b.closest('#view > .bv'); TimotheosViewUI.rename(+sec.dataset.i, b); } });
   host.addEventListener('focusin', e => { const sec = e.target.closest('#view > .bv'); if (sec) setActive(+sec.dataset.i); });
   host.addEventListener('click', e => {
     const sec = e.target.closest('#view > .bv'); if (!sec) return; const i = +sec.dataset.i; const v = views()[i];
     const refSpan = e.target.closest('.bvref');
     if (refSpan && refSpan.textContent && window.TimotheosNav) { setActive(i); TimotheosNav.openNavPopover('book', refSpan, i); return; }
-    const k = e.target.closest('.bvside [data-k]');
-    if (k) { const on = toggleViewShow(i, k.dataset.k); flashMsg(`${k.title.replace(/ \(.\)$/, '')}: ${on ? 'on' : 'off'} in this view`); return; }
     const a = e.target.closest('[data-a]'); if (!a) return;
     const act = a.dataset.a;
     if (act === 'zin' || act === 'zout') return zoomView(i, act === 'zin' ? 1 : -1);
     if (act === 'close') return closeView(i);
-    if (act === 'link') {
-      v.linked = !v.linked;
-      if (!v.linked) v.ref = { ...refOfView(i) }; else delete v.ref;
-      if (i === state.active) state.ref = refOfView(i);
-      storeViews(); flashMsg(v.linked ? 'This view moves with the others' : 'This view reads on by itself');
-      renderChapter(false); syncNavControls(); return;
-    }
+    if (act === 'link') return toggleLink(i);
     if (act === 'vnum') {
       const order = ['margin', 'inline', 'hidden']; const ap = TimotheosOptions.appearance();
       v.vnPos = order[(order.indexOf(v.vnPos || ap.vnPos) + 1) % 3]; if (v.vnPos === ap.vnPos) delete v.vnPos;
@@ -650,13 +684,13 @@ function wireViews() {
     }
     if (act === 'speak') return window.TimotheosSpeech && TimotheosSpeech.speakView(i, a);
     if (act === 'opts') return viewOptions(i, a);
-    if (act === 'bible') {
-      const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}</span></button>`; }).join('');
-      return paneMenu(a, `<div class="mh">Bible of this view</div><div class="bvlist">${list}</div><div class="msep"></div><button type="button" class="bvm-open-drawer">📚 Open Bibles Drawer (side-by-side &amp; reorder)…</button>`, m => {
-        const od = m.querySelector('.bvm-open-drawer'); if (od) od.onclick = () => { m.remove(); setBiblesDrawerOpen(true); };
-        m.querySelectorAll('[data-b]').forEach(b => b.onclick = async () => { m.remove(); await ensureInfo(b.dataset.b); v.bible = b.dataset.b; await setViews([...views()]); });
-      });
-    }
+    if (act === 'bible') return TimotheosViewUI.bibleMenu(a, i, false);
+    if (act === 'menu') return TimotheosViewUI.mainMenu(a, i);
+    if (act === 'info') return TimotheosProps.open(v.bible);
+    if (act === 'fcolor') return TimotheosViewUI.colorMenu(a, 'Font colour of this view', v.color, c => { if (c) v.color = c; else delete v.color; storeViews(); ensurePanes(); });
+    if (act === 'selbg') return TimotheosViewUI.colorMenu(a, 'Background of the active verse', v.selBg, c => { if (c) v.selBg = c; else delete v.selBg; storeViews(); ensurePanes(); });
+    if (act === 'pen') return TimotheosViewUI.penMenu(a);
+    if (act === 'ul') return TimotheosViewUI.underlineMenu(a);
   });
 }
 
@@ -792,18 +826,51 @@ function stepBook(d) {
   const i = state.nav.findIndex(x => x.id === state.ref.b); const n = state.nav[i + d];
   if (n) go({ b: n.id, c: n.chapterList[0], v: 1 });
 }
-function selectVerse(v, scroll = true) {
-  const el = activeText().querySelector(`[data-v="${v}"]`); if (!el) return false;
-  paneTexts().forEach((t, i) => {
-    if (!sameMove(i, state.active)) return;
+const centerOn = () => state.settings.centerActive !== false;
+/** put verse v in the vertical middle of a Bible text pane (the pane has room above and below for the first and last verses) */
+function centerVerse(t, v, smooth = true) {
+  const el = t.querySelector(`[data-v="${v}"]`); if (!el) return false;
+  const tr = t.getBoundingClientRect(), er = el.getBoundingClientRect();
+  const top = Math.max(0, t.scrollTop + (er.top - tr.top) - (t.clientHeight - er.height) / 2);
+  if (Math.abs(top - t.scrollTop) < 2) return true;
+  t._prog = Date.now() + (smooth ? 800 : 200); // our own scrolling is not the reader's
+  t.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+  return true;
+}
+window.centerVerse = centerVerse;
+/** select verse v in the active view and in every view that moves with it: lit in all of them and centred in all of them */
+function selectVerse(v, scroll = true, skipPane = -1) {
+  const texts = paneTexts();
+  const el = (texts[state.active] || $('#view')).querySelector(`[data-v="${v}"]`);
+  const group = texts.map((t, i) => i).filter(i => sameMove(i, state.active));
+  if (!el && !group.some(i => texts[i].querySelector(`[data-v="${v}"]`))) return false;
+  for (const i of group) {
+    const t = texts[i];
     t.querySelectorAll('.sel').forEach(x => x.classList.remove('sel'));
     t.querySelectorAll(`[data-v="${v}"]`).forEach(x => { if (x.matches('tr, .pv')) x.classList.add('sel'); });
-  });
+  }
   state.ref.v = v; commitRef();
   syncNavControls();
-  if (scroll) el.scrollIntoView({ block: 'nearest' });
+  if (centerOn()) { for (const i of group) if (i !== skipPane) centerVerse(texts[i], v); }
+  else if (scroll && el) el.scrollIntoView({ block: 'nearest' });
   TimotheosModules.updateCommentary();
   return true;
+}
+/** the reader scrolled a view: the verse in its middle becomes the active verse, and the views that move with it follow */
+let scrollTimer = null;
+function wireScrollSync() {
+  $('#view').addEventListener('scroll', e => {
+    const t = e.target; if (!t.classList || !t.classList.contains('bvtext') || !centerOn() || (t._prog || 0) > Date.now()) return;
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      if ((t._prog || 0) > Date.now()) return;
+      const i = +t.closest('#view > .bv').dataset.i; const r = t.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + Math.min(r.width * 0.6, r.width - 8), r.top + r.height / 2);
+      const row = hit && hit.closest ? hit.closest('[data-v]') : null; if (!row || !t.contains(row)) return;
+      const v = +row.dataset.v; if (i !== state.active) setActive(i, true);
+      if (v !== state.ref.v) selectVerse(v, false, i);
+    }, 150);
+  }, true);
 }
 
 function step(d) {
@@ -881,7 +948,8 @@ async function renderPane(i, scroll, seq) {
   if (i === state.active && window.TimotheosNav) TimotheosNav.syncAll(rows);
   if (scroll) {
     const el = t.querySelector(`[data-v="${vv}"]`);
-    if (el && vv > 1) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } else t.scrollTop = 0;
+    if (el && centerOn()) { centerVerse(t, vv, false); if (vv > 1) el.classList.add('flash'); }
+    else if (el && vv > 1) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } else t.scrollTop = 0;
   } else t.scrollTop = keep;
 }
 
@@ -1118,6 +1186,8 @@ function wireUi() {
   $('#apPlacement').value = ['end', 'catholic', 'nets', 'orthodox'].includes(state.settings.apocryphaPlacement) ? state.settings.apocryphaPlacement : '1611';
   $('#apPlacement').onchange = async () => { await api.setSettings({ apocryphaPlacement: $('#apPlacement').value }); state.settings.apocryphaPlacement = $('#apPlacement').value; await rebuildNav(); await go(state.ref, false); };
   $('#importBtn2').onclick = () => TimotheosModules.importModules();
+  $('#centerActive').checked = centerOn();
+  $('#centerActive').onchange = () => { save({ centerActive: $('#centerActive').checked }); ensurePanes(); renderChapter(true); };
   document.addEventListener('click', e => {
     const fl = e.target.closest('[data-find]');
     if (fl) { e.preventDefault(); $('#popup').classList.add('hidden'); TimotheosSearch.find((/^[GH]\d/i.test(fl.dataset.find) ? '' : 'm/ ') + fl.dataset.find); return; }
