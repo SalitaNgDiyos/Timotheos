@@ -187,7 +187,7 @@
   /* ------------------------------------------------------------ rendering */
   let holder;
   let view = { x: 0, y: 0, w: NC, h: NR };   // the part of the 4×3 area the shown areas are stretched over
-  let groupEls = [], gutEls = [];
+  let groupEls = [], gutEls = [], cornerEls = [];
   const pct = (v, o, n) => ((v - o) / n * 100);
   /** put every area and divider where the layout says (also while a divider is dragged) */
   function place() {
@@ -196,6 +196,7 @@
       Object.assign(el.style, { left: `calc(${pct(a.x0, V.x, V.w)}% + 3px)`, top: `calc(${pct(a.y0, V.y, V.h)}% + 3px)`,
         width: `calc(${(a.x1 - a.x0) / V.w * 100}% - 6px)`, height: `calc(${(a.y1 - a.y0) / V.h * 100}% - 6px)` });
     }
+    for (const { el, a, xs, ys } of cornerEls) { el.style.left = `calc(${pct(a[xs], V.x, V.w)}% - 7px)`; el.style.top = `calc(${pct(a[ys], V.y, V.h)}% - 7px)`; }
     for (const gt of gutEls) {
       const { el, a, b, col } = gt;
       if (col) { const y0 = Math.max(a.y0, b.y0), y1 = Math.min(a.y1, b.y1); Object.assign(el.style, { left: `calc(${pct(a.x1, V.x, V.w)}% - 3px)`, width: '6px', top: `calc(${pct(y0, V.y, V.h)}% + 3px)`, height: `calc(${(y1 - y0) / V.h * 100}% - 6px)` }); }
@@ -206,7 +207,7 @@
     const wb = $('#workbench'); const grid = $('#grid');
     const scroll = new Map();
     for (const p of PANELS.values()) { scroll.set(p.id, p.el.scrollTop); holder.appendChild(p.el); }
-    grid.innerHTML = ''; groupEls = []; gutEls = [];
+    grid.innerHTML = ''; groupEls = []; gutEls = []; cornerEls = [];
     const shown = L.areas.filter(a => a.panels.some(id => PANELS.has(id))).filter(a => !focusMode || a.panels.some(isBible));
     if (focusMode && shown.length) { // reading focus: the Bible views grow over the whole workbench
       const x = Math.min(...shown.map(a => a.x0)), y = Math.min(...shown.map(a => a.y0));
@@ -221,6 +222,7 @@
       if (a !== b && same(a.x1, b.x0) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS) addGut(grid, a, b, true);
       if (a !== b && same(a.y1, b.y0) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS) addGut(grid, a, b, false);
     }
+    if (!maxed) for (const a of shown) if (a.panels.some(isBible)) for (const ys of ['y0', 'y1']) for (const xs of ['x0', 'x1']) addCorner(grid, a, xs, ys);
     place();
     document.querySelectorAll('.dfloat').forEach(f => f.remove());
     L.floats.forEach((f, fi) => {
@@ -258,6 +260,7 @@
     div.innerHTML = `<header class="dcap">
         <span class="dgrip" title="Drag to move this panel">${ic('grip', 14)}</span>
         <div class="dtabs">${tabs}</div>
+        ${ids.some(isBible) && window.TimotheosNav ? `<span class="dnav">${TimotheosNav.barHtml()}</span>` : ''}
         <span class="dbtns">
           <button class="dbtn" data-act="skin" title="This panel's own fonts and colours">${ic('palette', 14)}</button>
           <button class="dbtn dzoom" data-act="zoom-" title="Smaller (Ctrl + mouse wheel down)">${ic('textDown', 15)}</button>
@@ -282,44 +285,76 @@
     return div;
   }
 
+  /** what moves when the line at `at` (x when col, else y) is dragged: the areas on its low and high side, and how far it may go.
+   *  Areas that merely touch a little are left alone (the line may not run into them); bigger neighbours move with it. */
+  function edgePlan(col, at, lo, hi) {
+    const meets = (p, q, t) => (col ? ovl(p.y0, p.y1, q.y0, q.y1) : ovl(p.x0, p.x1, q.x0, q.x1)) > t;
+    const ends = o => col ? same(o.x1, at) : same(o.y1, at), starts = o => col ? same(o.x0, at) : same(o.y0, at);
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const o of L.areas) {
+        if (ends(o) && !lo.has(o) && [...hi].some(q => meets(o, q, 0.3))) { lo.add(o); grew = true; }
+        if (starts(o) && !hi.has(o) && [...lo].some(q => meets(o, q, 0.3))) { hi.add(o); grew = true; }
+      }
+    }
+    let to = col ? NC : NR, from = 0;
+    const min = col ? MINW : MINH, lo0 = o => (col ? o.x0 : o.y0), hi1 = o => (col ? o.x1 : o.y1);
+    if (lo.size) from = Math.max(...[...lo].map(lo0)) + min;
+    if (hi.size) to = Math.min(...[...hi].map(hi1)) - min;
+    for (const o of L.areas) {
+      if (lo.has(o) || hi.has(o)) continue;
+      if (starts(o) && [...lo].some(q => meets(o, q, EPS))) to = Math.min(to, at);       // a sliver neighbour: do not run into it
+      if (ends(o) && [...hi].some(q => meets(o, q, EPS))) from = Math.max(from, at);
+      if (!hi.size && lo0(o) >= at - EPS && [...lo].some(q => meets(o, q, EPS))) to = Math.min(to, lo0(o)); // free space beyond: up to the next area
+      if (!lo.size && hi1(o) <= at + EPS && [...hi].some(q => meets(o, q, EPS))) from = Math.max(from, hi1(o));
+    }
+    return { col, at, lo, hi, from, to };
+  }
+  const snap = () => L.areas.map(o => [o, o.x0, o.y0, o.x1, o.y1]);
+  const unsnap = sn => { for (const [o, x0, y0, x1, y1] of sn) Object.assign(o, { x0, y0, x1, y1 }); };
+  const overlapping = () => L.areas.some((p, i) => L.areas.some((q, j) => j > i && hit(p, q)));
+  const setEdge = (pl, x) => { for (const o of pl.lo) o[pl.col ? 'x1' : 'y1'] = x; for (const o of pl.hi) o[pl.col ? 'x0' : 'y0'] = x; };
+  /** drag one or two edges (a divider: one; a corner: two) with the mouse; nothing is ever allowed to overlap */
+  function dragEdges(e, plans, el) {
+    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    const rect = $('#grid').getBoundingClientRect(); const start = [e.clientX, e.clientY];
+    const per = plans.map(pl => pl.col ? view.w / rect.width : view.h / rect.height);
+    const move = ev => {
+      const want = plans.map((pl, k) => Math.max(pl.from, Math.min(pl.to, pl.at + ((pl.col ? ev.clientX - start[0] : ev.clientY - start[1]) * per[k]))));
+      const sn = snap();
+      const tryIt = idx => { unsnap(sn); idx.forEach(k => { if (want[k] >= plans[k].from - EPS && want[k] <= plans[k].to + EPS) setEdge(plans[k], want[k]); }); return !overlapping(); };
+      const all = plans.map((_, k) => k);
+      if (!tryIt(all) && !(plans.length > 1 && all.some(k => tryIt([k])))) unsnap(sn);
+      place();
+    };
+    const up = () => { for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up); saveSoon(); };
+    el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+  }
+
   /** the draggable line between two touching areas: it moves the edge of those two only, not the rest of the row / column */
   function addGut(grid, a, b, col) {
     const s = document.createElement('div');
     s.className = 'gut ' + (col ? 'h' : 'v'); s.title = col ? 'Drag to change the width of the panels beside this line' : 'Drag to change the height of the panels above and below this line';
     grid.appendChild(s); gutEls.push({ el: s, a, b, col });
+    s.addEventListener('pointerdown', e => dragEdges(e, [edgePlan(col, col ? a.x1 : a.y1, new Set([a]), new Set([b]))], s));
+  }
+
+  /** a corner handle of a Bible view's area: it moves the two edges of that corner; the panels next to them adjust */
+  function addCorner(grid, a, xs, ys) {
+    const s = document.createElement('div');
+    s.className = 'dcorner ' + (ys === 'y0' ? 't' : 'b') + (xs === 'x0' ? 'l' : 'r');
+    s.title = 'Drag to resize from this corner';
+    grid.appendChild(s); cornerEls.push({ el: s, a, xs, ys });
     s.addEventListener('pointerdown', e => {
-      e.preventDefault(); s.setPointerCapture(e.pointerId);
-      const at = col ? a.x1 : a.y1;
-      // the two areas, plus every area that touches the same line and would be overrun when it moves
-      const lo = new Set([a]), hi = new Set([b]);
-      for (let grew = true; grew;) {
-        grew = false;
-        for (const o of L.areas) {
-          const ends = col ? same(o.x1, at) : same(o.y1, at), starts = col ? same(o.x0, at) : same(o.y0, at);
-          const meets = (p, q, t) => (col ? ovl(p.y0, p.y1, q.y0, q.y1) : ovl(p.x0, p.x1, q.x0, q.x1)) > t;
-          if (ends && !lo.has(o) && [...hi].some(q => meets(o, q, 0.3))) { lo.add(o); grew = true; }
-          if (starts && !hi.has(o) && [...lo].some(q => meets(o, q, 0.3))) { hi.add(o); grew = true; }
-        }
-      }
-      // a neighbour that only touches a little is left alone; the line just may not run into it
-      let stopHi = Infinity, stopLo = -Infinity;
+      const hiX = xs === 'x1', hiY = ys === 'y1', cx = a[xs], cy = a[ys];
+      const loX = new Set(hiX ? [a] : []), hiXs = new Set(hiX ? [] : [a]), loY = new Set(hiY ? [a] : []), hiYs = new Set(hiY ? [] : [a]);
+      // the neighbours along both edges come along, and so does the area diagonally across the corner (a crossing moves as a whole)
       for (const o of L.areas) {
-        const meets = (p, q) => (col ? ovl(p.y0, p.y1, q.y0, q.y1) : ovl(p.x0, p.x1, q.x0, q.x1)) > EPS;
-        if (!lo.has(o) && !hi.has(o) && (col ? same(o.x0, at) : same(o.y0, at)) && [...lo].some(q => meets(o, q))) stopHi = at;
-        if (!lo.has(o) && !hi.has(o) && (col ? same(o.x1, at) : same(o.y1, at)) && [...hi].some(q => meets(o, q))) stopLo = at;
+        if (o === a) continue;
+        const onX = hiX ? same(o.x0, cx) : same(o.x1, cx), onY = hiY ? same(o.y0, cy) : same(o.y1, cy);
+        if (onX && onY) { (hiX ? hiXs : loX).add(o); (hiY ? hiYs : loY).add(o); }
       }
-      const min = col ? MINW : MINH;
-      const from = Math.max(stopLo, Math.max(...[...lo].map(o => (col ? o.x0 : o.y0))) + min), to = Math.min(stopHi, Math.min(...[...hi].map(o => (col ? o.x1 : o.y1))) - min);
-      const rect = $('#grid').getBoundingClientRect(); const perPx = (col ? view.w / rect.width : view.h / rect.height);
-      const start = col ? e.clientX : e.clientY;
-      const move = ev => {
-        const x = Math.max(from, Math.min(to, at + ((col ? ev.clientX : ev.clientY) - start) * perPx)); if (!(x >= from && x <= to)) return;
-        for (const o of lo) o[col ? 'x1' : 'y1'] = x;
-        for (const o of hi) o[col ? 'x0' : 'y0'] = x;
-        place();
-      };
-      const up = () => { s.removeEventListener('pointermove', move); s.removeEventListener('pointerup', up); s.removeEventListener('pointercancel', up); s.removeEventListener('lostpointercapture', up); saveSoon(); };
-      s.addEventListener('pointermove', move); s.addEventListener('pointerup', up); s.addEventListener('pointercancel', up); s.addEventListener('lostpointercapture', up);
+      dragEdges(e, [edgePlan(true, cx, loX, hiXs), edgePlan(false, cy, loY, hiYs)], s);
     });
   }
 

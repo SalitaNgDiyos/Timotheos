@@ -50,8 +50,8 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   await TimotheosSearch.run('Tobie'); ok(document.getElementById('searchResults').innerHTML.includes('Tob'), 'Wycliffe Apocrypha in results');
   // rows + diff
   key('j', { ctrlKey: true }); await sleep(600); { const a = TimotheosDock.state().areas, g = id => a.find(x => x.panels.includes(id)); ok(g('bv1').y0 > g('bv0').y0 - 0.01 && Math.abs(g('bv1').x0 - g('bv0').x0) < 0.01, 'Ctrl+J: Bible views one under another'); };
-  document.getElementById('diffToggle').click(); await sleep(700); ok(document.querySelector('mark.dif') && document.querySelector('.diffpct'), 'differences marked with %');
-  document.getElementById('diffToggle').click(); key('h', { ctrlKey: true }); await sleep(600);
+  save({ diff: true }); renderChapter(); await sleep(700); ok(document.querySelector('mark.dif') && document.querySelector('.diffpct'), 'differences marked with %');
+  save({ diff: false }); renderChapter(); key('h', { ctrlKey: true }); await sleep(600);
   // reading plan
   const plan = await api.createPlan({ name: 'Bible in a year', groups: ['Gen-Mal', 'Matt-Rev'], start: new Date().toISOString().slice(0, 10), mode: 'days', sessions: 365, days: [0,1,2,3,4,5,6] }, state.settings.openBibles);
   TimotheosStudy.study.ud.plans.push(plan); await api.setUserData('plans', TimotheosStudy.study.ud.plans);

@@ -79,7 +79,9 @@ function rtfToHtml(rtf, opts = {}) {
   const effFs = st => (st.fs && (st.fs > 25 || st.fs < 18)) ? st.fs : '';
   const sig = () => `${st.b}${st.i}${st.u}${st.s}${st.sup}${st.sub}${st.scaps}|${st.cf}|${st.cb}|${effFs(st)}|${st.f !== null && families[st.f] ? st.f : ''}`;
 
+  let greekRun = false, inBytes = false;
   function emitText(t) {
+    if (!inBytes && /[A-Za-z]/.test(t)) greekRun = false;
     if (st.skip || !t) return;
     if (field && field.inInst) { field.inst += t; return; }
     if (baseFs === null && st.fs && !st.sup && !st.sub) baseFs = st.fs;
@@ -112,8 +114,14 @@ function rtfToHtml(rtf, opts = {}) {
 
   function flushBytes() {
     if (!pendingBytes.length) return;
-    const cp = (st.f !== null && fonts[st.f]) || opts.codepage || 'windows-1252';
-    emitText(dec(cp).decode(new Uint8Array(pendingBytes)));
+    let cp = (st.f !== null && fonts[st.f]) || opts.codepage || 'windows-1252';
+    // Greek typed in a font that does not say it is Greek (some Alford / e-Sword modules): a run of two or more accented-letter bytes,
+    // or a single one right after such a run, is Greek in code page 1253, not Western accented letters
+    if (cp === 'windows-1252') {
+      const b = pendingBytes, greekish = b.every(x => x >= 0xC1 && x <= 0xFE && x !== 0xD2 && x !== 0xD7 && x !== 0xF7);
+      if (greekish && (b.length >= 2 || (greekRun && b[0] >= 0xE1))) { cp = 'windows-1253'; greekRun = true; } else greekRun = false;
+    }
+    inBytes = true; emitText(dec(cp).decode(new Uint8Array(pendingBytes))); inBytes = false;
     pendingBytes = [];
   }
 

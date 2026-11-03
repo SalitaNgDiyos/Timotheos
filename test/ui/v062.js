@@ -13,7 +13,7 @@ const secs = () => [...document.querySelectorAll('section.bv')];
   // top bar
   const tb = document.getElementById('toolbar');
   ok(!tb.querySelector('#backBtn, #fwdBtn, #viewBtn, #searchBtn, #printBtn, #copyBtn'), 'top bar: Back, Forward, View, Search, Print (and Copy) are gone');
-  ok(vis(tb.querySelector('#refInput')) && vis(tb.querySelector('#panelsBtn')) && vis(tb.querySelector('#optionsBtn')), 'top bar keeps the reference box, Panels, Options');
+  ok(!vis(tb.querySelector('#refInput')) && !vis(document.getElementById('navStripBar')) && vis(tb.querySelector('#panelsBtn')) && vis(tb.querySelector('#optionsBtn')), 'top bar: Go-to box, arrows and the chapter/verse strips are gone; Panels and Options stay (0.6.4)');
   // Bible views are panels in the grid; no drawer; Compare gone
   ok(secs().length === 2 && TimotheosDock.located('bv0') && TimotheosDock.located('bv1') && secs().every(s => s.closest('.dgroup')), 'every Bible view is a panel in an area of the grid');
   ok(!document.getElementById('bvBiblesDrawer') && !document.getElementById('bvBiblesBtn') && !document.querySelector('.bvdrawer'), 'no Bibles drawer');

@@ -1,6 +1,6 @@
 'use strict';
 /* Every panel has its own look: font, text colour, link colour (verse references, Strong's numbers) and background.
- * Colours: text, tab name (in the caption), headings & titles, notes / hints / field labels, verse numbers, verse links, page background.
+ * Page Background Color is the background of the main text only. Colours: text, tab name (in the caption), headings & titles, notes / hints / field labels, verse numbers, verse links, page background.
  * Set from the palette button in the panel's caption; kept in settings.panelSkins and applied only to that panel. */
 /* global state, save, esc, paneMenu, TimotheosDock, TimotheosOptions, TimotheosStudy */
 (function () {
@@ -15,15 +15,17 @@
   function apply(id) {
     const el = elOf(id); if (!el) return;
     const k = skins()[id] || {};
-    for (const p of ['--font-ui', '--font-text', '--text', '--strong', '--fn', '--bg', '--card', '--panel', '--muted', '--vnum']) el.style.removeProperty(p);
-    el.style.fontFamily = ''; el.style.color = ''; el.style.background = '';
+    for (const p of ['--font-ui', '--font-text', '--text', '--strong', '--fn', '--textbg', '--pbg', '--muted', '--vnum']) el.style.removeProperty(p);
+    el.style.fontFamily = ''; el.style.color = '';
     if (k.font) { const f = `'${String(k.font).replace(/['\\]/g, '')}', 'TwGreek', 'TwHebrew', sans-serif`; el.style.fontFamily = f; el.style.setProperty('--font-ui', f); el.style.setProperty('--font-text', f); }
     if (k.color) { el.style.color = k.color; el.style.setProperty('--text', k.color); if (!k.head) el.style.setProperty('--heading', k.color); }
     if (k.head) el.style.setProperty('--heading', k.head);
     if (k.note) el.style.setProperty('--muted', k.note);
     if (k.vnum) el.style.setProperty('--vnum', k.vnum);
     if (k.link) { el.style.setProperty('--strong', k.link); el.style.setProperty('--fn', k.link); }
-    if (k.bg) { el.style.background = k.bg; el.style.setProperty('--bg', k.bg); el.style.setProperty('--panel', k.bg); el.style.setProperty('--card', `color-mix(in srgb, ${k.bg} 90%, ${k.color || 'gray'} 10%)`); }
+    // the page colour is the background of the main text of the panel (the verses, the topic, the results), not of its buttons and boxes
+    if (k.bg) { el.style.setProperty('--textbg', k.bg); el.style.setProperty('--pbg', k.bg); }
+    el.classList.toggle('pbgc', !!k.bg);
     el.style.zoom = k.scale && k.scale !== 1 ? k.scale : '';
     el.classList.toggle('pskin', !!(k.font || k.color || k.link || k.bg || k.head || k.note || k.vnum || k.tab || k.scale));
     el.classList.toggle('pheadc', !!k.head); el.classList.toggle('pnotec', !!k.note);

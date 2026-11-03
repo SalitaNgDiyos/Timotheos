@@ -558,10 +558,10 @@ function ok(cond, msg) {
   const navJs = fs.readFileSync(path.join(__dirname, "../src/renderer/nav-ui.js"), "utf8");
 
   ok(
-    idxHtml.includes('id="navBookBtn"') &&
-    idxHtml.includes('id="navPrevBook"') &&
-    idxHtml.includes('id="navPrevVerse"') &&
-    idxHtml.includes('id="navHistBtn"') &&
+    navJs.includes('class="navpill"') &&
+    navJs.includes("['prevBook'") &&
+    navJs.includes("['prevVerse'") &&
+    navJs.includes("['hist'") &&
     idxHtml.includes('id="navPop"') &&
     idxHtml.includes('id="refInput"'),
     "[I1] Design 1 HTML elements (Interactive Header Pills, Step Icons, History Menu, 3-Step Visual Popover & Verse Selector) are present"
@@ -579,9 +579,9 @@ function ok(cond, msg) {
     idxHtml.includes('id="treeFilter"') &&
     idxHtml.includes('id="treeModeList"') &&
     idxHtml.includes('id="treeModeGrid"') &&
-    idxHtml.includes('id="navModeSw"') &&
+    !idxHtml.includes('id="navModeSw"') &&
     idxHtml.includes('src="nav-ui.js"'),
-    "[I3] Design 3 HTML elements (Tree Toolbar, Filter, List/Tiles Mode Switcher) and Nav Mode Switcher (1 | 2 | 3 | All) are present"
+    "[I3] Design 3 HTML elements (Tree Toolbar, Filter, List/Tiles Mode Switcher) are present; the Nav 1 | 2 | 3 | All switch is gone (0.6.4)"
   );
 
   global.window = global.window || {};

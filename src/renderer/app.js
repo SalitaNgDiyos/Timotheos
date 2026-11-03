@@ -146,7 +146,7 @@ function runCommand(cmd) {
     search: () => openTab('search', true), bookSearch: () => openTab('bsearch', true),
     exportTopics: () => TimotheosTools.exportTopics(),
     printTopic: () => TimotheosTools.printTopic(), clipmon: () => TimotheosTools.setClipmon(!TimotheosTools.clipOn()),
-    voices: () => TimotheosSpeech.voicesDialog(), goto: () => { $('#refInput').focus(); $('#refInput').select(); }, about,
+    voices: () => TimotheosSpeech.voicesDialog(), goto: () => { const p = document.querySelector('.dgroup.isbv .navpill') || document.querySelector('.navpill'); if (p && window.TimotheosNav) TimotheosNav.openNavPopover('book', p); }, about,
     options: () => TimotheosOptions.open(), resetLayout: () => TimotheosDock.applyPreset('classic'),
     copyVerses: () => TimotheosStudy.copyDialog(), daily: () => TimotheosStudy.openStudy('plans'), keys: () => TimotheosStudy.showKeys(), print: () => window.print(),
     guide: () => api.appCmd('guide', TimotheosOptions.appearance().skin)
@@ -167,7 +167,7 @@ function initDock() {
     onSave: layout => save({ dock: layout }),
     zoomable: id => !!ZOOM_TARGETS[id],
     onZoom: (id, d) => zoomPanel(id, d),
-    onRender: () => { if (window.TimotheosPanelSkin) TimotheosPanelSkin.applyAll(); },
+    onRender: () => { if (window.TimotheosPanelSkin) TimotheosPanelSkin.applyAll(); if (window.TimotheosNav) TimotheosNav.syncAll(); },
     onClose: id => { if (/^bv\d+$/.test(id)) { closeView(+id.slice(2)); return true; } return false; },
     onSkin: (id, btn) => TimotheosPanelSkin.menu(id, btn),
     onActivate: id => { if (/^bv\d+$/.test(id)) { const k = +id.slice(2); if (views()[k] && k !== state.active) setActive(k); return; } if (id === 'bsearch') TimotheosBookSearch.onOpen(false); if (id === 'search') TimotheosSearch.onOpen(false); if (id === 'study') TimotheosStudy.onOpen(); }
@@ -543,6 +543,7 @@ function ensurePanes() {
   const vs = views();
   while (paneEls.length > vs.length) { const k = paneEls.length - 1; paneEls.pop(); if (window.TimotheosDock) TimotheosDock.remove('bv' + k); }
   while (paneEls.length < vs.length) makePane(paneEls.length);
+  if (window.TimotheosNav) TimotheosNav.syncAll();
   const host = $('#grid');
   document.body.classList.toggle('centered', centerOn());
   paneEls.forEach((sec, i) => {
@@ -1077,7 +1078,7 @@ function about() {
   const s = state.settings; const lang0 = s.aboutVerse === 'en' ? 'en' : 'fil';
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
-    <p><b>Timotheos ${esc(s.version || '0.6.3')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.4')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>MIT License – free to use, copy, change and share, with the copyright notice kept.</td></tr>
     <tr><th>GitHub</th><td><a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a></td></tr>
     <tr><th>Program folder</th><td><code class="sel">${esc(s.appDir || '')}</code></td></tr>

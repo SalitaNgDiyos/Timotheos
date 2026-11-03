@@ -35,6 +35,11 @@ button.tb.on { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 #grid > .dgroup { position: absolute; min-width: 0; min-height: 0; box-sizing: border-box; }
 .gut { position: absolute; z-index: 2; border-radius: 3px; }
 .gut.h { cursor: col-resize; } .gut.v { cursor: row-resize; }
+.dcorner { position: absolute; width: 14px; height: 14px; z-index: 4; border-radius: 4px; }
+.dcorner.tl, .dcorner.br { cursor: nwse-resize; } .dcorner.tr, .dcorner.bl { cursor: nesw-resize; }
+.dcorner:hover { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+body.dragging .dcorner { display: none; }
+@media print { .dcorner { display: none !important; } }
 .gut:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 #empty { position: absolute; inset: 6px; z-index: 3; background: var(--bg); }
 .zone { display: flex; min-width: 0; min-height: 0; flex: none; }
@@ -329,7 +334,8 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .bvcap { display: flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 6px 0 4px; background: color-mix(in srgb, var(--cap-bible) 14%, var(--panel)); border-bottom: 1px solid var(--line); flex: none; font: var(--ui-size, 13px) var(--font-ui); }
 
 .bv.active .bvcap { background: color-mix(in srgb, var(--cap-bible) 28%, var(--panel)); }
-.bvbible { border: 0; background: transparent; font: 700 var(--ui-size, 13px) var(--font-ui); color: var(--heading); padding: 3px 7px; border-radius: 5px; cursor: pointer; }
+.bvcap { flex-wrap: wrap; row-gap: 2px; }
+.bvbible { white-space: nowrap; border: 0; background: transparent; font: 700 var(--ui-size, 13px) var(--font-ui); color: var(--heading); padding: 3px 7px; border-radius: 5px; cursor: pointer; }
 .bvbible::after { content: ' ▾'; font-weight: 400; opacity: .6; }
 .bvbible:hover { background: var(--card); }
 .bvref { color: var(--muted); font-size: calc(var(--ui-size, 13px) - 1px); }
@@ -382,7 +388,26 @@ body.altkeys .tmenu u { text-decoration: underline; }
 
 .navsteps { display: inline-flex; align-items: center; gap: 1px; margin-left: 2px; padding-left: 4px; border-left: 1px solid rgba(255,255,255,.22); }
 :root[data-caps="plain"] .navsteps { border-left-color: var(--line); }
-.ccap .navic { padding: 3px 4px; border-radius: 5px; }
+.navhdr1 .navic { padding: 3px 4px; border-radius: 5px; }
+/* 0.6.4: the Go-to box with its arrows and the chapter / verse strip are gone from the top; the verse browser is in the Bible views */
+#center > .ccap, #navStripBar, #refForm, #prevBtn, #nextBtn, .toolbar .tsep { display: none !important; }
+#center { border-bottom: 0; }
+/* the verse browser bar sits in the caption of a Bible view, next to the palette button */
+.dnav { flex: 0 1 auto; min-width: 0; overflow: hidden; display: flex; align-items: center; margin: 0 4px 0 auto; }
+.dcap { container-type: inline-size; }
+.dcap .navpill .np-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12em; }
+/* narrow panels drop the less used arrows first */
+@container (max-width: 520px) { .dcap [data-nav="prevBook"], .dcap [data-nav="nextBook"], .dcap [data-nav="hist"] { display: none; } }
+@container (max-width: 400px) { .dcap [data-nav="prevVerse"], .dcap [data-nav="nextVerse"] { display: none; } .dcap .navpill .np-lbl { max-width: 5.5em; } }
+.dgroup:not(.isbv) .dnav { display: none; }
+.dcap .navhdr1 { flex-wrap: nowrap; }
+.dcap .navpill { height: 22px; }
+.dcap .navsteps { border-left-color: rgba(255,255,255,.28); }
+.dcap .navic { color: inherit; padding: 3px 3px; }
+.dcap .navic:disabled { opacity: .35; }
+.dcap .dtabs { flex: 0 1 auto; }
+/* a Bible view's tab in the caption shows only its icon (its name is on the view's own header) */
+.dgroup .dtab[data-id^="bv"] > span { display: none; }
 
 /* Navigation Mode Switcher (Nav: 1 | 2 | 3 | All) */
 .navmodes { display: inline-flex; align-items: center; gap: 2px; background: rgba(0,0,0,.18); padding: 2px 4px; border-radius: 6px; margin-right: 4px; font: 600 11px var(--font-ui); }
@@ -394,7 +419,7 @@ body.altkeys .tmenu u { text-decoration: underline; }
 :root[data-caps="plain"] .navmodes button.on { background: var(--accent); color: var(--card); }
 
 /* Design 1 Popover: 3-Step Visual Grid & 3-Column All-in-One */
-.navpop { position: absolute; z-index: 65; width: min(640px, calc(100% - 16px)); max-height: min(460px, calc(100% - 44px));
+.navpop { position: fixed; z-index: 65; width: min(640px, calc(100vw - 16px)); max-height: min(460px, calc(100vh - 60px));
   background: var(--card); color: var(--text); border: 1.5px solid var(--accent); border-radius: 10px;
   box-shadow: 0 16px 44px rgba(0,0,0,.32); display: flex; flex-direction: column; overflow: hidden; }
 .nphdr { display: flex; align-items: center; gap: 5px; padding: 6px 8px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -673,6 +698,7 @@ body.centered .bv > .bvbody > .bvtext { padding-bottom: var(--half, 0px); box-si
 .pzbar .pzv { color: var(--muted); min-width: 30px; text-align: center; font-weight: 400; }
 
 /* panel colours: headings and titles, notes / hints / field labels */
+.pbgc .view, .pbgc .bvtext, .pbgc .lookup, .pbgc .cmtbody, .pbgc .searchout, .pbgc .results, .pbgc .bsresults { background-color: var(--pbg); }
 .pheadc h1, .pheadc h2, .pheadc h3, .pheadc h4, .pheadc .mh, .pheadc th, .pheadc .paneHead { color: var(--phead); }
 .pnotec label, .pnotec .small, .pnotec .hint, .pnotec .muted, .pnotec .note { color: var(--pnote); }
 

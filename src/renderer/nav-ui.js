@@ -87,45 +87,19 @@
   }
 
   /* ======================================================================= Navigation Mode Switcher (1 | 2 | 3 | All) */
-  function applyNavDesign(mode, announce = true) {
-    if (!['1', '2', '3', 'all'].includes(mode)) mode = 'all';
-    document.documentElement.dataset.navdesign = mode;
-    if (state.settings) {
-      state.settings.navDesign = mode;
-      save({ navDesign: mode });
-    }
-    document.querySelectorAll('#navModeSw button[data-navmode]').forEach(b => {
-      b.classList.toggle('on', b.dataset.navmode === mode);
-    });
-    const h1 = $('#navHeader1'), chHead = $('#chapterHead'), strip = $('#navStripBar');
-    if (h1) h1.classList.toggle('hidden', mode === '2' || mode === '3');
-    if (chHead) chHead.classList.toggle('hidden', mode === '1' || mode === 'all');
-    if (strip) strip.classList.toggle('hidden', mode === '1' || mode === '3');
-
-    if (mode === '3' && window.TimotheosDock) {
-      TimotheosDock.show('tree');
-    }
-    if (announce && window.TimotheosStudy) {
-      const names = {
-        '1': 'Nav Design 1: Interactive Header Pills, 3-Step Visual Grid & Step Icons',
-        '2': 'Nav Design 2: Chapter Strip, Verse Minimap, Headings Outline & Bookmarks',
-        '3': 'Nav Design 3: Color-Coded Sidebar Bible Tree & Book Tile Matrix',
-        'all': 'All 3 Bible Navigation Designs Active',
-      };
-      TimotheosStudy.flash(names[mode]);
-    }
+  function applyNavDesign() { // 0.6.4: the 1 | 2 | 3 | All switch is gone; all three designs are always on
+    document.documentElement.dataset.navdesign = 'all';
+    const chHead = $('#chapterHead'); if (chHead) chHead.classList.add('hidden');
   }
 
   /* ======================================================================= Design 1: Interactive Header & 3-Step Popover */
+  /** the verse browser bar (book pill, step arrows, history) that sits in the header of every Bible view */
+  const NAV_STEPS = [['prevBook', 'prevBook', 'Previous book (Ctrl+←)'], ['prevChap', 'prev', 'Previous chapter (←)'], ['prevVerse', 'up', 'Previous verse (↑)'],
+    ['nextVerse', 'down', 'Next verse (↓)'], ['nextChap', 'next', 'Next chapter (→)'], ['nextBook', 'nextBook', 'Next book (Ctrl+→)'], ['hist', 'history', 'Recent passage history (Back / Forward list)']];
+  function barHtml() {
+    return `<span class="navhdr1"><button type="button" class="navpill" title="Browse books, chapters and verses (mouse wheel steps the book)"><span class="np-cat">📜</span><span class="np-lbl">Genesis</span><span class="np-caret">▾</span></button><span class="navsteps">${NAV_STEPS.map(([a, ic, t]) => `<button type="button" class="dbtn navic" data-nav="${a}" title="${t}" aria-label="${t}">${TimotheosIcons.icon(ic, 14)}</button>`).join('')}</span></span>`;
+  }
   function wireHeaderBar() {
-    const sw = $('#navModeSw');
-    if (sw) {
-      sw.onclick = e => {
-        const b = e.target.closest('button[data-navmode]');
-        if (b) applyNavDesign(b.dataset.navmode, true);
-      };
-    }
-
     const vSel = $('#verseSel');
     if (vSel) {
       vSel.onchange = () => {
@@ -133,30 +107,28 @@
         if (v > 0) selectVerse(v, true);
       };
     }
-
-    const bookBtn = $('#navBookBtn'), chHead = $('#chapterHead');
-    if (bookBtn) {
-      bookBtn.onclick = e => { e.stopPropagation(); openNavPopover('book', bookBtn); };
-      bookBtn.addEventListener('wheel', e => { e.preventDefault(); stepBook(e.deltaY > 0 ? 1 : -1); }, { passive: false });
-    }
+    const chHead = $('#chapterHead');
+    document.addEventListener('click', e => {
+      const pill = e.target.closest('.navhdr1 .navpill'), ic = e.target.closest('.navhdr1 .navic');
+      if (pill) { e.stopPropagation(); openNavPopover('book', pill); return; }
+      if (!ic) return;
+      const a = ic.dataset.nav;
+      if (a === 'prevBook') stepBook(-1); else if (a === 'nextBook') stepBook(1);
+      else if (a === 'prevChap') step(-1); else if (a === 'nextChap') step(1);
+      else if (a === 'prevVerse') stepVerse(-1); else if (a === 'nextVerse') stepVerse(1);
+      else if (a === 'hist') { e.stopPropagation(); openHistoryMenu(ic); }
+    });
+    document.addEventListener('wheel', e => { const pill = e.target.closest && e.target.closest('.navhdr1 .navpill'); if (pill) { e.preventDefault(); stepBook(e.deltaY > 0 ? 1 : -1); } }, { passive: false });
     if (chHead) {
       chHead.style.cursor = 'pointer';
       chHead.title = 'Click to open Book, Chapter & Verse visual picker';
       chHead.onclick = e => { e.stopPropagation(); openNavPopover('book', chHead); };
     }
 
-    if ($('#navPrevBook')) $('#navPrevBook').onclick = () => stepBook(-1);
-    if ($('#navPrevChap')) $('#navPrevChap').onclick = () => step(-1);
-    if ($('#navPrevVerse')) $('#navPrevVerse').onclick = () => stepVerse(-1);
-    if ($('#navNextVerse')) $('#navNextVerse').onclick = () => stepVerse(1);
-    if ($('#navNextChap')) $('#navNextChap').onclick = () => step(1);
-    if ($('#navNextBook')) $('#navNextBook').onclick = () => stepBook(1);
-    if ($('#navHistBtn')) $('#navHistBtn').onclick = e => { e.stopPropagation(); openHistoryMenu($('#navHistBtn')); };
-
     document.addEventListener('mousedown', e => {
       const pop = $('#navPop');
       if (pop && !pop.classList.contains('hidden')) {
-        if (!pop.contains(e.target) && !e.target.closest('#navBookBtn, #chapterHead, .bvref')) {
+        if (!pop.contains(e.target) && !e.target.closest('.navpill, #chapterHead, .bvref')) {
           closeNavPopover();
         }
       }
@@ -190,13 +162,10 @@
     pop.classList.remove('hidden');
 
     if (anchorEl) {
-      const cRect = $('#center').getBoundingClientRect();
       const aRect = anchorEl.getBoundingClientRect();
-      const pw = Math.min(640, cRect.width - 16);
-      const left = Math.max(8, Math.min(aRect.left - cRect.left, cRect.width - pw - 8));
-      const top = Math.max(34, aRect.bottom - cRect.top + 4);
-      pop.style.left = left + 'px';
-      pop.style.top = top + 'px';
+      const pw = Math.min(640, window.innerWidth - 16);
+      pop.style.left = Math.max(8, Math.min(aRect.left, window.innerWidth - pw - 8)) + 'px';
+      pop.style.top = Math.max(34, Math.min(aRect.bottom + 4, window.innerHeight - 120)) + 'px';
     }
     const fi = $('#npFilter');
     if (fi) setTimeout(() => fi.focus(), 20);
@@ -830,13 +799,12 @@
     }
 
     // 2. Update Design 1 Interactive Header Pills
-    const bCatEl = $('#navBookCat'), bLblEl = $('#navBookLbl'), cLblEl = $('#navChapLbl'), vLblEl = $('#navVerseLbl');
-    if (bCatEl) bCatEl.textContent = cat.icon;
-    if (bLblEl) bLblEl.textContent = `${bk.name} ${r.c}:${r.v || 1}`;
-    if (cLblEl) cLblEl.textContent = `Ch ${r.c}`;
-    if (vLblEl) vLblEl.textContent = `:${r.v || 1}`;
-    const histBtn = $('#navHistBtn');
-    if (histBtn) histBtn.disabled = !(state.back && state.back.length) && !(state.fwd && state.fwd.length);
+    document.querySelectorAll('.navhdr1').forEach(h => {
+      const cat1 = h.querySelector('.np-cat'), lbl = h.querySelector('.np-lbl'), hist = h.querySelector('[data-nav="hist"]');
+      if (cat1) cat1.textContent = cat.icon;
+      if (lbl) lbl.textContent = `${bk.name} ${r.c}:${r.v || 1}`;
+      if (hist) hist.disabled = !(state.back && state.back.length) && !(state.fwd && state.fwd.length);
+    });
 
     // 3. Update Design 2 Chapter Strip, Headings Count, Bookmarks & Verse Minimap
     const chBox = $('#stripChaps');
@@ -898,6 +866,7 @@
     openNavPopover,
     closeNavPopover,
     applyNavDesign,
+    barHtml,
     bookCategory,
   };
 })();

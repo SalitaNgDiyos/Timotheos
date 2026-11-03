@@ -218,13 +218,8 @@
     const bibles = all.filter(p => TimotheosDock.isBible(p.id)).map(row).join('');
     const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => `<button data-preset="${id}">${TimotheosIcons.icon('layout', 15)}${p.label}</button>`).join('');
     const saved = Object.keys(state.settings.savedLayouts || {}).map(n => `<button data-saved="${esc(n)}">${TimotheosIcons.icon('study', 15)}${esc(n)}</button>`).join('');
-    const lay = state.settings.layout === 'rows' ? 'rows' : 'cols';
     m.innerHTML = `<div class="mh">Panels <span class="small">(click to show or close · the grid has 4 columns × 3 rows)</span></div>
       <button data-act="newbv">${TimotheosIcons.icon('plus', 15)}<span class="pic" style="color:var(--cap-bible)">${TimotheosIcons.icon('bible', 15)}</span><b>Bible View</b> <span class="small">(add another)</span></button>${bibles}${rows}
-      <div class="msep"></div><div class="mh">Bible views</div>
-      <button data-lay="cols">${TimotheosIcons.icon(lay === 'cols' ? 'check' : 'plus', 15)}Side by side <kbd>Ctrl+H</kbd></button>
-      <button data-lay="rows">${TimotheosIcons.icon(lay === 'rows' ? 'check' : 'plus', 15)}One under another <kbd>Ctrl+J</kbd></button>
-      <button data-act="diff">${TimotheosIcons.icon(state.settings.diff ? 'check' : 'plus', 15)}Mark differences between the views</button>
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
 `;
@@ -235,8 +230,6 @@
       fillPanelsMenu();
     });
     m.querySelector('[data-act="newbv"]').onclick = async () => { closeMenus(); await window.addView((state.settings.views[state.active] || {}).bible || state.modules.bibles[0].id); };
-    m.querySelectorAll('[data-lay]').forEach(b => b.onclick = () => { window.setViewLayout(b.dataset.lay); fillPanelsMenu(); });
-    m.querySelector('[data-act="diff"]').onclick = () => { const on = !state.settings.diff; save({ diff: on }); const t = $('#diffToggle'); if (t) t.checked = on; renderChapter(); fillPanelsMenu(); };
     m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TimotheosDock.applyPreset(b.dataset.preset); closeMenus(); });
     m.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TimotheosDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); closeMenus(); });
     m.querySelector('[data-act="save"]').onclick = () => { closeMenus(); saveLayoutAs(); };

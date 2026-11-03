@@ -1,4 +1,4 @@
-# Timotheos 0.6.3
+# Timotheos 0.6.4
 
 An offline Bible study app for Windows that reads and creates **theWord** and **e-Sword** modules and shows the
 **Apocrypha in the Bible view, in its 1611 King James place** (between Malachi and Matthew), or in the **Septuagint (NETS)** or **Greek Orthodox** order, side by side with your other Bibles.

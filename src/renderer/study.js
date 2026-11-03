@@ -31,12 +31,6 @@ function wireViewMenu() {
   const menu = $('#viewMenu');
   $('#viewBtn').onclick = e => { e.stopPropagation(); menu.classList.toggle('hidden'); };
   document.addEventListener('click', e => { if (!e.target.closest('#viewMenu, #viewBtn')) menu.classList.add('hidden'); if (!e.target.closest('#ctxMenu')) hideCtx(); });
-  for (const r of document.querySelectorAll('input[name="layout"]')) {
-    r.checked = (state.settings.layout || 'cols') === r.value;
-    r.onchange = () => setLayout(r.value);
-  }
-  $('#diffToggle').checked = !!state.settings.diff;
-  $('#diffToggle').onchange = () => { save({ diff: $('#diffToggle').checked }); renderChapter(); };
   $('#fontUp').onclick = () => font(1); $('#fontDown').onclick = () => font(-1);
   $('#printBtn').onclick = () => { menu.classList.add('hidden'); window.print(); };
   $('#copyBtn').onclick = () => copyDialog();

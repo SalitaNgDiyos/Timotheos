@@ -46,7 +46,7 @@ async function drag(id, to, via) {
   // 5. move the floating window by its caption
   const fl = document.querySelector('.dfloat'); const x0 = fl.offsetLeft;
   const [fx, fy] = ctr(fl.querySelector('.dgrip'));
-  pe('pointerdown', fx, fy, fl.querySelector('.dgrip')); pe('pointermove', fx + 30, fy + 10); await sleep(30); pe('pointermove', fx + 120, fy + 40); await sleep(30); pe('pointerup', fx + 120, fy + 40); await sleep(300);
+  pe('pointerdown', fx, fy, fl.querySelector('.dgrip')); pe('pointermove', fx + 30, fy); await sleep(30); pe('pointermove', fx + 120, fy); await sleep(30); pe('pointerup', fx + 120, fy); await sleep(300);
   ok(Math.abs(D.state().floats[0].x - (x0 + 120)) < 4, 'floating window moved: x ' + x0 + ' → ' + D.state().floats[0].x);
   // 6. dock it again with its button
   fl.querySelector('.dbtn[data-act="float"]').click(); await sleep(200);

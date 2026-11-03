@@ -56,10 +56,6 @@
       <label><input type="checkbox" data-show="highlights"> My highlighting <kbd>U</kbd></label>
       <label><input type="checkbox" data-show="notes"> My notes under verses <kbd>N</kbd></label>
       <label><input type="checkbox" data-show="paragraph"> Paragraph mode <kbd>P</kbd></label>
-      <div class="mh">Bible views</div>
-      <label><input type="radio" name="layout" value="cols"> Side by side <kbd>Ctrl+H</kbd></label>
-      <label><input type="radio" name="layout" value="rows"> One under another <kbd>Ctrl+J</kbd></label>
-      <label title="Compare the first Bible with the others word by word"><input type="checkbox" id="diffToggle"> Mark differences</label>
       <div class="mh">Text size (active view)</div>
       <div class="row tight"><button id="fontDown">A−</button><button id="fontUp">A+</button></div>
       <div class="mh">Toolbar items</div>
@@ -79,26 +75,6 @@
       <header class="ccap">
         <span class="ccapic" data-icon="bible" data-icon-size="16"></span>
         <div id="chapterHead" class="chapter-head"></div>
-        <div id="navHeader1" class="navhdr1">
-          <button id="navBookBtn" class="navpill" title="Browse books, chapters and verses (mouse wheel steps the book)"><span class="np-cat" id="navBookCat">📜</span><span id="navBookLbl">Genesis</span><span class="np-caret">▾</span></button>
-          <span class="navsteps">
-            <button id="navPrevBook" class="dbtn navic" data-icon="prevBook" data-icon-size="14" title="Previous book (Ctrl+←)" aria-label="Previous book"></button>
-            <button id="navPrevChap" class="dbtn navic" data-icon="prev" data-icon-size="14" title="Previous chapter (←)" aria-label="Previous chapter"></button>
-            <button id="navPrevVerse" class="dbtn navic" data-icon="up" data-icon-size="14" title="Previous verse (↑)" aria-label="Previous verse"></button>
-            <button id="navNextVerse" class="dbtn navic" data-icon="down" data-icon-size="14" title="Next verse (↓)" aria-label="Next verse"></button>
-            <button id="navNextChap" class="dbtn navic" data-icon="next" data-icon-size="14" title="Next chapter (→)" aria-label="Next chapter"></button>
-            <button id="navNextBook" class="dbtn navic" data-icon="nextBook" data-icon-size="14" title="Next book (Ctrl+→)" aria-label="Next book"></button>
-            <button id="navHistBtn" class="dbtn navic" data-icon="history" data-icon-size="14" title="Recent passage history (Back / Forward list)" aria-label="Passage history"></button>
-          </span>
-        </div>
-        <span class="grow"></span>
-        <div id="navModeSw" class="navmodes" title="Switch between the 3 Bible navigation designs or enable all 3 together">
-          <span class="nmlbl">Nav:</span>
-          <button data-navmode="1" title="Design 1: Interactive Header Bar, 3-Step Visual Grid Popover, Step Icons &amp; History Menu">1</button>
-          <button data-navmode="2" title="Design 2: Horizontal Chapter Strip, Verse Minimap, Pericope Headings Outline &amp; Bookmark Ribbon">2</button>
-          <button data-navmode="3" title="Design 3: Color-Coded Sidebar Bible Tree &amp; Compact Tile Matrix with Inline Chapter/Verse Grids">3</button>
-          <button data-navmode="all" class="on" title="All 3 Navigation Designs Active Together">All</button>
-        </div>
       </header>
       <div id="navStripBar" class="navstrip">
         <div class="nsrow1">
