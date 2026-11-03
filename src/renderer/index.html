@@ -249,7 +249,11 @@
     <form id="searchForm" class="search">
       <div class="row tight"><input id="searchInput" type="search" placeholder="e.g. faith hope · &quot;a phrase&quot; · G26 · love* · m/ V-AAI*" spellcheck="false" autocomplete="off"><button type="submit" class="primary">Find</button><button type="button" id="searchHistBtn" class="icon" title="Earlier searches">⟲</button></div>
       <div id="searchExplain" class="explain"></div>
-      <div class="row tight"><select id="searchBibles" title="Which Bibles to search"><option value="open">Bibles open in the view</option><option value="first">First Bible only</option><option value="all">All Bibles</option></select></div>
+      <div class="row tight"><select id="searchBibles" title="Which Bibles to search"><option value="open">Bibles open in the view</option><option value="first">First Bible only</option><option value="all">All Bibles</option><option value="chosen">The Bibles I tick below</option></select></div>
+      <details class="opts bpick" id="searchPick"><summary>Choose the Bibles to search <span id="searchPickCount" class="small"></span></summary>
+        <div class="row tight"><input id="searchPickFind" type="search" placeholder="Find a Bible…" spellcheck="false"><button type="button" id="spAll" class="icon" title="Tick every Bible">All</button><button type="button" id="spNone" class="icon" title="Untick every Bible">None</button><button type="button" id="spOpen" class="icon" title="Tick the Bibles open in the views">Open</button></div>
+        <div id="searchBibleList" class="bpicklist"></div>
+      </details>
       <div class="row tight"><select id="searchScope" title="Search range"></select><button type="button" id="rangeBtn" class="icon" title="Define a custom range">…</button></div>
       <details class="opts"><summary>Options</summary>
         <label title="Words separated by a space must all occur (AND) or any may occur (OR)">Space between words means <select id="optDefault"><option value="and">AND</option><option value="or">OR</option></select></label>
@@ -327,6 +331,7 @@
             <label>Selected verse <span><input type="color" id="colSel"> <button class="link0" data-reset="sel">skin</button></span></label>
           </div>
           <div class="orow"><label><input type="checkbox" id="optCapColor"> Coloured panel captions</label></div>
+          <div class="orow"><span class="olbl">Panels have their own fonts and colours (palette button in each panel's caption)</span><button id="resetPanelSkins">Reset all panels</button></div>
         </section>
         <section class="optpage hidden" data-o="fonts">
           <h4>Bible text</h4>
@@ -393,6 +398,13 @@
           <label class="field">Greek Strong's <select id="greekDict"></select></label>
           <label class="field">Hebrew Strong's <select id="hebrewDict"></select></label>
           <label class="field">Morphology <select id="morphDict"></select></label>
+          <h4>Verse links (popups and previews)</h4>
+          <label class="field">Old Testament verses are shown in <select id="popupOT"></select></label>
+          <label class="field">New Testament verses are shown in <select id="popupNT"></select></label>
+          <h4>Installed modules <span class="small" id="modMgrCount"></span></h4>
+          <p class="small">Every module Timotheos found. Untick one to take it out of all lists (Bibles, commentaries, dictionaries, lookups, searches) – the file stays. <b>Delete file…</b> moves the file to the Recycle Bin.</p>
+          <input id="modFilter" type="search" placeholder="Find a module…" style="width:100%;margin:2px 0 6px" spellcheck="false">
+          <div id="modMgr" class="modmgr"></div>
           <h4>Module folders</h4>
           <p class="small">Timotheos also reads modules where they already are, e.g. theWord's or e-Sword's own folder.</p>
           <ul id="folderList" class="folders"></ul>
@@ -447,6 +459,7 @@
 <script src="props.js"></script>
 <script src="nav-ui.js"></script>
 <script src="viewmenu-ui.js"></script>
+<script src="panelskin-ui.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

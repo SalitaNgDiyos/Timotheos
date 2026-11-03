@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('api', {
   importDialog: () => call('modules:importDialog'),
   importFiles: paths => call('modules:import', paths),
   removeImported: file => call('modules:removeImported', file),
+  setHiddenModules: ids => call('modules:setHidden', ids),
+  deleteModuleFile: id => call('modules:deleteFile', id),
   importedFolder: () => call('modules:importedFolder'),
   describeModules: () => call('modules:describe'),
   pathForFile: f => { try { return webUtils.getPathForFile(f); } catch (e) { return f.path || ''; } },

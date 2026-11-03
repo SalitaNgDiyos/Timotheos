@@ -21,25 +21,25 @@
   const PRESETS = {
     classic: { label: 'Classic (Books & modules left, study tools right, search below)', layout: {
       v: 1, zones: {
-        left: { size: 250, groups: [{ panels: ['tree'], active: 'tree', size: 1.3 }, { panels: ['library'], active: 'library', size: 1 }] },
+        left: { size: 250, groups: [{ panels: ['tree'], active: 'tree', size: 1 }] },
         right: { size: 370, groups: [{ panels: ['cmt'], active: 'cmt', size: 1 }, { panels: ['lib', 'study', 'compare'], active: 'lib', size: 1 }] },
         bottom: { size: 230, groups: [{ panels: ['search', 'bsearch'], active: 'search', size: 1 }] } },
       floats: [], hidden: [] } },
     tabs: { label: 'Compact (everything as tabs on the right)', layout: {
       v: 1, zones: {
-        left: { size: 245, groups: [{ panels: ['tree', 'library'], active: 'tree', size: 1 }] },
+        left: { size: 245, groups: [{ panels: ['tree'], active: 'tree', size: 1 }] },
         right: { size: 380, groups: [{ panels: ['lib', 'cmt', 'search', 'bsearch', 'study', 'compare'], active: 'lib', size: 1 }] },
         bottom: { size: 220, groups: [] } },
       floats: [], hidden: [] } },
     study: { label: 'Word study (commentary and library side by side below)', layout: {
       v: 1, zones: {
-        left: { size: 245, groups: [{ panels: ['tree', 'library'], active: 'tree', size: 1 }] },
+        left: { size: 245, groups: [{ panels: ['tree'], active: 'tree', size: 1 }] },
         right: { size: 360, groups: [{ panels: ['search', 'bsearch'], active: 'search', size: 1.3 }, { panels: ['study'], active: 'study', size: 1 }] },
         bottom: { size: 280, groups: [{ panels: ['cmt'], active: 'cmt', size: 1 }, { panels: ['lib', 'compare'], active: 'lib', size: 1 }] } },
       floats: [], hidden: [] } },
     reading: { label: 'Reading (Bible only; panels hidden)', layout: {
       v: 1, zones: { left: { size: 250, groups: [] }, right: { size: 370, groups: [] }, bottom: { size: 220, groups: [] } },
-      floats: [], hidden: ['library', 'tree', 'cmt', 'lib', 'study', 'search', 'bsearch', 'compare'] } }
+      floats: [], hidden: ['tree', 'cmt', 'lib', 'study', 'search', 'bsearch', 'compare'] } }
   };
 
   /* ------------------------------------------------------------ registry & state */
@@ -149,6 +149,7 @@
         <span class="dgrip" title="Drag to move this panel">${ic('grip', 14)}</span>
         <div class="dtabs">${tabs}</div>
         <span class="dbtns">
+          <button class="dbtn" data-act="skin" title="This panel's own fonts and colours">${ic('palette', 14)}</button>
           <button class="dbtn dzoom" data-act="zoom-" title="Smaller text (Ctrl + mouse wheel down)">${ic('textDown', 15)}</button>
           <button class="dbtn dzoom" data-act="zoom+" title="Larger text (Ctrl + mouse wheel up)">${ic('textUp', 15)}</button>
           <button class="dbtn" data-act="float" title="${where.float ? 'Dock again' : 'Float as a window'}">${ic(where.float ? 'dockIn' : 'float', 14)}</button>
@@ -163,6 +164,7 @@
     div.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', () => {
       const a = b.dataset.act;
       if (a === 'close') hide(g.active);
+      if (a === 'skin') { if (opts.onSkin) opts.onSkin(g.active, b); return; }
       if (a === 'float') toggleFloat(g.active);
       if (a === 'zoom-' || a === 'zoom+') { if (opts.onZoom) opts.onZoom(g.active, a === 'zoom+' ? 1 : -1); }
       if (a === 'max') { maxed = maxed && g.panels.includes(maxed) ? null : g.active; render(); }

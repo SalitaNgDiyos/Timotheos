@@ -251,6 +251,7 @@ app.whenReady().then(async () => {
   if (process.env.TIMOTHEOS_MODULES && !settings.moduleFolders.includes(process.env.TIMOTHEOS_MODULES)) settings.moduleFolders.push(process.env.TIMOTHEOS_MODULES);
   fs.mkdirSync(MODULES_DIR(), { recursive: true });
   lib = new Library(settings, { extraFolders: [MODULES_DIR()], cacheFile: path.join(app.getPath('userData'), 'module-cache.json') });
+  lib.setHidden(settings.hiddenModules || []);
   xrefs = new Xrefs(USER_XREFS());
   userData = new UserData(path.join(app.getPath('userData'), 'my-study-data.json'));
   await rescanAll();
@@ -322,6 +323,16 @@ app.whenReady().then(async () => {
     if (!path.resolve(file).startsWith(root + path.sep)) throw new Error('Only modules imported into Timotheos can be removed here.');
     lib.release(file);
     await shell.trashItem(file);
+    return rescanAll();
+  });
+  // Options → Modules: take a module out of the lists (the file stays), or move its file to the Recycle Bin
+  handle('modules:setHidden', ids => { settings.hiddenModules = [...new Set(ids || [])]; saveSettings(); lib.setHidden(settings.hiddenModules); return rescanAll(); });
+  handle('modules:deleteFile', async id => {
+    const file = lib.fileOf(id);
+    if (!file || !fs.existsSync(file)) throw new Error('The file of this module is not there any more.');
+    lib.release(file);
+    await shell.trashItem(file);
+    settings.hiddenModules = (settings.hiddenModules || []).filter(x => x !== id); saveSettings(); lib.setHidden(settings.hiddenModules);
     return rescanAll();
   });
   handle('modules:importedFolder', () => MODULES_DIR());

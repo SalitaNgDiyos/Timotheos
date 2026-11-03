@@ -149,7 +149,16 @@ class Library {
     };
   }
 
+  setHidden(ids) { this.hidden = new Set(ids || []); }
   list() {
+    const hid = id => !!(this.hidden && this.hidden.has(id));
+    const L = this._list();
+    for (const b of L.bibles) b.hidden = hid(b.id);
+    for (const b of L.books) b.hidden = hid(b.id);
+    for (const b of L.dicts) b.hidden = hid(b.id);
+    return L;
+  }
+  _list() {
     return {
       bibles: this.entries.map(e => {
         const m = this.bibles.get(this._bibleId(e));
@@ -238,6 +247,7 @@ class Library {
     const out = [];
     for (const b of this.books.values()) {
       if (b.kind !== kind && !(b.mod && b.mod.kind === kind)) continue;
+      if (this.hidden && this.hidden.has(b.id)) continue; // removed from the lists by the user
       const m = await this.openBook(b.id);
       if (m.kind === kind && !m.locked) out.push([b.id, m]);
     }

@@ -159,7 +159,7 @@ window.runCommand = runCommand;
 
 /* ---------------- docked panels ---------------- */
 function initDock() {
-  const P = [['tree', 'Books & chapters', 'tree', 'bible', '#pane-tree'], ['library', 'Modules', 'library', 'lib', '#pane-library'],
+  const P = [['tree', 'Books & chapters', 'tree', 'bible', '#pane-tree'],
     ['cmt', 'Commentary', 'commentary', 'cmt', '#tab-cmt'], ['lib', 'Library', 'book', 'lib', '#tab-lib'],
     ['search', 'Bible search', 'search', 'search', '#tab-search'], ['bsearch', 'Book search', 'search', 'search', '#tab-bsearch'], ['study', 'My Study', 'study', 'study', '#tab-study'], ['compare', 'Compare', 'copy', 'bible', '#tab-compare']];
   for (const [id, title, icon, cap, sel] of P) TimotheosDock.register({ id, title, icon, cap, el: $(sel) });
@@ -167,18 +167,20 @@ function initDock() {
     onSave: layout => save({ dock: layout }),
     zoomable: id => !!ZOOM_TARGETS[id],
     onZoom: (id, d) => zoomPanel(id, d),
+    onSkin: (id, btn) => TimotheosPanelSkin.menu(id, btn),
     onActivate: id => { if (id === 'compare') TimotheosCompare.render(); if (id === 'bsearch') TimotheosBookSearch.onOpen(false); if (id === 'search') TimotheosSearch.onOpen(false); if (id === 'study') TimotheosStudy.onOpen(); }
   });
+  TimotheosPanelSkin.applyAll();
 }
 
 /* ---------------- text size per panel (A− / A+ buttons, Ctrl + mouse wheel) ---------------- */
 const ZOOM_TARGETS = {
-  bibles: ['#bvBiblesDrawer', '#pane-bibles'], tree: ['#bibleTree'], library: ['#pane-library'], study: ['#studyBody'],
+  bibles: ['#bvBiblesDrawer', '#pane-bibles'], tree: ['#bibleTree'], study: ['#studyBody'],
   compare: ['#cmpBody'], cmt: ['#cmtBody'], lib: ['.libsplit', '#libFeed'],
   search: ['#searchResults', '#searchBooks', '#searchStats'], bsearch: ['#bsResults']
 };
 const ZOOM_NAMES = {
-  bibles: 'Bibles list', tree: 'Bible tree', library: 'Modules list', study: 'My Study',
+  bibles: 'Bibles list', tree: 'Bible tree', study: 'My Study',
   compare: 'Compare', cmt: 'Commentary', lib: 'Library',
   search: 'Bible search results', bsearch: 'Book search results'
 };
@@ -273,8 +275,14 @@ function syncViewMenu() {
 function save(patch) { Object.assign(state.settings, patch); api.setSettings(patch).catch(() => {}); }
 
 /* ---------------- modules ---------------- */
+/** the lists the program shows: modules you took out of the lists stay in Options → Modules only */
+function visibleModules(l) {
+  const keep = a => (a || []).filter(m => !m.hidden);
+  return Object.assign({}, l, { bibles: keep(l.bibles), books: keep(l.books), dicts: keep(l.dicts) });
+}
 async function refreshModules(list) {
-  state.modules = list || await api.listModules();
+  state.allModules = list || await api.listModules();
+  state.modules = visibleModules(state.allModules);
   const ids = state.modules.bibles.map(b => b.id);
   const prevZoom = (views()[0] && views()[0].zoom) || state.settings.bibleZoom || 1;
   let vs = views().filter(v => ids.includes(v.bible));
@@ -283,9 +291,9 @@ async function refreshModules(list) {
   state.ref = refOfView(state.active);
   syncOpen();
   for (const v of vs) await ensureInfo(v.bible);
-  renderModuleList(); renderDictSelects(); renderFolders();
-  TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope();
-  if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.modules = Object.assign(l, { errors: state.modules.errors }); renderDictSelects(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {});
+  renderModuleList(); renderDictSelects(); renderPopupSelects(); renderFolders(); renderModuleManager();
+  TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); if (window.TimotheosSearch && TimotheosSearch.fillBibleList) TimotheosSearch.fillBibleList();
+  if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.allModules = Object.assign(l, { errors: state.modules.errors }); state.modules = visibleModules(state.allModules); renderDictSelects(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {});
   $('#empty').classList.toggle('hidden', ids.length > 0);
   statusMods();
   $('#view').classList.toggle('hidden', ids.length === 0);
@@ -509,6 +517,57 @@ function renderModuleList() {
 }
 function flashMsg(m) { if (window.TimotheosStudy) TimotheosStudy.flash(m); }
 
+/* ---------------- Options → Modules: every installed module, take it out of the lists or delete its file ---------------- */
+const KIND_LABEL = { bible: 'Bibles', commentary: 'Commentaries', dictionary: 'Dictionaries', book: 'Books', devotional: 'Devotionals', map: 'Maps', other: 'Other' };
+function renderModuleManager() {
+  const box = $('#modMgr'); if (!box) return;
+  const all = state.allModules || state.modules;
+  const rows = [
+    ...(all.bibles || []).map(m => ({ id: m.id, kind: 'bible', name: m.title || m.abbr || m.name, file: m.name, fmt: m.format || '', hidden: !!m.hidden })),
+    ...(all.books || []).map(m => ({ id: m.id, kind: KIND_LABEL[m.kind] ? m.kind : 'other', name: m.title && m.opened !== false ? m.title : m.name, file: m.name, fmt: m.format || '', hidden: !!m.hidden, locked: !!m.locked }))
+  ];
+  const q = (($('#modFilter') || {}).value || '').trim().toLowerCase();
+  const shown = rows.filter(r => !q || `${r.name} ${r.file} ${r.fmt}`.toLowerCase().includes(q));
+  let html = '';
+  for (const k of Object.keys(KIND_LABEL)) {
+    const list = shown.filter(r => r.kind === k).sort((a, b) => a.name.localeCompare(b.name)); if (!list.length) continue;
+    html += `<div class="mmk"><b>${KIND_LABEL[k]}</b> <span class="small">${list.length}</span></div>` + list.map(r => `<div class="mmrow${r.hidden ? ' off' : ''}" data-id="${esc(r.id)}"><label title="Untick to take this module out of every list; the file stays"><input type="checkbox" class="mmshow"${r.hidden ? '' : ' checked'}> <span class="mmname">${esc(r.name)}</span></label><span class="small mmfile" title="${esc(r.file)}">${esc(r.file)}</span><button type="button" class="mminfo" title="Properties">${TimotheosIcons.icon('info', 13)}</button><button type="button" class="mmdel" title="Move the file of this module to the Recycle Bin">Delete file…</button></div>`).join('');
+  }
+  box.innerHTML = html || '<p class="hint">No modules.</p>';
+  const nh = rows.filter(r => r.hidden).length;
+  const c = $('#modMgrCount'); if (c) c.textContent = `${rows.length} modules${nh ? ` · ${nh} out of the lists` : ''}`;
+}
+function wireModuleManager() {
+  const box = $('#modMgr'); if (!box) return;
+  $('#modFilter').oninput = renderModuleManager;
+  box.addEventListener('change', async e => {
+    const cb = e.target.closest('.mmshow'); if (!cb) return;
+    const id = cb.closest('.mmrow').dataset.id; const hid = new Set(state.settings.hiddenModules || []);
+    if (cb.checked) hid.delete(id); else hid.add(id);
+    state.settings.hiddenModules = [...hid];
+    await refreshModules(await api.setHiddenModules([...hid]));
+  });
+  box.addEventListener('click', async e => {
+    const row = e.target.closest('.mmrow'); if (!row) return; const id = row.dataset.id;
+    if (e.target.closest('.mminfo')) return TimotheosProps.open(id);
+    if (e.target.closest('.mmdel')) {
+      const r = (state.allModules.bibles || []).concat(state.allModules.books || []).find(m => m.id === id) || {};
+      const ok = await TimotheosModules.confirmBox('Delete the module file', `Move the file <b>${esc(r.name || id)}</b> to the Recycle Bin?<br><span class="small">It disappears from Timotheos and from every other program that reads the same folder. You can get it back from the Recycle Bin.</span>`);
+      if (!ok) return;
+      try { await refreshModules(await api.deleteModuleFile(id)); flashMsg('Moved to the Recycle Bin: ' + (r.name || id)); }
+      catch (err) { TimotheosModules.messageBox('Could not delete', esc(err.message)); }
+    }
+  });
+}
+
+function renderPopupSelects() {
+  for (const [sel, key] of [['#popupOT', 'popupOT'], ['#popupNT', 'popupNT']]) {
+    const el = $(sel); if (!el) continue;
+    el.innerHTML = '<option value="">The first open Bible</option>' + state.modules.bibles.map(b => { const inf = state.infos.get(b.id); return `<option value="${esc(b.id)}">${esc(inf ? inf.abbr : b.abbr)} – ${esc(inf ? inf.title : b.name)}</option>`; }).join('');
+    el.value = state.settings[key] && state.modules.bibles.some(b => b.id === state.settings[key]) ? state.settings[key] : '';
+    el.onchange = () => { save({ [key]: el.value }); };
+  }
+}
 function renderDictSelects() {
   for (const [sel, key] of [['#greekDict', 'greekDict'], ['#hebrewDict', 'hebrewDict'], ['#morphDict', 'morphDict']]) {
     const s = $(sel); s.innerHTML = '<option value="">Automatic</option>';
@@ -1055,9 +1114,14 @@ window.resolveBibleSpec = resolveBibleSpec;
 async function versePreview(b, c, v1, v2, modSpec) {
   let targetId = resolveBibleSpec(modSpec);
   if (!targetId) {
-    const ids = state.settings.openBibles;
-    if (!ids.length) return '';
-    targetId = ids[0];
+    // verse links without a named Bible: the default Old / New Testament Bible of Options → Modules, else the first open Bible
+    const pref = b >= 1 && b <= 39 ? state.settings.popupOT : b >= 40 && b <= 66 ? state.settings.popupNT : '';
+    if (pref && state.modules.bibles.some(x => x.id === pref)) targetId = pref;
+    else {
+      const ids = state.settings.openBibles;
+      if (!ids.length) return '';
+      targetId = ids[0];
+    }
   }
   await ensureInfo(targetId);
   const data = await api.chapter([targetId], b, c);
@@ -1208,11 +1272,13 @@ function wireUi() {
   if ($('#lkpBack')) $('#lkpBack').onclick = () => lookupStep(-1);
   if ($('#lkpFwd')) $('#lkpFwd').onclick = () => lookupStep(1);
   $('#searchBtn').onclick = () => openTab('search', true);
+  wireModuleManager();
   $('#addFolderBtn').onclick = addFolder;
   $('#rescanBtn').onclick = rescan;
   $('#apPlacement').value = ['end', 'catholic', 'nets', 'orthodox'].includes(state.settings.apocryphaPlacement) ? state.settings.apocryphaPlacement : '1611';
   $('#apPlacement').onchange = async () => { await api.setSettings({ apocryphaPlacement: $('#apPlacement').value }); state.settings.apocryphaPlacement = $('#apPlacement').value; await rebuildNav(); await go(state.ref, false); };
   $('#importBtn2').onclick = () => TimotheosModules.importModules();
+  $('#resetPanelSkins').onclick = () => TimotheosPanelSkin.resetAll();
   $('#centerActive').checked = centerOn();
   $('#centerActive').onchange = () => { save({ centerActive: $('#centerActive').checked }); ensurePanes(); renderChapter(true); };
   document.addEventListener('click', e => {

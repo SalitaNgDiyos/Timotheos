@@ -659,3 +659,28 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .libfeedwrap .lkptitle { font: 700 12.5px var(--font-ui); color: var(--heading); margin-left: 4px; }
 .libfeedwrap .cmtbody { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px 24px; }
 .lkplemma { margin-bottom: 6px; }
+
+/* Options → Modules: installed modules */
+.modmgr { max-height: 300px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; padding: 4px 8px; background: var(--card); }
+.mmk { margin: 8px 0 2px; color: var(--heading); }
+.mmrow { display: flex; align-items: center; gap: 8px; padding: 2px 0; border-bottom: 1px dotted var(--line); }
+.mmrow label { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; cursor: pointer; }
+.mmrow .mmname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mmrow.off .mmname { text-decoration: line-through; opacity: .55; }
+.mmrow .mmfile { flex: 0 1 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mmrow button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 5px; padding: 1px 7px; cursor: pointer; font-size: 11.5px; }
+.mmrow .mmdel:hover { border-color: #b3261e; color: #b3261e; }
+.pskrow { display: flex; align-items: center; gap: 6px; padding: 3px 10px; }
+.pskl { width: 74px; }
+.pskc { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.pskc .swc { width: 15px; height: 15px; }
+.pskc input[type=color] { width: 24px; height: 20px; padding: 0; border: 0; background: none; }
+.pskx { font-size: 10px; padding: 0 5px; }
+.pskfont { display: flex; align-items: center; gap: 6px; padding: 3px 10px 6px; }
+.pskfont select { flex: 1; min-width: 0; }
+.pskmenu { min-width: 330px; max-width: 360px; }
+
+/* Bible search: choose the Bibles */
+.bpick .bpicklist { max-height: 170px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; background: var(--card); margin-top: 4px; }
+.bpick .bpicklist label { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; cursor: pointer; }
+.bpick .bpicklist label.hidden { display: none; }

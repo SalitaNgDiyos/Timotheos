@@ -23,6 +23,7 @@ async function init() {
   $('#optNearW').value = o.nearW; $('#optNearV').value = o.nearV; $('#searchBibles').value = o.bibles;
   if ($('#optNearAcross')) $('#optNearAcross').checked = !!o.nearAcross;
   $('#searchForm').addEventListener('submit', e => { e.preventDefault(); run(); });
+  wireBibleList(); fillBibleList(); if (o.bibles === 'chosen') $('#searchPick').open = true;
   $('#searchInput').addEventListener('input', explainSoon);
   for (const id of ['optDefault', 'optWhole', 'optCase', 'optDiac', 'optRegex', 'optNearW', 'optNearV', 'optNearAcross', 'searchBibles']) {
     const el = $('#' + id);
@@ -69,8 +70,25 @@ function explainSoon() {
     box.textContent = (r.ok ? 'Looking for ' : '⚠ ') + r.text; box.classList.toggle('bad', !r.ok);
   }, 200);
 }
+const pickedIds = () => (state.settings.searchBibleIds || []).filter(id => state.modules.bibles.some(b => b.id === id));
+function fillBibleList() {
+  const box = $('#searchBibleList'); if (!box) return;
+  const on = new Set(pickedIds()); const q = ($('#searchPickFind').value || '').trim().toLowerCase();
+  box.innerHTML = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); const abbr = inf ? inf.abbr : b.abbr, ttl = inf ? inf.title : b.name; return `<label data-s="${esc((abbr + ' ' + ttl).toLowerCase())}"${q && !(abbr + ' ' + ttl).toLowerCase().includes(q) ? ' class="hidden"' : ''}><input type="checkbox" value="${esc(b.id)}"${on.has(b.id) ? ' checked' : ''}> <b>${esc(abbr)}</b> <span class="small">${esc(ttl)}</span></label>`; }).join('');
+  $('#searchPickCount').textContent = `(${on.size} of ${state.modules.bibles.length})`;
+}
+function wireBibleList() {
+  const setPicked = ids => { save({ searchBibleIds: ids }); $('#searchBibles').value = 'chosen'; saveOpts(); fillBibleList(); explainSoon(); };
+  $('#searchBibleList').addEventListener('change', () => setPicked([...document.querySelectorAll('#searchBibleList input:checked')].map(i => i.value)));
+  $('#spAll').onclick = () => setPicked(state.modules.bibles.map(b => b.id));
+  $('#spNone').onclick = () => setPicked([]);
+  $('#spOpen').onclick = () => setPicked(state.settings.openBibles.slice());
+  $('#searchPickFind').oninput = fillBibleList;
+  $('#searchBibles').addEventListener('change', () => { if ($('#searchBibles').value === 'chosen') { if (!pickedIds().length) save({ searchBibleIds: state.settings.openBibles.slice() }); $('#searchPick').open = true; } fillBibleList(); });
+}
 function bibleIds(o) {
   const open = state.settings.openBibles;
+  if (o.bibles === 'chosen') return pickedIds();
   if (o.bibles === 'first') return open.slice(0, 1);
   if (o.bibles === 'all') return state.modules.bibles.map(b => b.id);
   return open;
@@ -79,6 +97,7 @@ async function run(q) {
   if (q != null) $('#searchInput').value = q;
   q = $('#searchInput').value.trim(); if (!q) return;
   const o = saveOpts(); const ids = bibleIds(o);
+  if (!ids.length) { $('#searchStatus').textContent = 'Tick at least one Bible to search in.'; $('#searchPick').open = true; return; }
   $('#searchStatus').textContent = 'Searching…'; $('#searchResults').innerHTML = ''; $('#searchTabs').classList.add('hidden');
   try {
     const r = await api.search(ids, q, Object.assign(engineOpts(o), { limit: 3000 }));
@@ -133,4 +152,4 @@ function onOpen(focus) { fillScopes($('#searchScope').value || opts().scope); if
 /** "Find …" from elsewhere (context menu, popups) */
 function find(q) { openTab('search'); run(q); }
 
-window.TimotheosSearch = { init, run, find, onOpen };
+window.TimotheosSearch = { init, run, find, onOpen, fillBibleList };
