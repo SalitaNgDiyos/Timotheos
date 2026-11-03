@@ -2,6 +2,7 @@
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));
 window.addEventListener('unhandledrejection', e => window.__errs.push('rejection: ' + (e.reason && e.reason.message || e.reason)));
+const mm = async (i, t) => { const sec = [...document.querySelectorAll('#view > .bv')][i]; const b = sec.querySelector('[data-a="menu"]'); b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); b.click(); await new Promise(r => setTimeout(r, 250)); const c = document.querySelector('.bvmenu.mainmenu input[data-t="' + t + '"]'); c.checked = !c.checked; c.dispatchEvent(new Event('change', { bubbles: true })); document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await new Promise(r => setTimeout(r, 600)); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
 const secs = () => [...document.querySelectorAll('#view > .bv')];
@@ -10,19 +11,19 @@ const secs = () => [...document.querySelectorAll('#view > .bv')];
   ok(secs().length === 2 && /KJV/.test(secs()[0].querySelector('.bvbible').textContent) && /Wycliffe/i.test(secs()[1].querySelector('.bvbible').textContent), 'two ticked Bibles → two Bible views: ' + secs().map(s => s.querySelector('.bvbible').textContent).join(', '));
   ok(secs()[0].querySelectorAll('tr[data-v]').length > 30 && secs()[1].querySelectorAll('tr[data-v]').length > 30, 'each view shows John 3 by itself');
   // side bar: Strong's only in the view where it is switched on
-  secs()[1].querySelector('.bvside [data-k="strongs"]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-  secs()[1].querySelector('.bvside [data-k="strongs"]').click(); await sleep(600);
-  ok(state.active === 1 && secs()[1].querySelector('.bvside [data-k="strongs"]').classList.contains('on') && !secs()[0].querySelector('.bvside [data-k="strongs"]').classList.contains('on'), "side bar S: Strong's on in the second view only");
+  await mm(1, 'sm');
+  ok(state.active === 1 && effShow('strongs', 1) && !effShow('strongs', 0), "☰ Strong's and Morph: on in the second view only");
   ok(document.querySelector('[data-show="strongs"]').checked, 'the View menu shows the active view\'s settings');
   // paragraph mode in one view
-  secs()[0].querySelector('.bvside [data-k="paragraph"]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-  secs()[0].querySelector('.bvside [data-k="paragraph"]').click(); await sleep(600);
+  await mm(0, 'paragraph');
   ok(secs()[0].querySelector('.paraview') && secs()[1].querySelector('table.chapter'), '¶ in the first view: paragraphs there, verses in the second');
-  secs()[0].querySelector('.bvside [data-k="paragraph"]').click(); await sleep(500);
+  await mm(0, 'paragraph');
   // verse numbers in the text, for one view
-  secs()[0].querySelector('[data-a="vnum"]').click(); await sleep(500);
-  ok(secs()[0].querySelector('.bvtext').dataset.vnpos === 'inline' && secs()[0].querySelector('sup.vnum') && secs()[1].querySelector('.bvtext').dataset.vnpos === 'margin', '# : verse numbers in the text in this view only');
-  secs()[0].querySelector('[data-a="vnum"]').click(); secs()[0].querySelector('[data-a="vnum"]').click(); await sleep(500);
+  secs()[0].querySelector('[data-a="menu"]').click(); await sleep(250); document.querySelector('.bvmenu.mainmenu button[data-t="opts"]').click(); await sleep(250);
+  const vr = document.querySelector('.bvmenu input[name="vvn"][value="inline"]'); vr.checked = true; vr.dispatchEvent(new Event('change')); await sleep(600);
+  ok(secs()[0].querySelector('.bvtext').dataset.vnpos === 'inline' && secs()[0].querySelector('sup.vnum') && secs()[1].querySelector('.bvtext').dataset.vnpos === 'margin', 'Options: verse numbers in the text in this view only');
+  const vr2 = document.querySelector('.bvmenu input[name="vvn"][value=""]'); vr2.checked = true; vr2.dispatchEvent(new Event('change')); await sleep(500);
+  document.querySelector('.bvmenu')?.remove();
   // font of one view
   secs()[0].querySelector('[data-a="font"]').click(); await sleep(300);
   const fs = document.querySelector('.bvmenu select'); fs.value = 'Literata'; fs.dispatchEvent(new Event('change')); await sleep(400);
@@ -38,7 +39,7 @@ const secs = () => [...document.querySelectorAll('#view > .bv')];
   step(1); await sleep(800);
   ok(secs()[1].dataset.ref === '45.6' && secs()[0].dataset.ref === '45.5' && /Romans 6/.test(secs()[1].querySelector('.bvref').textContent), 'next chapter moves only the second view: ' + secs()[0].dataset.ref + ' / ' + secs()[1].dataset.ref);
   secs()[0].dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await sleep(300);
-  ok(state.active === 0 && $('#chapSel').value === '5', 'clicking the first view makes it active; the toolbar shows its chapter');
+  ok(state.active === 0 && / 5:/.test($('#refInput').value), 'clicking the first view makes it active; the toolbar shows its chapter');
   secs()[1].querySelector('[data-a="link"]').click(); await sleep(700);
   ok(state.settings.views[1].linked && secs()[1].dataset.ref === '45.5', 'link on again: the second view rejoins at Romans 5');
   // choose another Bible for a view

@@ -854,12 +854,15 @@ window.ownSwitchKeys = () => [...new Set(views().flatMap(v => ownSwitches(v.bibl
 window.toggleOwnSwitch = n => { setCustom(n, !customOn(n)); flashMsg(`${n}: ${customOn(n) ? 'on' : 'off'}`); };
 function viewOptions(i, btn) {
   const v = views()[i]; const sh = viewShow(i); const sw = ownSwitches(v.bible);
-  const html = `<div class="mh">Footnote marks</div>${[['num', '1 2 3'], ['letter', 'a b c'], ['star', '*']].map(([k, l]) => `<label><input type="radio" name="vfs" value="${k}"${(v.fnStyle || 'num') === k ? ' checked' : ''}> ${l}</label>`).join('')}
+  const vnNow = v.vnPos || '';
+  const html = `<div class="mh">Verse numbers</div>${[['', 'As in Options'], ['margin', 'In a column'], ['inline', 'In the text'], ['hidden', 'Hidden']].map(([k, l]) => `<label><input type="radio" name="vvn" value="${k}"${vnNow === k ? ' checked' : ''}> ${l}</label>`).join('')}
+    <div class="mh">Footnote marks</div>${[['num', '1 2 3'], ['letter', 'a b c'], ['star', '*']].map(([k, l]) => `<label><input type="radio" name="vfs" value="${k}"${(v.fnStyle || 'num') === k ? ' checked' : ''}> ${l}</label>`).join('')}
     <label><input type="checkbox" class="vfl"${v.fnList ? ' checked' : ''}> List the footnotes under the chapter</label>
     ${sh.columns ? `<div class="mh">Intralinear lines</div>${COL_LINES.map(([k, l]) => `<label><input type="checkbox" class="vcl" value="${k}"${colOn(i, k) ? ' checked' : ''}> ${l}</label>`).join('')}` : ''}
     ${sw.length ? `<div class="mh">This Bible's own switches</div>${sw.map(n => `<label><input type="checkbox" class="vsw" value="${esc(n)}"${customOn(n) ? ' checked' : ''}> ${esc(n)}${n.length === 1 ? ` <kbd>${esc(n.toUpperCase())}</kbd>` : ''}</label>`).join('')}` : ''}
     <div class="msep"></div><button class="vdef" title="New Bible views start with what this view shows">Use these for new Bible views</button><button class="vreset">Back to the general settings</button>`;
   paneMenu(btn, html, m => {
+    m.querySelectorAll('input[name="vvn"]').forEach(r => r.onchange = () => { if (r.value) v.vnPos = r.value; else delete v.vnPos; storeViews(); renderChapter(false); });
     m.querySelectorAll('input[name="vfs"]').forEach(r => r.onchange = () => { v.fnStyle = r.value; if (r.value === 'num') delete v.fnStyle; storeViews(); renderChapter(false); });
     m.querySelector('.vfl').onchange = e => { if (e.target.checked) v.fnList = true; else delete v.fnList; storeViews(); renderChapter(false); };
     m.querySelectorAll('.vcl').forEach(c => c.onchange = () => { v.colLines = Object.assign({}, v.colLines, { [c.value]: c.checked }); storeViews(); renderChapter(false); });

@@ -90,7 +90,7 @@ function decode(buf) {
   if (buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) return buf.slice(3).toString('utf8');
   const s = buf.toString('utf8');
   // if invalid UTF-8 (replacement chars), fall back to Windows-1252
-  if (s.includes('')) return new TextDecoder('windows-1252').decode(buf);
+  if (s.includes('\uFFFD')) return new TextDecoder('windows-1252').decode(buf);
   return s;
 }
 

@@ -9,7 +9,7 @@ function str(v) {
   if (typeof v === 'string') return v;
   const b = Buffer.from(v);
   const s = b.toString('utf8');
-  return s.includes('') ? new TextDecoder('windows-1252').decode(b) : s;
+  return s.includes('\uFFFD') ? new TextDecoder('windows-1252').decode(b) : s;
 }
 
 class Overlays {

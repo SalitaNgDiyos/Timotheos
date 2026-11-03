@@ -30,7 +30,7 @@ function str(v) {
   if (v == null) return '';
   if (typeof v === 'string') return v;
   const b = Buffer.from(v); const s = b.toString('utf8');
-  return s.includes('') ? new TextDecoder('windows-1252').decode(b) : s;
+  return s.includes('\uFFFD') ? new TextDecoder('windows-1252').decode(b) : s;
 }
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 

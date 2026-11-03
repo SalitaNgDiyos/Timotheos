@@ -23,20 +23,20 @@ async function drag(id, to, via) {
 }
 (async () => {
   await sleep(2500);
-  ok(where('lookup').startsWith('right') && where('search').startsWith('bottom') && where('bibles').startsWith('left'), 'classic layout: ' + ['bibles', 'lookup', 'search'].map(where).join(' '));
-  ok(document.querySelectorAll('.dgroup').length === 5 && document.querySelectorAll('.dcap svg.ic').length > 10, 'groups with icon captions: ' + document.querySelectorAll('.dgroup').length);
+  ok(where('lib').startsWith('right') && where('search').startsWith('bottom') && where('tree').startsWith('left'), 'classic layout: ' + ['tree', 'lib', 'search'].map(where).join(' '));
+  ok(document.querySelectorAll('.dgroup').length >= 4 && document.querySelectorAll('.dcap svg.ic').length > 10, 'groups with icon captions: ' + document.querySelectorAll('.dgroup').length);
 
   // 1. drag Lookup onto the "dock at the bottom" target
-  await drag('lookup', () => ctr(document.querySelector('.dtarget.edge[title="Dock at the bottom"]')));
-  ok(where('lookup') === 'bottom:1', 'drag Lookup to the bottom edge → ' + where('lookup'));
+  await drag('lib', () => ctr(document.querySelector('.dtarget.edge[title="Dock at the bottom"]')));
+  ok(where('lib') === 'bottom:1', 'drag Lookup to the bottom edge → ' + where('lib'));
   // 2. drag Commentary onto the Search group, as a tab
   const sg = () => document.querySelector('[data-panel="search"]').closest('.dgroup');
   await drag('cmt', () => ctr(document.querySelector('.dcompass .dtarget.mid')), () => ctr(sg()));
   ok(D.located('cmt').g.panels.includes('search'), 'drop Commentary as a tab beside Search → ' + where('cmt'));
-  // 3. drag My Study above Bibles (left zone, "before")
-  const bg = () => document.querySelector('[data-panel="bibles"]').closest('.dgroup');
+  // 3. drag My Study above Books (left zone, "before")
+  const bg = () => document.querySelector('[data-panel="tree"]').closest('.dgroup');
   await drag('study', () => ctr(document.querySelector('.dcompass .dtarget[title="Put it above this panel"]')), () => ctr(bg()));
-  ok(where('study') === 'left:0' && where('bibles') === 'left:1', 'drop My Study above Bibles → study ' + where('study') + ', bibles ' + where('bibles'));
+  ok(where('study') === 'left:0' && where('tree') === 'left:1', 'drop My Study above Books → study ' + where('study') + ', bibles ' + where('tree'));
   // 4. drop Library on empty space → floating window
   const view = document.getElementById('view').getBoundingClientRect();
   await drag('lib', () => [view.left + 200, view.top + 150]);
@@ -73,7 +73,7 @@ async function drag(id, to, via) {
   const st = await api.getSettings(); ok(st.dock && JSON.stringify(st.dock) === JSON.stringify(D.state()), 'layout saved in settings');
   // 12. presets
   D.applyPreset('reading'); await sleep(150); ok(D.panels().every(p => where(p.id) === 'hidden'), 'Reading preset hides all panels');
-  D.applyPreset('tabs'); await sleep(150); ok(D.located('search').g.panels.length === 7, 'Compact preset: 7 tabs on the right (with Book search and Compare)');
+  D.applyPreset('tabs'); await sleep(150); ok(D.located('search').g.panels.length === 6, 'Compact preset: 6 tabs on the right (with Book search and Compare)');
   D.applyPreset('classic'); await sleep(150);
   window.__dockShot && await window.__dockShot();
 

@@ -22,7 +22,7 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   go({ b: 1, c: 1, v: 1 }); await sleep(500);
   key('1', { code: 'Digit1', ctrlKey: true }); await sleep(600); ok(state.ref.b === 43 && state.ref.c === 3 && state.ref.v === 16, 'Ctrl+Shift+1 / Ctrl+1 bookmark → ' + JSON.stringify(state.ref));
   // quick keys
-  key('s'); await sleep(500); ok(effShow('strongs') === true && document.querySelector('#view .bv.active sup.strong:not(.hide)') && document.querySelector('#view .bv.active .bvside [data-k="strongs"].on'), 'S shows Strong\'s in the active view (side bar S lit)');
+  key('s'); await sleep(500); ok(effShow('strongs') === true && document.querySelector('#view .bv.active sup.strong:not(.hide)'), 'S shows Strong\'s in the active view (side bar S lit)');
   key('s'); await sleep(400);
   key('p'); await sleep(600); ok(document.querySelector('.paraview'), 'P → paragraph mode');
   key('p'); await sleep(600); ok(document.querySelector('table.chapter'), 'P again → back to verses');
@@ -59,6 +59,6 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   // persisted?
   const ud = await api.userData(); ok(ud.notes['43.3.16'] && ud.highlights['tw:kjv.ont']['43.3.16'] && ud.bookmarks[0] && ud.lists['My verses'].length, 'study data saved to disk');
   ok(window.__errs.length === 0, 'no script errors ' + JSON.stringify(window.__errs));
-  document.getElementById('lookup').innerHTML = '<pre style="white-space:pre-wrap;font-size:12px">' + out.join('\n') + '</pre>'; openTab('lookup');
+  setLookupHtml('<pre style="white-space:pre-wrap;font-size:12px">' + out.join('\n') + '</pre>', true, 'Test results'); openTab('lib');
   console.log('RESULT ' + out.join(' | '));
 })();

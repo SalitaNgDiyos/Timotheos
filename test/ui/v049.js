@@ -17,9 +17,9 @@ const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   window.setLookupHtml('<div class="entry"><h4>Second Lookup</h4></div>');
   ok(!document.getElementById('lkpBack').disabled, 'Lookup Back button enabled after 2 lookups');
   window.lookupStep(-1);
-  ok(/First Lookup/.test(document.getElementById('lookup').innerHTML) && !document.getElementById('lkpFwd').disabled, 'Lookup Back restores First Lookup and enables Forward');
+  ok(/First Lookup/.test(document.getElementById('libFeed').innerHTML) && !document.getElementById('lkpFwd').disabled, 'Lookup Back restores First Lookup and enables Forward');
   window.lookupStep(1);
-  ok(/Second Lookup/.test(document.getElementById('lookup').innerHTML), 'Lookup Forward restores Second Lookup');
+  ok(/Second Lookup/.test(document.getElementById('libFeed').innerHTML), 'Lookup Forward restores Second Lookup');
 
   // [E1] Tagalog localization live switch
   TimotheosI18n.apply('fil');

@@ -57,7 +57,7 @@ const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   TimotheosTools.setClipmon(false); cw.querySelector('.cclose').click();
   // export: the documents made
   const f = TimotheosTools.docxFiles(TimotheosTools.blocks('<h2>Grace</h2><p>Unmerited <b>favour</b>, ἀγάπη.</p>'));
-  ok(/<w:t xml:space="preserve">Grace<\/w:t>/.test(f['word/document.xml']) && /<w:b\/><\/w:rPr><w:t xml:space="preserve">favour/.test(f['word/document.xml']) && /ἀγάπη/.test(f['word/document.xml']), 'export to Word: headings, bold, Greek');
+  ok(/<w:t xml:space="preserve">Grace<\/w:t>/.test(f['word/document.xml']) && /<w:b\/>(?:<w:sz [^>]*\/>)?<\/w:rPr><w:t xml:space="preserve">favour/.test(f['word/document.xml']) && /ἀγάπη/.test(f['word/document.xml']), 'export to Word: headings, bold, Greek');
   const rt = TimotheosTools.rtf(TimotheosTools.blocks('<p>Love <i>never</i> faileth – ἀγάπη</p>'));
   ok(/^\{\\rtf1/.test(rt) && /\\i never/.test(rt) && /\\u947\?/.test(rt), 'export to RTF: italics and Greek letters');
   ok($('#libExport') && $('#libPrint'), 'Export and Print buttons on the Library bar');
