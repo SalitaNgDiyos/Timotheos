@@ -7,7 +7,7 @@ const out = [];
 const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
 (async () => {
   await sleep(2500);
-  document.getElementById('view').focus();
+  document.querySelector('.bvtext').focus();
   // navigation keys
   key('ArrowRight'); await sleep(500); ok(state.ref.c === 4, 'Right arrow → next chapter (' + state.ref.c + ')');
   key('ArrowLeft', { altKey: true }); await sleep(500); ok(state.ref.c === 3, 'Alt+Left → back in history (' + state.ref.c + ')');
@@ -22,12 +22,12 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   go({ b: 1, c: 1, v: 1 }); await sleep(500);
   key('1', { code: 'Digit1', ctrlKey: true }); await sleep(600); ok(state.ref.b === 43 && state.ref.c === 3 && state.ref.v === 16, 'Ctrl+Shift+1 / Ctrl+1 bookmark → ' + JSON.stringify(state.ref));
   // quick keys
-  key('s'); await sleep(500); ok(effShow('strongs') === true && document.querySelector('#view .bv.active sup.strong:not(.hide)'), 'S shows Strong\'s in the active view (side bar S lit)');
+  key('s'); await sleep(500); ok(effShow('strongs') === true && document.querySelector('.bv.active sup.strong:not(.hide)'), 'S shows Strong\'s in the active view (side bar S lit)');
   key('s'); await sleep(400);
   key('p'); await sleep(600); ok(document.querySelector('.paraview'), 'P → paragraph mode');
   key('p'); await sleep(600); ok(document.querySelector('table.chapter'), 'P again → back to verses');
   // highlight via context menu with a selection
-  const td = document.querySelector('#view tr[data-v="16"] td[data-col="0"]');
+  const td = document.querySelector('.bv tr[data-v="16"] td[data-col="0"]');
   const w = document.createTreeWalker(td, NodeFilter.SHOW_TEXT); let n, node, off; while ((n = w.nextNode())) { const i = n.textContent.indexOf('loved'); if (i >= 0) { node = n; off = i; break; } }
   const r = document.createRange(); r.setStart(node, off); r.setEnd(node, off + 5); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
   const rect = r.getBoundingClientRect();
@@ -35,7 +35,7 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   await sleep(200);
   ok(!document.getElementById('ctxMenu').classList.contains('hidden'), 'right-click menu opens');
   document.querySelector('#ctxMenu button[data-a="hl"][data-s="yellow"]').click(); await sleep(700);
-  const mk = document.querySelector('#view tr[data-v="16"] mark.hl-yellow'); ok(mk && mk.textContent === 'loved', 'highlight "loved" (' + (mk && mk.textContent) + ')');
+  const mk = document.querySelector('.bv tr[data-v="16"] mark.hl-yellow'); ok(mk && mk.textContent === 'loved', 'highlight "loved" (' + (mk && mk.textContent) + ')');
   // note
   TimotheosStudy.editNote('43.3.16'); await sleep(300);
   document.getElementById('noteEd').innerHTML = 'God\'s love: compare Rom 5:8 and 1 John 4:9.';
@@ -49,7 +49,7 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   await TimotheosSearch.run('faith NEARv2 hope'); ok(/\b31\b/.test(document.getElementById('searchStatus').textContent), 'NEARv search in UI');
   await TimotheosSearch.run('Tobie'); ok(document.getElementById('searchResults').innerHTML.includes('Tob'), 'Wycliffe Apocrypha in results');
   // rows + diff
-  key('j', { ctrlKey: true }); await sleep(600); ok(document.getElementById('view').dataset.arrange === 'rows', 'Ctrl+J: Bible views one under another');
+  key('j', { ctrlKey: true }); await sleep(600); { const a = TimotheosDock.state().areas, g = id => a.find(x => x.panels.includes(id)); ok(g('bv1').r > g('bv0').r && g('bv1').c === g('bv0').c, 'Ctrl+J: Bible views one under another'); };
   document.getElementById('diffToggle').click(); await sleep(700); ok(document.querySelector('mark.dif') && document.querySelector('.diffpct'), 'differences marked with %');
   document.getElementById('diffToggle').click(); key('h', { ctrlKey: true }); await sleep(600);
   // reading plan

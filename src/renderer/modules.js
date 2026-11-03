@@ -372,8 +372,9 @@ function wireLibrary() {
   });
   const ap = () => TimotheosOptions.appearance();
   const applySide = () => {
-    const a = ap(); const w = Math.max(120, Math.min(700, a.libSideW || 230));
+    const a = ap(); const w = Math.max(0, Math.min(4000, a.libSideW == null ? 230 : a.libSideW));
     $('#libSplit').style.gridTemplateColumns = a.libSideHidden ? 'minmax(0, 1fr)' : `${w}px 6px minmax(0, 1fr)`;
+    $('#libSide').classList.toggle('collapsed', !a.libSideHidden && w === 0);
     $('#libSide').classList.toggle('hidden', !!a.libSideHidden); $('#libSplitter').classList.toggle('hidden', !!a.libSideHidden);
     $('#libSideBtn').classList.toggle('on', !a.libSideHidden);
   };
@@ -384,8 +385,8 @@ function wireLibrary() {
   sp.addEventListener('pointerdown', e => {
     e.preventDefault(); try { sp.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ }
     const x0 = e.clientX, w0 = $('#libSide').offsetWidth;
-    const max = () => Math.max(160, $('#libSplit').offsetWidth - 160);
-    const move = ev => { const a = ap(); a.libSideW = Math.round(Math.max(120, Math.min(max(), w0 + ev.clientX - x0))); applySide(); };
+    const max = () => Math.max(0, $('#libSplit').offsetWidth - 6); // all the way to either edge of the panel
+    const move = ev => { const a = ap(); a.libSideW = Math.round(Math.max(0, Math.min(max(), w0 + ev.clientX - x0))); applySide(); };
     const up = () => { sp.removeEventListener('pointermove', move); sp.removeEventListener('pointerup', up); document.removeEventListener('pointerup', up); window.save({ appearance: ap() }); };
     sp.addEventListener('pointermove', move); sp.addEventListener('pointerup', up); document.addEventListener('pointerup', up);
   });
@@ -643,7 +644,6 @@ function openCmtMenu(anchorBtn) {
 }
 
 async function updateCommentary() {
-  if (window.TimotheosCompare) TimotheosCompare.render();
   const { b, c, v } = state.ref; const seq = ++cmtSeq;
   const rawList = await api.commentaries(b, c, v).catch(() => []);
   if (seq !== cmtSeq) return;
@@ -971,9 +971,9 @@ function wireModules() {
     const cm = e.target.closest('td.vn span.cm'); if (cm) setTimeout(() => openTab('cmt'), 0);
   }, true);
   $('#libSpeak').onclick = () => TimotheosSpeech.speakTopic($('#libSpeak'));
-  $('#view').addEventListener('click', e => {
+  $('#workbench').addEventListener('click', e => {
     if (e.target.closest('a, sup, td.vn, [data-strong], [data-morph], .xrs')) return;
-    if (!e.target.closest('td') || String(window.getSelection())) return;
+    if (!e.target.closest('.bv td') || String(window.getSelection())) return;
     const w = wordAt(e); if (w) lookupWord(w);
   });
   // [B1 & B4] Hover preview for Bible links AND book/footnote bookmark links
@@ -986,7 +986,7 @@ function wireModules() {
     if (popupMode === 0) return;
     if (popupMode === 2 && !e.ctrlKey) return;
 
-    if (/^tw:\/\/bible/i.test(href) && !a.closest('#view')) {
+    if (/^tw:\/\/bible/i.test(href) && !a.closest('.bv')) {
       const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
       const modSpec = bm ? bm[1] : '*';
       const m = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?(?:-\d+\.\d+\.(\d+))?/.exec(href);

@@ -2,12 +2,12 @@
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));
 window.addEventListener('unhandledrejection', e => window.__errs.push('rejection: ' + (e.reason && e.reason.message || e.reason)));
-const mm = async (i, t) => { const sec = [...document.querySelectorAll('#view > .bv')][i]; const b = sec.querySelector('[data-a="menu"]'); b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); b.click(); await new Promise(r => setTimeout(r, 250)); const c = document.querySelector('.bvmenu.mainmenu input[data-t="' + t + '"]'); c.checked = !c.checked; c.dispatchEvent(new Event('change', { bubbles: true })); document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await new Promise(r => setTimeout(r, 400)); };
-const openOpts = async i => { const sec = [...document.querySelectorAll('#view > .bv')][i]; sec.querySelector('[data-a="menu"]').click(); await new Promise(r => setTimeout(r, 250)); document.querySelector('.bvmenu.mainmenu button[data-t="opts"]').click(); };
+const mm = async (i, t) => { const sec = [...document.querySelectorAll('section.bv')][i]; const b = sec.querySelector('[data-a="menu"]'); b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); b.click(); await new Promise(r => setTimeout(r, 250)); const c = document.querySelector('.bvmenu.mainmenu input[data-t="' + t + '"]'); c.checked = !c.checked; c.dispatchEvent(new Event('change', { bubbles: true })); document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await new Promise(r => setTimeout(r, 400)); };
+const openOpts = async i => { const sec = [...document.querySelectorAll('section.bv')][i]; sec.querySelector('[data-a="menu"]').click(); await new Promise(r => setTimeout(r, 250)); document.querySelector('.bvmenu.mainmenu button[data-t="opts"]').click(); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
 const key = (k, o = {}) => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...o }));
-const sec = i => document.querySelectorAll('#view > .bv')[i];
+const sec = i => document.querySelectorAll('section.bv')[i];
 (async () => {
   await sleep(3000);
   const lt = state.modules.bibles.find(b => /lemmatest/.test(b.name)); const tg = state.modules.bibles.find(b => /toggletest/.test(b.name));
@@ -49,12 +49,7 @@ const sec = i => document.querySelectorAll('#view > .bv')[i];
     ok(sec(0).querySelector('.fnlist li'), 'footnotes listed under the chapter');
     document.querySelector('.bvmenu')?.remove();
   } else ok(true, '(no footnotes in this test chapter)');
-  // compare panel
-  key('m', { ctrlKey: true }); await sleep(1200);
-  const rows = document.querySelectorAll('#cmpBody .cmprow');
-  ok(rows.length >= 3 && /John 3/.test($('#cmpHead').textContent), 'Ctrl+M: the verse in ' + rows.length + ' Bibles · ' + $('#cmpHead').textContent.slice(0, 50));
-  selectVerse(16); await sleep(900);
-  ok(/3:16/.test($('#cmpHead').textContent), 'the Compare panel follows the verse');
+  ok(!document.getElementById('cmpBody') && !TimotheosDock.panel('compare'), 'the Compare panel is gone');
   // reading aloud: starts, or (no voice on this machine) opens the voices window
   sec(0).querySelector('[data-a="menu"]').click(); await sleep(250); document.querySelector('.bvmenu.mainmenu button[data-t="speak"]').click(); await sleep(2500);
   const speaking = TimotheosSpeech.isSpeaking(); const dlg = !$('#modal').classList.contains('hidden') && /voices/i.test($('#modalTitle').textContent);

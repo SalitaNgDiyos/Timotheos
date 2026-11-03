@@ -3,7 +3,7 @@
  * double-click to rename), colour pickers for the text and the active verse, the highlighter and the underline pen.
  * Everything here belongs to one view, so several views keep their own looks side by side. */
 /* global state, views, viewName, storeViews, ensurePanes, renderChapter, paneMenu, viewShow, effShow, toggleViewShow,
-   setViewShowMany, setVerseNumbers, viewOptions, setBiblesDrawerOpen, setViews, ensureInfo, flashMsg, esc, TimotheosOptions,
+   setViewShowMany, setVerseNumbers, viewOptions, setViews, addView, ensureInfo, flashMsg, esc, TimotheosOptions,
    TimotheosStudy, TimotheosSpeech, TimotheosIcons */
 (function () {
   const $ = s => document.querySelector(s);
@@ -43,7 +43,6 @@
     const inf = state.infos.get(v.bible); const t = String(text || '').trim();
     if (!t || (inf && t === inf.abbr)) delete v.label; else v.label = t;
     storeViews(); ensurePanes();
-    if (window.TimotheosCompare) try { TimotheosCompare.render(); } catch (e) { /* not open */ }
   }
 
   /* ---------------- Bible chooser: opens on click or hover, stays while the mouse travels to it ---------------- */
@@ -55,7 +54,7 @@
     const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}</span></button>`; }).join('');
     paneMenu(btn, `<div class="mh">Name of this view</div>
       <div class="bvname"><input type="text" class="bvnameinp" maxlength="40" value="${esc(viewName(i))}" placeholder="Name of this view" aria-label="Name of this Bible view"><button type="button" class="bvsave">Save</button><button type="button" class="bvreset" title="Back to the Bible's own abbreviation">Reset</button></div>
-      <div class="mh">Bible of this view</div><div class="bvlist">${list}</div><div class="msep"></div><button type="button" class="bvm-open-drawer">📚 Open Bibles Drawer (side-by-side &amp; reorder)…</button>`, m => {
+      <div class="mh">Bible of this view</div><div class="bvlist">${list}</div>`, m => {
       m.classList.add('biblemenu'); openFor = btn;
       m.addEventListener('mouseenter', keepOpen); m.addEventListener('mouseleave', () => armClose(m));
       const inp = m.querySelector('.bvnameinp');
@@ -63,7 +62,6 @@
       m.querySelector('.bvsave').onclick = save;
       m.querySelector('.bvreset').onclick = () => { setLabel(i, ''); m.remove(); openFor = null; };
       inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') { m.remove(); openFor = null; } });
-      const od = m.querySelector('.bvm-open-drawer'); if (od) od.onclick = () => { m.remove(); openFor = null; setBiblesDrawerOpen(true); };
       m.querySelectorAll('[data-b]').forEach(b => b.onclick = async () => {
         m.remove(); openFor = null; await ensureInfo(b.dataset.b);
         if (b.dataset.b !== v.bible) delete v.label; // a name you gave belongs to the Bible it was given for
@@ -74,12 +72,12 @@
     const m = document.querySelector('.bvmenu.biblemenu'); if (m) { const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 'px'; m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px'; }
   }
   function wireBibleHover() {
-    const host = $('#view'); let intent = null, over = null;
+    const host = $('#workbench'); let intent = null, over = null;
     host.addEventListener('mouseover', e => {
       const b = e.target.closest('.bvbible'); if (!b) return;
       keepOpen(); clearTimeout(intent); over = b;
       if (openFor === b) return;
-      intent = setTimeout(() => { if (over === b && openFor !== b) bibleMenu(b, +b.closest('#view > .bv').dataset.i); }, 220);
+      intent = setTimeout(() => { if (over === b && openFor !== b) bibleMenu(b, +b.closest('.bv').dataset.i); }, 220);
     });
     host.addEventListener('mouseout', e => {
       const b = e.target.closest('.bvbible'); if (!b) return;
@@ -181,12 +179,12 @@
     });
   }
   function wirePen() {
-    $('#view').addEventListener('mouseup', () => {
+    $('#workbench').addEventListener('mouseup', () => {
       if (!state.pen) return;
       setTimeout(() => {
         const sel = window.getSelection(); if (!sel || sel.isCollapsed || !state.pen) return;
         const n = sel.anchorNode; const el = n && (n.nodeType === 3 ? n.parentElement : n);
-        if (!el || !el.closest || !el.closest('#view .bvtext')) return;
+        if (!el || !el.closest || !el.closest('.bv .bvtext')) return;
         const tgt = TimotheosStudy.selectionTarget(null);
         if (tgt && tgt.partial) TimotheosStudy.highlight(tgt, state.pen.style);
       }, 0);

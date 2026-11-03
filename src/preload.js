@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('api', {
   importedFolder: () => call('modules:importedFolder'),
   describeModules: () => call('modules:describe'),
   pathForFile: f => { try { return webUtils.getPathForFile(f); } catch (e) { return f.path || ''; } },
-  bibleInfo: id => call('bible:info', id),
+  bibleInfo: (id, o) => call('bible:info', id, o),
   nav: ids => call('bible:nav', ids),
   chapter: (ids, b, c) => call('bible:chapter', ids, b, c),
   search: (ids, q, opts) => call('search', ids, q, opts),

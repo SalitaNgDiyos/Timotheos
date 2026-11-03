@@ -27,19 +27,14 @@
       ['View', 'v', [
         ['Bible Search', sc('search'), 'search', 'search'],
         ['Book Search', sc('bookSearch'), 'bookSearch', 'book'],
-        ['Compare the Verse', sc('compare'), 'compare', 'copy'],
         ['Read Aloud: Voices…', '', 'voices', 'speaker'],
         ['Clipboard Monitor', '', 'clipmon', 'copy'],
         ['Go to Reference', sc('goto'), 'goto'],
         ['Copy Verses…', sc('copyVerses'), 'copyVerses', 'copy'],
         ['Daily Readings', '', 'daily', 'study'],
         '-',
-        ['Toolbar: Back / Forward', '', 'tb:tbBackFwd'],
         ['Toolbar: Go-to Box', '', 'tb:tbGoto'],
         ['Toolbar: Prev / Next Chapter', '', 'tb:tbPrevNext'],
-        ['Toolbar: Search Button', '', 'tb:tbSearch'],
-        ['Toolbar: Copy Button', '', 'tb:tbCopy'],
-        ['Toolbar: Print Button', '', 'tb:tbPrint'],
         '-',
         ['Reset Panel Layout', '', 'resetLayout', 'layout'],
         '-',
@@ -102,7 +97,7 @@
   function matchShortcut(e) {
     const kn = keyName(e);
     const cur = window.TimotheosOptions && TimotheosOptions.shortcuts ? TimotheosOptions.shortcuts() : {};
-    const MENU_CMDS = ['import', 'addFolder', 'rescan', 'search', 'bookSearch', 'compare', 'goto', 'copyVerses', 'guide', 'options', 'devtools'];
+    const MENU_CMDS = ['import', 'addFolder', 'rescan', 'search', 'bookSearch', 'goto', 'copyVerses', 'guide', 'options', 'devtools'];
     for (const cmd of MENU_CMDS) {
       if (cur[cmd] && cur[cmd].toLowerCase() === kn) return cmd;
     }

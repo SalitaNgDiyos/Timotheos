@@ -1,7 +1,7 @@
 {
   "name": "timotheos",
   "productName": "Timotheos",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Offline Bible study app that reads and authors theWord and e-Sword modules, including the Apocrypha in the Bible view.",
   "main": "src/main.js",
   "scripts": {

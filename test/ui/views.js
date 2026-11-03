@@ -2,10 +2,10 @@
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));
 window.addEventListener('unhandledrejection', e => window.__errs.push('rejection: ' + (e.reason && e.reason.message || e.reason)));
-const mm = async (i, t) => { const sec = [...document.querySelectorAll('#view > .bv')][i]; const b = sec.querySelector('[data-a="menu"]'); b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); b.click(); await new Promise(r => setTimeout(r, 250)); const c = document.querySelector('.bvmenu.mainmenu input[data-t="' + t + '"]'); c.checked = !c.checked; c.dispatchEvent(new Event('change', { bubbles: true })); document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await new Promise(r => setTimeout(r, 600)); };
+const mm = async (i, t) => { const sec = [...document.querySelectorAll('section.bv')][i]; const b = sec.querySelector('[data-a="menu"]'); b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); b.click(); await new Promise(r => setTimeout(r, 250)); const c = document.querySelector('.bvmenu.mainmenu input[data-t="' + t + '"]'); c.checked = !c.checked; c.dispatchEvent(new Event('change', { bubbles: true })); document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await new Promise(r => setTimeout(r, 600)); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
-const secs = () => [...document.querySelectorAll('#view > .bv')];
+const secs = () => [...document.querySelectorAll('section.bv')];
 (async () => {
   await sleep(2500);
   ok(secs().length === 2 && /KJV/.test(secs()[0].querySelector('.bvbible').textContent) && /Wycliffe/i.test(secs()[1].querySelector('.bvbible').textContent), 'two ticked Bibles → two Bible views: ' + secs().map(s => s.querySelector('.bvbible').textContent).join(', '));
@@ -47,12 +47,13 @@ const secs = () => [...document.querySelectorAll('#view > .bv')];
   const kb = [...document.querySelectorAll('.bvmenu [data-b]')].find(b => /kjvplain/i.test(b.dataset.b));
   kb.click(); await sleep(900);
   ok(/KJVp|kjvplain/i.test(secs()[1].querySelector('.bvbible').textContent) && state.settings.openBibles[1] === kb.dataset.b, 'the caption chooses another Bible for the view: ' + secs()[1].querySelector('.bvbible').textContent);
-  // a third view from the Bibles panel; close it again
-  const li = [...document.querySelectorAll('#bibleList li')].find(l => /KJV10/.test(l.textContent));
-  li.querySelector('input').click(); await sleep(1000);
-  ok(secs().length === 3 && state.active === 2, 'ticking a Bible adds a view of its own: ' + secs().length + ' views');
-  secs()[2].querySelector('[data-a="close"]').click(); await sleep(800);
-  ok(secs().length === 2, '× closes the view');
+  // a third view from Panels → Bible View; close it again with the panel's × button
+  document.getElementById('panelsBtn').click(); await sleep(200);
+  document.querySelector('#panelsMenu [data-act="newbv"]').click(); await sleep(1200);
+  ok(secs().length === 3 && state.active === 2 && TimotheosDock.located('bv2') && !TimotheosDock.located('bv2').hidden, 'Panels → Bible View adds a view panel of its own: ' + secs().length + ' views');
+  ok(!document.getElementById('bvBiblesDrawer') && !document.getElementById('bibleList'), 'no Bibles drawer');
+  document.querySelector('.dtab[data-id="bv2"]').closest('.dgroup').querySelector('[data-act="close"]').click(); await sleep(900);
+  ok(secs().length === 2 && !TimotheosDock.located('bv2'), 'the panel × closes the view');
   // the settings are kept
   const st = await api.getSettings();
   ok(st.views && st.views.length === 2 && st.views[0].font === 'Literata' && st.views[1].show && st.views[1].show.strongs === true, 'views saved: ' + JSON.stringify(st.views).slice(0, 120));

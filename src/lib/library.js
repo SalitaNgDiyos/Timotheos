@@ -30,6 +30,7 @@ class Library {
     this.settings = settings;
     this.extraFolders = opts.extraFolders || []; // e.g. Timotheos's own imported-modules folder
     this.bibles = new Map();     // id -> loaded Bible module
+    this.bibleUse = new Map();   // id -> when it was last used
     this.entries = [];           // Bible files found
     this.books = new Map();      // id -> {file, name, kind, format, mod?}
     this.xrefFiles = [];
@@ -174,7 +175,16 @@ class Library {
 
   _bibleId(e) { return (e.ext === '.bblx' || e.ext === '.bbli' ? 'es:' : e.ext === '.gbk.twm' ? 'bk:' : e.ext === '.usfm' ? 'usfm:' : e.ext === '.usfx' ? 'usfx:' : 'tw:') + e.name; }
 
+  /** Bibles that are shown in a view stay loaded; the others are let go when nobody has used them for a while (RAM) */
+  _openIds() { return new Set([...(this.settings.openBibles || []), ...((this.settings.views || []).map(v => v && v.bible))]); }
+  _release(id) { const m = this.bibles.get(id); if (!m) return; try { if (m.close) m.close(); } catch (e) { /* closed */ } this.bibles.delete(id); this.bibleUse.delete(id); }
+  sweepBibles(idleMs = 5 * 60 * 1000) {
+    const keep = this._openIds(); const now = Date.now();
+    for (const id of [...this.bibles.keys()]) if (!keep.has(id) && now - (this.bibleUse.get(id) || 0) >= idleMs) this._release(id);
+  }
   async bible(id) {
+    this.bibleUse.set(id, Date.now());
+    if (!this._sweepT) { this._sweepT = setInterval(() => this.sweepBibles(), 60 * 1000); if (this._sweepT.unref) this._sweepT.unref(); }
     if (this.bibles.has(id)) return this.bibles.get(id);
     const e = this.entries.find(x => this._bibleId(x) === id);
     if (!e) throw new Error('Module not found: ' + id);
@@ -185,8 +195,10 @@ class Library {
     return m;
   }
 
-  async info(id) {
+  async info(id, o = {}) {
+    const had = this.bibles.has(id);
     const m = await this.bible(id);
+    if (o.transient && !had && !this._openIds().has(id)) setTimeout(() => { if (!this._openIds().has(id)) this._release(id); }, 0); // only its name and features were wanted
     return {
       id, abbr: m.abbr, title: m.title, format: m.format, rtl: m.rtl, books: m.books,
       rules: (m.props && m.props._rules) || [], tagRules: (m.props && m.props._tagRules) || [],

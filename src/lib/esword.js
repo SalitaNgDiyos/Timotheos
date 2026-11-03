@@ -123,7 +123,7 @@ async function load(file, bookMapOverride = {}) {
       let html = null;
       if (stmt.step()) html = conv(eb, ec, ev, str(stmt.get()[0]));
       stmt.reset();
-      if (cache.size > 5000) cache.clear();
+      if (cache.size > 1500) cache.clear();
       cache.set(k, html);
       return html;
     },

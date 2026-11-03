@@ -69,12 +69,8 @@
   <li><b>Title bar</b>: the <b>File</b>, <b>View</b> and <b>Help</b> menus (<kbd>Alt+F</kbd>, <kbd>Alt+V</kbd>, <kbd>Alt+H</kbd>). It takes the colours of your skin.</li>
   <li><b>Toolbar</b>, from left to right:
     <ul>
-      <li>Back and forward.</li>
-      <li>The <i>Go to</i> box.</li>
-      <li>Book and chapter lists.</li>
+      <li>The <i>Go to</i> box (one box for book, chapter and verse).</li>
       <li>Previous and next chapter.</li>
-      <li><b>View</b>: what to show in the text.</li>
-      <li><b>Search</b>, <b>Copy</b>, <b>Print</b>.</li>
       <li><b>Import</b>.</li>
       <li><b>Panels</b>: show or hide panels, and choose a layout.</li>
       <li><b>Focus</b>: hide the panels.</li>
@@ -105,10 +101,11 @@
       <li><b>Close</b>.</li>
     </ul>
     Double-click a caption to float it or dock it again.</li>
-  <li>Drag the narrow gaps between panels to make them wider or taller.</li>
+  <li>The window is a grid of <b>4 columns × 3 rows</b>: 12 areas. Every kind of panel, Bible views included, can be dragged by its caption to any of the 12 areas (drop it on an area to put it there, or on an occupied area to make it a tab). Drop it outside the grid to float it.</li>
+  <li>Drag the narrow gaps between the areas to make columns wider and rows taller. <i>Size of everything in this panel</i> in a panel's palette menu makes its fonts and controls smaller or larger.</li>
   <li><b>Panels</b> on the toolbar:
     <ul>
-      <li>Reopens closed panels.</li>
+      <li><b>Bible View</b> adds another Bible view, already showing a Bible. Closed panels are reopened here too.</li>
       <li>Offers ready layouts: <i>Classic</i>, <i>Compact</i>, <i>Word study</i>, <i>Reading</i>.</li>
       <li><i>Save current layout as…</i> keeps your own arrangement under a name.</li>
     </ul></li>
@@ -144,8 +141,14 @@
   <li><b>⚙</b> in the side bar: footnote marks as 1 2 3, a b c or *, the footnotes listed under the chapter, which lines the intralinear view shows, and the Bible's <b>own switches</b> (some theWord Bibles define switches of their own, e.g. <b>V</b> for variant readings; a one-letter switch also works as a key).</li>
   <li><b>Intralinear View</b> (<kbd>Alt+I</kbd>) puts each tagged word over its original Greek or Hebrew word, a transliteration, the Strong's number, the morphology and the lemma. Where the Bible gives no lemma, the original word comes from your Strong's dictionary.</li>
   <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
-  <li><i>View → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
-  <li>The <b>Compare</b> panel (<kbd>Ctrl+M</kbd>) shows the selected verse in all your Bibles (or those of the views), with the words that are not in the first Bible marked; <i>±2 verses</i> shows the passage around it.</li>
+  <li><i>Panels → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
+</ul>
+<h3>New in 0.6.2</h3>
+<ul>
+  <li>The 4 × 3 grid, Bible views as panels, Panels → Bible View, no Bibles drawer; the name menu of a view lists every Bible.</li>
+  <li>Click anywhere in a verse to select it. <b>Copy Verse</b> is on each Bible view's icon bar. Back, Forward, View, Search and Print are no longer on the toolbar (<kbd>Alt+←</kbd>, <kbd>Alt+→</kbd>, <kbd>Ctrl+F</kbd>, <kbd>Ctrl+P</kbd> still work).</li>
+  <li>Popups have A− / A+ (and Ctrl + mouse wheel). A panel's palette menu has <i>Menu font</i> and <i>Label font</i> colours and one <i>Default Colors</i> button. The Topic list can be dragged to the panel's edge.</li>
+  <li>Every font list shows each font in its own face. The Compare panel is gone.</li>
 </ul>
 <h3>New in 0.6.1</h3>
 <ul>
@@ -305,7 +308,7 @@
 <section id="copy"><h2>Copying verses</h2>
 <ul>
   <li><kbd>Ctrl+C</kbd> copies the current verse, or the text you selected.</li>
-  <li><b>Copy verses</b> window (<kbd>F5</kbd>, toolbar <b>Copy</b>, or right-click a verse):
+  <li><b>Copy verses</b> window (<kbd>F5</kbd>, the copy icon on a Bible view's icon bar, or right-click a verse):
     <ul>
       <li><b>Step 1</b>: the <b>From</b> and <b>To</b> buttons open a Book → Chapter → Verse picker. You can type the first letters of a book to find it.
         <ul>
@@ -421,7 +424,7 @@
 <tr><td><kbd>Ctrl+L</kbd></td><td>Add the current verse to the verse list</td></tr>
 <tr><td><kbd>Ctrl+Shift+1</kbd>…<kbd>0</kbd> / <kbd>Ctrl+1</kbd>…<kbd>0</kbd></td><td>Set / go to a bookmark</td></tr>
 <tr><td><kbd>S M F H J I X C U N P</kbd></td><td>Show or hide Strong's, morphology, footnotes, headings, red letters, italics, cross-references, commentary marks, highlighting, notes, paragraph mode</td></tr>
-<tr><td><kbd>Ctrl+H</kbd> / <kbd>Ctrl+J</kbd></td><td>Bible views side by side / one under another</td></tr><tr><td><kbd>Ctrl+Shift+F</kbd></td><td>Book search</td></tr><tr><td><kbd>Ctrl+M</kbd></td><td>Compare the verse in all Bibles</td></tr><tr><td><kbd>L</kbd> / <kbd>Alt+I</kbd></td><td>lemmas / intralinear view in the active view</td></tr>
+<tr><td><kbd>Ctrl+H</kbd> / <kbd>Ctrl+J</kbd></td><td>Bible views side by side / one under another</td></tr><tr><td><kbd>Ctrl+Shift+F</kbd></td><td>Book search</td></tr><tr><td><kbd>L</kbd> / <kbd>Alt+I</kbd></td><td>lemmas / intralinear view in the active view</td></tr>
 <tr><td><kbd>Ctrl +</kbd> <kbd>Ctrl −</kbd>, <kbd>Ctrl</kbd>+wheel</td><td>Text size</td></tr>
 <tr><td><kbd>F11</kbd></td><td>Reading focus</td></tr>
 <tr><td><kbd>Ctrl+,</kbd></td><td>Options</td></tr>

@@ -162,7 +162,7 @@ a.link:hover { text-decoration: underline; }
 @media (max-width: 1100px) { .layout { grid-template-columns: 210px 1fr 300px; } }
 .modlist .abbr { overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
 .modlist li label { overflow: hidden; }
-table.chapter td { overflow-wrap: anywhere; }
+table.chapter td { overflow-wrap: break-word; word-break: normal; hyphens: manual; text-wrap: pretty; min-width: 0; }
 .view { overflow-x: hidden; }
 .modlist .abbr { flex-shrink: 0; max-width: 120px; }
 .modlist .ttl { min-width: 0; flex: 1; }
@@ -399,10 +399,6 @@ sup.lemma { font: italic 400 .62em var(--font-text); color: var(--muted); margin
 .bvmenu > button:hover { background: var(--card); }
 /* Compare panel (0.4.7) */
 .cmpbar { gap: 12px; padding: 6px 10px; font-size: 12px; flex-wrap: wrap; }
-.vcompare .cmprow { display: grid; grid-template-columns: 4.5em 1fr; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line); }
-.vcompare .cab { font: 600 12px var(--font-ui); color: var(--accent); padding-top: 3px; overflow: hidden; text-overflow: ellipsis; }
-.vcompare mark.cdiff { background: color-mix(in srgb, var(--accent) 18%, transparent); color: inherit; border-radius: 2px; }
-.vcompare .vno { cursor: pointer; color: var(--muted); } .vcompare .vno.cur { color: var(--accent); font-weight: 700; }
 /* reading aloud (0.4.7) */
 .speaking { background: color-mix(in srgb, var(--accent) 16%, transparent) !important; border-radius: 4px; }
 .ttsbtn.on, .bvside .bvspeak.on, #libSpeak.on { color: var(--accent) !important; background: color-mix(in srgb, var(--accent) 18%, transparent) !important; }

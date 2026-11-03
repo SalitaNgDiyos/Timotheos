@@ -9,15 +9,15 @@ const zoomOf = sel => +getComputedStyle(document.querySelector(sel)).zoom;
   await sleep(2500);
   // each Bible view has its own text size; only the text changes, not the view's caption or side bar
   const fs0 = state.settings.fontSize; const z = i => state.settings.views[i].zoom || 1;
-  const t0 = () => parseFloat(getComputedStyle(document.querySelector('#view .bv:nth-child(1) table.chapter')).fontSize);
-  const cap0 = getComputedStyle(document.querySelector('#view .bv:nth-child(1) .bvcap')).fontSize, before = t0();
-  document.getElementById('bibleZoomIn').click(); await sleep(100);
-  ok(z(0) === 1.1 && Math.abs(t0() - before * 1.1) < 0.6 && getComputedStyle(document.querySelector('#view .bv:nth-child(1) .bvcap')).fontSize === cap0 && state.settings.fontSize === fs0, `Bible A+ → active view's text ${t0()}px (caption unchanged)`);
-  wheelAt(document.querySelector('#view .bv:nth-child(2) td[data-col="1"]'), -100); await sleep(100);
+  const t0 = () => parseFloat(getComputedStyle(document.querySelector('.bv[data-i="0"] table.chapter')).fontSize);
+  const cap0 = getComputedStyle(document.querySelector('.bv[data-i="0"] .bvcap')).fontSize, before = t0();
+  document.querySelector('.bv[data-i="0"] [data-a="zin"]').click(); await sleep(100);
+  ok(z(0) === 1.1 && Math.abs(t0() - before * 1.1) < 0.6 && getComputedStyle(document.querySelector('.bv[data-i="0"] .bvcap')).fontSize === cap0 && state.settings.fontSize === fs0, `Bible A+ → active view's text ${t0()}px (caption unchanged)`);
+  wheelAt(document.querySelector('.bv[data-i="1"] td[data-col="1"]'), -100); await sleep(100);
   ok(z(1) === 1.1 && z(0) === 1.1, 'Ctrl+wheel up over the second view → only that view: ' + z(0) + ' / ' + z(1));
-  wheelAt(document.querySelector('#view td[data-col="0"]'), 100); await sleep(100);
+  wheelAt(document.querySelector('.bv td[data-col="0"]'), 100); await sleep(100);
   ok(z(0) === 1 && z(1) === 1.1, 'Ctrl+wheel down over the first view → ' + z(0) + ' / ' + z(1));
-  document.querySelector('#view .bv:nth-child(2) [data-a="zout"]').click(); await sleep(100);
+  document.querySelector('.bv[data-i="1"] [data-a="zout"]').click(); await sleep(100);
   ok(z(1) === 1, "the view's own A− → " + z(1));
   // commentary panel
   const cg = document.querySelector('[data-panel="cmt"]').closest('.dgroup');

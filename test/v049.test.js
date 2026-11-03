@@ -739,14 +739,10 @@ function ok(cond, msg) {
 
   // [L2] View menu contains all 7 toolbar element visibility toggles
   ok(
-    idx057.includes('data-tbshow="tbBackFwd"') &&
     idx057.includes('data-tbshow="tbGoto"') &&
     idx057.includes('data-tbshow="tbPrevNext"') &&
-    idx057.includes('data-tbshow="tbSearch"') &&
-    idx057.includes('data-tbshow="tbCopy"') &&
-    idx057.includes('data-tbshow="tbPrint"') &&
     app057.includes("function setToolbarItem") &&
-    tb057.includes("tb:tbBackFwd"),
+    tb057.includes("tb:tbGoto"),
     "[L2] View menu (#viewMenu and titlebar View menu) includes show/hide options for the toolbar elements (the book/chapter dropdowns are gone: one reference box)"
   );
 
@@ -769,21 +765,14 @@ function ok(cond, msg) {
   const wb058 = fs.readFileSync(path.join(__dirname, "../src/renderer/workbench.css"), "utf8");
 
   ok(
-    idx058.includes('id="bvBiblesBtn"') &&
-    idx058.includes('id="bvStage"') &&
-    idx058.includes('id="bvBiblesDrawer"') &&
-    idx058.includes('id="bvdFilter"') &&
-    idx058.includes('id="bvdAutoHide"') &&
-    !idx058.includes('id="pane-bibles"'),
-    "[M1] index.html embeds #bvBiblesDrawer and #bvBiblesBtn inside the Bible view (#center) and removes standalone #pane-bibles"
+    !idx058.includes('id="bvBiblesDrawer"') && !idx058.includes('id="bvBiblesBtn"') && !idx058.includes('id="pane-bibles"') &&
+    idx058.includes('id="grid"') && !idx058.includes('id="zone-left"'),
+    "[M1] 0.6.2: no Bibles drawer; the Bible views are panels of the 4 x 3 grid"
   );
   ok(
-    app058.includes("function wireBiblesDrawer") &&
-    app058.includes("function setBiblesDrawerOpen") &&
-    app058.includes("ordViewLabel") &&
-    !dock058.includes("'bibles'") &&
-    wb058.includes(".bvdrawer"),
-    "[M2] app.js, dock.js, and workbench.css implement Design 3 collapsible Bibles drawer with drag-to-reorder and (1st view)/(2nd view) badges"
+    !app058.includes("function wireBiblesDrawer") && app058.includes("function makePane") && app058.includes("function preloadBibles") &&
+    dock058.includes("const NC = 4, NR = 3") && !wb058.includes(".bvdrawer {"),
+    "[M2] 0.6.2: app.js makes a dock panel for each Bible view and preloads the Bibles; dock.js is a 4 x 3 grid"
   );
 
   // =========================================================================

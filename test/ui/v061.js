@@ -9,7 +9,7 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
 (async () => {
   await sleep(3500);
   go({ b: 43, c: 3, v: 16 }); await sleep(1200);
-  const secs = () => [...document.querySelectorAll('#view > .bv')];
+  const secs = () => [...document.querySelectorAll('section.bv')];
   // 1. editable names
   const b0 = secs()[0].querySelector('.bvbible'); const orig = b0.textContent;
   b0.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); await sleep(200);
@@ -86,7 +86,7 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
   ok(ts[0].querySelector('.sel') && ts[0].querySelector('.sel').dataset.v === ts[1].querySelector('.sel').dataset.v && +ts[1].querySelector('.sel').dataset.v > 2, 'scrolling one view moves the active verse in both: ' + ts[0].querySelector('.sel').dataset.v + '/' + ts[1].querySelector('.sel').dataset.v);
   // 6. Intralinear
   ok(!/Column text/i.test(document.body.innerHTML.replace(/<script[\s\S]*?<\/script>/g, '')), 'no "Column text" left in the screen');
-  ok(/Intralinear View/.test(document.querySelector('#viewMenu').textContent), 'Intralinear View in the View menu');
+  secs()[0].querySelector('[data-a="menu"]').click(); await sleep(250); ok(/Intralinear View/.test((document.querySelector('.bvmenu.mainmenu') || {}).textContent || ''), 'Intralinear View in the view menu'); document.querySelectorAll('.bvmenu').forEach(m => m.remove());
   // 7 done in t7; 8 panel skins
   document.querySelector('.dgroup [data-act="skin"]').click(); await sleep(300);
   ok(!!document.querySelector('.pskmenu'), 'the panel caption has its skin menu');
@@ -112,7 +112,7 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
   ok(rows.length > 10 && document.querySelector('#modMgr .mmk'), 'all installed modules are listed: ' + rows.length);
   const nb = state.modules.bibles.length; const row = [...document.querySelectorAll('#modMgr .mmrow')].find(r => /Wycliffe|Purvey/i.test(r.textContent));
   row.querySelector('.mmshow').click(); await sleep(2500);
-  ok(state.modules.bibles.length === nb - 1 && !document.querySelector('#bibleList [data-bid*="wycliffe"]') && state.allModules.bibles.length === nb, 'unticking takes a Bible out of the lists, the file stays: ' + state.modules.bibles.length + '/' + nb);
+  ok(state.modules.bibles.length === nb - 1 && !document.querySelector('.bvmenu [data-b*="wycliffe"]') && state.allModules.bibles.length === nb, 'unticking takes a Bible out of the lists, the file stays: ' + state.modules.bibles.length + '/' + nb);
   ok(!!document.querySelector('#modMgr .mmrow.off') && document.querySelectorAll('#modMgr .mmdel').length > 10, 'it is still listed here, with Delete file…');
   document.querySelector('#modMgr .mmrow.off .mmshow').click(); await sleep(2500);
   ok(state.modules.bibles.length === nb, 'ticking brings it back');

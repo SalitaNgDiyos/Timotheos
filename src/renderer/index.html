@@ -15,8 +15,6 @@
   <div class="tbdrag"></div>
 </div>
 <header class="toolbar" id="toolbar">
-  <button id="backBtn" class="tb" data-icon="back" title="Back (Alt+←)" aria-label="Back" disabled></button>
-  <button id="fwdBtn" class="tb" data-icon="forward" title="Forward (Alt+→)" aria-label="Forward" disabled></button>
   <form id="refForm" class="ref">
     <span data-icon="search" data-icon-size="15" class="refic"></span>
     <input id="refInput" type="text" list="refBooks" placeholder="Go to… (e.g. Exodus 1:13, Jn 3:16, Tob 1)" spellcheck="false" autocomplete="off" aria-label="Reference: book, chapter and verse" title="The place you are reading. Click, type another (Exodus 1:13, Jn 3:16, Tob 1) and press Enter (Ctrl+G)">
@@ -25,6 +23,22 @@
   <button id="prevBtn" class="tb" data-icon="prev" title="Previous chapter (←)" aria-label="Previous chapter"></button>
   <button id="nextBtn" class="tb" data-icon="next" title="Next chapter (→)" aria-label="Next chapter"></button>
   <span class="tsep"></span>
+  <span class="grow"></span>
+  <button id="importBtn2" class="tb" data-icon="import" title="Import theWord or e-Sword modules (Ctrl+I)"><span class="lbl">Import</span></button>
+  <div class="menuwrap">
+    <button id="panelsBtn" class="tb" data-icon="layout" title="Show or hide panels, choose a layout"><span class="lbl">Panels</span></button>
+    <div id="panelsMenu" class="menu right hidden"></div>
+  </div>
+  <div class="menuwrap">
+    <button id="skinBtn" class="tb" data-icon="palette" title="Skin"><span class="lbl">Skin</span></button>
+    <div id="skinMenu" class="menu right hidden"></div>
+  </div>
+  <button id="optionsBtn" class="tb" data-icon="gear" title="Options: fonts, colours, verse numbers, skins, shortcuts (Ctrl+,)"><span class="lbl">Options</span></button>
+</header>
+
+<div id="tbLegacy" hidden>
+  <button id="backBtn" class="tb" data-icon="back" title="Back (Alt+←)" aria-label="Back" disabled></button>
+  <button id="fwdBtn" class="tb" data-icon="forward" title="Forward (Alt+→)" aria-label="Forward" disabled></button>
   <div class="menuwrap">
     <button id="viewBtn" class="tb" data-icon="eye" title="What to show in the Bible text"><span class="lbl">View</span></button>
     <div id="viewMenu" class="menu hidden">
@@ -60,24 +74,8 @@
   <button id="searchBtn" class="tb" data-icon="search" title="Search (Ctrl+F)"><span class="lbl">Search</span></button>
   <button id="copyBtn" class="tb" data-icon="copy" title="Copy verses (F5)"><span class="lbl">Copy</span></button>
   <button id="printBtn" class="tb" data-icon="print" title="Print the chapter (Ctrl+P)"><span class="lbl">Print</span></button>
-  <span class="grow"></span>
-  <button id="importBtn2" class="tb" data-icon="import" title="Import theWord or e-Sword modules (Ctrl+I)"><span class="lbl">Import</span></button>
-  <div class="menuwrap">
-    <button id="panelsBtn" class="tb" data-icon="layout" title="Show or hide panels, choose a layout"><span class="lbl">Panels</span></button>
-    <div id="panelsMenu" class="menu right hidden"></div>
-  </div>
-  <div class="menuwrap">
-    <button id="skinBtn" class="tb" data-icon="palette" title="Skin"><span class="lbl">Skin</span></button>
-    <div id="skinMenu" class="menu right hidden"></div>
-  </div>
-  <button id="optionsBtn" class="tb" data-icon="gear" title="Options: fonts, colours, verse numbers, skins, shortcuts (Ctrl+,)"><span class="lbl">Options</span></button>
-</header>
-
-<div id="workbench">
-  <div id="zone-left" class="zone vert"></div>
-  <div id="split-left" class="zsplit h"></div>
-  <div id="centerCol">
-    <main id="center">
+</div>
+<main id="center">
       <header class="ccap">
         <span class="ccapic" data-icon="bible" data-icon-size="16"></span>
         <div id="chapterHead" class="chapter-head"></div>
@@ -94,7 +92,6 @@
           </span>
         </div>
         <span class="grow"></span>
-        <button id="bvBiblesBtn" class="navpill bvbibles-btn" type="button" title="Show or hide the Bibles drawer inside the Bible view"><span data-icon="bible" data-icon-size="13"></span><span id="bvBiblesBtnLbl">Bibles</span><span id="bvBiblesCaret" class="np-caret">▸</span></button>
         <div id="navModeSw" class="navmodes" title="Switch between the 3 Bible navigation designs or enable all 3 together">
           <span class="nmlbl">Nav:</span>
           <button data-navmode="1" title="Design 1: Interactive Header Bar, 3-Step Visual Grid Popover, Step Icons &amp; History Menu">1</button>
@@ -102,8 +99,6 @@
           <button data-navmode="3" title="Design 3: Color-Coded Sidebar Bible Tree &amp; Compact Tile Matrix with Inline Chapter/Verse Grids">3</button>
           <button data-navmode="all" class="on" title="All 3 Navigation Designs Active Together">All</button>
         </div>
-        <button class="dbtn czoom" id="bibleZoomOut" data-icon="textDown" data-icon-size="15" title="Smaller text in the active Bible view (Ctrl + mouse wheel down)" aria-label="Smaller Bible text"></button>
-        <button class="dbtn czoom" id="bibleZoomIn" data-icon="textUp" data-icon-size="15" title="Larger text in the active Bible view (Ctrl + mouse wheel up)" aria-label="Larger Bible text"></button>
       </header>
       <div id="navStripBar" class="navstrip">
         <div class="nsrow1">
@@ -120,40 +115,13 @@
         </div>
       </div>
       <div id="navPop" class="navpop hidden" role="dialog" aria-label="Choose Book, Chapter and Verse"></div>
-      <div id="bvStage" class="bvstage">
-        <aside id="bvBiblesDrawer" class="bvdrawer hidden" aria-label="Bibles drawer">
-          <div class="bvd-hdr">
-            <span class="bvd-title"><span data-icon="bible" data-icon-size="14"></span><b>Bibles</b> <span id="bvdCount" class="small"></span></span>
-            <span class="grow"></span>
-            <button id="bvdCloseBtn" class="lbtn" type="button" title="Collapse Bibles drawer">◂</button>
-          </div>
-          <div class="bvd-search">
-            <input id="bvdFilter" type="search" placeholder="Find a Bible (e.g. KJV, Tagalog, LXX)…" spellcheck="false" autocomplete="off">
-          </div>
-          <p class="bvd-hint small">Tick to open side-by-side · Drag <b>⋮⋮</b> to reorder · Click name to use in active view</p>
-          <ul id="bibleList" class="modlist bvd-list"></ul>
-          <ul id="modErrors" class="errors"></ul>
-          <div class="bvd-foot">
-            <label class="small" title="Automatically collapse this drawer after clicking a Bible name"><input type="checkbox" id="bvdAutoHide"> Auto-collapse</label>
-            <span class="grow"></span>
-            <button id="bvdImportBtn" type="button" class="small" title="Import Bible modules">+ Import…</button>
-          </div>
-        </aside>
-        <div id="bvBiblesSplit" class="zsplit h hidden" title="Drag to make the Bibles drawer wider or narrower"></div>
-        <div class="bvmain">
-          <div id="view" class="views"></div>
-          <div id="empty" class="empty hidden">
-            <h2>No Bible modules yet</h2>
-            <p>Click <b>Import</b> (or drop module files onto this window) to bring in theWord or e-Sword modules, or open <b>Options → Modules</b> to read them from a folder where they already are.</p>
-          </div>
-        </div>
-      </div>
-    </main>
-    <div id="split-bottom" class="zsplit v"></div>
-    <div id="zone-bottom" class="zone horiz"></div>
+</main>
+<div id="workbench">
+  <div id="grid"></div>
+  <div id="empty" class="empty hidden">
+    <h2>No Bible modules yet</h2>
+    <p>Click <b>Import</b> (or drop module files onto this window) to bring in theWord or e-Sword modules, or open <b>Options → Modules</b> to read them from a folder where they already are.</p>
   </div>
-  <div id="split-right" class="zsplit h"></div>
-  <div id="zone-right" class="zone vert"></div>
 </div>
 <footer id="statusbar" class="statusbar"><span id="stRef"></span><span class="grow"></span><span id="stMods"></span></footer>
 
@@ -283,11 +251,6 @@
     </form>
     <div id="bsStatus" class="status"></div>
     <ol id="bsResults" class="bsresults"></ol>
-  </div>
-  <div class="tab" id="tab-compare">
-    <div class="row tight cmpbar"><select id="cmpWhich" title="Which Bibles"><option value="all">All Bibles</option><option value="open">The Bibles of the views</option></select><label title="Mark the words that are not in the first Bible"><input type="checkbox" id="cmpDiff"> differences</label><label title="Show two verses before and after"><input type="checkbox" id="cmpCtx"> ±2 verses</label></div>
-    <div id="cmpHead" class="paneHead"></div>
-    <div id="cmpBody" class="lookup vcompare"></div>
   </div>
   <div class="tab" id="tab-study">
     <div class="seg" id="studySeg"><button data-s="lists" class="active">Verse lists</button><button data-s="notes">Notes</button><button data-s="marks">Bookmarks</button><button data-s="plans">Reading</button></div>
@@ -451,7 +414,6 @@
 <script src="study.js"></script>
 <script src="search-ui.js"></script>
 <script src="bsearch-ui.js"></script>
-<script src="compare-ui.js"></script>
 <script src="speech-ui.js"></script>
 <script src="tools-ui.js"></script>
 <script src="options.js"></script>

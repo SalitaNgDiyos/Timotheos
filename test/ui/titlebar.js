@@ -35,7 +35,7 @@ const key = (k, o = {}) => document.dispatchEvent(new KeyboardEvent('keydown', O
   const html = await lookupHtml(fake); const d = document.createElement('div'); d.innerHTML = html;
   const hs = [...d.querySelectorAll('.entry h4')].map(h => h.textContent.trim());
   ok(hs.length === 2 && /N-NSF/.test(hs[0]) && /G26|ἀγάπη|agap/i.test(hs[1]), 'popup order: morphology first, then dictionary → ' + JSON.stringify(hs));
-  const w = document.querySelector('#view [data-strong]') || document.querySelector('#view td[data-col="0"]');
+  const w = document.querySelector('.bv [data-strong]') || document.querySelector('.bv td[data-col="0"]');
   hoverEl = fake; showPopupHtml(w, html); await sleep(200);
   const pop = document.getElementById('popup');
   ok(getComputedStyle(pop).resize === 'both', 'popup can be resized from its corner');

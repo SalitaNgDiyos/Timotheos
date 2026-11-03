@@ -57,14 +57,14 @@
       for (const r of chapterRowsCache) if (r.v > maxV) maxV = r.v;
     }
     if (!maxV && b === state.ref.b && c === state.ref.c) {
-      const domVs = [...document.querySelectorAll('#view [data-v]')].map(el => +el.dataset.v || 0);
+      const domVs = [...document.querySelectorAll('.bv [data-v]')].map(el => +el.dataset.v || 0);
       if (domVs.length) maxV = Math.max(...domVs);
     }
     return maxV || 1;
   }
 
   function stepVerse(d) {
-    const t = typeof activeText === 'function' ? activeText() : $('#view');
+    const t = typeof activeText === 'function' ? activeText() : $('#grid');
     const vs = [...new Set([...(t ? t.querySelectorAll('[data-v]') : [])].map(x => +x.dataset.v))].sort((a, b) => a - b);
     if (!vs.length) return;
     const i = vs.indexOf(state.ref.v);
@@ -560,7 +560,7 @@
   function extractChapterHeadings() {
     const out = [];
     const seen = new Set();
-    const t = typeof activeText === 'function' ? activeText() : $('#view');
+    const t = typeof activeText === 'function' ? activeText() : $('#grid');
     if (t) {
       for (const hEl of t.querySelectorAll('.heading')) {
         const vEl = hEl.closest('[data-v]');
@@ -603,7 +603,7 @@
       }
     } else {
       // Fallback: show paragraph starts or verse milestones so the user can still jump by section
-      const t = typeof activeText === 'function' ? activeText() : $('#view');
+      const t = typeof activeText === 'function' ? activeText() : $('#grid');
       const vEls = t ? [...t.querySelectorAll('tr[data-v], .pv[data-v]')] : [];
       html += `<div class="small" style="padding:4px 12px">No section headings in this chapter; showing passage sections:</div>`;
       for (let i = 0; i < vEls.length; i++) {

@@ -2,7 +2,8 @@
 /* global api, TWRender, TimotheosOptions, TimotheosDock, TimotheosModules, TimotheosStudy, TimotheosSearch, TimotheosBookSearch, TimotheosCompare, TimotheosTools, TimotheosSpeech, TimotheosTitlebar, TimotheosProps, TimotheosIcons, TimotheosI18n */
 const $ = s => document.querySelector(s);
 const state = { settings: null, modules: { bibles: [], books: [], dicts: [], errors: [] }, infos: new Map(), nav: [], ref: { b: 43, c: 1, v: 1 }, back: [], fwd: [] };
-const lookupCache = new Map();
+const lookupCache = new Map(); // kept small: the oldest entries go first (RAM)
+const capMap = (m, n) => { while (m.size > n) m.delete(m.keys().next().value); };
 const EMPTY_MOD = { rules: [] };
 
 // Lookup: clicking a word puts the dictionaries that know it into the Library panel, one card per dictionary,
@@ -84,7 +85,6 @@ async function init() {
   initViews();
   TimotheosOptions.init();
   initDock();
-  wireBiblesDrawer();
   wireZoom();
   wirePopupResize();
   for (const cb of document.querySelectorAll('[data-show]')) cb.addEventListener('change', () => setShow(cb.dataset.show, cb.checked));
@@ -98,7 +98,6 @@ async function init() {
   if (window.TimotheosNav) TimotheosNav.init();
   TimotheosSearch.init();
   TimotheosBookSearch.init();
-  TimotheosCompare.init();
   TimotheosTools.init();
   window.BOOK_ABBR = {}; for (const bk of await api.books()) window.BOOK_ABBR[bk.id] = bk.abbr;
   await refreshModules();
@@ -145,7 +144,7 @@ function runCommand(cmd) {
     newUserMod: () => TimotheosModules.newUserModuleDialog(),
     import: () => TimotheosModules.importModules(), addFolder, rescan,
     search: () => openTab('search', true), bookSearch: () => openTab('bsearch', true),
-    compare: () => TimotheosCompare.open(), exportTopics: () => TimotheosTools.exportTopics(),
+    exportTopics: () => TimotheosTools.exportTopics(),
     printTopic: () => TimotheosTools.printTopic(), clipmon: () => TimotheosTools.setClipmon(!TimotheosTools.clipOn()),
     voices: () => TimotheosSpeech.voicesDialog(), goto: () => { $('#refInput').focus(); $('#refInput').select(); }, about,
     options: () => TimotheosOptions.open(), resetLayout: () => TimotheosDock.applyPreset('classic'),
@@ -161,27 +160,30 @@ window.runCommand = runCommand;
 function initDock() {
   const P = [['tree', 'Books & chapters', 'tree', 'bible', '#pane-tree'],
     ['cmt', 'Commentary', 'commentary', 'cmt', '#tab-cmt'], ['lib', 'Library', 'book', 'lib', '#tab-lib'],
-    ['search', 'Bible search', 'search', 'search', '#tab-search'], ['bsearch', 'Book search', 'search', 'search', '#tab-bsearch'], ['study', 'My Study', 'study', 'study', '#tab-study'], ['compare', 'Compare', 'copy', 'bible', '#tab-compare']];
+    ['search', 'Bible search', 'search', 'search', '#tab-search'], ['bsearch', 'Book search', 'search', 'search', '#tab-bsearch'], ['study', 'My Study', 'study', 'study', '#tab-study']];
   for (const [id, title, icon, cap, sel] of P) TimotheosDock.register({ id, title, icon, cap, el: $(sel) });
+  ensurePanes(); // the Bible views are panels of the grid too
   TimotheosDock.init(state.settings.dock, {
     onSave: layout => save({ dock: layout }),
     zoomable: id => !!ZOOM_TARGETS[id],
     onZoom: (id, d) => zoomPanel(id, d),
+    onRender: () => { if (window.TimotheosPanelSkin) TimotheosPanelSkin.applyAll(); },
+    onClose: id => { if (/^bv\d+$/.test(id)) { closeView(+id.slice(2)); return true; } return false; },
     onSkin: (id, btn) => TimotheosPanelSkin.menu(id, btn),
-    onActivate: id => { if (id === 'compare') TimotheosCompare.render(); if (id === 'bsearch') TimotheosBookSearch.onOpen(false); if (id === 'search') TimotheosSearch.onOpen(false); if (id === 'study') TimotheosStudy.onOpen(); }
+    onActivate: id => { if (/^bv\d+$/.test(id)) { const k = +id.slice(2); if (views()[k] && k !== state.active) setActive(k); return; } if (id === 'bsearch') TimotheosBookSearch.onOpen(false); if (id === 'search') TimotheosSearch.onOpen(false); if (id === 'study') TimotheosStudy.onOpen(); }
   });
   TimotheosPanelSkin.applyAll();
 }
 
 /* ---------------- text size per panel (A− / A+ buttons, Ctrl + mouse wheel) ---------------- */
 const ZOOM_TARGETS = {
-  bibles: ['#bvBiblesDrawer', '#pane-bibles'], tree: ['#bibleTree'], study: ['#studyBody'],
-  compare: ['#cmpBody'], cmt: ['#cmtBody'], lib: ['.libsplit', '#libFeed'],
+  tree: ['#bibleTree'], study: ['#studyBody'],
+  cmt: ['#cmtBody'], lib: ['.libsplit', '#libFeed'],
   search: ['#searchResults', '#searchBooks', '#searchStats'], bsearch: ['#bsResults']
 };
 const ZOOM_NAMES = {
-  bibles: 'Bibles list', tree: 'Bible tree', study: 'My Study',
-  compare: 'Compare', cmt: 'Commentary', lib: 'Library',
+  tree: 'Bible tree', study: 'My Study',
+  cmt: 'Commentary', lib: 'Library',
   search: 'Bible search results', bsearch: 'Book search results'
 };
 function zoomPanel(id, d) {
@@ -201,16 +203,14 @@ function applyZoom() {
 window.applyZoom = applyZoom;
 function wireZoom() {
   applyZoom();
-  $('#bibleZoomOut').onclick = () => zoomPanel('bible', -1);
-  $('#bibleZoomIn').onclick = () => zoomPanel('bible', 1);
   let acc = 0;
   document.addEventListener('wheel', e => {
     if (!e.ctrlKey) return;
     e.preventDefault();
-    const pane = e.target.closest && e.target.closest('#view > .bv');
-    const bvd = e.target.closest && e.target.closest('#bvBiblesDrawer');
+    if (e.target.closest && e.target.closest('#popup')) { const dy0 = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY; if (Math.abs(dy0) >= 1) stepPopupZoom(dy0 < 0 ? 1 : -1); return; }
+    const pane = e.target.closest && e.target.closest('.bv');
     const uiChrome = e.target.closest && e.target.closest('#titlebar, #toolbar, #statusbar, .dcap, #optionsDlg');
-    const p = bvd ? 'bibles' : pane ? +pane.dataset.i : uiChrome ? 'ui' : e.target.closest && (e.target.closest('#center') ? 'bible' : (e.target.closest('.dpanel') || {}).dataset?.panel);
+    const p = pane ? +pane.dataset.i : uiChrome ? 'ui' : e.target.closest && ((e.target.closest('.dpanel') || {}).dataset?.panel);
     if (p == null || (p !== 'bible' && p !== 'ui' && typeof p !== 'number' && !ZOOM_TARGETS[p])) return;
     const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
     if (Math.abs(dy) >= 50) { acc = 0; zoomPanel(p, dy < 0 ? 1 : -1); return; }
@@ -268,7 +268,7 @@ function setShow(key, on) {
 }
 function syncViewMenu() {
   for (const cb of document.querySelectorAll('[data-show]')) cb.checked = VIEW_KEYS.includes(cb.dataset.show) ? effShow(cb.dataset.show) : !!state.settings.show[cb.dataset.show];
-  const sec = document.querySelectorAll('#view > .bv')[state.active];
+  const sec = panes()[state.active];
   if (sec) { const sh = viewShow(state.active); sec.querySelectorAll('.bvside [data-k]').forEach(b => b.classList.toggle('on', !!sh[b.dataset.k])); }
 }
 
@@ -296,7 +296,8 @@ async function refreshModules(list) {
   if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.allModules = Object.assign(l, { errors: state.modules.errors }); state.modules = visibleModules(state.allModules); renderDictSelects(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {});
   $('#empty').classList.toggle('hidden', ids.length > 0);
   statusMods();
-  $('#view').classList.toggle('hidden', ids.length === 0);
+  $('#grid').classList.toggle('hidden', ids.length === 0);
+  preloadBibles();
   await rebuildNav();
   await go(state.ref, false);
 }
@@ -305,212 +306,27 @@ function statusMods() {
   $('#stMods').textContent = `${ids.length} Bible${ids.length === 1 ? '' : 's'} · ${(state.modules.books || []).length} library modules · ${views().length} Bible view${views().length === 1 ? '' : 's'}${state.settings.portable ? ' · Portable' : ''}`;
 }
 
-async function ensureInfo(id) {
+async function ensureInfo(id, transient) {
   if (state.infos.has(id)) return state.infos.get(id);
-  try { const info = await api.bibleInfo(id); state.infos.set(id, info); return info; }
+  try { const info = await api.bibleInfo(id, transient ? { transient: true } : undefined); state.infos.set(id, info); return info; }
   catch (e) { state.modules.errors.push(`${id.slice(3)}: ${e.message}`); return null; }
 }
 
-/* ---------------- 0.5.8: Design 3 Collapsible Left Bibles Drawer Inside the Bible View ---------------- */
-let dragBibleId = null;
-function ordViewLabel(idx) {
-  const n = idx + 1;
-  const suf = n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
-  return `(${n}${suf} view)`;
+/* ---------------- Bibles: no drawer. Every Bible is listed in the name menu of a Bible view; Panels → Bible View adds a view ---------------- */
+/** preload what is known of every Bible (name, abbreviation, features) so the menus are complete at once */
+function preloadBibles() {
+  const ids = state.modules.bibles.map(b => b.id).filter(id => !state.infos.has(id));
+  let i = 0;
+  const next = async () => {
+    if (i >= ids.length) { renderPopupSelects(); refreshPaneNames(); return; }
+    await ensureInfo(ids[i++], true); setTimeout(next, 0);
+  };
+  setTimeout(next, 50);
 }
-function setBiblesDrawerOpen(open, savePref = true) {
-  const dr = $('#bvBiblesDrawer'), sp = $('#bvBiblesSplit'), btn = $('#bvBiblesBtn'), caret = $('#bvBiblesCaret');
-  if (!dr) return;
-  const on = open === undefined ? dr.classList.contains('hidden') : !!open;
-  dr.classList.toggle('hidden', !on);
-  if (sp) sp.classList.toggle('hidden', !on);
-  if (btn) btn.classList.toggle('on', on);
-  if (caret) caret.textContent = on ? '◂' : '▸';
-  if (savePref && state.settings) {
-    state.settings.bvdOpen = on;
-    save({ bvdOpen: on });
-  }
-}
-window.setBiblesDrawerOpen = setBiblesDrawerOpen;
-
-function wireBiblesDrawer() {
-  const dr = $('#bvBiblesDrawer'), sp = $('#bvBiblesSplit'), btn = $('#bvBiblesBtn'), closeBtn = $('#bvdCloseBtn');
-  const fi = $('#bvdFilter'), autoCb = $('#bvdAutoHide'), impBtn = $('#bvdImportBtn');
-  if (!dr) return;
-  const w0 = Math.max(170, Math.min(440, (state.settings && state.settings.bvdWidth) || 235));
-  dr.style.width = w0 + 'px';
-  if (autoCb) {
-    autoCb.checked = !!(state.settings && state.settings.bvdAutoHide);
-    autoCb.onchange = () => { state.settings.bvdAutoHide = autoCb.checked; save({ bvdAutoHide: autoCb.checked }); };
-  }
-  setBiblesDrawerOpen(!!(state.settings && state.settings.bvdOpen), false);
-  if (btn) btn.onclick = () => setBiblesDrawerOpen();
-  if (closeBtn) closeBtn.onclick = () => setBiblesDrawerOpen(false);
-  if (impBtn) impBtn.onclick = () => TimotheosModules.importModules();
-  if (fi) {
-    fi.oninput = () => filterBiblesDrawer(fi.value);
-    fi.onkeydown = e => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const first = document.querySelector('#bibleList li:not(.hidden) .bvd-use');
-        if (first) first.click();
-      } else if (e.key === 'Escape') {
-        fi.value = '';
-        filterBiblesDrawer('');
-      }
-    };
-  }
-  if (sp) {
-    sp.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      try { sp.setPointerCapture(e.pointerId); } catch (_) {}
-      const x0 = e.clientX, startW = dr.offsetWidth;
-      const move = ev => {
-        const nw = Math.round(Math.max(170, Math.min(440, startW + ev.clientX - x0)));
-        dr.style.width = nw + 'px';
-        state.settings.bvdWidth = nw;
-      };
-      const up = () => {
-        sp.removeEventListener('pointermove', move);
-        sp.removeEventListener('pointerup', up);
-        sp.removeEventListener('pointercancel', up);
-        sp.removeEventListener('lostpointercapture', up);
-        save({ bvdWidth: state.settings.bvdWidth });
-      };
-      sp.addEventListener('pointermove', move);
-      sp.addEventListener('pointerup', up);
-      sp.addEventListener('pointercancel', up);
-      sp.addEventListener('lostpointercapture', up);
-    });
-    sp.addEventListener('dblclick', () => {
-      dr.style.width = '235px';
-      state.settings.bvdWidth = 235;
-      save({ bvdWidth: 235 });
-    });
-  }
-}
-
-function filterBiblesDrawer(q) {
-  const ql = String(q || '').trim().toLowerCase();
-  document.querySelectorAll('#bibleList > li').forEach(li => {
-    const hay = (li.dataset.search || '').toLowerCase();
-    li.classList.toggle('hidden', !!ql && !hay.includes(ql));
-  });
-}
-
 function renderModuleList() {
-  const ul = $('#bibleList'); if (!ul) return;
-  ul.innerHTML = '';
-  const open = views().map(v => v.bible);
-  const btnLbl = $('#bvBiblesBtnLbl'), cntLbl = $('#bvdCount');
-  if (btnLbl) btnLbl.textContent = `Bibles (${open.length})`;
-  if (cntLbl) cntLbl.textContent = `(${open.length} of ${state.modules.bibles.length})`;
-
-  const sorted = [...state.modules.bibles].sort((a, b) => {
-    const ia = open.indexOf(a.id), ib = open.indexOf(b.id);
-    if (ia >= 0 || ib >= 0) return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
-    return a.name.localeCompare(b.name);
-  });
-  for (const m of sorted) {
-    const info = state.infos.get(m.id);
-    const abbr = info ? info.abbr : m.abbr;
-    const ttl = info ? info.title : m.name;
-    const openIdx = open.indexOf(m.id);
-    const on = openIdx >= 0;
-    const isAct = on && openIdx === state.active;
-    const fmt = m.id.startsWith('es:') ? 'e-Sword' : m.id.startsWith('bk:') ? 'book' : m.id.startsWith('usfm:') ? 'USFM' : m.id.startsWith('usfx:') ? 'USFX' : m.name.split('.').pop();
-    const li = document.createElement('li');
-    li.className = (on ? 'bvd-on' : '') + (isAct ? ' bvd-active' : '');
-    li.dataset.bid = m.id;
-    li.dataset.search = `${abbr} ${ttl} ${m.name} ${fmt}`;
-    li.draggable = true;
-    li.innerHTML = `
-      <span class="bvd-grip" title="Drag to reorder side-by-side Bible views">⋮⋮</span>
-      <input type="checkbox" class="bvd-cb" ${on ? 'checked' : ''} title="${on ? 'Close this parallel Bible view' : 'Open in a parallel Bible view (side-by-side)'}">
-      <button type="button" class="bvd-use" title="${esc(ttl)}\nClick to read in the active Bible view">
-        <span class="bvd-top">
-          <span class="abbr">${esc(abbr)}</span>
-          ${on ? `<span class="bvd-ord">${esc(ordViewLabel(openIdx))}</span>` : ''}
-        </span>
-        <span class="ttl">${esc(ttl)}</span>
-      </button>
-      ${on && openIdx > 0 ? '<button type="button" class="mv" title="Move its view to the left">↑</button>' : ''}
-      <button type="button" class="pp" title="Module properties (${esc(fmt)})">${TimotheosIcons.icon('info', 13)}</button>`;
-
-    li.querySelector('.bvd-cb').addEventListener('change', async e => {
-      if (e.target.checked) await addView(m.id);
-      else {
-        const vs = views().filter(v => v.bible !== m.id);
-        if (!vs.length) { e.target.checked = true; return flashMsg('At least one Bible view stays open'); }
-        setViews(vs);
-      }
-    });
-    li.querySelector('.bvd-use').onclick = async e => {
-      e.preventDefault(); e.stopPropagation();
-      if (on) {
-        setActive(openIdx);
-        renderModuleList();
-      } else {
-        await useBible(m.id);
-      }
-      if (state.settings && state.settings.bvdAutoHide) setBiblesDrawerOpen(false);
-    };
-    li.querySelector('.pp').onclick = e => { e.preventDefault(); e.stopPropagation(); TimotheosProps.open(m.id); };
-    const mv = li.querySelector('.mv');
-    if (mv) mv.addEventListener('click', async e => {
-      e.stopPropagation();
-      const vs = [...views()]; const i = vs.findIndex(v => v.bible === m.id);
-      if (i > 0) { const act = vs[state.active]; [vs[i - 1], vs[i]] = [vs[i], vs[i - 1]]; state.active = vs.indexOf(act); setViews(vs); }
-    });
-
-    // HTML5 drag-and-drop to reorder side-by-side Bible views
-    li.addEventListener('dragstart', e => {
-      dragBibleId = m.id;
-      li.classList.add('dragging');
-      try { e.dataTransfer.setData('text/plain', m.id); } catch (_) {}
-    });
-    li.addEventListener('dragend', () => {
-      dragBibleId = null;
-      li.classList.remove('dragging');
-      ul.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
-    });
-    li.addEventListener('dragover', e => {
-      if (!dragBibleId || dragBibleId === m.id) return;
-      e.preventDefault();
-      li.classList.add('drag-over');
-    });
-    li.addEventListener('dragleave', () => li.classList.remove('drag-over'));
-    li.addEventListener('drop', async e => {
-      e.preventDefault();
-      li.classList.remove('drag-over');
-      const fromId = dragBibleId;
-      dragBibleId = null;
-      if (!fromId || fromId === m.id) return;
-      await ensureInfo(fromId);
-      const vs = [...views()];
-      const actObj = vs[state.active];
-      let fromIdx = vs.findIndex(v => v.bible === fromId);
-      let fromItem;
-      if (fromIdx >= 0) {
-        [fromItem] = vs.splice(fromIdx, 1);
-      } else {
-        fromItem = { bible: fromId, linked: true };
-      }
-      const toIdx = vs.findIndex(v => v.bible === m.id);
-      if (toIdx >= 0) vs.splice(toIdx, 0, fromItem);
-      else vs.push(fromItem);
-      state.active = Math.max(0, vs.indexOf(actObj >= 0 ? actObj : fromItem));
-      await setViews(vs);
-    });
-
-    ul.appendChild(li);
-  }
-  const fi = $('#bvdFilter');
-  if (fi && fi.value.trim()) filterBiblesDrawer(fi.value);
-
-  const errs = $('#modErrors'); errs.innerHTML = '';
+  const errs = $('#modErrors'); if (!errs) return; errs.innerHTML = '';
   for (const e of (state.modules.errors || []).filter(x => !/encrypted/i.test(x))) { const li = document.createElement('li'); li.textContent = e; errs.appendChild(li); }
-  for (const id of new Set(open)) {
+  for (const id of new Set(views().map(v => v.bible))) {
     const info = state.infos.get(id);
     for (const w of (info && info.warnings) || []) { const li = document.createElement('li'); li.className = /are shown as/.test(w) ? 'info' : ''; li.textContent = `${info.abbr}: ${w}`; errs.appendChild(li); }
   }
@@ -626,8 +442,10 @@ function viewShow(i) { const s = Object.assign({}, state.settings.show); const v
 function effShow(key, i = state.active) { return !!viewShow(i)[key]; }
 window.effShow = effShow;
 function sameMove(i, j) { const vs = views(); return i === j || (vs[i] && vs[j] && vs[i].linked && vs[j].linked); }
-const paneTexts = () => [...document.querySelectorAll('#view > .bv > .bvbody > .bvtext')];
-function activeText() { return paneTexts()[state.active] || $('#view'); }
+const paneEls = [];
+const panes = () => paneEls;
+const paneTexts = () => paneEls.map(s => s.querySelector('.bvtext'));
+function activeText() { return paneTexts()[state.active] || $('#grid'); }
 window.activeText = activeText;
 
 async function setViews(vs) {
@@ -653,14 +471,18 @@ function closeView(i) {
 function setActive(i, quiet) {
   if (i === state.active || !views()[i]) return;
   state.active = i; state.ref = refOfView(i);
-  document.querySelectorAll('#view > .bv').forEach((sec, k) => sec.classList.toggle('active', k === i));
+  panes().forEach((sec, k) => sec.classList.toggle('active', k === i));
   storeViews();
   syncNavControls();
   if (!quiet) TimotheosModules.updateCommentary();
   syncViewMenu();
 }
 window.setActiveView = setActive;
-window.refreshPaneLooks = () => document.querySelectorAll('#view > .bv').forEach((sec, i) => { if (views()[i]) applyPaneLook(sec, i); });
+window.addView = addView; window.closeView = closeView;
+window.setViewLayout = l => { save({ layout: l }); if (window.TimotheosDock) TimotheosDock.arrangeBible(l); renderChapter(); };
+function refreshPaneNames() { paneEls.forEach((_, i) => { if (window.TimotheosDock) TimotheosDock.retitle('bv' + i, viewName(i)); const b = paneEls[i].querySelector('.bvbible'); if (b && views()[i]) b.textContent = viewName(i); }); }
+window.refreshPaneNames = refreshPaneNames;
+window.refreshPaneLooks = () => panes().forEach((sec, i) => { if (views()[i]) applyPaneLook(sec, i); });
 function toggleViewShow(i, key, on) {
   const v = views()[i]; if (!v) return;
   const val = on === undefined ? !effShow(key, i) : on;
@@ -673,7 +495,7 @@ function zoomView(i, d) {
   const v = views()[i]; if (!v) return;
   const z = Math.round(Math.min(2.5, Math.max(0.6, (v.zoom || 1) + d * 0.1)) * 10) / 10;
   v.zoom = z; state.settings.bibleZoom = z; save({ bibleZoom: z }); storeViews();
-  const sec = document.querySelectorAll('#view > .bv')[i]; if (sec) applyPaneLook(sec, i);
+  const sec = panes()[i]; if (sec) applyPaneLook(sec, i);
   flashMsg(`${viewName(i)}: text ${d > 0 ? 'larger' : 'smaller'}`);
 }
 const baseSize = () => state.settings.fontSize || 17;
@@ -690,16 +512,12 @@ function applyPaneLook(sec, i) {
   const pb = sec.querySelector('.bvpen'); if (pb) pb.classList.toggle('on', !!(state.pen && state.pen.kind === 'hl'));
   const ub = sec.querySelector('.bvul'); if (ub) ub.classList.toggle('on', !!(state.pen && state.pen.kind === 'ul'));
 }
-function ensurePanes() {
-  const host = $('#view'); const vs = views();
-  while (host.children.length > vs.length) host.lastElementChild.remove();
-  while (host.children.length < vs.length) {
-    const sec = document.createElement('section'); sec.className = 'bv';
-    sec.innerHTML = `<header class="bvcap"><button class="bvbible" data-a="bible" title="Choose the Bible of this view (double-click to rename this view)"></button><span class="bvref"></span><span class="grow"></span>
-      <button class="dbtn" data-a="close" title="Close this Bible view">${TimotheosIcons.icon('close', 14)}</button></header>
+function paneHtml() {
+  return `<header class="bvcap"><button class="bvbible" data-a="bible" title="Choose the Bible of this view (double-click to rename this view)"></button><span class="bvref"></span><span class="grow"></span></header>
       <div class="bvbody"><nav class="bvside" aria-label="Settings of this view">
         <button data-a="menu" class="bvmenubtn" title="What this view shows, and its options" aria-haspopup="true">${TimotheosIcons.icon('menu', 16)}</button>
         <span class="bvsep"></span>
+        <button data-a="copyv" title="Copy the current verse (Ctrl+C)">${TimotheosIcons.icon('copy', 15)}</button>
         <button data-a="info" title="Bible info: about this module">${TimotheosIcons.icon('info', 15)}</button>
         <button data-a="link" class="bvlink" title="Sync: move together with the other Bible views (click to let this view read on by itself)">${TimotheosIcons.icon('link', 15)}</button>
         <button data-a="zin" title="Font up (Ctrl + mouse wheel up)">${TimotheosIcons.icon('textUp', 15)}</button>
@@ -711,16 +529,28 @@ function ensurePanes() {
         <button data-a="ul" class="bvul" title="Underline: choose a style and colour, then select text">${TimotheosIcons.icon('underline', 15)}</button>
       </nav>
         <div class="bvtext view" tabindex="0"></div></div>`;
-    host.appendChild(sec);
-    const tx = sec.querySelector('.bvtext');
-    let raf = 0; new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => tx.style.setProperty('--half', Math.floor(tx.clientHeight / 2) + 'px')); }).observe(tx);
-  }
-  host.classList.toggle('centered', centerOn());
-  [...host.children].forEach((sec, i) => {
+}
+/** make one Bible view panel (element + dock panel); the dock puts it in the grid */
+function makePane(i) {
+  const sec = document.createElement('section'); sec.className = 'bv'; sec.innerHTML = paneHtml();
+  paneEls[i] = sec;
+  const tx = sec.querySelector('.bvtext');
+  let raf = 0; new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => tx.style.setProperty('--half', Math.floor(tx.clientHeight / 2) + 'px')); }).observe(tx);
+  const panel = { id: 'bv' + i, title: viewName(i) || 'Bible', icon: 'bible', cap: 'bible', el: sec };
+  if (window.TimotheosDock) TimotheosDock.add(panel);
+}
+function ensurePanes() {
+  const vs = views();
+  while (paneEls.length > vs.length) { const k = paneEls.length - 1; paneEls.pop(); if (window.TimotheosDock) TimotheosDock.remove('bv' + k); }
+  while (paneEls.length < vs.length) makePane(paneEls.length);
+  const host = $('#grid');
+  document.body.classList.toggle('centered', centerOn());
+  paneEls.forEach((sec, i) => {
     const v = vs[i]; const inf = state.infos.get(v.bible);
     sec.dataset.i = i; sec.dataset.linked = v.linked ? '1' : '0';
     sec.classList.toggle('active', i === state.active);
     sec.querySelector('.bvbible').textContent = viewName(i);
+    if (window.TimotheosDock) TimotheosDock.retitle('bv' + i, viewName(i));
     sec.querySelector('.bvbible').title = (inf ? inf.title + ' – ' : '') + 'click to choose another Bible for this view · double-click to rename this view';
     sec.querySelector('.bvlink').classList.toggle('on', !!v.linked);
     applyPaneLook(sec, i);
@@ -757,18 +587,19 @@ function setVerseNumbers(i, on) {
   storeViews(); renderChapter(false);
 }
 function wireViews() {
-  const host = $('#view');
-  host.addEventListener('mousedown', e => { const sec = e.target.closest('#view > .bv'); if (sec) setActive(+sec.dataset.i); }, true);
-  host.addEventListener('dblclick', e => { const b = e.target.closest('.bvbible'); if (b) { const sec = b.closest('#view > .bv'); TimotheosViewUI.rename(+sec.dataset.i, b); } });
-  host.addEventListener('focusin', e => { const sec = e.target.closest('#view > .bv'); if (sec) setActive(+sec.dataset.i); });
+  const host = $('#workbench');
+  host.addEventListener('mousedown', e => { const sec = e.target.closest('.bv'); if (sec) setActive(+sec.dataset.i); }, true);
+  host.addEventListener('dblclick', e => { const b = e.target.closest('.bvbible'); if (b) { const sec = b.closest('.bv'); TimotheosViewUI.rename(+sec.dataset.i, b); } });
+  host.addEventListener('focusin', e => { const sec = e.target.closest('.bv'); if (sec) setActive(+sec.dataset.i); });
   host.addEventListener('click', e => {
-    const sec = e.target.closest('#view > .bv'); if (!sec) return; const i = +sec.dataset.i; const v = views()[i];
+    const sec = e.target.closest('.bv'); if (!sec) return; const i = +sec.dataset.i; const v = views()[i];
     const refSpan = e.target.closest('.bvref');
     if (refSpan && refSpan.textContent && window.TimotheosNav) { setActive(i); TimotheosNav.openNavPopover('book', refSpan, i); return; }
     const a = e.target.closest('[data-a]'); if (!a) return;
     const act = a.dataset.a;
     if (act === 'zin' || act === 'zout') return zoomView(i, act === 'zin' ? 1 : -1);
     if (act === 'close') return closeView(i);
+    if (act === 'copyv') return TimotheosStudy.copyDialog();
     if (act === 'link') return toggleLink(i);
     if (act === 'vnum') {
       const order = ['margin', 'inline', 'hidden']; const ap = TimotheosOptions.appearance();
@@ -778,7 +609,7 @@ function wireViews() {
     }
     if (act === 'font') {
       const fonts = TimotheosOptions.fonts();
-      return paneMenu(a, `<div class="mh">Font of this view</div><select class="bvfont" size="12"><option value="">As in Options</option>${fonts.map(f => `<option${f === v.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>`, m => {
+      return paneMenu(a, `<div class="mh">Font of this view</div><select class="bvfont" size="12"><option value="">As in Options</option>${fonts.map(f => `<option value="${esc(f)}" style="font-family:'${esc(String(f).replace(/['\\]/g, ''))}'"${f === v.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>`, m => {
         const s = m.querySelector('select'); if (!v.font) s.value = '';
         s.onchange = () => { v.font = s.value || undefined; if (!v.font) delete v.font; storeViews(); ensurePanes(); };
       });
@@ -819,7 +650,7 @@ async function originalFor(key) {
   if (origCache.has(ck)) return origCache.get(ck);
   let o = '';
   try { const r = await api.lookup('strong', key, activeBible); if (r) { const t = document.createElement('div'); t.innerHTML = r.html; const txt = (r.subject || '') + ' ' + (t.textContent || '').slice(0, 400); const m = (/^H/i.test(key) ? /[\u0590-\u05FF\uFB1D-\uFB4F]+(?:[\u05BE\s][\u0590-\u05FF\uFB1D-\uFB4F]+)?/ : /[\u0370-\u03FF\u1F00-\u1FFF\u0300-\u036F]+/).exec(txt); o = m ? m[0].trim() : ''; } } catch (e) { /* none */ }
-  origCache.set(ck, o); return o;
+  capMap(origCache, 4000); origCache.set(ck, o); return o;
 }
 function columnWords(i, root) {
   const tl = w => (window.TimotheosTranslit ? TimotheosTranslit.translit(w) : '');
@@ -896,7 +727,7 @@ function syncNavControls() {
 }
 
 async function go(ref, pushSave = true) {
-  if (!state.nav.length) { $('#view').innerHTML = ''; $('#chapterHead').textContent = ''; return; }
+  if (!state.nav.length) { paneTexts().forEach(t => { t.innerHTML = ''; }); $('#chapterHead').textContent = ''; return; }
   let bk = state.nav.find(x => x.id === ref.b) || state.nav[0];
   let c = ref.c || 1;
   if (!bk.chapterList.includes(c)) c = bk.chapterList.find(x => x >= c) || bk.chapterList[bk.chapterList.length - 1];
@@ -945,7 +776,7 @@ window.centerVerse = centerVerse;
 /** select verse v in the active view and in every view that moves with it: lit in all of them and centred in all of them */
 function selectVerse(v, scroll = true, skipPane = -1) {
   const texts = paneTexts();
-  const el = (texts[state.active] || $('#view')).querySelector(`[data-v="${v}"]`);
+  const el = (texts[state.active] || $('#grid')).querySelector(`[data-v="${v}"]`);
   const group = texts.map((t, i) => i).filter(i => sameMove(i, state.active));
   if (!el && !group.some(i => texts[i].querySelector(`[data-v="${v}"]`))) return false;
   for (const i of group) {
@@ -963,12 +794,12 @@ function selectVerse(v, scroll = true, skipPane = -1) {
 /** the reader scrolled a view: the verse in its middle becomes the active verse, and the views that move with it follow */
 let scrollTimer = null;
 function wireScrollSync() {
-  $('#view').addEventListener('scroll', e => {
+  $('#workbench').addEventListener('scroll', e => {
     const t = e.target; if (!t.classList || !t.classList.contains('bvtext') || !centerOn() || (t._prog || 0) > Date.now()) return;
     clearTimeout(scrollTimer);
     scrollTimer = setTimeout(() => {
       if ((t._prog || 0) > Date.now()) return;
-      const i = +t.closest('#view > .bv').dataset.i; const r = t.getBoundingClientRect();
+      const i = +t.closest('.bv').dataset.i; const r = t.getBoundingClientRect();
       const hit = document.elementFromPoint(r.left + Math.min(r.width * 0.6, r.width - 8), r.top + r.height / 2);
       const row = hit && hit.closest ? hit.closest('[data-v]') : null; if (!row || !t.contains(row)) return;
       const v = +row.dataset.v; if (i !== state.active) setActive(i, true);
@@ -995,7 +826,6 @@ async function renderChapter(scroll, only) {
   const seq = ++renderSeq;
   const vs = views(); if (!vs.length) return;
   ensurePanes();
-  const host = $('#view'); host.dataset.arrange = currentLayout();
   const which = only || vs.map((_, i) => i);
   await Promise.all(which.map(i => renderPane(i, scroll, (paneSeq[i] = (paneSeq[i] || 0) + 1))));
   if (seq !== renderSeq) return;
@@ -1004,7 +834,7 @@ async function renderChapter(scroll, only) {
 }
 window.renderChapter = renderChapter;
 async function renderPane(i, scroll, seq) {
-  const v = views()[i]; const sec = document.querySelectorAll('#view > .bv')[i]; if (!v || !sec) return;
+  const v = views()[i]; const sec = panes()[i]; if (!v || !sec) return;
   const id = v.bible; const { b, c } = refOfView(i); const vv = refOfView(i).v;
   const data = await api.chapter([id], b, c);
   if (seq !== paneSeq[i]) return;
@@ -1071,6 +901,7 @@ async function entry(kind, key) {
   const activeBible = (views()[state.active] || {}).bible || '';
   const k = kind + ':' + key + ':' + activeBible;
   if (!lookupCache.has(k)) {
+    capMap(lookupCache, 300);
     lookupCache.set(k, api.lookup(kind, key, activeBible).then(r => r
       ? `<div class="entry"><h4>${esc(r.subject || key)} <a class="findlink" data-find="${esc(key)}" title="Search the open Bibles for ${esc(key)}">Find ${kind === 'morph' ? 'm/ ' : ''}${esc(key)}</a></h4><div class="src">${esc(r.dict)}</div>${sanitize(r.html)}</div>`
       : `<div class="entry"><h4>${esc(key)}</h4><div class="src">${kind === 'strong' ? "No Strong's dictionary entry found" : 'No morphology dictionary entry found'}</div></div>`)
@@ -1151,8 +982,19 @@ function wireHover() {
 let hideTimer = null;
 let popupHold = false;
 function hidePopupSoon() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (!popupHold) $('#popup').classList.add('hidden'); }, 300); }
+const popupZoom = () => Math.min(2.5, Math.max(0.6, +(TimotheosOptions.appearance().popupZoom || 1)));
+function applyPopupZoom() {
+  const p = $('#popup'); const z = popupZoom(); const b = p.querySelector('.pzbody'); if (b) b.style.zoom = z;
+  const v = p.querySelector('.pzv'); if (v) v.textContent = Math.round(z * 100) + '%';
+}
+function stepPopupZoom(d) {
+  const a = TimotheosOptions.appearance(); a.popupZoom = Math.round(Math.min(2.5, Math.max(0.6, popupZoom() + d * 0.1)) * 10) / 10;
+  save({ appearance: a }); applyPopupZoom();
+}
+window.stepPopupZoom = stepPopupZoom;
 function wirePopupResize() {
   const p = $('#popup');
+  p.addEventListener('click', e => { const b = e.target.closest('[data-pz]'); if (b) { e.stopPropagation(); popupHold = true; stepPopupZoom(b.dataset.pz === '+' ? 1 : -1); setTimeout(() => { popupHold = false; }, 400); } });
   const sz = (TimotheosOptions.appearance().popupSize) || null;
   if (sz) { p.style.width = sz.w + 'px'; p.style.height = sz.h + 'px'; p.classList.add('sized'); }
   p.addEventListener('mousedown', e => {
@@ -1179,7 +1021,8 @@ async function showPopup(el) {
 }
 function showPopupHtml(el, html) {
   clearTimeout(hideTimer);
-  const p = $('#popup'); p.innerHTML = html; p.classList.remove('hidden'); p.scrollTop = 0;
+  const p = $('#popup'); p.innerHTML = `<div class="pzbar"><button type="button" data-pz="-" title="Smaller text in popups (Ctrl + mouse wheel down)">A−</button><span class="pzv"></span><button type="button" data-pz="+" title="Larger text in popups (Ctrl + mouse wheel up)">A+</button></div><div class="pzbody">${html}</div>`;
+  applyPopupZoom(); p.classList.remove('hidden'); p.scrollTop = 0;
   const r = el.getBoundingClientRect(); const W = window.innerWidth, H = window.innerHeight;
   const pw = Math.min(p.offsetWidth || 440, W - 20);
   let x = Math.min(Math.max(10, r.left), W - pw - 10); let y = r.bottom + 6;
@@ -1234,7 +1077,7 @@ function about() {
   const s = state.settings; const lang0 = s.aboutVerse === 'en' ? 'en' : 'fil';
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
-    <p><b>Timotheos ${esc(s.version || '0.6.1')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.2')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>MIT License – free to use, copy, change and share, with the copyright notice kept.</td></tr>
     <tr><th>GitHub</th><td><a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a></td></tr>
     <tr><th>Program folder</th><td><code class="sel">${esc(s.appDir || '')}</code></td></tr>
@@ -1256,14 +1099,14 @@ function wireUi() {
   $('#refForm').addEventListener('submit', async e => {
     e.preventDefault();
     const r = await api.parseRef($('#refInput').value);
-    if (r) { await go(r); $('#refInput').blur(); syncNavControls(); $('#view').focus(); }
+    if (r) { await go(r); $('#refInput').blur(); syncNavControls(); activeText().focus(); }
     else { flashMsg(`“${$('#refInput').value.trim()}” is not a place in the open Bibles`); $('#refInput').select(); }
   });
   { // one box for the place: click it, type another reference, Enter
     const ri = $('#refInput');
     ri.addEventListener('focus', () => setTimeout(() => ri.select(), 0));
     ri.addEventListener('blur', () => syncNavControls());
-    ri.addEventListener('keydown', e => { if (e.key === 'Escape') { ri.blur(); $('#view').focus(); } e.stopPropagation(); });
+    ri.addEventListener('keydown', e => { if (e.key === 'Escape') { ri.blur(); activeText().focus(); } e.stopPropagation(); });
   }
   $('#prevBtn').onclick = () => step(-1);
   $('#nextBtn').onclick = () => step(1);
@@ -1274,7 +1117,6 @@ function wireUi() {
   $('#tab-lib #libFeed').addEventListener('click', e => { const h = e.target.closest('[data-toggle-card]'); if (h && !e.target.closest('a, button')) { const c = h.closest('.cmtcard'); c.classList.toggle('collapsed'); h.querySelector('.cc-chev').textContent = c.classList.contains('collapsed') ? '▸' : '▾'; } });
   if ($('#lkpBack')) $('#lkpBack').onclick = () => lookupStep(-1);
   if ($('#lkpFwd')) $('#lkpFwd').onclick = () => lookupStep(1);
-  $('#searchBtn').onclick = () => openTab('search', true);
   wireModuleManager();
   $('#addFolderBtn').onclick = addFolder;
   $('#rescanBtn').onclick = rescan;
@@ -1287,12 +1129,13 @@ function wireUi() {
   document.addEventListener('click', e => {
     const fl = e.target.closest('[data-find]');
     if (fl) { e.preventDefault(); $('#popup').classList.add('hidden'); TimotheosSearch.find((/^[GH]\d/i.test(fl.dataset.find) ? '' : 'm/ ') + fl.dataset.find); return; }
+    // a click anywhere in a verse (on a word, a number or the blank space) makes it the active verse
+    const row = e.target.closest('.bv tr[data-v], .bv .pv[data-v]');
+    if (row && !e.target.closest('button, input, select, textarea, .menu') && !String(window.getSelection()).trim()) selectVerse(+row.dataset.v, false);
     const link = e.target.closest('[data-href]');
     if (link) { e.preventDefault(); followLink(link.dataset.href); return; }
     const t = popupTarget(e.target);
     if (t) { pin(t); return; }
-    const vn = e.target.closest('#view td.vn, #view sup.vnum');
-    if (vn) selectVerse(+vn.closest('[data-v]').dataset.v, false);
   });
   wireHover();
 }

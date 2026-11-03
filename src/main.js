@@ -440,7 +440,7 @@ app.whenReady().then(async () => {
   handle('xrefs:remove', (from, to) => xrefs.remove(from, to));
   handle('xrefs:sets', () => xrefs.list());
   handle('xrefs:enable', (i, on) => { xrefs.setEnabled(i, on); settings.xrefsDisabled = xrefs.list().filter(s => s.disabled).map(s => s.file); saveSettings(); return xrefs.list(); });
-  handle('bible:info', id => lib.info(id));
+  handle('bible:info', (id, o) => lib.info(id, o));
   handle('bible:nav', ids => lib.navigation(ids));
   handle('bible:chapter', (ids, b, c) => lib.chapter(ids, b, c));
   handle('search', (ids, q, opts) => lib.search(ids, q, opts));

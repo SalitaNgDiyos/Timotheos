@@ -30,13 +30,19 @@ button.tb.on { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 #panelsMenu { min-width: 330px; }
 
 /* workbench */
-#workbench { flex: 1; display: flex; min-height: 0; position: relative; padding: 6px; background: var(--bg); }
+#workbench { flex: 1; display: block; min-height: 0; position: relative; padding: 6px; background: var(--bg); }
+#grid { position: absolute; inset: 6px; display: grid; min-width: 0; min-height: 0; }
+#grid > .dgroup { min-width: 0; min-height: 0; }
+.gut { position: relative; z-index: 2; border-radius: 3px; }
+.gut.h { cursor: col-resize; } .gut.v { cursor: row-resize; }
+.gut:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+#empty { position: absolute; inset: 6px; z-index: 3; background: var(--bg); }
 .zone { display: flex; min-width: 0; min-height: 0; flex: none; }
 .zone.vert { flex-direction: column; }
 .zone.horiz { flex-direction: row; }
 .zone.empty { display: none; }
 #centerCol { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-#center { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--textbg); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+#center { flex: none; display: flex; flex-direction: column; background: var(--textbg); border-bottom: 1px solid var(--line); }
 .zsplit { flex: none; border-radius: 3px; }
 .zsplit.h { width: 6px; cursor: col-resize; }
 .zsplit.v { height: 6px; cursor: row-resize; }
@@ -318,12 +324,11 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .optpage .note { display: flex; gap: 6px; align-items: center; }
 
 /* ---------------- Bible views (0.4.6): one Bible per view, side by side (or one under another) ---------------- */
-#view.views { flex: 1; min-height: 0; display: flex; gap: 6px; padding: 6px; background: var(--panel); }
-#view.views[data-arrange="rows"] { flex-direction: column; }
-#view > .bv { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--textbg); }
-#view > .bv.active { border-color: var(--cap-bible); box-shadow: 0 0 0 1px var(--cap-bible); }
+.bv { flex: 1 1 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--textbg); }
+
 .bvcap { display: flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 6px 0 4px; background: color-mix(in srgb, var(--cap-bible) 14%, var(--panel)); border-bottom: 1px solid var(--line); flex: none; font: var(--ui-size, 13px) var(--font-ui); }
-#view > .bv.active .bvcap { background: color-mix(in srgb, var(--cap-bible) 28%, var(--panel)); }
+
+.bv.active .bvcap { background: color-mix(in srgb, var(--cap-bible) 28%, var(--panel)); }
 .bvbible { border: 0; background: transparent; font: 700 var(--ui-size, 13px) var(--font-ui); color: var(--heading); padding: 3px 7px; border-radius: 5px; cursor: pointer; }
 .bvbible::after { content: ' ▾'; font-weight: 400; opacity: .6; }
 .bvbible:hover { background: var(--card); }
@@ -349,7 +354,8 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .bvmenu .bvlist button:hover, .bvmenu .bvlist button.on { background: var(--card); }
 .bvmenu select { width: 100%; }
 .modlist .use { border: 0; background: transparent; cursor: pointer; color: var(--accent); font-weight: 700; padding: 0 4px; }
-@media print { #view.views { display: block; padding: 0; } .bvside, .bvcap .dbtn, .bvzoom { display: none !important; } #view > .bv { border: 0; box-shadow: none; } }
+@media print { #grid { display: block; position: static; } .bvside, .bvcap .dbtn, .bvzoom { display: none !important; } 
+.bv { border: 0; box-shadow: none; } }
 
 
 /* ---------------- 0.4.9: Lookup history bar, user module authoring bar, shortcut editor ---------------- */
@@ -560,44 +566,6 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .cmtcard.collapsed .cmtcard-body { display: none; }
 .cmt-avail { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); }
 
-/* ---------------- 0.5.8: Design 3 Collapsible Left Bibles Drawer Inside the Bible View ---------------- */
-.bvbibles-btn { margin-right: 4px; }
-.bvbibles-btn.on { background: var(--card); color: var(--accent); border-color: var(--card); }
-:root[data-caps="plain"] .bvbibles-btn.on { background: var(--accent); color: var(--card); border-color: var(--accent); }
-
-.bvstage { flex: 1; min-height: 0; min-width: 0; display: flex; overflow: hidden; }
-.bvmain { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
-
-.bvdrawer { width: 235px; min-width: 170px; max-width: 440px; flex: none; display: flex; flex-direction: column;
-  background: var(--panel); border-right: 1px solid var(--line); overflow: hidden; }
-.bvd-hdr { display: flex; align-items: center; gap: 6px; padding: 6px 8px 5px 10px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--cap-bible) 10%, var(--panel)); flex: none; }
-.bvd-title { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--ui-size, 13px) var(--font-ui); color: var(--heading); }
-#bvdCloseBtn { width: 24px; height: 24px; font-size: 13px; }
-.bvd-search { padding: 6px 8px 2px; flex: none; }
-#bvdFilter { width: 100%; font-size: 12px; padding: 4px 7px; }
-.bvd-hint { margin: 2px 8px 4px; font-size: 11px; line-height: 1.35; flex: none; }
-
-.bvd-list { flex: 1; min-height: 0; overflow: auto; padding: 2px 6px 8px; }
-.bvd-list li { display: flex; align-items: center; gap: 5px; padding: 4px 5px; border-radius: 6px; border: 1px solid transparent; margin-bottom: 2px; }
-.bvd-list li:hover { background: var(--card); border-color: var(--line); }
-.bvd-list li.bvd-on { background: color-mix(in srgb, var(--accent-soft) 45%, var(--card)); border-color: color-mix(in srgb, var(--accent) 30%, var(--line)); }
-.bvd-list li.bvd-active { border-color: var(--accent); box-shadow: inset 2px 0 0 var(--accent); }
-.bvd-list li.drag-over { border-top: 2px solid var(--accent); }
-.bvd-grip { cursor: grab; color: var(--muted); font-size: 11px; letter-spacing: -1px; user-select: none; padding: 0 2px; opacity: .65; }
-.bvd-list li:hover .bvd-grip { opacity: 1; }
-.bvd-cb { margin: 0; cursor: pointer; accent-color: var(--accent); flex: none; }
-.bvd-use { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
-  border: 0; background: transparent; padding: 1px 2px; text-align: left; cursor: pointer; color: inherit; }
-.bvd-top { display: flex; align-items: baseline; gap: 5px; width: 100%; min-width: 0; }
-.bvd-use .abbr { font: 700 calc(var(--ui-size, 13px) - 0.5px) var(--font-ui); color: var(--heading); white-space: nowrap; }
-.bvd-ord { font: 600 10.5px var(--font-ui); color: var(--accent); white-space: nowrap; }
-.bvd-use .ttl { font-size: calc(var(--ui-size, 13px) - 2px); color: var(--muted); width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.bvd-foot { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-top: 1px solid var(--line); background: var(--panel); flex: none; }
-.bvd-foot label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-.bvd-foot button { padding: 2px 7px; font-size: 11px; }
-
-@media print { .bvdrawer, #bvBiblesSplit, .bvbibles-btn { display: none !important; } .bvstage, .bvmain { display: block; overflow: visible !important; } }
 
 /* ---------------- 0.6.0: Skin-themed vertical scrollbars across Bible panes, drawers, trees & menus ---------------- */
 .bvbody::-webkit-scrollbar-track {
@@ -649,12 +617,12 @@ body.altkeys .tmenu u { text-decoration: underline; }
 @media print { .bvside { display: none !important; } }
 
 /* the active verse stays in the middle: room above the first verse and below the last */
-#view.centered > .bv > .bvbody > .bvtext { padding-top: var(--half, 0px); padding-bottom: var(--half, 0px); box-sizing: border-box; }
+body.centered .bv > .bvbody > .bvtext { padding-top: var(--half, 0px); padding-bottom: var(--half, 0px); box-sizing: border-box; }
 
 /* lookup hits inside the Library panel */
 .libfeedwrap { display: none; flex-direction: column; flex: 1; min-height: 0; }
 .libtab.lookfeed .libfeedwrap { display: flex; }
-.libtab.lookfeed .libsplit { display: none; }
+#tab-lib.lookfeed .libsplit { display: none !important; }
 .libfeedwrap .lkpbar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1px solid var(--line); }
 .libfeedwrap .lkptitle { font: 700 12.5px var(--font-ui); color: var(--heading); margin-left: 4px; }
 .libfeedwrap .cmtbody { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px 24px; }
@@ -684,3 +652,33 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .bpick .bpicklist { max-height: 170px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; background: var(--card); margin-top: 4px; }
 .bpick .bpicklist label { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; cursor: pointer; }
 .bpick .bpicklist label.hidden { display: none; }
+
+/* ---- 0.6.2: the 4 x 3 grid of areas ---- */
+.dlayer { position: fixed; inset: auto; }
+.dtarget.cell { position: absolute; width: auto; height: auto; box-sizing: border-box; border-radius: 6px; background: color-mix(in srgb, var(--bg) 72%, transparent); border: 1.5px dashed var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; text-align: center; padding: 4px; overflow: hidden; }
+.dtarget.cell .dcn { font-weight: 700; opacity: .8; } .dtarget.cell .dcw { opacity: .75; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dtarget.cell.hot { background: color-mix(in srgb, var(--accent) 35%, var(--card)); color: var(--text); }
+.dpreview { position: absolute; }
+.dgroup.isbv .dbody > .dpanel { overflow: hidden; }
+.dgroup.isbv .dzoom { display: none; }
+/* text wrapping in Bible views: break at spaces; only a word longer than the line is broken; no sideways scrolling */
+.bvtext { overflow-x: hidden; overflow-wrap: break-word; word-break: normal; hyphens: manual; }
+.bvtext .pcol, .bvtext .paraview { overflow-wrap: break-word; word-break: normal; text-wrap: pretty; }
+.bvtext .xrs, .bvtext .fnlist, .bvtext .vnotes { overflow-wrap: break-word; word-break: normal; }
+
+/* popup zoom */
+.pzbar { position: sticky; top: 0; z-index: 2; float: right; display: flex; align-items: center; gap: 2px; margin: -4px -4px 2px 6px; padding: 1px 3px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; font: 600 11px var(--font-ui); }
+.pzbar button { border: 0; background: transparent; color: var(--text); padding: 1px 5px; border-radius: 4px; cursor: pointer; font: inherit; }
+.pzbar button:hover { background: var(--bg); }
+.pzbar .pzv { color: var(--muted); min-width: 30px; text-align: center; font-weight: 400; }
+
+/* panel colours: menu font and label font */
+.pmenuc button, .pmenuc select, .pmenuc input, .pmenuc .seg button, .pmenuc .menu { color: var(--pmenu); }
+.plabelc label, .plabelc .small, .plabelc .mh, .plabelc th, .plabelc .hint, .plabelc .paneHead, .plabelc h3, .plabelc h4 { color: var(--plabel); }
+.dgroup.dmenuc .dbtn { color: var(--dmenu); }
+
+/* topic list: can be dragged to the edge of the panel and so hidden completely */
+#libSide { min-width: 0; overflow: hidden; }
+.lsplitter { min-width: 6px; }
+#grid > .dgroup.max { grid-row: 1 / -1 !important; grid-column: 1 / -1 !important; inset: 0; }
+#libSide.collapsed { display: none; }

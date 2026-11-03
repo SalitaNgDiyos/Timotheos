@@ -43,6 +43,7 @@ function wireViewMenu() {
 }
 function setLayout(l) {
   save({ layout: l }); document.querySelectorAll('input[name="layout"]').forEach(r => { r.checked = r.value === l; });
+  if (window.TimotheosDock) TimotheosDock.arrangeBible(l);
   if (state.settings.show.paragraph) setShow('paragraph', false); else renderChapter();
 }
 
@@ -164,7 +165,7 @@ function selectionTarget(fallbackEl) {
   if (sel && sel.rangeCount && String(sel).trim()) {
     const range = sel.getRangeAt(0);
     const startEl = (range.startContainer.nodeType === 3 ? range.startContainer.parentElement : range.startContainer).closest('[data-col]');
-    if (startEl && $('#view').contains(startEl)) {
+    if (startEl && startEl.closest && startEl.closest('.bv')) {
       const nodes = coreNodes(startEl); let pos = 0, s = null, e = null;
       for (const n of nodes) {
         if (range.intersectsNode(n)) {
@@ -184,7 +185,7 @@ function selectionTarget(fallbackEl) {
 function highlight(t, style) {
   const id = state.settings.openBibles[t.col]; if (!id) return;
   const hl = study.ud.highlights[id] || (study.ud.highlights[id] = {});
-  const sec = document.querySelectorAll('#view > .bv')[t.col]; const [rb, rc] = sec && sec.dataset.ref ? sec.dataset.ref.split('.').map(Number) : [state.ref.b, state.ref.c];
+  const sec = panes()[t.col]; const [rb, rc] = sec && sec.dataset.ref ? sec.dataset.ref.split('.').map(Number) : [state.ref.b, state.ref.c];
   const k = vkey(rb, rc, t.v);
   let list = (hl[k] || []).filter(m => m.e <= t.s || m.s >= t.e || (style !== null && m.style !== style && isDeco(m.style) !== isDeco(style)));
   if (style) list.push({ s: t.s, e: t.e, style });
@@ -205,9 +206,9 @@ function lcsMarks(a, b) {
   return { ia, ib, common: L[0][0] };
 }
 function markDifferences() {
-  const secs = [...document.querySelectorAll('#view > .bv')].filter(s => s.dataset.linked === '1' && s.dataset.layout !== 'para');
+  const secs = [...panes()].filter(s => s.dataset.linked === '1' && s.dataset.layout !== 'para');
   if (secs.length < 2) return;
-  const layout = $('#view').dataset.arrange;
+  const layout = state.settings.layout === 'rows' ? 'rows' : 'cols';
   for (const tr of secs[0].querySelectorAll('tr[data-v]')) {
     const cells = secs.map(s => s.querySelector(`tr[data-v="${tr.dataset.v}"] td[data-col]`)).filter(Boolean);
     if (cells.length < 2) continue;
@@ -412,7 +413,7 @@ async function quickCopy(target) {
 }
 function selectedVerses() {
   const sel = window.getSelection(); if (!sel || !sel.rangeCount || !String(sel).trim()) return null;
-  const r = sel.getRangeAt(0); const vs = [...$('#view').querySelectorAll('[data-v]')].filter(el => r.intersectsNode(el)).map(el => +el.dataset.v);
+  const r = sel.getRangeAt(0); const vs = [...document.querySelectorAll('.bv [data-v]')].filter(el => r.intersectsNode(el)).map(el => +el.dataset.v);
   if (!vs.length) return null;
   return { v1: Math.min(...vs), v2: Math.max(...vs) };
 }
@@ -564,7 +565,7 @@ async function copyDialog(range) {
 /* ======================================================================= context menu */
 function hideCtx() { $('#ctxMenu').classList.add('hidden'); }
 function wireContextMenu() {
-  $('#view').addEventListener('contextmenu', e => {
+  $('#workbench').addEventListener('contextmenu', e => {
     const vEl = e.target.closest('[data-v]'); if (!vEl) return;
     e.preventDefault();
     const v = +vEl.dataset.v;
@@ -617,7 +618,7 @@ function wireContextMenu() {
       else if (a === 'look') TimotheosModules.lookupWord(bt.dataset.q);
     };
   });
-  $('#view').addEventListener('click', e => { const n = e.target.closest('.unote, .noteicon'); if (n) { e.stopPropagation(); editNote(n.dataset.note); } }, true);
+  $('#workbench').addEventListener('click', e => { const n = e.target.closest('.unote, .noteicon'); if (n) { e.stopPropagation(); editNote(n.dataset.note); } }, true);
 }
 
 /* ======================================================================= Bible tree (sidebar) */
