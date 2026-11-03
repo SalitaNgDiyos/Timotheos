@@ -304,8 +304,22 @@ app.whenReady().then(async () => {
   handle('modules:importDialog', async () => {
     const r = await dialog.showOpenDialog(win, {
       title: 'Import theWord or e-Sword modules', properties: ['openFile', 'multiSelections'],
+      // one line per kind of module, so the drop-down of the dialog is a vertical list
       filters: [
-        { name: 'theWord and e-Sword modules', extensions: ['ont', 'ot', 'nt', 'twm', 'twzip', 'zip', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml'] },
+        { name: 'All supported modules', extensions: ['ont', 'ot', 'nt', 'twm', 'twzip', 'zip', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml'] },
+        { name: 'theWord Bibles', extensions: ['ont', 'ot', 'nt'] },
+        { name: 'theWord books, commentaries, dictionaries', extensions: ['twm'] },
+        { name: 'theWord packages', extensions: ['twzip', 'zip'] },
+        { name: 'e-Sword Bibles', extensions: ['bblx', 'bbli'] },
+        { name: 'e-Sword commentaries', extensions: ['cmtx', 'cmti'] },
+        { name: 'e-Sword dictionaries', extensions: ['dctx', 'dcti'] },
+        { name: 'e-Sword topics', extensions: ['topx', 'topi'] },
+        { name: 'e-Sword references', extensions: ['refx', 'refi'] },
+        { name: 'e-Sword devotions', extensions: ['devx', 'devi'] },
+        { name: 'e-Sword lexicons', extensions: ['lexx', 'lexi'] },
+        { name: 'e-Sword maps and harmonies', extensions: ['mapx', 'mapi', 'harx', 'hari'] },
+        { name: 'e-Sword notes and journals', extensions: ['notx', 'jnlx'] },
+        { name: 'USFM, USFX and XML Bibles', extensions: ['usfm', 'sfm', 'ptx', 'usfx', 'xml'] },
         { name: 'All files', extensions: ['*'] }],
     });
     if (r.canceled || !r.filePaths.length) return null;

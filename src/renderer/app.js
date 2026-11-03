@@ -1078,7 +1078,7 @@ function about() {
   const s = state.settings; const lang0 = s.aboutVerse === 'en' ? 'en' : 'fil';
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
-    <p><b>Timotheos ${esc(s.version || '0.6.4')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.5')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>MIT License – free to use, copy, change and share, with the copyright notice kept.</td></tr>
     <tr><th>GitHub</th><td><a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a></td></tr>
     <tr><th>Program folder</th><td><code class="sel">${esc(s.appDir || '')}</code></td></tr>

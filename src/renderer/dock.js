@@ -198,7 +198,13 @@
     }
     for (const { el, a, xs, ys } of cornerEls) { el.style.left = `calc(${pct(a[xs], V.x, V.w)}% - 7px)`; el.style.top = `calc(${pct(a[ys], V.y, V.h)}% - 7px)`; }
     for (const gt of gutEls) {
-      const { el, a, b, col } = gt;
+      const { el, a, b, col, free } = gt;
+      if (free) { // an edge with nothing beside it: a handle to pull it out into the empty space (or push it in)
+        const f = free;
+        if (f === 'x0' || f === 'x1') Object.assign(el.style, { left: `calc(${pct(a[f], V.x, V.w)}% - 3px)`, width: '6px', top: `calc(${pct(a.y0, V.y, V.h)}% + 3px)`, height: `calc(${(a.y1 - a.y0) / V.h * 100}% - 6px)` });
+        else Object.assign(el.style, { top: `calc(${pct(a[f], V.y, V.h)}% - 3px)`, height: '6px', left: `calc(${pct(a.x0, V.x, V.w)}% + 3px)`, width: `calc(${(a.x1 - a.x0) / V.w * 100}% - 6px)` });
+        continue;
+      }
       if (col) { const y0 = Math.max(a.y0, b.y0), y1 = Math.min(a.y1, b.y1); Object.assign(el.style, { left: `calc(${pct(a.x1, V.x, V.w)}% - 3px)`, width: '6px', top: `calc(${pct(y0, V.y, V.h)}% + 3px)`, height: `calc(${(y1 - y0) / V.h * 100}% - 6px)` }); }
       else { const x0 = Math.max(a.x0, b.x0), x1 = Math.min(a.x1, b.x1); Object.assign(el.style, { top: `calc(${pct(a.y1, V.y, V.h)}% - 3px)`, height: '6px', left: `calc(${pct(x0, V.x, V.w)}% + 3px)`, width: `calc(${(x1 - x0) / V.w * 100}% - 6px)` }); }
     }
@@ -221,6 +227,13 @@
     for (const a of shown) for (const b of shown) {
       if (a !== b && same(a.x1, b.x0) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS) addGut(grid, a, b, true);
       if (a !== b && same(a.y1, b.y0) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS) addGut(grid, a, b, false);
+    }
+    if (!maxed) for (const a of shown) { // edges that face empty space can be dragged too
+      const touching = (e, f) => shown.some(b => b !== a && (f === 'x1' ? same(b.x0, a.x1) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS : f === 'x0' ? same(b.x1, a.x0) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS : f === 'y1' ? same(b.y0, a.y1) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS : same(b.y1, a.y0) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS));
+      for (const f of ['x0', 'x1', 'y0', 'y1']) {
+        const bound = f === 'x0' ? a.x0 < EPS : f === 'x1' ? a.x1 > NC - EPS : f === 'y0' ? a.y0 < EPS : a.y1 > NR - EPS;
+        if (!bound && !touching(a, f)) addFreeGut(grid, a, f);
+      }
     }
     if (!maxed) for (const a of shown) if (a.panels.some(isBible)) for (const ys of ['y0', 'y1']) for (const xs of ['x0', 'x1']) addCorner(grid, a, xs, ys);
     place();
@@ -320,7 +333,13 @@
     const rect = $('#grid').getBoundingClientRect(); const start = [e.clientX, e.clientY];
     const per = plans.map(pl => pl.col ? view.w / rect.width : view.h / rect.height);
     const move = ev => {
-      const want = plans.map((pl, k) => Math.max(pl.from, Math.min(pl.to, pl.at + ((pl.col ? ev.clientX - start[0] : ev.clientY - start[1]) * per[k]))));
+      const want = plans.map((pl, k) => {
+        let x = pl.at + ((pl.col ? ev.clientX - start[0] : ev.clientY - start[1]) * per[k]);
+        if (!pl.lo.size || !pl.hi.size) { // an edge in free space snaps to the edge of the area facing it
+          for (const o of L.areas) { if (pl.lo.has(o) || pl.hi.has(o)) continue; for (const c of pl.col ? [o.x0, o.x1] : [o.y0, o.y1]) if (Math.abs(c - x) < 0.07) x = c; }
+        }
+        return Math.max(pl.from, Math.min(pl.to, x));
+      });
       const sn = snap();
       const tryIt = idx => { unsnap(sn); idx.forEach(k => { if (want[k] >= plans[k].from - EPS && want[k] <= plans[k].to + EPS) setEdge(plans[k], want[k]); }); return !overlapping(); };
       const all = plans.map((_, k) => k);
@@ -337,6 +356,14 @@
     s.className = 'gut ' + (col ? 'h' : 'v'); s.title = col ? 'Drag to change the width of the panels beside this line' : 'Drag to change the height of the panels above and below this line';
     grid.appendChild(s); gutEls.push({ el: s, a, b, col });
     s.addEventListener('pointerdown', e => dragEdges(e, [edgePlan(col, col ? a.x1 : a.y1, new Set([a]), new Set([b]))], s));
+  }
+
+  function addFreeGut(grid, a, f) {
+    const col = f[0] === 'x'; const s = document.createElement('div');
+    s.className = 'gut ' + (col ? 'h' : 'v'); s.title = 'Drag to move this edge into the empty space';
+    grid.appendChild(s); gutEls.push({ el: s, a, b: null, col, free: f });
+    const hiSide = f === 'x1' || f === 'y1';
+    s.addEventListener('pointerdown', e => dragEdges(e, [edgePlan(col, a[f], new Set(hiSide ? [a] : []), new Set(hiSide ? [] : [a]))], s));
   }
 
   /** a corner handle of a Bible view's area: it moves the two edges of that corner; the panels next to them adjust */

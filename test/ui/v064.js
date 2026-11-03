@@ -49,6 +49,13 @@ const corner = (id, c) => { const g = document.querySelector(`[data-panel="${id}
   ok(getComputedStyle(grp.querySelector('.dcap')).backgroundColor !== 'rgb(16, 20, 26)' && getComputedStyle(sec.querySelector('.bvcap')).backgroundColor !== 'rgb(16, 20, 26)', 'the panel caption and header keep the UI colours');
   m.querySelector('.pskdef').click(); await sleep(200);
   ok(!vis0(document.getElementById('refForm')) && !vis0(document.getElementById('navStripBar')) && !vis0(document.getElementById('prevBtn')), 'the Go-to box, its arrows and the chapter / verse strips are removed');
+  // an edge facing empty space can be dragged (and snaps to the panel across the gap)
+  D.setLayout({ v: 3, areas: [R(0, 0, 1, 3, 'tree'), R(1, 0, 4, 1.5, 'bv0'), R(1.6, 1.5, 4, 3, 'search')], floats: [], hidden: ['bv1', 'library', 'cmt', 'lib', 'bsearch', 'study'] }); await sleep(300);
+  const sg = document.querySelector('[data-panel="search"]').closest('.dgroup'); const sr = sg.getBoundingClientRect();
+  const free = [...document.querySelectorAll('.gut.h')].find(g => { const r = g.getBoundingClientRect(); return Math.abs(r.left + 3 - sr.left) < 8 && r.top >= sr.top - 8; });
+  ok(!!free, 'the left edge of a panel with empty space beside it has a handle');
+  if (free) { await drag(free, -(sr.left - document.querySelector('[data-panel="tree"]').closest('.dgroup').getBoundingClientRect().right) + 20, 0); }
+  ok(near(A('search').x0, 1), 'dragging it out snaps against the neighbour: x0 = ' + A('search').x0.toFixed(3));
   // Panels menu has no Bible Views block
   const pb = [...document.querySelectorAll('button')].find(b => /Panels/.test(b.textContent) && b.closest('.titlebar,.toolbar,header,#toolbar,body'));
   ok(!window.__errs.length, 'no errors ' + window.__errs.join('; '));
