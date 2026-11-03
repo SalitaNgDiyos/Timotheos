@@ -1,4 +1,4 @@
-// 0.4.7: lemmas, column text, footnote marks, a Bible's own switches, compare panel, reading aloud
+// 0.4.7: lemmas, intralinear view, footnote marks, a Bible's own switches, compare panel, reading aloud
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));
 window.addEventListener('unhandledrejection', e => window.__errs.push('rejection: ' + (e.reason && e.reason.message || e.reason)));
@@ -14,17 +14,17 @@ const sec = i => document.querySelectorAll('#view > .bv')[i];
   sec(0).querySelector('.bvside [data-k="lemma"]').click(); await sleep(700);
   ok(sec(0).querySelector('sup.lemma') && /ἀγαπάω/.test(sec(0).querySelector('[data-v="16"]').textContent), 'L: lemmas after the words: ' + [...sec(0).querySelectorAll('[data-v="16"] sup.lemma')].slice(0, 3).map(x => x.textContent).join(' '));
   sec(0).querySelector('.bvside [data-k="lemma"]').click(); await sleep(500);
-  // column text
+  // intralinear view
   key('i', { altKey: true }); await sleep(900);
   const cw = [...sec(0).querySelectorAll('[data-v="16"] .cw')]; const loved = cw.find(c => /loved/.test(c.textContent));
   ok(cw.length >= 4 && loved && loved.querySelector('.cl-orig').textContent === 'ἀγαπάω' && loved.querySelector('.cl-tl').textContent === 'agapaō' && /G25/.test(loved.querySelector('.cl-strong').textContent),
-    'Alt+I column text: word over original, transliteration, Strong\'s: ' + (loved ? [...loved.children].map(x => x.textContent).join(' / ') : 'none'));
+    'Alt+I intralinear view: word over original, transliteration, Strong\'s: ' + (loved ? [...loved.children].map(x => x.textContent).join(' / ') : 'none'));
   sec(0).querySelector('[data-a="opts"]').click(); await sleep(300);
   const ml = [...document.querySelectorAll('.bvmenu .vcl')].find(c => c.value === 'morph'); ml.click(); await sleep(600);
-  ok(!sec(0).querySelector('.cl-morph') && sec(0).querySelector('.cl-strong'), 'a line of the column text can be left out (⚙)');
+  ok(!sec(0).querySelector('.cl-morph') && sec(0).querySelector('.cl-strong'), 'a line of the intralinear view can be left out (⚙)');
   document.querySelector('.bvmenu')?.remove();
   key('i', { altKey: true }); await sleep(600);
-  ok(!sec(0).querySelector('.cw'), 'column text off again');
+  ok(!sec(0).querySelector('.cw'), 'intralinear view off again');
   // a Bible's own switches (theWord user toggles)
   await useBible(tg.id); await go({ b: 43, c: 3, v: 16 }); await sleep(800);
   const t16 = () => sec(0).querySelector('[data-v="16"]').textContent;

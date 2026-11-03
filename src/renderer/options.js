@@ -86,7 +86,7 @@
     ['guide', 'User Guide'],
     ['layoutCols', 'Bible views side by side'],
     ['layoutRows', 'Bible views one under another'],
-    ['columnsMode', 'Column / interlinear text'],
+    ['columnsMode', 'Intralinear View'],
     ['toggleStrongs', "Toggle Strong's numbers"],
     ['toggleMorph', 'Toggle morphology codes'],
     ['toggleLemma', 'Toggle lemmas'],

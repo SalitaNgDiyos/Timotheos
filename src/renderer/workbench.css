@@ -620,3 +620,4 @@ body.altkeys .tmenu u { text-decoration: underline; }
   width: 9px;
   height: 9px;
 }
+.ref input { width: 230px; font-weight: 600; }

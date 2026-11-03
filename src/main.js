@@ -255,7 +255,7 @@ app.whenReady().then(async () => {
   userData = new UserData(path.join(app.getPath('userData'), 'my-study-data.json'));
   await rescanAll();
 
-  handle('settings:get', () => Object.assign({}, settings, { portable: process.env.TIMOTHEOS_IS_PORTABLE === '1', userDataDir: app.getPath('userData') }));
+  handle('settings:get', () => Object.assign({}, settings, { portable: process.env.TIMOTHEOS_IS_PORTABLE === '1', userDataDir: app.getPath('userData'), appDir: app.isPackaged ? path.dirname(process.execPath) : app.getAppPath(), version: app.getVersion() }));
   ipcMain.handle('win:titlebar', (e, c) => {
     try {
       nativeTheme.themeSource = c.dark ? 'dark' : 'light';

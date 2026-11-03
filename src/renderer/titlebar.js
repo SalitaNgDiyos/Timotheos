@@ -36,7 +36,6 @@
         '-',
         ['Toolbar: Back / Forward', '', 'tb:tbBackFwd'],
         ['Toolbar: Go-to Box', '', 'tb:tbGoto'],
-        ['Toolbar: Book / Ch / Vs Dropdowns', '', 'tb:tbDropdowns'],
         ['Toolbar: Prev / Next Chapter', '', 'tb:tbPrevNext'],
         ['Toolbar: Search Button', '', 'tb:tbSearch'],
         ['Toolbar: Copy Button', '', 'tb:tbCopy'],

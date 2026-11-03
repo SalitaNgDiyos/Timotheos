@@ -1,5 +1,5 @@
 'use strict';
-// Transliteration of Greek and Hebrew words into Latin letters (SBL-like), for column text and popups.
+// Transliteration of Greek and Hebrew words into Latin letters (SBL-like), for intralinear view and popups.
 // (Shared with the Tauri edition's src/translit.ts.)
 var TimotheosTranslit = (() => {
   var __defProp = Object.defineProperty;

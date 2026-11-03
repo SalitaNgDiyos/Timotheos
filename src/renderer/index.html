@@ -19,11 +19,9 @@
   <button id="fwdBtn" class="tb" data-icon="forward" title="Forward (Alt+→)" aria-label="Forward" disabled></button>
   <form id="refForm" class="ref">
     <span data-icon="search" data-icon-size="15" class="refic"></span>
-    <input id="refInput" type="text" placeholder="Go to… (e.g. Jn 3:16, Tob 1)" spellcheck="false" autocomplete="off" aria-label="Go to reference">
+    <input id="refInput" type="text" list="refBooks" placeholder="Go to… (e.g. Exodus 1:13, Jn 3:16, Tob 1)" spellcheck="false" autocomplete="off" aria-label="Reference: book, chapter and verse" title="The place you are reading. Click, type another (Exodus 1:13, Jn 3:16, Tob 1) and press Enter (Ctrl+G)">
+    <datalist id="refBooks"></datalist>
   </form>
-  <select id="bookSel" title="Book (Ctrl+←/→ previous/next book)" aria-label="Book"></select>
-  <select id="chapSel" title="Chapter" aria-label="Chapter"></select>
-  <select id="verseSel" title="Verse (↑/↓ previous/next verse)" aria-label="Verse"></select>
   <button id="prevBtn" class="tb" data-icon="prev" title="Previous chapter (←)" aria-label="Previous chapter"></button>
   <button id="nextBtn" class="tb" data-icon="next" title="Next chapter (→)" aria-label="Next chapter"></button>
   <span class="tsep"></span>
@@ -34,7 +32,7 @@
       <label><input type="checkbox" data-show="strongs"> Strong's numbers <kbd>S</kbd></label>
       <label><input type="checkbox" data-show="morph"> Morphology codes <kbd>M</kbd></label>
       <label><input type="checkbox" data-show="lemma"> Lemmas <kbd>L</kbd></label>
-      <label><input type="checkbox" data-show="columns"> Column text <kbd>Alt+I</kbd></label>
+      <label><input type="checkbox" data-show="columns"> Intralinear View <kbd>Alt+I</kbd></label>
       <label><input type="checkbox" data-show="footnotes"> Footnotes <kbd>F</kbd></label>
       <label><input type="checkbox" data-show="headings"> Headings <kbd>H</kbd></label>
       <label><input type="checkbox" data-show="woj"> Words of Jesus in red <kbd>J</kbd></label>
@@ -53,7 +51,6 @@
       <div class="mh">Toolbar items</div>
       <label><input type="checkbox" data-tbshow="tbBackFwd" checked> Back / Forward (← →)</label>
       <label><input type="checkbox" data-tbshow="tbGoto" checked> Go-to reference box</label>
-      <label><input type="checkbox" data-tbshow="tbDropdowns" checked> Book / Chapter / Verse dropdowns</label>
       <label><input type="checkbox" data-tbshow="tbPrevNext" checked> Previous / Next chapter (&lt; &gt;)</label>
       <label><input type="checkbox" data-tbshow="tbSearch" checked> Search button</label>
       <label><input type="checkbox" data-tbshow="tbCopy" checked> Copy button</label>
@@ -85,9 +82,7 @@
         <span class="ccapic" data-icon="bible" data-icon-size="16"></span>
         <div id="chapterHead" class="chapter-head"></div>
         <div id="navHeader1" class="navhdr1">
-          <button id="navBookBtn" class="navpill" title="Choose Book (opens visual Book Grid · mouse wheel steps book)"><span class="np-cat" id="navBookCat">📜</span><span id="navBookLbl">Genesis</span><span class="np-caret">▾</span></button>
-          <button id="navChapBtn" class="navpill" title="Choose Chapter (opens Chapter Grid · mouse wheel steps chapter)"><span data-icon="grid" data-icon-size="13"></span><span id="navChapLbl">Ch 1</span><span class="np-caret">▾</span></button>
-          <button id="navVerseBtn" class="navpill" title="Choose Verse (opens Verse Grid · mouse wheel steps verse)"><span data-icon="pin" data-icon-size="13"></span><span id="navVerseLbl">:1</span><span class="np-caret">▾</span></button>
+          <button id="navBookBtn" class="navpill" title="Browse books, chapters and verses (mouse wheel steps the book)"><span class="np-cat" id="navBookCat">📜</span><span id="navBookLbl">Genesis</span><span class="np-caret">▾</span></button>
           <span class="navsteps">
             <button id="navPrevBook" class="dbtn navic" data-icon="prevBook" data-icon-size="14" title="Previous book (Ctrl+←)" aria-label="Previous book"></button>
             <button id="navPrevChap" class="dbtn navic" data-icon="prev" data-icon-size="14" title="Previous chapter (←)" aria-label="Previous chapter"></button>

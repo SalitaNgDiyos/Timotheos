@@ -382,7 +382,7 @@ a.findlink { font: 11px var(--font-ui); color: var(--strong); cursor: pointer; m
 .rtftab { display: inline-block; min-width: 1.5em; }
 .rvlist-mk { font-weight: 600; margin-right: 2px; } table.rvtable { border-collapse: collapse; margin: 6px 0; } table.rvtable td { border: 1px solid var(--line); padding: 2px 6px; vertical-align: top; } table.rvtable p.rvp { margin: 0; }
 .lookup img.rtfimg { max-width: 100%; height: auto; }
-/* footnote list, lemmas, column text (0.4.7) */
+/* footnote list, lemmas, intralinear view (0.4.7) */
 .fnlist { margin: 24px 14px 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: .85em; }
 .fnlist h4 { margin: 0 0 6px; font: 600 13px var(--font-ui); }
 .fnlist ol { list-style: none; margin: 0; padding: 0; } .fnlist li { margin: 3px 0; } .fnlist li b { color: var(--fn, var(--accent)); margin-right: 4px; }
@@ -426,3 +426,10 @@ sup.lemma { font: italic 400 .62em var(--font-text); color: var(--muted); margin
 .abar button { width: 24px; height: 24px; border: 1px solid var(--line); border-radius: 5px; cursor: pointer; padding: 0; background: var(--card); color: var(--text); }
 #printArea { display: none; }
 @media print { body.printing-topic > *:not(#printArea) { display: none !important; } body.printing-topic #printArea { display: block; font: 12pt/1.5 var(--font-text); color: #000; } }
+
+/* About Timotheos */
+.about p { margin: 0 0 10px; line-height: 1.5; }
+.aboutt th { text-align: left; white-space: nowrap; vertical-align: top; padding-right: 12px; }
+.aboutt code.sel { user-select: text; word-break: break-all; }
+.aboutverse { margin: 12px 0 4px; padding: 10px 14px; border-left: 3px solid var(--accent, #7a5c2e); background: rgba(127,127,127,.1); cursor: pointer; font-family: var(--font-text, Georgia, serif); line-height: 1.55; border-radius: 3px; }
+.aboutverse:hover, .aboutverse:focus { background: rgba(127,127,127,.18); outline: none; }

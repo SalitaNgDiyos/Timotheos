@@ -179,7 +179,6 @@ function wireZoom() {
 const TB_ITEM_MAP = {
   tbBackFwd: ['#backBtn', '#fwdBtn'],
   tbGoto: ['#refForm'],
-  tbDropdowns: ['#bookSel', '#chapSel', '#verseSel'],
   tbPrevNext: ['#prevBtn', '#nextBtn'],
   tbSearch: ['#searchBtn'],
   tbCopy: ['#copyBtn'],
@@ -187,7 +186,7 @@ const TB_ITEM_MAP = {
 };
 function toolbarItemsState() {
   return Object.assign({
-    tbBackFwd: true, tbGoto: true, tbDropdowns: true, tbPrevNext: true,
+    tbBackFwd: true, tbGoto: true, tbPrevNext: true,
     tbSearch: true, tbCopy: true, tbPrint: true,
   }, (state.settings && state.settings.toolbarItems) || {});
 }
@@ -200,7 +199,7 @@ function applyToolbarItems() {
       if (el) el.classList.toggle('hidden', !show);
     }
   }
-  const anyNav = ti.tbBackFwd !== false || ti.tbGoto !== false || ti.tbDropdowns !== false || ti.tbPrevNext !== false;
+  const anyNav = ti.tbBackFwd !== false || ti.tbGoto !== false || ti.tbPrevNext !== false;
   const sep = $('#toolbar .tsep');
   if (sep) sep.classList.toggle('hidden', !anyNav);
   for (const cb of document.querySelectorAll('[data-tbshow]')) {
@@ -494,7 +493,7 @@ async function rescan() { const l = await api.rescan(); state.infos.clear(); awa
 
 /* ---------------- Bible views ---------------- */
 const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs', 'paragraph'];
-const SIDE = [['strongs', 'S', "Strong's numbers (S)"], ['morph', 'M', 'Morphology codes (M)'], ['lemma', 'L', 'Lemmas (L)'], ['columns', '⫼', 'Column text: each word over its original word (Alt+I)'], ['footnotes', 'F', 'Footnotes (F)'], ['headings', 'H', 'Headings (H)'],
+const SIDE = [['strongs', 'S', "Strong's numbers (S)"], ['morph', 'M', 'Morphology codes (M)'], ['lemma', 'L', 'Lemmas (L)'], ['columns', '⫼', 'Intralinear View: each word over its original word (Alt+I)'], ['footnotes', 'F', 'Footnotes (F)'], ['headings', 'H', 'Headings (H)'],
   ['woj', 'J', 'Words of Jesus in red (J)'], ['added', 'I', 'Added words in italics (I)'], ['xrefs', 'X', 'Cross-references (X)'], ['paragraph', '¶', 'Paragraph mode (P)']];
 const views = () => state.settings.views || [];
 function initViews() {
@@ -592,7 +591,7 @@ function ensurePanes() {
       <button class="dbtn" data-a="zout" title="Smaller text in this view (Ctrl + mouse wheel down)">${TimotheosIcons.icon('textDown', 14)}</button><span class="bvzoom" title="Text size of this view"></span><button class="dbtn" data-a="zin" title="Larger text in this view (Ctrl + mouse wheel up)">${TimotheosIcons.icon('textUp', 14)}</button>
       <button class="dbtn" data-a="close" title="Close this Bible view">${TimotheosIcons.icon('close', 14)}</button></header>
       <div class="bvbody"><nav class="bvside" aria-label="What this view shows">${SIDE.map(([k, l, t]) => `<button data-k="${k}" title="${esc(t)}">${l}</button>`).join('')}
-        <span class="bvsep"></span><button data-a="vnum" title="Verse numbers in this view: column, in the text, hidden">#</button><button data-a="font" title="Font of this view">Aa</button><button data-a="speak" class="bvspeak" title="Read this chapter aloud (again: stop)">${TimotheosIcons.icon('speaker', 14)}</button><button data-a="opts" title="More options of this view: footnote marks, column text lines, this Bible's own switches">${TimotheosIcons.icon('gear', 14)}</button></nav>
+        <span class="bvsep"></span><button data-a="vnum" title="Verse numbers in this view: column, in the text, hidden">#</button><button data-a="font" title="Font of this view">Aa</button><button data-a="speak" class="bvspeak" title="Read this chapter aloud (again: stop)">${TimotheosIcons.icon('speaker', 14)}</button><button data-a="opts" title="More options of this view: footnote marks, intralinear view lines, this Bible's own switches">${TimotheosIcons.icon('gear', 14)}</button></nav>
         <div class="bvtext view" tabindex="0"></div></div>`;
     host.appendChild(sec);
   }
@@ -661,7 +660,7 @@ function wireViews() {
   });
 }
 
-/* ---------------- what a view shows: footnote marks, lemmas, column text, the Bible's own switches ---------------- */
+/* ---------------- what a view shows: footnote marks, lemmas, intralinear view, the Bible's own switches ---------------- */
 function decorateFootnotes(root, v, show) {
   const style = v.fnStyle || 'num';
   const lab = n => style === 'letter' ? (n > 26 ? String.fromCharCode(96 + Math.ceil(n / 26) - 1) : '') + String.fromCharCode(97 + (n - 1) % 26) : style === 'star' ? '*' : String(n);
@@ -722,7 +721,7 @@ function viewOptions(i, btn) {
   const v = views()[i]; const sh = viewShow(i); const sw = ownSwitches(v.bible);
   const html = `<div class="mh">Footnote marks</div>${[['num', '1 2 3'], ['letter', 'a b c'], ['star', '*']].map(([k, l]) => `<label><input type="radio" name="vfs" value="${k}"${(v.fnStyle || 'num') === k ? ' checked' : ''}> ${l}</label>`).join('')}
     <label><input type="checkbox" class="vfl"${v.fnList ? ' checked' : ''}> List the footnotes under the chapter</label>
-    ${sh.columns ? `<div class="mh">Column text lines</div>${COL_LINES.map(([k, l]) => `<label><input type="checkbox" class="vcl" value="${k}"${colOn(i, k) ? ' checked' : ''}> ${l}</label>`).join('')}` : ''}
+    ${sh.columns ? `<div class="mh">Intralinear lines</div>${COL_LINES.map(([k, l]) => `<label><input type="checkbox" class="vcl" value="${k}"${colOn(i, k) ? ' checked' : ''}> ${l}</label>`).join('')}` : ''}
     ${sw.length ? `<div class="mh">This Bible's own switches</div>${sw.map(n => `<label><input type="checkbox" class="vsw" value="${esc(n)}"${customOn(n) ? ' checked' : ''}> ${esc(n)}${n.length === 1 ? ` <kbd>${esc(n.toUpperCase())}</kbd>` : ''}</label>`).join('')}` : ''}
     <div class="msep"></div><button class="vdef" title="New Bible views start with what this view shows">Use these for new Bible views</button><button class="vreset">Back to the general settings</button>`;
   paneMenu(btn, html, m => {
@@ -738,12 +737,7 @@ function viewOptions(i, btn) {
 /* ---------------- navigation ---------------- */
 async function rebuildNav() {
   state.nav = views().length ? await api.nav([...new Set(views().map(v => v.bible))]) : [];
-  const sel = $('#bookSel'); sel.innerHTML = '';
-  let og = null, last = null;
-  for (const b of state.nav) {
-    if (b.grp !== last) { og = document.createElement('optgroup'); og.label = groupLabel(b.grp); sel.appendChild(og); last = b.grp; }
-    const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; og.appendChild(o);
-  }
+  const dl = $('#refBooks'); if (dl) dl.innerHTML = state.nav.map(b => `<option value="${esc(b.name)} "></option>`).join('');
   const ot = $('#searchScope option[value="OT"]');
   if (ot) ot.textContent = state.settings.apocryphaPlacement === 'end' ? 'Old Testament' : 'Old Testament (with Apocrypha)';
 }
@@ -753,15 +747,10 @@ function groupLabel(g) {
   return { OT: 'Old Testament', NT: 'New Testament', AP: s1611 ? 'Apocrypha (as in the 1611 KJV)' : 'Apocrypha', APX: 'Other deuterocanonical books (not in the 1611 KJV)' }[g] || g;
 }
 
-function fillChapters(b) {
-  const bk = state.nav.find(x => x.id === b);
-  const sel = $('#chapSel'); sel.innerHTML = '';
-  for (const c of (bk ? bk.chapterList : [])) { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); }
-}
 function syncNavControls() {
   const r = state.ref; const bk = state.nav.find(x => x.id === r.b);
   if (!bk) return;
-  $('#bookSel').value = bk.id; fillChapters(bk.id); $('#chapSel').value = r.c;
+  const ri = $('#refInput'); if (ri && document.activeElement !== ri) ri.value = `${bk.name} ${r.c}:${r.v}`;
   $('#stRef').textContent = `${bk.name} ${r.c}:${r.v}`;
   $('#chapterHead').innerHTML = `${esc(bk.name)} ${r.c}<span class="sub">${esc(groupLabel(bk.grp))}</span>`;
   updateHistoryButtons();
@@ -1078,9 +1067,29 @@ function openTab(name, focus) {
 }
 window.openTab = openTab;
 
+const ABOUT_VERSE = {
+  fil: { ref: '2 Timothy 3:16 (AMB)', text: 'Lahat ng Kasulatan ay hiningahan ng Diyos, at kapaki-pakinabang para sa pagtuturo, para sa pagsusuri, para sa pagtutuwid, upang magamit para sa edukasyon sa katuwiran:' },
+  en: { ref: '2 Timothy 3:16 (KJV)', text: 'All scripture is given by inspiration of God, and is profitable for doctrine, for reproof, for correction, for instruction in righteousness:' }
+};
 function about() {
-  setLookupHtml(`<div class="entry"><h4>Timotheos 0.6.0</h4><div class="src">Reads unencrypted theWord modules (Bibles, commentaries, dictionaries, books, devotionals, cross-references, headings/paragraph overlays, verse lists, reading plans) and e-Sword modules (Bibles, commentaries, dictionaries, lexicons, topic and reference books, devotionals, maps, harmonies, study notes), with the Apocrypha in the Bible view and full user module authoring. Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</div><p>Module folders: ${(state.settings.moduleFolders || []).map(esc).join('<br>') || 'none'}</p></div>`);
-  openTab('lookup');
+  const s = state.settings; const lang0 = s.aboutVerse === 'en' ? 'en' : 'fil';
+  const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
+  const html = `<div class="about">
+    <p><b>Timotheos ${esc(s.version || '0.6.1')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <table class="imp aboutt"><tr><th>License</th><td>MIT License – free to use, copy, change and share, with the copyright notice kept.</td></tr>
+    <tr><th>GitHub</th><td><a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a></td></tr>
+    <tr><th>Program folder</th><td><code class="sel">${esc(s.appDir || '')}</code></td></tr>
+    <tr><th>Your data folder</th><td><code class="sel">${esc(s.userDataDir || '')}</code>${s.portable ? ' (portable mode)' : ''}</td></tr>
+    <tr><th>Module folders</th><td>${(s.moduleFolders || []).map(esc).join('<br>') || 'none'}</td></tr></table>
+    <blockquote id="aboutVerse" class="aboutverse" tabindex="0" role="button" title="Click to switch between Filipino and English" data-l="${lang0}">${verse(lang0)}</blockquote>
+    <p class="small">Click the verse to switch between Filipino (AMB) and English (KJV).</p></div>`;
+  const p = TanglawModules.modal('About Timotheos', html, [{ label: 'OK', value: true, primary: true }], true);
+  setTimeout(() => {
+    const q = $('#aboutVerse'); if (!q) return;
+    const flip = () => { const l = q.dataset.l === 'fil' ? 'en' : 'fil'; q.dataset.l = l; q.innerHTML = verse(l); save({ aboutVerse: l }); };
+    q.onclick = flip; q.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } };
+  }, 0);
+  return p;
 }
 
 /* ---------------- wiring ---------------- */
@@ -1088,11 +1097,15 @@ function wireUi() {
   $('#refForm').addEventListener('submit', async e => {
     e.preventDefault();
     const r = await api.parseRef($('#refInput').value);
-    if (r) { await go(r); $('#refInput').value = ''; $('#view').focus(); }
-    else { $('#refInput').select(); }
+    if (r) { await go(r); $('#refInput').blur(); syncNavControls(); $('#view').focus(); }
+    else { flashMsg(`“${$('#refInput').value.trim()}” is not a place in the open Bibles`); $('#refInput').select(); }
   });
-  $('#bookSel').addEventListener('change', () => { const nb = +$('#bookSel').value; const bk = state.nav.find(x => x.id === nb); go({ b: nb, c: bk && bk.chapterList && bk.chapterList[0] ? bk.chapterList[0] : 1, v: 1 }); });
-  $('#chapSel').addEventListener('change', () => go({ b: state.ref.b, c: +$('#chapSel').value, v: 1 }));
+  { // one box for the place: click it, type another reference, Enter
+    const ri = $('#refInput');
+    ri.addEventListener('focus', () => setTimeout(() => ri.select(), 0));
+    ri.addEventListener('blur', () => syncNavControls());
+    ri.addEventListener('keydown', e => { if (e.key === 'Escape') { ri.blur(); $('#view').focus(); } e.stopPropagation(); });
+  }
   $('#prevBtn').onclick = () => step(-1);
   $('#nextBtn').onclick = () => step(1);
   $('#backBtn').onclick = () => historyGo(-1);

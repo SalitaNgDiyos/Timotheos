@@ -134,18 +134,10 @@
       };
     }
 
-    const bookBtn = $('#navBookBtn'), chapBtn = $('#navChapBtn'), verseBtn = $('#navVerseBtn'), chHead = $('#chapterHead');
+    const bookBtn = $('#navBookBtn'), chHead = $('#chapterHead');
     if (bookBtn) {
       bookBtn.onclick = e => { e.stopPropagation(); openNavPopover('book', bookBtn); };
       bookBtn.addEventListener('wheel', e => { e.preventDefault(); stepBook(e.deltaY > 0 ? 1 : -1); }, { passive: false });
-    }
-    if (chapBtn) {
-      chapBtn.onclick = e => { e.stopPropagation(); openNavPopover('chapter', chapBtn); };
-      chapBtn.addEventListener('wheel', e => { e.preventDefault(); step(e.deltaY > 0 ? 1 : -1); }, { passive: false });
-    }
-    if (verseBtn) {
-      verseBtn.onclick = e => { e.stopPropagation(); openNavPopover('verse', verseBtn); };
-      verseBtn.addEventListener('wheel', e => { e.preventDefault(); stepVerse(e.deltaY > 0 ? 1 : -1); }, { passive: false });
     }
     if (chHead) {
       chHead.style.cursor = 'pointer';
@@ -164,7 +156,7 @@
     document.addEventListener('mousedown', e => {
       const pop = $('#navPop');
       if (pop && !pop.classList.contains('hidden')) {
-        if (!pop.contains(e.target) && !e.target.closest('#navBookBtn, #navChapBtn, #navVerseBtn, #chapterHead, .bvref')) {
+        if (!pop.contains(e.target) && !e.target.closest('#navBookBtn, #chapterHead, .bvref')) {
           closeNavPopover();
         }
       }
@@ -840,7 +832,7 @@
     // 2. Update Design 1 Interactive Header Pills
     const bCatEl = $('#navBookCat'), bLblEl = $('#navBookLbl'), cLblEl = $('#navChapLbl'), vLblEl = $('#navVerseLbl');
     if (bCatEl) bCatEl.textContent = cat.icon;
-    if (bLblEl) bLblEl.textContent = bk.name;
+    if (bLblEl) bLblEl.textContent = `${bk.name} ${r.c}:${r.v || 1}`;
     if (cLblEl) cLblEl.textContent = `Ch ${r.c}`;
     if (vLblEl) vLblEl.textContent = `:${r.v || 1}`;
     const histBtn = $('#navHistBtn');
