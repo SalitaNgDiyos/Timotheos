@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; script-src 'self'">
+<title>Tanglaw Bible – User Guide</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  :root { --bg: #f7f5f0; --panel: #efece5; --card: #fffdf8; --line: #ddd7cb; --text: #24221f; --muted: #6f6a60; --accent: #8a5a12; --accent-soft: #f1e3c8; --tool: #ebe6db; --tooltext: #2c2822; --textbg: #fffdf8; --woj: #b3261e; --strong: #2f6fb0; }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: var(--sb-track, color-mix(in srgb, var(--panel) 85%, var(--bg))); border-left: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
+  ::-webkit-scrollbar-thumb { background-color: var(--sb-thumb, color-mix(in srgb, var(--accent) 55%, var(--line))); border-radius: 999px; border: 2px solid var(--sb-track, var(--panel)); background-clip: padding-box; min-height: 28px; }
+  ::-webkit-scrollbar-thumb:hover { background-color: var(--sb-thumb-hover, color-mix(in srgb, var(--accent) 80%, var(--line))); }
+  ::-webkit-scrollbar-thumb:active { background-color: var(--sb-thumb-active, var(--accent)); }
+  ::-webkit-scrollbar-corner { background: var(--sb-track, var(--panel)); }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { display: flex; flex-direction: column; background: var(--bg); color: var(--text); font: 14px/1.6 'Inter', 'Segoe UI', system-ui, sans-serif; overflow: hidden; }
+  .titlebar { display: flex; align-items: center; gap: 10px; height: 36px; flex: none; padding-left: 12px; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)); background: var(--tool); color: var(--tooltext); -webkit-app-region: drag; font-weight: 600; font-size: 13px; }
+  .titlebar input { -webkit-app-region: no-drag; margin-left: auto; margin-right: 10px; width: 240px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 400; }
+  .logo { width: 20px; height: 20px; border-radius: 5px; background: var(--accent); color: var(--tool); display: grid; place-items: center; font: 700 12px Georgia, serif; }
+  .wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: 230px 1fr; }
+  nav { overflow: auto; padding: 16px 10px; background: var(--panel); border-right: 1px solid var(--line); }
+  nav a { display: block; padding: 4px 10px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 13px; }
+  nav a:hover, nav a.on { background: var(--accent-soft); }
+  main { overflow: auto; padding: 24px 40px 60px; background: var(--textbg); }
+  .inner { max-width: 820px; }
+  h1 { font: 600 30px 'Literata', Georgia, serif; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 24px; }
+  h2 { font: 600 21px 'Literata', Georgia, serif; margin: 34px 0 8px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--accent); }
+  h3 { font-size: 15px; margin: 18px 0 4px; }
+  p, li { margin: 6px 0; }
+  ul, ol { padding-left: 22px; }
+  kbd { font: 12px 'Segoe UI', sans-serif; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--card); white-space: nowrap; }
+  code { font: 12.5px Consolas, monospace; background: var(--panel); border-radius: 4px; padding: 1px 4px; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .tip { background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 6px; margin: 10px 0; }
+  .hidden { display: none !important; }
+  mark { background: #ffe58a; color: inherit; border-radius: 2px; }
+  :root[data-theme="dark"] mark { background: #6a5a16; }
+  .none { color: var(--muted); padding: 20px 0; }
+</style>
+</head>
+<body>
+<div class="titlebar"><span class="logo">T</span>Tanglaw Bible – User Guide<input id="find" type="search" placeholder="Find in the guide…" spellcheck="false" aria-label="Find in the guide"></div>
+<div class="wrap">
+<nav id="toc"></nav>
+<main id="main"><div class="inner" id="guide">
+
+<h1>Tanglaw Bible</h1>
+<p class="lead">An offline Bible study program for Windows that reads theWord and e-Sword modules. This guide explains every part of the program. Press <kbd>F1</kbd> in Tanglaw to open it again.</p>
+
+<section id="start"><h2>Getting started</h2>
+<ol>
+  <li>Unzip the Tanglaw folder anywhere and run <code>TanglawBible.exe</code>. Windows SmartScreen may warn the first time because the program is not code-signed: choose <i>More info → Run anyway</i>.</li>
+  <li>Bring in your modules in either of two ways:
+    <ul>
+      <li><b>Import</b> (toolbar, <i>File → Import Modules…</i>, <kbd>Ctrl+I</kbd>), or drag module files onto the window. Tanglaw checks each file and copies the ones it can use into its own library. A report then says, for every file, what it was recognised as, or why it was not imported. <code>.zip</code> and theWord <code>.twzip</code> files are unpacked.</li>
+      <li><b>Options → Modules → Add folder…</b> (<kbd>Ctrl+O</kbd>) reads modules where they already are, for example theWord's or e-Sword's own module folder, without copying them. Sub-folders are searched too.</li>
+    </ul></li>
+  <li>Tick the Bibles you want to read in the <b>Bibles</b> panel: each gets a Bible view of its own.</li>
+</ol>
+</section>
+
+<section id="screen"><h2>The screen</h2>
+<ul>
+  <li><b>Title bar</b>: the <b>File</b>, <b>View</b> and <b>Help</b> menus (<kbd>Alt+F</kbd>, <kbd>Alt+V</kbd>, <kbd>Alt+H</kbd>). It takes the colours of your skin.</li>
+  <li><b>Toolbar</b>, from left to right:
+    <ul>
+      <li>Back and forward.</li>
+      <li>The <i>Go to</i> box.</li>
+      <li>Book and chapter lists.</li>
+      <li>Previous and next chapter.</li>
+      <li><b>View</b>: what to show in the text.</li>
+      <li><b>Search</b>, <b>Copy</b>, <b>Print</b>.</li>
+      <li><b>Import</b>.</li>
+      <li><b>Panels</b>: show or hide panels, and choose a layout.</li>
+      <li><b>Focus</b>: hide the panels.</li>
+      <li><b>Skin</b>.</li>
+      <li><b>Options</b>.</li>
+    </ul>
+    Words beside the icons can be hidden in <i>Options → Layout &amp; toolbar</i>.</li>
+  <li><b>Bible view</b> in the middle, with the book and chapter in its caption and <b>A− / A+</b> for the text size.</li>
+  <li><b>Panels</b> around it: <i>Bibles</i>, <i>Books &amp; chapters</i>, <i>Modules</i>, <i>Commentary</i>, <i>Lookup</i>, <i>Library</i>, <i>Search</i>, <i>My Study</i>.</li>
+  <li><b>Status bar</b> at the bottom: the current verse and how many modules are loaded. It can be turned off in Options.</li>
+</ul>
+</section>
+
+<section id="panels"><h2>Moving and arranging panels</h2>
+<ul>
+  <li><b>Drag</b> a panel by its caption or its tab. While you drag, arrow targets appear:
+    <ul>
+      <li>The three at the window edges dock the panel on the <b>left</b>, <b>right</b> or <b>bottom</b>.</li>
+      <li>Over another panel, a small compass lets you put it <b>above/below</b> (or left/right of) that panel, or <b>+</b> adds it as a <b>tab</b> there.</li>
+      <li>A shaded box shows where it will go.</li>
+    </ul></li>
+  <li>Drop a panel anywhere else to <b>float</b> it as a small window. Move a floating window by its caption and resize it from its bottom-right corner.</li>
+  <li>Caption buttons:
+    <ul>
+      <li><b>A− / A+</b>: text size, on panels with Bible, commentary, dictionary or book text.</li>
+      <li><b>Float / dock again</b>.</li>
+      <li><b>Maximize</b>.</li>
+      <li><b>Close</b>.</li>
+    </ul>
+    Double-click a caption to float it or dock it again.</li>
+  <li>Drag the narrow gaps between panels to make them wider or taller.</li>
+  <li><b>Panels</b> on the toolbar:
+    <ul>
+      <li>Reopens closed panels.</li>
+      <li>Offers ready layouts: <i>Classic</i>, <i>Compact</i>, <i>Word study</i>, <i>Reading</i>.</li>
+      <li><i>Save current layout as…</i> keeps your own arrangement under a name.</li>
+    </ul></li>
+  <li><b>Reading focus</b> (<kbd>F11</kbd> or <b>Focus</b>) hides the docked panels; press it again to bring them back.</li>
+  <li>Your layout is remembered when you close Tanglaw. <i>View → Reset Panel Layout</i> goes back to the classic layout.</li>
+</ul>
+</section>
+
+<section id="reading"><h2>Reading the Bible</h2>
+<h3>Going to a passage</h3>
+<ul>
+  <li>Type a reference in the <i>Go to</i> box (<kbd>Ctrl+G</kbd>), for example <code>Jn 3:16</code>, <code>Juan 3:16</code>, <code>Tob 5</code>, <code>Ecclus 24:3</code>, and press Enter.</li>
+  <li>Or use the book and chapter lists, or click a chapter in the <b>Books &amp; chapters</b> panel.</li>
+  <li>Keys in the Bible text:
+    <ul>
+      <li><kbd>←</kbd> <kbd>→</kbd>: chapter.</li>
+      <li><kbd>Ctrl+←</kbd> <kbd>Ctrl+→</kbd>: book.</li>
+      <li><kbd>↑</kbd> <kbd>↓</kbd>: verse.</li>
+      <li>Type a number to jump to that verse (<kbd>Shift</kbd>+number: chapter).</li>
+      <li><kbd>Alt+←</kbd> <kbd>Alt+→</kbd> or <kbd>Backspace</kbd>: back and forward through the places you visited.</li>
+    </ul></li>
+  <li>Click a verse number to select the verse. The Commentary panel follows the selected verse.</li>
+</ul>
+<h3>Bible views (several Bibles)</h3>
+<p>Each Bible is read in a <b>Bible view</b> of its own; the views stand side by side in the middle of the window.</p>
+<ul>
+  <li>Tick a Bible in the <b>Bibles</b> panel to open a view for it; untick it (or click <b>×</b> in its caption) to close it. <b>→</b> shows that Bible in the active view instead. <b>↑</b> moves its view one place to the left. theWord and e-Sword Bibles can be mixed.</li>
+  <li>The <b>active view</b> (with the coloured border) is the one you last clicked: the toolbar, the arrow keys and the Commentary panel follow it.</li>
+  <li>Click the Bible's name in a view's caption to choose another Bible for that view.</li>
+  <li>The <b>link</b> button: views normally move together. Switch it off and that view reads on by itself (its caption then shows its own book and chapter); switch it on again and it rejoins the others.</li>
+  <li><b>A− / A+</b> in a view's caption make only that view's text smaller or larger (also <kbd>Ctrl</kbd> + mouse wheel over the view).</li>
+  <li>The <b>side bar</b> of a view switches things for that view only: <b>S</b> Strong's numbers, <b>M</b> morphology, <b>F</b> footnotes, <b>H</b> headings, <b>J</b> words of Jesus in red, <b>I</b> added words in italics, <b>X</b> cross-references, <b>¶</b> paragraph mode, <b>L</b> lemmas, <b>⫼</b> column text, <b>#</b> verse numbers (column, in the text, hidden), <b>Aa</b> the font of the view, 🔊 read aloud and <b>⚙</b> more options.</li>
+  <li><b>⚙</b> in the side bar: footnote marks as 1 2 3, a b c or *, the footnotes listed under the chapter, which lines the column text shows, and the Bible's <b>own switches</b> (some theWord Bibles define switches of their own, e.g. <b>V</b> for variant readings; a one-letter switch also works as a key).</li>
+  <li><b>Column text</b> (<kbd>Alt+I</kbd>) puts each tagged word over its original Greek or Hebrew word, a transliteration, the Strong's number, the morphology and the lemma. Where the Bible gives no lemma, the original word comes from your Strong's dictionary.</li>
+  <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
+  <li><i>View → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
+  <li>The <b>Compare</b> panel (<kbd>Ctrl+M</kbd>) shows the selected verse in all your Bibles (or those of the views), with the words that are not in the first Bible marked; <i>±2 verses</i> shows the passage around it.</li>
+</ul>
+<h3>Reading aloud</h3>
+<ul>
+  <li>🔊 in a Bible view's side bar reads the chapter from the selected verse, marking the verse being read, and goes on into the next chapter. Click again to stop.</li>
+  <li>🔊 on the Library bar reads the open topic.</li>
+  <li><i>View → Read Aloud: Voices…</i> chooses a voice for each language (a Bible or book is read in the voice of its language) and the speed. The voices are the ones Windows has; more can be added in Windows: Settings → Time &amp; language → Speech.</li>
+</ul>
+<h3>What to show</h3>
+<p>The <b>View</b> menu, and single keys while the Bible text has the focus. They change the <b>active view</b> (as its side bar does); highlighting, notes and commentary marks are for all views:</p>
+<table><tr><th>Key</th><th>Shows or hides</th></tr>
+<tr><td><kbd>S</kbd></td><td>Strong's numbers</td></tr><tr><td><kbd>M</kbd></td><td>Morphology codes</td></tr>
+<tr><td><kbd>F</kbd></td><td>Footnotes</td></tr><tr><td><kbd>H</kbd></td><td>Headings</td></tr>
+<tr><td><kbd>J</kbd></td><td>Words of Jesus in red</td></tr><tr><td><kbd>I</kbd></td><td>Added words in italics</td></tr>
+<tr><td><kbd>X</kbd></td><td>Cross-references under the verses</td></tr><tr><td><kbd>C</kbd></td><td>Commentary marks ("c" beside verses that have a comment)</td></tr>
+<tr><td><kbd>U</kbd></td><td>Your highlighting</td></tr><tr><td><kbd>N</kbd></td><td>Your notes under the verses</td></tr>
+<tr><td><kbd>P</kbd></td><td>Paragraph mode (flowing text instead of one verse per row)</td></tr></table>
+<h3>The Apocrypha</h3>
+<p>By default the Apocrypha sits between Malachi and Matthew, in the order and with the titles of the 1611 King James Bible:</p>
+<ul>
+  <li>1 Esdras</li>
+  <li>2 Esdras</li>
+  <li>Tobit</li>
+  <li>Judith</li>
+  <li>The Rest of Esther</li>
+  <li>Wisdom</li>
+  <li>Ecclesiasticus</li>
+  <li>Baruch</li>
+  <li>Epistle of Jeremy</li>
+  <li>Song of the Three Children</li>
+  <li>Susanna</li>
+  <li>Bel and the Dragon</li>
+  <li>Prayer of Manasses</li>
+  <li>1 Maccabees</li>
+  <li>2 Maccabees</li>
+</ul>
+<p>Books the 1611 KJV does not have follow in their own group. To put the Apocrypha after Revelation instead, use <i>Options → Modules → Place the Apocrypha</i>.</p>
+</section>
+
+<section id="words"><h2>Words, dictionaries and commentaries</h2>
+<ul>
+  <li><b>Word popups</b>: rest the mouse on a tagged word, a Strong's number or a morphology code. The popup shows the <b>morphology first</b>, then the dictionary entry for the Strong's number.
+    <ul>
+      <li>Drag the popup's <b>bottom-right corner</b> to make it bigger or smaller; Tanglaw remembers the size.</li>
+      <li>Click the word to keep the entry in the <b>Lookup</b> panel.</li>
+      <li><i>Find G26</i> in an entry searches the open Bibles for that number.</li>
+    </ul></li>
+  <li>Clicking an ordinary word looks it up in your dictionaries and books (similar word forms are marked ~).</li>
+  <li>Which dictionaries are used for Strong's numbers and morphology: <i>Options → Modules → Dictionaries</i>.</li>
+  <li><b>Commentary</b> panel: the comments on the selected verse. Each commentary is a button.
+    <ul>
+      <li>A filled dot means it comments on this very verse.</li>
+      <li>A ring means it comments on the passage, chapter or book.</li>
+    </ul></li>
+  <li><b>Library</b> panel: open any commentary, dictionary, book or devotional.
+    <ul>
+      <li>Choose the module in the list at the top. Its topics are listed on the left and the text is shown on the right.</li>
+      <li>Drag the line between the topic list and the text to make the list wider or narrower (double-click the line to reset it). The first button on the bar hides or shows the list.</li>
+      <li>Type in <i>Find a topic…</i> to filter the list.</li>
+      <li>Arrow buttons on the bar:
+        <ul>
+          <li>Left/right arrows (or <kbd>Alt+←</kbd> / <kbd>Alt+→</kbd>): previous or next topic.</li>
+          <li>Back arrow: the topic you read before.</li>
+          <li>In the list, <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Page Up</kbd> <kbd>Page Down</kbd>, <kbd>Home</kbd> <kbd>End</kbd> also work.</li>
+        </ul></li>
+      <li>Links in the text work; Bible references jump to the verse.</li>
+      <li>Devotionals open at today's reading.</li>
+      <li><b>ⓘ</b> opens the module's <b>Properties</b>; the box icon makes the file smaller (see below).</li>
+    </ul></li>
+  <li><b>Cross-references</b> appear under each verse when <kbd>X</kbd> is on.
+    <ul>
+      <li>References in [brackets] point <i>to</i> this verse.</li>
+      <li>Rest the mouse on one to read it; click it to go there.</li>
+      <li>Right-click a verse → <i>Add a cross-reference…</i> keeps your own references.</li>
+    </ul></li>
+</ul>
+</section>
+
+<section id="study"><h2>Your study: highlights, notes, bookmarks, lists, reading plans</h2>
+<ul>
+  <li><b>Right-click a verse</b> to:
+    <ul>
+      <li>Copy it, or open <i>Copy verses…</i>.</li>
+      <li>Add it to the verse list.</li>
+      <li>Set a bookmark.</li>
+      <li>Highlight the selected words (or the whole verse) in five colours, or underline or bold them.</li>
+      <li>Write a note.</li>
+      <li>See or add cross-references.</li>
+      <li>Open its commentaries.</li>
+      <li>Search for the word or its Strong's number.</li>
+    </ul></li>
+  <li><b>Notes</b>: references you type in a note (e.g. <code>Rom 5:8</code>) become links. With <kbd>N</kbd> on, notes show under their verse.</li>
+  <li><b>Bookmarks</b>: <kbd>Ctrl+Shift+1</kbd> … <kbd>0</kbd> sets bookmark 1–0 at the current verse; <kbd>Ctrl+1</kbd> … <kbd>0</kbd> jumps to it.</li>
+  <li><b>My Study</b> panel:
+    <ul>
+      <li><i>Verse lists</i>: named lists. <kbd>Ctrl+L</kbd> adds the current verse; you can reorder, sort and copy a list.</li>
+      <li><i>Notes</i>: all your notes.</li>
+      <li><i>Bookmarks</i>.</li>
+      <li><i>Reading</i>: today's readings and devotionals, plus reading plans.
+        <ul>
+          <li>A plan can cover the whole Bible, the OT and NT together, the 1611 Apocrypha, or books you choose.</li>
+          <li>You can read every day or on chosen weekdays.</li>
+          <li>Finish in a number of days, by a date, or with so many chapters each time.</li>
+          <li>Tick readings off, catch up or restart.</li>
+        </ul></li>
+    </ul></li>
+</ul>
+</section>
+
+<section id="search"><h2>Searching</h2>
+<p>Open the <b>Bible search</b> panel (<kbd>Ctrl+F</kbd>), type a query and press Enter. The line under the box says how Tanglaw understood your query.</p>
+<table><tr><th>Type</th><th>Finds</th></tr>
+<tr><td><code>faith hope</code></td><td>verses with both words (or either one; choose under <i>Options</i>)</td></tr>
+<tr><td><code>"in the beginning"</code></td><td>the exact phrase</td></tr>
+<tr><td><code>love*</code>, <code>?use</code></td><td>wildcards: * any letters, ? one letter</td></tr>
+<tr><td><code>G26</code>, <code>H430</code></td><td>words tagged with that Strong's number</td></tr>
+<tr><td><code>m/ V-AAI-3S</code>, <code>m/ λόγος@*</code></td><td>morphology codes, or lemma@code</td></tr>
+<tr><td><code>AND &amp;</code> <code>OR |</code> <code>NOT ~</code> <code>XOR ^</code></td><td>combine words; use ( ) to group</td></tr>
+<tr><td><code>NXT +</code>, <code>{grace peace}</code></td><td>words next to each other, in that order</td></tr>
+<tr><td><code>faith NEARw5 works</code> (<code>@5</code>)</td><td>within 5 words</td></tr>
+<tr><td><code>faith NEARv2 hope</code> (<code>#2</code>)</td><td>within 2 verses</td></tr>
+<tr><td><code>G2962 TR master</code> (<code>&gt;</code>)</td><td>where that Strong's word is translated "master"</td></tr></table>
+<ul>
+  <li><b>Options</b>: whole words, match case, match accents, regular expressions, and how near NEAR is.</li>
+  <li><b>Range</b>: the whole Bible; OT with or without the Apocrypha; NT; Law; Gospels; Paul; the current book or chapter; or your own (<code>Gen-Deut; Matt 5-7</code>, which can be saved).</li>
+  <li><b>Results</b>:
+    <ul>
+      <li><i>Verses</i>: with the found words marked.</li>
+      <li><i>By book</i>: counts; click a book to show only its verses.</li>
+      <li><i>Statistics</i>: how a Strong's word is translated (e.g. G26 → love 51, charity 19) and which word forms were found.</li>
+      <li><i>+ List</i> adds all the found verses to your verse list; <i>Copy</i> copies them; ⟲ brings back earlier searches.</li>
+    </ul></li>
+</ul>
+</section>
+
+<h3>Book search</h3>
+<p>The <b>Book search</b> panel (<kbd>Ctrl+Shift+F</kbd>, beside the Bible search) looks for words in commentaries, dictionaries, books, devotionals and maps – not in the Bibles.</p>
+<ul>
+  <li>Every word must occur in a topic; <code>"a phrase"</code> must occur as written; <code>creat*</code> matches words that start with <i>creat</i>. Case and accents are ignored unless you tick <i>Match accents</i>; <i>Whole words</i> finds only whole words.</li>
+  <li>Choose where to look: all book modules, one kind (e.g. only the commentaries), one module, or a <b>module set</b> of your own (<b>Sets…</b>: tick the modules and give the set a name).</li>
+  <li>Results are grouped by module, with the words marked. Click one to open it in the Library, with the words marked there too.</li>
+  <li>Large libraries take a while: the line above the results says which module is being read.</li>
+</ul>
+</section>
+
+<section id="copy"><h2>Copying verses</h2>
+<ul>
+  <li><kbd>Ctrl+C</kbd> copies the current verse, or the text you selected.</li>
+  <li><b>Copy verses</b> window (<kbd>F5</kbd>, toolbar <b>Copy</b>, or right-click a verse):
+    <ul>
+      <li><b>Step 1</b>: the <b>From</b> and <b>To</b> buttons open a Book → Chapter → Verse picker. You can type the first letters of a book to find it.
+        <ul>
+          <li>The <b>mouse wheel</b> over a button, or <kbd>Page Up</kbd> / <kbd>Page Down</kbd>, moves that end one verse. Hold <kbd>Shift</kbd> to move a chapter at a time.</li>
+          <li>A range can cross chapters and books.</li>
+          <li>The verse count shows next to the range; <b>×</b> goes back to one verse.</li>
+        </ul></li>
+      <li><b>Step 2</b>: choose the Bible and the format. The preview on the right changes as you go.</li>
+      <li>Drag the window's bottom-right corner to resize it; the size is remembered.</li>
+    </ul></li>
+  <li><b>Templates</b> (format <i>Custom…</i>):
+    <ul>
+      <li><code>%r</code> range</li>
+      <li><code>%t</code> Bible</li>
+      <li><code>%b</code> book</li>
+      <li><code>%c</code> chapter</li>
+      <li><code>%v</code> verse</li>
+      <li><code>%T</code> verse text</li>
+      <li><code>%n</code> new line</li>
+    </ul>
+    <i>Plain text only</i> drops italics and red letters. Your last format is used again next time and for <kbd>Ctrl+C</kbd>.</li>
+</ul>
+</section>
+
+<section id="size"><h2>Text size</h2>
+<ul>
+  <li><b>A− / A+</b> in the caption of each Bible view (only that view's text) and of the Commentary, Lookup, Library and search panels.</li>
+  <li><kbd>Ctrl</kbd> + <b>mouse wheel</b> over any of those panels: one notch makes its text one step bigger or smaller. Each panel keeps its own size.</li>
+  <li><kbd>Ctrl +</kbd> / <kbd>Ctrl −</kbd> change the text size of the active Bible view.</li>
+  <li><i>Options → Fonts</i> sets the fonts, line spacing, text width, and the size of menus and panel text.</li>
+</ul>
+</section>
+
+<section id="options"><h2>Skins and Options</h2>
+<p><b>Skin</b> on the toolbar switches between eight skins: Parchment, Office Blue, Sampaguita, Narra, Sepia, and the dark Slate, Midnight and Dusk. The title bar, menus and panel captions take the skin's colours.</p>
+<p><b>Options</b> (<kbd>Ctrl+,</kbd>). Changes apply at once and are saved.</p>
+<ul>
+  <li><b>Skin &amp; colours</b>:
+    <ul>
+      <li>The background behind the Bible text (the skin's or your own colour).</li>
+      <li>A paper, linen or soft-edge texture.</li>
+      <li>Your own colours for the words of Jesus, verse numbers, Strong's numbers and the selected verse.</li>
+      <li>Coloured or plain panel captions.</li>
+    </ul></li>
+  <li><b>Fonts</b>:
+    <ul>
+      <li>Bible font, size, line spacing and text width.</li>
+      <li>Separate Greek and Hebrew fonts.</li>
+      <li>Menu font and size; panel text size.</li>
+      <li>Whether to use a Bible module's own font.</li>
+    </ul>
+    Five fonts come with Tanglaw and work on any computer: Gentium Plus, Literata, Source Serif 4, Inter and Noto Serif Hebrew. The fonts installed on your computer are listed too.</li>
+  <li><b>Verse numbers</b>:
+    <ul>
+      <li>Where: in a margin column, in the text, or hidden.</li>
+      <li>Style: normal, raised, bold or in a circle.</li>
+      <li>Their size.</li>
+      <li>A large chapter number at verse 1.</li>
+    </ul></li>
+  <li><b>Layout &amp; toolbar</b>:
+    <ul>
+      <li>Layouts and saved layouts.</li>
+      <li>Toolbar icons with or without words.</li>
+      <li>Compact spacing.</li>
+      <li>The status bar.</li>
+    </ul></li>
+  <li><b>Modules</b>:
+    <ul>
+      <li>Where the Apocrypha goes.</li>
+      <li>The Strong's and morphology dictionaries.</li>
+      <li>Module folders (add, remove, rescan).</li>
+    </ul></li>
+</ul>
+</section>
+
+<section id="modules"><h2>Modules Tanglaw reads</h2>
+<table><tr><th>Program</th><th>Kind</th><th>Files</th></tr>
+<tr><td>theWord</td><td>Bibles</td><td><code>.ont</code> <code>.ot</code> <code>.nt</code></td></tr>
+<tr><td>theWord</td><td>Commentaries, dictionaries, books, maps, devotionals</td><td><code>.cmt.twm</code> <code>.dct.twm</code> <code>.gbk.twm</code> <code>.map.twm</code> <code>.dev.twm</code></td></tr>
+<tr><td>theWord</td><td>Cross-reference sets</td><td><code>.xrefs.twm</code></td></tr>
+<tr><td>e-Sword</td><td>Bibles</td><td><code>.bblx</code> <code>.bbli</code></td></tr>
+<tr><td>e-Sword</td><td>Commentaries</td><td><code>.cmtx</code> <code>.cmti</code></td></tr>
+<tr><td>e-Sword</td><td>Dictionaries and lexicons</td><td><code>.dctx</code> <code>.dcti</code> <code>.lexx</code> <code>.lexi</code></td></tr>
+<tr><td>e-Sword</td><td>Topic notes, reference books, devotionals</td><td><code>.topx</code> <code>.topi</code> <code>.refx</code> <code>.refi</code> <code>.devx</code> <code>.devi</code></td></tr></table>
+<p>theWord books written with <b>RichView</b> (many user-made commentaries and books) are shown with their formatting: bold and italic, colours, centred paragraphs, links, pictures and tables. They are read only.</p>
+<p><b>Encrypted or locked modules are not opened.</b> This covers theWord <code>.ontx</code>/<code>.otx</code>/<code>.ntx</code>, locked <code>.twm</code> modules and encrypted e-Sword modules. Their licences forbid getting around that protection, so Tanglaw names them and skips them.</p>
+<p>Not supported yet: e-Sword harmonies, graphics and notes files, and theWord reading-plan modules.</p>
+<h3>Module properties</h3>
+<p>Open a module's properties with <b>ⓘ</b> on the Library bar, or with the small <b>ⓘ</b> that appears when you rest the mouse on a module in the <b>Bibles</b> or <b>Modules</b> panel.</p>
+<ul>
+  <li><b>About</b>: the module's description shown as a formatted page. <b>Edit</b> lets you change it, with bold, italic, underline and lists. Tanglaw saves it in the form the module's program reads: RTF for theWord and e-Sword 9/10, HTML for e-Sword 11.</li>
+  <li><b>Details</b>: title, abbreviation, description, author, version, publisher and so on.</li>
+  <li><b>All settings</b>: every other setting stored in the module. Settings that belong to the program that made the module are shown greyed out and are not changed.</li>
+  <li><b>File &amp; size</b>: where the file is and how big it is.
+    <ul>
+      <li><b>Make smaller</b> compacts the file. This removes unused space; nothing in the module changes.</li>
+      <li>For theWord books you can also compress the text. Tanglaw reads compressed books, but it has not yet been checked whether theWord reads books compressed by Tanglaw, so test it in theWord first.</li>
+    </ul></li>
+</ul>
+<p>Before the first change, Tanglaw keeps a copy of the original file next to it (<code>…tanglaw-backup</code>). <b>Put the original file back</b> undoes all changes. Locked (encrypted) modules cannot be changed.</p>
+<p>To remove an imported module, rest the mouse on it in the <b>Modules</b> panel and click <b>×</b>. The copy goes to the Recycle Bin. Modules read from your own folders are never deleted.</p>
+</section>
+
+<section id="keys"><h2>Keyboard shortcuts</h2>
+<table><tr><th>Keys</th><th>Does</th></tr>
+<tr><td><kbd>←</kbd> <kbd>→</kbd> / <kbd>Ctrl+←</kbd> <kbd>Ctrl+→</kbd></td><td>Previous / next chapter / book</td></tr>
+<tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Previous / next verse</td></tr>
+<tr><td>a number (<kbd>Shift</kbd>+number)</td><td>Go to that verse (chapter)</td></tr>
+<tr><td><kbd>Alt+←</kbd> <kbd>Alt+→</kbd>, <kbd>Backspace</kbd></td><td>Back / forward</td></tr>
+<tr><td><kbd>Ctrl+G</kbd></td><td>Go to a reference</td></tr>
+<tr><td><kbd>Ctrl+F</kbd></td><td>Search</td></tr>
+<tr><td><kbd>Ctrl+C</kbd> / <kbd>F5</kbd></td><td>Copy the current verse / Copy verses window</td></tr>
+<tr><td><kbd>Ctrl+L</kbd></td><td>Add the current verse to the verse list</td></tr>
+<tr><td><kbd>Ctrl+Shift+1</kbd>…<kbd>0</kbd> / <kbd>Ctrl+1</kbd>…<kbd>0</kbd></td><td>Set / go to a bookmark</td></tr>
+<tr><td><kbd>S M F H J I X C U N P</kbd></td><td>Show or hide Strong's, morphology, footnotes, headings, red letters, italics, cross-references, commentary marks, highlighting, notes, paragraph mode</td></tr>
+<tr><td><kbd>Ctrl+H</kbd> / <kbd>Ctrl+J</kbd></td><td>Bible views side by side / one under another</td></tr><tr><td><kbd>Ctrl+Shift+F</kbd></td><td>Book search</td></tr><tr><td><kbd>Ctrl+M</kbd></td><td>Compare the verse in all Bibles</td></tr><tr><td><kbd>L</kbd> / <kbd>Alt+I</kbd></td><td>lemmas / column text in the active view</td></tr>
+<tr><td><kbd>Ctrl +</kbd> <kbd>Ctrl −</kbd>, <kbd>Ctrl</kbd>+wheel</td><td>Text size</td></tr>
+<tr><td><kbd>F11</kbd></td><td>Reading focus</td></tr>
+<tr><td><kbd>Ctrl+,</kbd></td><td>Options</td></tr>
+<tr><td><kbd>Ctrl+I</kbd> / <kbd>Ctrl+O</kbd></td><td>Import modules / add a module folder</td></tr>
+<tr><td><kbd>Ctrl+Shift+F5</kbd></td><td>Rescan modules</td></tr>
+<tr><td><kbd>Ctrl+P</kbd></td><td>Print the chapter</td></tr>
+<tr><td><kbd>Alt+F</kbd> <kbd>Alt+V</kbd> <kbd>Alt+H</kbd></td><td>Open the File / View / Help menu</td></tr>
+<tr><td><kbd>F1</kbd></td><td>This guide</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Close menus, popups and windows</td></tr></table>
+</section>
+
+<section id="tools"><h2>Tools</h2>
+<ul>
+  <li><b>Pictures</b> in commentaries, dictionaries and books (RTF and RichView) are shown in the text. Click one to open the <b>picture viewer</b>: the mouse wheel zooms, drag to move, ← → for the other pictures of the entry, <kbd>Esc</kbd> closes.</li>
+  <li><b>Bible references in entries</b> (“John 3:16”, “1 Cor. 13:4-7”, e-Sword's “Php_1:17”) are links; rest the mouse on one to read the verse, click to go there.</li>
+  <li><b>Your own marks in books</b>: select words in a commentary, dictionary or book topic and a small bar appears – highlight in a colour, bold, underline, or ⌫ to remove. The module is not changed; the marks are kept in your study data and come back whenever the topic is shown.</li>
+  <li><b>Clipboard monitor</b> (<i>View → Clipboard Monitor</i>): while it is on, copy text with Bible references in any program (an e-mail, a web page) and a small window lists the references with their text. Click one to go there; <i>+ List</i> adds them all to your verse list; <i>to front</i> brings Tanglaw forward when references are copied.</li>
+  <li><b>Export topics</b> (the export button on the Library bar, or <i>File → Export Topics…</i>): the open topic or all topics of a module as a Word document (.docx), Rich Text (.rtf), a web page (.html) or plain text (.txt). Locked modules are never read, so they cannot be exported.</li>
+  <li><b>Print</b> the open Library topic with the print button on the Library bar; <kbd>Ctrl+P</kbd> prints the Bible chapter.</li>
+</ul>
+</section>
+
+<section id="files"><h2>Where your things are kept</h2>
+<p>All in <code>%APPDATA%\Tanglaw Bible</code> (paste that into the Explorer address bar):</p>
+<ul>
+  <li><code>modules\</code>: the modules you imported (<i>File → Show Imported Modules Folder</i>).</li>
+  <li><code>my-study-data.json</code>: your highlights, notes, bookmarks, verse lists and reading plans. A backup is kept for each of the last 7 days.</li>
+  <li><code>My cross-references.xrefs.twm</code>: the cross-references you added, in theWord's format.</li>
+  <li><code>settings.json</code>: options, skin, layout and folders.</li>
+</ul>
+<div class="tip">To move Tanglaw to another computer with your study, copy the whole <code>Tanglaw Bible</code> folder.</div>
+</section>
+
+<section id="about"><h2>About</h2>
+<p>Tanglaw is an independent program. It is not made by, or affiliated with, the authors of theWord or e-Sword, and it contains none of their program files or modules. It reads module files that you already have.</p>
+<p>The bundled fonts are under the SIL Open Font License.</p>
+</section>
+
+</div><div id="nores" class="none hidden">Nothing in the guide matches.</div></main>
+</div>
+<script src="options.js"></script>
+<script src="guide.js"></script>
+</body>
+</html>

@@ -1,0 +1,1124 @@
+'use strict';
+/* global api, TWRender, TanglawOptions, TanglawDock, TanglawModules, TanglawStudy, TanglawSearch, TanglawBookSearch, TanglawCompare, TanglawTools, TanglawSpeech, TanglawTitlebar, TanglawProps, TanglawIcons, TanglawI18n */
+const $ = s => document.querySelector(s);
+const state = { settings: null, modules: { bibles: [], books: [], dicts: [], errors: [] }, infos: new Map(), nav: [], ref: { b: 43, c: 1, v: 1 }, back: [], fwd: [] };
+const lookupCache = new Map();
+const EMPTY_MOD = { rules: [] };
+
+// [D3] Lookup panel history stack (Back / Forward)
+const lkpState = { back: [], fwd: [], cur: '' };
+function setLookupHtml(html, pushHistory = true) {
+  const box = $('#lookup');
+  if (!box) return;
+  if (pushHistory && lkpState.cur && lkpState.cur !== html) {
+    lkpState.back.push(lkpState.cur);
+    if (lkpState.back.length > 80) lkpState.back.shift();
+    lkpState.fwd = [];
+  }
+  lkpState.cur = html;
+  box.innerHTML = html;
+  box.scrollTop = 0;
+  syncLookupButtons();
+}
+function lookupStep(d) {
+  const from = d < 0 ? lkpState.back : lkpState.fwd;
+  const to = d < 0 ? lkpState.fwd : lkpState.back;
+  if (!from.length) return;
+  if (lkpState.cur) to.push(lkpState.cur);
+  const next = from.pop();
+  setLookupHtml(next, false);
+}
+function syncLookupButtons() {
+  const b = $('#lkpBack'), f = $('#lkpFwd');
+  if (b) b.disabled = !lkpState.back.length;
+  if (f) f.disabled = !lkpState.fwd.length;
+}
+window.setLookupHtml = setLookupHtml;
+window.lookupStep = lookupStep;
+
+async function init() {
+  state.settings = await api.getSettings();
+  state.ref = state.settings.ref || state.ref;
+  initViews();
+  TanglawOptions.init();
+  initDock();
+  wireBiblesDrawer();
+  wireZoom();
+  wirePopupResize();
+  for (const cb of document.querySelectorAll('[data-show]')) cb.addEventListener('change', () => setShow(cb.dataset.show, cb.checked));
+  for (const cb of document.querySelectorAll('[data-tbshow]')) cb.addEventListener('change', () => setToolbarItem(cb.dataset.tbshow, cb.checked));
+  applyToolbarItems();
+  syncViewMenu();
+  wireUi();
+  wireViews();
+  TanglawModules.wireModules();
+  await TanglawStudy.init();
+  if (window.TanglawNav) TanglawNav.init();
+  TanglawSearch.init();
+  TanglawBookSearch.init();
+  TanglawCompare.init();
+  TanglawTools.init();
+  window.BOOK_ABBR = {}; for (const bk of await api.books()) window.BOOK_ABBR[bk.id] = bk.abbr;
+  await refreshModules();
+  api.onMenu(cmd => runCommand(cmd));
+  TanglawTitlebar.init();
+  TanglawProps.init();
+  if (window.TanglawI18n) TanglawI18n.apply(state.settings.lang || 'en');
+  if (api.onExternalSync) api.onExternalSync(handleExternalSync);
+}
+
+async function handleExternalSync(data) {
+  if (!data) return;
+  try {
+    if ((data.cmd === 'verse' || (!data.cmd && data.b)) && data.b && data.c && data.v) {
+      extSyncSuppressUntil = Date.now() + 900;
+      let targetB = +data.b, targetC = +data.c, targetV = +data.v;
+      if (targetB >= 67 && data.bookName) {
+        const parsed = await api.parseRef(`${data.bookName} ${targetC}:${targetV}`).catch(() => null);
+        if (parsed && parsed.b) { targetB = parsed.b; targetC = parsed.c || targetC; targetV = parsed.v || targetV; }
+      } else if (targetB === 27 && targetC === 13) {
+        const dan = state.nav.find(x => x.id === 27);
+        if ((!dan || !dan.chapterList.includes(13)) && state.nav.some(x => x.id === 75)) { targetB = 75; targetC = 1; }
+      } else if (targetB === 27 && targetC === 14) {
+        const dan = state.nav.find(x => x.id === 27);
+        if ((!dan || !dan.chapterList.includes(14)) && state.nav.some(x => x.id === 76)) { targetB = 76; targetC = 1; }
+      } else if (targetB === 19 && targetC === 151) {
+        const psa = state.nav.find(x => x.id === 19);
+        if ((!psa || !psa.chapterList.includes(151)) && state.nav.some(x => x.id === 81)) { targetB = 81; targetC = 1; }
+      }
+      if (state.ref.b === targetB && state.ref.c === targetC) {
+        if (!selectVerse(targetV, true)) await go({ b: targetB, c: targetC, v: targetV, history: false }, false);
+      } else {
+        await go({ b: targetB, c: targetC, v: targetV, history: false }, false);
+      }
+      const bk = (state.nav || []).find(x => x.id === state.ref.b);
+      if (bk) document.title = `${bk.name} ${state.ref.c}:${state.ref.v} - Tanglaw Bible`;
+    }
+  } catch (_) {}
+}
+
+/** every menu command (title-bar menus, keyboard shortcuts) */
+function runCommand(cmd) {
+  const local = {
+    newUserMod: () => TanglawModules.newUserModuleDialog(),
+    import: () => TanglawModules.importModules(), addFolder, rescan,
+    search: () => openTab('search', true), bookSearch: () => openTab('bsearch', true),
+    compare: () => TanglawCompare.open(), exportTopics: () => TanglawTools.exportTopics(),
+    printTopic: () => TanglawTools.printTopic(), clipmon: () => TanglawTools.setClipmon(!TanglawTools.clipOn()),
+    voices: () => TanglawSpeech.voicesDialog(), goto: () => { $('#refInput').focus(); $('#refInput').select(); }, about,
+    options: () => TanglawOptions.open(), resetLayout: () => TanglawDock.applyPreset('classic'),
+    copyVerses: () => TanglawStudy.copyDialog(), daily: () => TanglawStudy.openStudy('plans'), keys: () => TanglawStudy.showKeys(), print: () => window.print(),
+    guide: () => api.appCmd('guide', TanglawOptions.appearance().skin)
+  };
+  if (local[cmd]) return local[cmd]();
+  return api.appCmd(cmd);
+}
+window.runCommand = runCommand;
+
+/* ---------------- docked panels ---------------- */
+function initDock() {
+  const P = [['tree', 'Books & chapters', 'tree', 'bible', '#pane-tree'], ['library', 'Modules', 'library', 'lib', '#pane-library'],
+    ['lookup', 'Lookup', 'lookup', 'dict', '#tab-lookup'], ['cmt', 'Commentary', 'commentary', 'cmt', '#tab-cmt'], ['lib', 'Library', 'book', 'lib', '#tab-lib'],
+    ['search', 'Bible search', 'search', 'search', '#tab-search'], ['bsearch', 'Book search', 'search', 'search', '#tab-bsearch'], ['study', 'My Study', 'study', 'study', '#tab-study'], ['compare', 'Compare', 'copy', 'bible', '#tab-compare']];
+  for (const [id, title, icon, cap, sel] of P) TanglawDock.register({ id, title, icon, cap, el: $(sel) });
+  TanglawDock.init(state.settings.dock, {
+    onSave: layout => save({ dock: layout }),
+    zoomable: id => !!ZOOM_TARGETS[id],
+    onZoom: (id, d) => zoomPanel(id, d),
+    onActivate: id => { if (id === 'compare') TanglawCompare.render(); if (id === 'bsearch') TanglawBookSearch.onOpen(false); if (id === 'search') TanglawSearch.onOpen(false); if (id === 'study') TanglawStudy.onOpen(); }
+  });
+}
+
+/* ---------------- text size per panel (A− / A+ buttons, Ctrl + mouse wheel) ---------------- */
+const ZOOM_TARGETS = {
+  bibles: ['#bvBiblesDrawer', '#pane-bibles'], tree: ['#bibleTree'], library: ['#pane-library'], study: ['#studyBody'],
+  compare: ['#cmpBody'], cmt: ['#cmtBody'], lookup: ['#lookup'], lib: ['.libsplit'],
+  search: ['#searchResults', '#searchBooks', '#searchStats'], bsearch: ['#bsResults']
+};
+const ZOOM_NAMES = {
+  bibles: 'Bibles list', tree: 'Bible tree', library: 'Modules list', study: 'My Study',
+  compare: 'Compare', cmt: 'Commentary', lookup: 'Lookup', lib: 'Library',
+  search: 'Bible search results', bsearch: 'Book search results'
+};
+function zoomPanel(id, d) {
+  if (id === 'bible') return zoomView(state.active, d);
+  if (typeof id === 'number') return zoomView(id, d);
+  if (id === 'ui') { if (window.TanglawOptions && TanglawOptions.stepUiSize) TanglawOptions.stepUiSize(d); return; }
+  if (!ZOOM_TARGETS[id]) return;
+  const a = TanglawOptions.appearance(); a.zoom = Object.assign({}, a.zoom);
+  const z = Math.round(Math.min(2.5, Math.max(0.6, (a.zoom[id] || 1) + d * 0.1)) * 10) / 10;
+  a.zoom[id] = z; save({ appearance: a }); applyZoom();
+  TanglawStudy.flash(`${ZOOM_NAMES[id] || id} text ${Math.round(z * 100)}%`);
+}
+function applyZoom() {
+  const z = TanglawOptions.appearance().zoom || {};
+  for (const [id, sels] of Object.entries(ZOOM_TARGETS)) for (const s of sels) { const el = $(s); if (el) el.style.zoom = z[id] || 1; }
+}
+window.applyZoom = applyZoom;
+function wireZoom() {
+  applyZoom();
+  $('#bibleZoomOut').onclick = () => zoomPanel('bible', -1);
+  $('#bibleZoomIn').onclick = () => zoomPanel('bible', 1);
+  let acc = 0;
+  document.addEventListener('wheel', e => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const pane = e.target.closest && e.target.closest('#view > .bv');
+    const bvd = e.target.closest && e.target.closest('#bvBiblesDrawer');
+    const uiChrome = e.target.closest && e.target.closest('#titlebar, #toolbar, #statusbar, .dcap, #optionsDlg');
+    const p = bvd ? 'bibles' : pane ? +pane.dataset.i : uiChrome ? 'ui' : e.target.closest && (e.target.closest('#center') ? 'bible' : (e.target.closest('.dpanel') || {}).dataset?.panel);
+    if (p == null || (p !== 'bible' && p !== 'ui' && typeof p !== 'number' && !ZOOM_TARGETS[p])) return;
+    const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+    if (Math.abs(dy) >= 50) { acc = 0; zoomPanel(p, dy < 0 ? 1 : -1); return; }
+    acc += dy;
+    if (Math.abs(acc) >= 100) { zoomPanel(p, acc < 0 ? 1 : -1); acc = 0; }
+  }, { passive: false });
+}
+
+
+const TB_ITEM_MAP = {
+  tbBackFwd: ['#backBtn', '#fwdBtn'],
+  tbGoto: ['#refForm'],
+  tbDropdowns: ['#bookSel', '#chapSel', '#verseSel'],
+  tbPrevNext: ['#prevBtn', '#nextBtn'],
+  tbSearch: ['#searchBtn'],
+  tbCopy: ['#copyBtn'],
+  tbPrint: ['#printBtn'],
+};
+function toolbarItemsState() {
+  return Object.assign({
+    tbBackFwd: true, tbGoto: true, tbDropdowns: true, tbPrevNext: true,
+    tbSearch: true, tbCopy: true, tbPrint: true,
+  }, (state.settings && state.settings.toolbarItems) || {});
+}
+function applyToolbarItems() {
+  const ti = toolbarItemsState();
+  for (const [key, sels] of Object.entries(TB_ITEM_MAP)) {
+    const show = ti[key] !== false;
+    for (const s of sels) {
+      const el = $(s);
+      if (el) el.classList.toggle('hidden', !show);
+    }
+  }
+  const anyNav = ti.tbBackFwd !== false || ti.tbGoto !== false || ti.tbDropdowns !== false || ti.tbPrevNext !== false;
+  const sep = $('#toolbar .tsep');
+  if (sep) sep.classList.toggle('hidden', !anyNav);
+  for (const cb of document.querySelectorAll('[data-tbshow]')) {
+    cb.checked = ti[cb.dataset.tbshow] !== false;
+  }
+  if (window.TanglawTitlebar && TanglawTitlebar.rebuild) TanglawTitlebar.rebuild();
+}
+function setToolbarItem(key, on) {
+  const ti = toolbarItemsState();
+  ti[key] = on === undefined ? !ti[key] : !!on;
+  state.settings.toolbarItems = ti;
+  save({ toolbarItems: ti });
+  applyToolbarItems();
+}
+window.setToolbarItem = setToolbarItem;
+window.toolbarItemsState = toolbarItemsState;
+
+function setShow(key, on) {
+  if (VIEW_KEYS.includes(key) && views().length) { toggleViewShow(state.active, key, on); return; }
+  state.settings.show[key] = on;
+  save({ show: state.settings.show }); syncViewMenu(); renderChapter();
+}
+function syncViewMenu() {
+  for (const cb of document.querySelectorAll('[data-show]')) cb.checked = VIEW_KEYS.includes(cb.dataset.show) ? effShow(cb.dataset.show) : !!state.settings.show[cb.dataset.show];
+  const sec = document.querySelectorAll('#view > .bv')[state.active];
+  if (sec) { const sh = viewShow(state.active); sec.querySelectorAll('.bvside [data-k]').forEach(b => b.classList.toggle('on', !!sh[b.dataset.k])); }
+}
+
+function save(patch) { Object.assign(state.settings, patch); api.setSettings(patch).catch(() => {}); }
+
+/* ---------------- modules ---------------- */
+async function refreshModules(list) {
+  state.modules = list || await api.listModules();
+  const ids = state.modules.bibles.map(b => b.id);
+  const prevZoom = (views()[0] && views()[0].zoom) || state.settings.bibleZoom || 1;
+  let vs = views().filter(v => ids.includes(v.bible));
+  if (!vs.length && ids.length) vs = [{ bible: ids[0], linked: true, zoom: prevZoom !== 1 ? prevZoom : undefined }];
+  state.settings.views = vs; if (state.active >= vs.length) state.active = Math.max(0, vs.length - 1);
+  state.ref = refOfView(state.active);
+  syncOpen();
+  for (const v of vs) await ensureInfo(v.bible);
+  renderModuleList(); renderDictSelects(); renderFolders();
+  TanglawModules.renderLibraryList(); TanglawModules.fillLibSelect(); TanglawBookSearch.fillScope();
+  if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.modules = Object.assign(l, { errors: state.modules.errors }); renderDictSelects(); TanglawModules.renderLibraryList(); TanglawModules.fillLibSelect(); TanglawBookSearch.fillScope(); }).catch(() => {});
+  $('#empty').classList.toggle('hidden', ids.length > 0);
+  statusMods();
+  $('#view').classList.toggle('hidden', ids.length === 0);
+  await rebuildNav();
+  await go(state.ref, false);
+}
+function statusMods() {
+  const ids = state.modules.bibles;
+  $('#stMods').textContent = `${ids.length} Bible${ids.length === 1 ? '' : 's'} · ${(state.modules.books || []).length} library modules · ${views().length} Bible view${views().length === 1 ? '' : 's'}${state.settings.portable ? ' · Portable' : ''}`;
+}
+
+async function ensureInfo(id) {
+  if (state.infos.has(id)) return state.infos.get(id);
+  try { const info = await api.bibleInfo(id); state.infos.set(id, info); return info; }
+  catch (e) { state.modules.errors.push(`${id.slice(3)}: ${e.message}`); return null; }
+}
+
+/* ---------------- 0.5.8: Design 3 Collapsible Left Bibles Drawer Inside the Bible View ---------------- */
+let dragBibleId = null;
+function ordViewLabel(idx) {
+  const n = idx + 1;
+  const suf = n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th";
+  return `(${n}${suf} view)`;
+}
+function setBiblesDrawerOpen(open, savePref = true) {
+  const dr = $('#bvBiblesDrawer'), sp = $('#bvBiblesSplit'), btn = $('#bvBiblesBtn'), caret = $('#bvBiblesCaret');
+  if (!dr) return;
+  const on = open === undefined ? dr.classList.contains('hidden') : !!open;
+  dr.classList.toggle('hidden', !on);
+  if (sp) sp.classList.toggle('hidden', !on);
+  if (btn) btn.classList.toggle('on', on);
+  if (caret) caret.textContent = on ? '◂' : '▸';
+  if (savePref && state.settings) {
+    state.settings.bvdOpen = on;
+    save({ bvdOpen: on });
+  }
+}
+window.setBiblesDrawerOpen = setBiblesDrawerOpen;
+
+function wireBiblesDrawer() {
+  const dr = $('#bvBiblesDrawer'), sp = $('#bvBiblesSplit'), btn = $('#bvBiblesBtn'), closeBtn = $('#bvdCloseBtn');
+  const fi = $('#bvdFilter'), autoCb = $('#bvdAutoHide'), impBtn = $('#bvdImportBtn');
+  if (!dr) return;
+  const w0 = Math.max(170, Math.min(440, (state.settings && state.settings.bvdWidth) || 235));
+  dr.style.width = w0 + 'px';
+  if (autoCb) {
+    autoCb.checked = !!(state.settings && state.settings.bvdAutoHide);
+    autoCb.onchange = () => { state.settings.bvdAutoHide = autoCb.checked; save({ bvdAutoHide: autoCb.checked }); };
+  }
+  setBiblesDrawerOpen(!!(state.settings && state.settings.bvdOpen), false);
+  if (btn) btn.onclick = () => setBiblesDrawerOpen();
+  if (closeBtn) closeBtn.onclick = () => setBiblesDrawerOpen(false);
+  if (impBtn) impBtn.onclick = () => TanglawModules.importModules();
+  if (fi) {
+    fi.oninput = () => filterBiblesDrawer(fi.value);
+    fi.onkeydown = e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const first = document.querySelector('#bibleList li:not(.hidden) .bvd-use');
+        if (first) first.click();
+      } else if (e.key === 'Escape') {
+        fi.value = '';
+        filterBiblesDrawer('');
+      }
+    };
+  }
+  if (sp) {
+    sp.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      try { sp.setPointerCapture(e.pointerId); } catch (_) {}
+      const x0 = e.clientX, startW = dr.offsetWidth;
+      const move = ev => {
+        const nw = Math.round(Math.max(170, Math.min(440, startW + ev.clientX - x0)));
+        dr.style.width = nw + 'px';
+        state.settings.bvdWidth = nw;
+      };
+      const up = () => {
+        sp.removeEventListener('pointermove', move);
+        sp.removeEventListener('pointerup', up);
+        sp.removeEventListener('pointercancel', up);
+        sp.removeEventListener('lostpointercapture', up);
+        save({ bvdWidth: state.settings.bvdWidth });
+      };
+      sp.addEventListener('pointermove', move);
+      sp.addEventListener('pointerup', up);
+      sp.addEventListener('pointercancel', up);
+      sp.addEventListener('lostpointercapture', up);
+    });
+    sp.addEventListener('dblclick', () => {
+      dr.style.width = '235px';
+      state.settings.bvdWidth = 235;
+      save({ bvdWidth: 235 });
+    });
+  }
+}
+
+function filterBiblesDrawer(q) {
+  const ql = String(q || '').trim().toLowerCase();
+  document.querySelectorAll('#bibleList > li').forEach(li => {
+    const hay = (li.dataset.search || '').toLowerCase();
+    li.classList.toggle('hidden', !!ql && !hay.includes(ql));
+  });
+}
+
+function renderModuleList() {
+  const ul = $('#bibleList'); if (!ul) return;
+  ul.innerHTML = '';
+  const open = views().map(v => v.bible);
+  const btnLbl = $('#bvBiblesBtnLbl'), cntLbl = $('#bvdCount');
+  if (btnLbl) btnLbl.textContent = `Bibles (${open.length})`;
+  if (cntLbl) cntLbl.textContent = `(${open.length} of ${state.modules.bibles.length})`;
+
+  const sorted = [...state.modules.bibles].sort((a, b) => {
+    const ia = open.indexOf(a.id), ib = open.indexOf(b.id);
+    if (ia >= 0 || ib >= 0) return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+    return a.name.localeCompare(b.name);
+  });
+  for (const m of sorted) {
+    const info = state.infos.get(m.id);
+    const abbr = info ? info.abbr : m.abbr;
+    const ttl = info ? info.title : m.name;
+    const openIdx = open.indexOf(m.id);
+    const on = openIdx >= 0;
+    const isAct = on && openIdx === state.active;
+    const fmt = m.id.startsWith('es:') ? 'e-Sword' : m.id.startsWith('bk:') ? 'book' : m.id.startsWith('usfm:') ? 'USFM' : m.id.startsWith('usfx:') ? 'USFX' : m.name.split('.').pop();
+    const li = document.createElement('li');
+    li.className = (on ? 'bvd-on' : '') + (isAct ? ' bvd-active' : '');
+    li.dataset.bid = m.id;
+    li.dataset.search = `${abbr} ${ttl} ${m.name} ${fmt}`;
+    li.draggable = true;
+    li.innerHTML = `
+      <span class="bvd-grip" title="Drag to reorder side-by-side Bible views">⋮⋮</span>
+      <input type="checkbox" class="bvd-cb" ${on ? 'checked' : ''} title="${on ? 'Close this parallel Bible view' : 'Open in a parallel Bible view (side-by-side)'}">
+      <button type="button" class="bvd-use" title="${esc(ttl)}\nClick to read in the active Bible view">
+        <span class="bvd-top">
+          <span class="abbr">${esc(abbr)}</span>
+          ${on ? `<span class="bvd-ord">${esc(ordViewLabel(openIdx))}</span>` : ''}
+        </span>
+        <span class="ttl">${esc(ttl)}</span>
+      </button>
+      ${on && openIdx > 0 ? '<button type="button" class="mv" title="Move its view to the left">↑</button>' : ''}
+      <button type="button" class="pp" title="Module properties (${esc(fmt)})">${TanglawIcons.icon('info', 13)}</button>`;
+
+    li.querySelector('.bvd-cb').addEventListener('change', async e => {
+      if (e.target.checked) await addView(m.id);
+      else {
+        const vs = views().filter(v => v.bible !== m.id);
+        if (!vs.length) { e.target.checked = true; return flashMsg('At least one Bible view stays open'); }
+        setViews(vs);
+      }
+    });
+    li.querySelector('.bvd-use').onclick = async e => {
+      e.preventDefault(); e.stopPropagation();
+      if (on) {
+        setActive(openIdx);
+        renderModuleList();
+      } else {
+        await useBible(m.id);
+      }
+      if (state.settings && state.settings.bvdAutoHide) setBiblesDrawerOpen(false);
+    };
+    li.querySelector('.pp').onclick = e => { e.preventDefault(); e.stopPropagation(); TanglawProps.open(m.id); };
+    const mv = li.querySelector('.mv');
+    if (mv) mv.addEventListener('click', async e => {
+      e.stopPropagation();
+      const vs = [...views()]; const i = vs.findIndex(v => v.bible === m.id);
+      if (i > 0) { const act = vs[state.active]; [vs[i - 1], vs[i]] = [vs[i], vs[i - 1]]; state.active = vs.indexOf(act); setViews(vs); }
+    });
+
+    // HTML5 drag-and-drop to reorder side-by-side Bible views
+    li.addEventListener('dragstart', e => {
+      dragBibleId = m.id;
+      li.classList.add('dragging');
+      try { e.dataTransfer.setData('text/plain', m.id); } catch (_) {}
+    });
+    li.addEventListener('dragend', () => {
+      dragBibleId = null;
+      li.classList.remove('dragging');
+      ul.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+    });
+    li.addEventListener('dragover', e => {
+      if (!dragBibleId || dragBibleId === m.id) return;
+      e.preventDefault();
+      li.classList.add('drag-over');
+    });
+    li.addEventListener('dragleave', () => li.classList.remove('drag-over'));
+    li.addEventListener('drop', async e => {
+      e.preventDefault();
+      li.classList.remove('drag-over');
+      const fromId = dragBibleId;
+      dragBibleId = null;
+      if (!fromId || fromId === m.id) return;
+      await ensureInfo(fromId);
+      const vs = [...views()];
+      const actObj = vs[state.active];
+      let fromIdx = vs.findIndex(v => v.bible === fromId);
+      let fromItem;
+      if (fromIdx >= 0) {
+        [fromItem] = vs.splice(fromIdx, 1);
+      } else {
+        fromItem = { bible: fromId, linked: true };
+      }
+      const toIdx = vs.findIndex(v => v.bible === m.id);
+      if (toIdx >= 0) vs.splice(toIdx, 0, fromItem);
+      else vs.push(fromItem);
+      state.active = Math.max(0, vs.indexOf(actObj >= 0 ? actObj : fromItem));
+      await setViews(vs);
+    });
+
+    ul.appendChild(li);
+  }
+  const fi = $('#bvdFilter');
+  if (fi && fi.value.trim()) filterBiblesDrawer(fi.value);
+
+  const errs = $('#modErrors'); errs.innerHTML = '';
+  for (const e of (state.modules.errors || []).filter(x => !/encrypted/i.test(x))) { const li = document.createElement('li'); li.textContent = e; errs.appendChild(li); }
+  for (const id of new Set(open)) {
+    const info = state.infos.get(id);
+    for (const w of (info && info.warnings) || []) { const li = document.createElement('li'); li.className = /are shown as/.test(w) ? 'info' : ''; li.textContent = `${info.abbr}: ${w}`; errs.appendChild(li); }
+  }
+}
+function flashMsg(m) { if (window.TanglawStudy) TanglawStudy.flash(m); }
+
+function renderDictSelects() {
+  for (const [sel, key] of [['#greekDict', 'greekDict'], ['#hebrewDict', 'hebrewDict'], ['#morphDict', 'morphDict']]) {
+    const s = $(sel); s.innerHTML = '<option value="">Automatic</option>';
+    for (const d of state.modules.dicts.filter(d => !d.locked)) { const o = document.createElement('option'); o.value = d.id; o.textContent = d.opened ? d.title : d.name.replace(/\.[^.]+(\.twm)?$/i, ''); s.appendChild(o); }
+    s.value = String(state.settings[key] || '').replace(/^dct:/, 'bm:');
+    if (s.selectedIndex < 0) s.value = '';
+    s.onchange = () => { save({ [key]: s.value || null }); lookupCache.clear(); };
+  }
+}
+
+function renderFolders() {
+  const ul = $('#folderList'); ul.innerHTML = '';
+  for (const f of state.settings.moduleFolders || []) {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${esc(f)}</span><button title="Remove folder">×</button>`;
+    li.querySelector('button').onclick = async () => { const l = await api.removeFolder(f); state.settings = await api.getSettings(); state.infos.clear(); initViews(); await refreshModules(l); };
+    ul.appendChild(li);
+  }
+  if (!(state.settings.moduleFolders || []).length) ul.innerHTML = '<li><span>No folders yet.</span></li>';
+}
+
+async function addFolder() { const l = await api.addFolder(); if (l) { state.settings = await api.getSettings(); state.infos.clear(); initViews(); await refreshModules(l); } }
+async function rescan() { const l = await api.rescan(); state.infos.clear(); await refreshModules(l); }
+
+/* ---------------- Bible views ---------------- */
+const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs', 'paragraph'];
+const SIDE = [['strongs', 'S', "Strong's numbers (S)"], ['morph', 'M', 'Morphology codes (M)'], ['lemma', 'L', 'Lemmas (L)'], ['columns', '⫼', 'Column text: each word over its original word (Alt+I)'], ['footnotes', 'F', 'Footnotes (F)'], ['headings', 'H', 'Headings (H)'],
+  ['woj', 'J', 'Words of Jesus in red (J)'], ['added', 'I', 'Added words in italics (I)'], ['xrefs', 'X', 'Cross-references (X)'], ['paragraph', '¶', 'Paragraph mode (P)']];
+const views = () => state.settings.views || [];
+function initViews() {
+  const defZoom = state.settings.bibleZoom || 1;
+  let vs = Array.isArray(state.settings.views) ? state.settings.views.filter(v => v && v.bible) : [];
+  if (!vs.length) vs = (state.settings.openBibles || []).map(b => ({ bible: b, linked: true, zoom: defZoom !== 1 ? defZoom : undefined }));
+  state.settings.views = vs;
+  state.active = Math.min(Math.max(0, state.settings.activeView || 0), Math.max(0, vs.length - 1));
+  state.linkRef = state.settings.ref || state.ref;
+  state.ref = refOfView(state.active);
+}
+function refOfView(i) { const v = views()[i]; return v && !v.linked && v.ref ? v.ref : state.linkRef; }
+function syncOpen() { state.settings.openBibles = views().map(v => v.bible); }
+function storeViews() { syncOpen(); save({ views: views(), openBibles: state.settings.openBibles, activeView: state.active }); }
+let extSyncSuppressUntil = 0;
+function commitRef() {
+  const v = views()[state.active];
+  if (v && !v.linked) { v.ref = state.ref; storeViews(); } else { state.linkRef = state.ref; save({ ref: state.ref }); }
+  const bk = (state.nav || []).find(x => x.id === state.ref.b);
+  if (bk) document.title = `${bk.name} ${state.ref.c}:${state.ref.v} - Tanglaw Bible`;
+  if (Date.now() >= extSyncSuppressUntil && api.syncOut) {
+    api.syncOut({ ref: state.ref, bookName: bk ? bk.name : '' }).catch(() => {});
+  }
+}
+function viewShow(i) { const s = Object.assign({}, state.settings.show); const v = views()[i]; if (v && v.show) Object.assign(s, v.show); return s; }
+function effShow(key, i = state.active) { return !!viewShow(i)[key]; }
+window.effShow = effShow;
+function sameMove(i, j) { const vs = views(); return i === j || (vs[i] && vs[j] && vs[i].linked && vs[j].linked); }
+const paneTexts = () => [...document.querySelectorAll('#view > .bv > .bvbody > .bvtext')];
+function activeText() { return paneTexts()[state.active] || $('#view'); }
+window.activeText = activeText;
+
+async function setViews(vs) {
+  state.settings.views = vs; if (state.active >= vs.length) state.active = vs.length - 1;
+  state.ref = refOfView(state.active);
+  storeViews(); renderModuleList(); statusMods(); await rebuildNav(); await go(state.ref, false);
+}
+async function addView(bible) {
+  await ensureInfo(bible);
+  const vs = [...views(), { bible, linked: true }]; state.active = vs.length - 1;
+  await setViews(vs);
+}
+async function useBible(bible) {
+  if (!views().length) return addView(bible);
+  await ensureInfo(bible);
+  views()[state.active].bible = bible; await setViews([...views()]);
+}
+function closeView(i) {
+  if (views().length < 2) return flashMsg('At least one Bible view stays open');
+  const vs = views().filter((_, k) => k !== i); if (state.active > i || state.active >= vs.length) state.active = Math.max(0, state.active - 1);
+  setViews(vs);
+}
+function setActive(i, quiet) {
+  if (i === state.active || !views()[i]) return;
+  state.active = i; state.ref = refOfView(i);
+  document.querySelectorAll('#view > .bv').forEach((sec, k) => sec.classList.toggle('active', k === i));
+  storeViews();
+  syncNavControls();
+  if (!quiet) TanglawModules.updateCommentary();
+  syncViewMenu();
+}
+window.setActiveView = setActive;
+window.refreshPaneLooks = () => document.querySelectorAll('#view > .bv').forEach((sec, i) => { if (views()[i]) applyPaneLook(sec, i); });
+function toggleViewShow(i, key, on) {
+  const v = views()[i]; if (!v) return;
+  const val = on === undefined ? !effShow(key, i) : on;
+  v.show = Object.assign({}, v.show, { [key]: val });
+  if (val === !!state.settings.show[key]) delete v.show[key];
+  storeViews(); syncViewMenu(); renderChapter(false);
+  return val;
+}
+function zoomView(i, d) {
+  const v = views()[i]; if (!v) return;
+  const z = Math.round(Math.min(2.5, Math.max(0.6, (v.zoom || 1) + d * 0.1)) * 10) / 10;
+  v.zoom = z; state.settings.bibleZoom = z; save({ bibleZoom: z }); storeViews();
+  const sec = document.querySelectorAll('#view > .bv')[i]; if (sec) applyPaneLook(sec, i);
+  flashMsg(`${(state.infos.get(v.bible) || {}).abbr || 'Bible'} text ${Math.round(z * 100)}%`);
+}
+const baseSize = () => state.settings.fontSize || 17;
+function applyPaneLook(sec, i) {
+  const v = views()[i]; const ap = TanglawOptions.appearance(); const t = sec.querySelector('.bvtext');
+  t.style.setProperty('--size', Math.round(baseSize() * (v.zoom || 1) * 10) / 10 + 'px');
+  t.style.fontFamily = v.font ? `'TwGreek', 'TwHebrew', '${String(v.font).replace(/['\\]/g, '')}', var(--font-text)` : '';
+  if (v.font) t.style.setProperty('--font-text', `'TwGreek', 'TwHebrew', '${String(v.font).replace(/['\\]/g, '')}', 'Gentium Plus', Georgia, serif`); else t.style.removeProperty('--font-text');
+  t.dataset.vnpos = v.vnPos || ap.vnPos; t.dataset.vnstyle = ap.vnStyle;
+  const z = sec.querySelector('.bvzoom'); if (z) z.textContent = Math.round((v.zoom || 1) * 100) + '%';
+}
+function ensurePanes() {
+  const host = $('#view'); const vs = views();
+  while (host.children.length > vs.length) host.lastElementChild.remove();
+  while (host.children.length < vs.length) {
+    const sec = document.createElement('section'); sec.className = 'bv';
+    sec.innerHTML = `<header class="bvcap"><button class="bvbible" data-a="bible" title="Choose the Bible of this view"></button><span class="bvref"></span><span class="grow"></span>
+      <button class="dbtn bvlink" data-a="link" title="Move together with the other Bible views (click to let this view read on by itself)">${TanglawIcons.icon('link', 14)}</button>
+      <button class="dbtn" data-a="zout" title="Smaller text in this view (Ctrl + mouse wheel down)">${TanglawIcons.icon('textDown', 14)}</button><span class="bvzoom" title="Text size of this view"></span><button class="dbtn" data-a="zin" title="Larger text in this view (Ctrl + mouse wheel up)">${TanglawIcons.icon('textUp', 14)}</button>
+      <button class="dbtn" data-a="close" title="Close this Bible view">${TanglawIcons.icon('close', 14)}</button></header>
+      <div class="bvbody"><nav class="bvside" aria-label="What this view shows">${SIDE.map(([k, l, t]) => `<button data-k="${k}" title="${esc(t)}">${l}</button>`).join('')}
+        <span class="bvsep"></span><button data-a="vnum" title="Verse numbers in this view: column, in the text, hidden">#</button><button data-a="font" title="Font of this view">Aa</button><button data-a="speak" class="bvspeak" title="Read this chapter aloud (again: stop)">${TanglawIcons.icon('speaker', 14)}</button><button data-a="opts" title="More options of this view: footnote marks, column text lines, this Bible's own switches">${TanglawIcons.icon('gear', 14)}</button></nav>
+        <div class="bvtext view" tabindex="0"></div></div>`;
+    host.appendChild(sec);
+  }
+  [...host.children].forEach((sec, i) => {
+    const v = vs[i]; const inf = state.infos.get(v.bible);
+    sec.dataset.i = i; sec.dataset.linked = v.linked ? '1' : '0';
+    sec.classList.toggle('active', i === state.active);
+    sec.querySelector('.bvbible').textContent = inf ? inf.abbr : v.bible.replace(/^\w+:/, '');
+    sec.querySelector('.bvbible').title = (inf ? inf.title + ' – ' : '') + 'click to choose another Bible for this view';
+    sec.querySelector('.bvlink').classList.toggle('on', !!v.linked);
+    const sh = viewShow(i);
+    sec.querySelectorAll('.bvside [data-k]').forEach(b => b.classList.toggle('on', !!sh[b.dataset.k]));
+    applyPaneLook(sec, i);
+  });
+}
+function paneMenu(btn, html, wire) {
+  document.querySelectorAll('.bvmenu').forEach(m => m.remove());
+  const m = document.createElement('div'); m.className = 'menu bvmenu'; m.innerHTML = html; document.body.appendChild(m);
+  const r = btn.getBoundingClientRect(); m.style.left = Math.min(r.left, innerWidth - 300) + 'px'; m.style.top = r.bottom + 4 + 'px';
+  wire(m);
+  setTimeout(() => document.addEventListener('mousedown', function off(e) { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('mousedown', off, true); } }, true), 0);
+}
+function wireViews() {
+  const host = $('#view');
+  host.addEventListener('mousedown', e => { const sec = e.target.closest('#view > .bv'); if (sec) setActive(+sec.dataset.i); }, true);
+  host.addEventListener('focusin', e => { const sec = e.target.closest('#view > .bv'); if (sec) setActive(+sec.dataset.i); });
+  host.addEventListener('click', e => {
+    const sec = e.target.closest('#view > .bv'); if (!sec) return; const i = +sec.dataset.i; const v = views()[i];
+    const refSpan = e.target.closest('.bvref');
+    if (refSpan && refSpan.textContent && window.TanglawNav) { setActive(i); TanglawNav.openNavPopover('book', refSpan, i); return; }
+    const k = e.target.closest('.bvside [data-k]');
+    if (k) { const on = toggleViewShow(i, k.dataset.k); flashMsg(`${k.title.replace(/ \(.\)$/, '')}: ${on ? 'on' : 'off'} in this view`); return; }
+    const a = e.target.closest('[data-a]'); if (!a) return;
+    const act = a.dataset.a;
+    if (act === 'zin' || act === 'zout') return zoomView(i, act === 'zin' ? 1 : -1);
+    if (act === 'close') return closeView(i);
+    if (act === 'link') {
+      v.linked = !v.linked;
+      if (!v.linked) v.ref = { ...refOfView(i) }; else delete v.ref;
+      if (i === state.active) state.ref = refOfView(i);
+      storeViews(); flashMsg(v.linked ? 'This view moves with the others' : 'This view reads on by itself');
+      renderChapter(false); syncNavControls(); return;
+    }
+    if (act === 'vnum') {
+      const order = ['margin', 'inline', 'hidden']; const ap = TanglawOptions.appearance();
+      v.vnPos = order[(order.indexOf(v.vnPos || ap.vnPos) + 1) % 3]; if (v.vnPos === ap.vnPos) delete v.vnPos;
+      storeViews(); renderChapter(false);
+      return flashMsg('Verse numbers: ' + { margin: 'in a column', inline: 'in the text', hidden: 'hidden' }[v.vnPos || ap.vnPos]);
+    }
+    if (act === 'font') {
+      const fonts = TanglawOptions.fonts();
+      return paneMenu(a, `<div class="mh">Font of this view</div><select class="bvfont" size="12"><option value="">As in Options</option>${fonts.map(f => `<option${f === v.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>`, m => {
+        const s = m.querySelector('select'); if (!v.font) s.value = '';
+        s.onchange = () => { v.font = s.value || undefined; if (!v.font) delete v.font; storeViews(); ensurePanes(); };
+      });
+    }
+    if (act === 'speak') return window.TanglawSpeech && TanglawSpeech.speakView(i, a);
+    if (act === 'opts') return viewOptions(i, a);
+    if (act === 'bible') {
+      const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}</span></button>`; }).join('');
+      return paneMenu(a, `<div class="mh">Bible of this view</div><div class="bvlist">${list}</div><div class="msep"></div><button type="button" class="bvm-open-drawer">📚 Open Bibles Drawer (side-by-side &amp; reorder)…</button>`, m => {
+        const od = m.querySelector('.bvm-open-drawer'); if (od) od.onclick = () => { m.remove(); setBiblesDrawerOpen(true); };
+        m.querySelectorAll('[data-b]').forEach(b => b.onclick = async () => { m.remove(); await ensureInfo(b.dataset.b); v.bible = b.dataset.b; await setViews([...views()]); });
+      });
+    }
+  });
+}
+
+/* ---------------- what a view shows: footnote marks, lemmas, column text, the Bible's own switches ---------------- */
+function decorateFootnotes(root, v, show) {
+  const style = v.fnStyle || 'num';
+  const lab = n => style === 'letter' ? (n > 26 ? String.fromCharCode(96 + Math.ceil(n / 26) - 1) : '') + String.fromCharCode(97 + (n - 1) % 26) : style === 'star' ? '*' : String(n);
+  let n = 0; const items = [];
+  for (const f of root.querySelectorAll('sup.fn')) {
+    n++; if (!f.dataset.q) f.textContent = lab(n);
+    const vv = (f.closest('[data-v]') || {}).dataset?.v;
+    items.push(`<li data-gov="${vv}"><b>${esc(f.textContent || '')}</b> <span class="small">${vv}</span> ${TWRender.render(f.dataset.note || '', { rules: [] }, Object.assign({}, show, { footnotes: false }))}</li>`);
+  }
+  if (v.fnList && items.length) root.insertAdjacentHTML('beforeend', `<section class="fnlist"><h4>Footnotes</h4><ol>${items.join('')}</ol></section>`);
+}
+function showLemmas(root) {
+  root.querySelectorAll('[data-lemma]:not(sup)').forEach(w => w.insertAdjacentHTML('afterend', `<sup class="lemma" data-lemma="${esc(w.dataset.lemma)}">${esc(w.dataset.lemma)}</sup>`));
+}
+const COL_LINES = [['orig', 'Original word'], ['tl', 'Transliteration'], ['strong', "Strong's number"], ['morph', 'Morphology'], ['lemma', 'Lemma']];
+const colOn = (i, k) => ((views()[i] || {}).colLines || {})[k] !== false;
+const origCache = new Map();
+async function originalFor(key) {
+  const activeBible = (views()[state.active] || {}).bible || '';
+  const ck = key + '|' + activeBible + '|' + (state.settings.greekDict || '') + '|' + (state.settings.hebrewDict || '');
+  if (origCache.has(ck)) return origCache.get(ck);
+  let o = '';
+  try { const r = await api.lookup('strong', key, activeBible); if (r) { const t = document.createElement('div'); t.innerHTML = r.html; const txt = (r.subject || '') + ' ' + (t.textContent || '').slice(0, 400); const m = (/^H/i.test(key) ? /[\u0590-\u05FF\uFB1D-\uFB4F]+(?:[\u05BE\s][\u0590-\u05FF\uFB1D-\uFB4F]+)?/ : /[\u0370-\u03FF\u1F00-\u1FFF\u0300-\u036F]+/).exec(txt); o = m ? m[0].trim() : ''; } } catch (e) { /* none */ }
+  origCache.set(ck, o); return o;
+}
+function columnWords(i, root) {
+  const tl = w => (window.TanglawTranslit ? TanglawTranslit.translit(w) : '');
+  const need = [];
+  for (const w of root.querySelectorAll('span.word[data-strong], span.word[data-morph], span.word[data-lemma]')) {
+    const st = (w.dataset.strong || '').split(/\s+/).filter(Boolean); const lem = w.dataset.lemma || '';
+    const box = document.createElement('span'); box.className = 'cw'; w.replaceWith(box); box.appendChild(w);
+    const line = (cls, txt, attrs = {}) => { const e = document.createElement('span'); e.className = 'cl ' + cls; e.textContent = txt; for (const [a, val] of Object.entries(attrs)) e.setAttribute(a, val); box.appendChild(e); return e; };
+    if (colOn(i, 'orig')) { const o = line('cl-orig', lem); if (!lem && st[0]) need.push([o, st[0]]); }
+    if (colOn(i, 'tl')) line('cl-tl', lem ? tl(lem) : '');
+    if (colOn(i, 'strong') && st.length) line('cl-strong', st.join(' '), { 'data-strong': st.join(' ') });
+    if (colOn(i, 'morph') && w.dataset.morph) line('cl-morph', w.dataset.morph, { 'data-morph': w.dataset.morph });
+    if (colOn(i, 'lemma') && lem) line('cl-lemma', lem, { 'data-lemma': lem });
+  }
+  const sv = String(refOfView(i).v);
+  need.sort((a, b) => Number((b[0].closest('[data-v]') || {}).dataset?.v === sv) - Number((a[0].closest('[data-v]') || {}).dataset?.v === sv));
+  (async () => {
+    const keys = [...new Set(need.map(n => n[1]))];
+    const activeBible = (views()[state.active] || {}).bible || '';
+    const pk = '|' + activeBible + '|' + (state.settings.greekDict || '') + '|' + (state.settings.hebrewDict || '');
+    for (let k = 0; k < keys.length; k += 20) {
+      if (!root.isConnected) return;
+      await Promise.all(keys.slice(k, k + 20).map(originalFor));
+      for (const [el, key] of need) if (origCache.has(key + pk) && !el.textContent) { const o = origCache.get(key + pk); el.textContent = o; const t2 = el.nextElementSibling; if (t2 && t2.classList.contains('cl-tl') && !t2.textContent) t2.textContent = tl(o); }
+    }
+  })();
+}
+function ownSwitches(id) { const inf = state.infos.get(id); try { return inf ? TWRender.customToggles(inf) : []; } catch (e) { return []; } }
+const customOn = n => ((state.settings.show.custom || {})[n]) !== false;
+function setCustom(n, on) { state.settings.show.custom = Object.assign({}, state.settings.show.custom, { [n]: on }); save({ show: state.settings.show }); renderChapter(false); }
+window.ownSwitchKeys = () => [...new Set(views().flatMap(v => ownSwitches(v.bible)))].filter(n => n.length === 1);
+window.toggleOwnSwitch = n => { setCustom(n, !customOn(n)); flashMsg(`${n}: ${customOn(n) ? 'on' : 'off'}`); };
+function viewOptions(i, btn) {
+  const v = views()[i]; const sh = viewShow(i); const sw = ownSwitches(v.bible);
+  const html = `<div class="mh">Footnote marks</div>${[['num', '1 2 3'], ['letter', 'a b c'], ['star', '*']].map(([k, l]) => `<label><input type="radio" name="vfs" value="${k}"${(v.fnStyle || 'num') === k ? ' checked' : ''}> ${l}</label>`).join('')}
+    <label><input type="checkbox" class="vfl"${v.fnList ? ' checked' : ''}> List the footnotes under the chapter</label>
+    ${sh.columns ? `<div class="mh">Column text lines</div>${COL_LINES.map(([k, l]) => `<label><input type="checkbox" class="vcl" value="${k}"${colOn(i, k) ? ' checked' : ''}> ${l}</label>`).join('')}` : ''}
+    ${sw.length ? `<div class="mh">This Bible's own switches</div>${sw.map(n => `<label><input type="checkbox" class="vsw" value="${esc(n)}"${customOn(n) ? ' checked' : ''}> ${esc(n)}${n.length === 1 ? ` <kbd>${esc(n.toUpperCase())}</kbd>` : ''}</label>`).join('')}` : ''}
+    <div class="msep"></div><button class="vdef" title="New Bible views start with what this view shows">Use these for new Bible views</button><button class="vreset">Back to the general settings</button>`;
+  paneMenu(btn, html, m => {
+    m.querySelectorAll('input[name="vfs"]').forEach(r => r.onchange = () => { v.fnStyle = r.value; if (r.value === 'num') delete v.fnStyle; storeViews(); renderChapter(false); });
+    m.querySelector('.vfl').onchange = e => { if (e.target.checked) v.fnList = true; else delete v.fnList; storeViews(); renderChapter(false); };
+    m.querySelectorAll('.vcl').forEach(c => c.onchange = () => { v.colLines = Object.assign({}, v.colLines, { [c.value]: c.checked }); storeViews(); renderChapter(false); });
+    m.querySelectorAll('.vsw').forEach(c => c.onchange = () => setCustom(c.value, c.checked));
+    m.querySelector('.vdef').onclick = () => { views().forEach((o, k) => { const eff = viewShow(k); o.show = Object.assign({}, o.show); for (const key of VIEW_KEYS) if (!(key in o.show)) o.show[key] = !!eff[key]; }); for (const k of VIEW_KEYS) state.settings.show[k] = !!sh[k]; save({ show: state.settings.show }); for (const o of views()) if (o.show) for (const k of VIEW_KEYS) if (o.show[k] === state.settings.show[k]) delete o.show[k]; storeViews(); syncViewMenu(); m.remove(); flashMsg('New Bible views will show what this one shows'); };
+    m.querySelector('.vreset').onclick = () => { v.show = {}; delete v.fnStyle; delete v.fnList; delete v.colLines; delete v.vnPos; delete v.font; storeViews(); ensurePanes(); renderChapter(false); syncViewMenu(); m.remove(); };
+  });
+}
+
+/* ---------------- navigation ---------------- */
+async function rebuildNav() {
+  state.nav = views().length ? await api.nav([...new Set(views().map(v => v.bible))]) : [];
+  const sel = $('#bookSel'); sel.innerHTML = '';
+  let og = null, last = null;
+  for (const b of state.nav) {
+    if (b.grp !== last) { og = document.createElement('optgroup'); og.label = groupLabel(b.grp); sel.appendChild(og); last = b.grp; }
+    const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; og.appendChild(o);
+  }
+  const ot = $('#searchScope option[value="OT"]');
+  if (ot) ot.textContent = state.settings.apocryphaPlacement === 'end' ? 'Old Testament' : 'Old Testament (with Apocrypha)';
+}
+
+function groupLabel(g) {
+  const s1611 = state.settings.apocryphaPlacement !== 'end';
+  return { OT: 'Old Testament', NT: 'New Testament', AP: s1611 ? 'Apocrypha (as in the 1611 KJV)' : 'Apocrypha', APX: 'Other deuterocanonical books (not in the 1611 KJV)' }[g] || g;
+}
+
+function fillChapters(b) {
+  const bk = state.nav.find(x => x.id === b);
+  const sel = $('#chapSel'); sel.innerHTML = '';
+  for (const c of (bk ? bk.chapterList : [])) { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); }
+}
+function syncNavControls() {
+  const r = state.ref; const bk = state.nav.find(x => x.id === r.b);
+  if (!bk) return;
+  $('#bookSel').value = bk.id; fillChapters(bk.id); $('#chapSel').value = r.c;
+  $('#stRef').textContent = `${bk.name} ${r.c}:${r.v}`;
+  $('#chapterHead').innerHTML = `${esc(bk.name)} ${r.c}<span class="sub">${esc(groupLabel(bk.grp))}</span>`;
+  updateHistoryButtons();
+  if (window.TanglawNav) TanglawNav.syncAll();
+}
+
+async function go(ref, pushSave = true) {
+  if (!state.nav.length) { $('#view').innerHTML = ''; $('#chapterHead').textContent = ''; return; }
+  let bk = state.nav.find(x => x.id === ref.b) || state.nav[0];
+  let c = ref.c || 1;
+  if (!bk.chapterList.includes(c)) c = bk.chapterList.find(x => x >= c) || bk.chapterList[bk.chapterList.length - 1];
+  const prev = state.ref;
+  state.ref = { b: bk.id, c, v: ref.v || 1 };
+  if (pushSave && ref.history !== false && prev && (prev.b !== state.ref.b || prev.c !== state.ref.c || prev.v !== state.ref.v)) {
+    const last = state.back[state.back.length - 1];
+    if (!last || last.b !== prev.b || last.c !== prev.c || last.v !== prev.v) state.back.push({ ...prev });
+    if (state.back.length > 200) state.back.shift();
+    if (!ref.keepFwd) state.fwd = [];
+  }
+  commitRef();
+  syncNavControls();
+  await renderChapter(true, views().map((_, i) => i).filter(i => sameMove(i, state.active) || !(paneTexts()[i] && paneTexts()[i].childElementCount)));
+  TanglawModules.updateCommentary();
+}
+
+function historyGo(d) {
+  const from = d < 0 ? state.back : state.fwd, to = d < 0 ? state.fwd : state.back;
+  const r = from.pop(); if (!r) return;
+  to.push({ ...state.ref });
+  go({ ...r, history: false });
+}
+function updateHistoryButtons() {
+  const b = $('#backBtn'), f = $('#fwdBtn');
+  if (b) { b.disabled = !state.back.length; b.title = state.back.length ? 'Back to ' + refName(state.back[state.back.length - 1]) + ' (Alt+←)' : 'Back (Alt+←)'; }
+  if (f) { f.disabled = !state.fwd.length; f.title = state.fwd.length ? 'Forward to ' + refName(state.fwd[state.fwd.length - 1]) + ' (Alt+→)' : 'Forward (Alt+→)'; }
+}
+function refName(r) { const bk = state.nav.find(x => x.id === r.b); return `${bk ? bk.abbr : (window.BOOK_ABBR || {})[r.b] || r.b} ${r.c}:${r.v}`; }
+function stepBook(d) {
+  const i = state.nav.findIndex(x => x.id === state.ref.b); const n = state.nav[i + d];
+  if (n) go({ b: n.id, c: n.chapterList[0], v: 1 });
+}
+function selectVerse(v, scroll = true) {
+  const el = activeText().querySelector(`[data-v="${v}"]`); if (!el) return false;
+  paneTexts().forEach((t, i) => {
+    if (!sameMove(i, state.active)) return;
+    t.querySelectorAll('.sel').forEach(x => x.classList.remove('sel'));
+    t.querySelectorAll(`[data-v="${v}"]`).forEach(x => { if (x.matches('tr, .pv')) x.classList.add('sel'); });
+  });
+  state.ref.v = v; commitRef();
+  syncNavControls();
+  if (scroll) el.scrollIntoView({ block: 'nearest' });
+  TanglawModules.updateCommentary();
+  return true;
+}
+
+function step(d) {
+  const i = state.nav.findIndex(x => x.id === state.ref.b); if (i < 0) return;
+  let b = state.nav[i]; const list = b.chapterList; const j = list.indexOf(state.ref.c) + d;
+  let c;
+  if (j < 0) { const p = state.nav[i - 1]; if (!p) return; b = p; c = p.chapterList[p.chapterList.length - 1]; }
+  else if (j >= list.length) { const n = state.nav[i + 1]; if (!n) return; b = n; c = n.chapterList[0]; }
+  else c = list[j];
+  go({ b: b.id, c, v: 1 });
+}
+
+/* ---------------- chapter view ---------------- */
+let renderSeq = 0;
+function currentLayout() { return state.settings.layout === 'rows' && views().length > 1 ? 'rows' : 'cols'; }
+const paneSeq = [];
+async function renderChapter(scroll, only) {
+  const seq = ++renderSeq;
+  const vs = views(); if (!vs.length) return;
+  ensurePanes();
+  const host = $('#view'); host.dataset.arrange = currentLayout();
+  const which = only || vs.map((_, i) => i);
+  await Promise.all(which.map(i => renderPane(i, scroll, (paneSeq[i] = (paneSeq[i] || 0) + 1))));
+  if (seq !== renderSeq) return;
+  if (state.settings.diff) TanglawStudy.markDifferences();
+  TanglawStudy.renderTree();
+}
+window.renderChapter = renderChapter;
+async function renderPane(i, scroll, seq) {
+  const v = views()[i]; const sec = document.querySelectorAll('#view > .bv')[i]; if (!v || !sec) return;
+  const id = v.bible; const { b, c } = refOfView(i); const vv = refOfView(i).v;
+  const data = await api.chapter([id], b, c);
+  if (seq !== paneSeq[i]) return;
+  const show = viewShow(i);
+  const inf = state.infos.get(id);
+  const layout = show.paragraph ? 'para' : 'cols';
+  const ctx = { fn: { n: 0 }, b };
+  const ap = TanglawOptions.appearance();
+  const vnPos = v.vnPos || ap.vnPos;
+  const fontOf = ap.useModFont && !v.font && inf && inf.font ? ` style="font-family:'TwGreek', 'TwHebrew', '${esc(inf.font.split(',')[0])}', var(--font-text)"` : '';
+  const cell = raw => TWRender.render(raw, inf || EMPTY_MOD, show, ctx);
+  const drop = n => ap.chapNum === 'drop' && n === 1 ? `<span class="dropcap">${c}</span>` : '';
+  const lead = n => drop(n) || (vnPos === 'inline' ? `<sup class="vnum">${n === 0 ? '¶' : n}</sup>` : '');
+  const rows = data.rows.filter(r => r.cells[0] != null);
+  sec.querySelector('.bvref').textContent = v.linked ? '' : `${data.book.name} ${c}`;
+  sec.dataset.ref = `${b}.${c}`; sec.dataset.layout = layout;
+  let html = '';
+  if (!rows.length) html = `<p class="hint bvnone">${esc(data.book.name)} ${c} is not in ${esc(inf ? inf.abbr : 'this Bible')}.</p>`;
+  else if (layout === 'para') {
+    html = `<div class="paraview"><div class="pcol${inf && inf.rtl ? ' rtl' : ''}" data-colwrap="${i}"${fontOf}>`;
+    for (const row of rows) {
+      const vnum = drop(row.v) || (vnPos === 'hidden' ? '' : `<sup class="vnum">${row.v === 0 ? '¶' : row.v}</sup>`);
+      let cHtml = cell(row.cells[0]);
+      if (vnum) {
+        const mLead = /^((?:<span class="heading[^"]*">[\s\S]*?<\/span>)*)(<span class="para\b[^>]*>)?([\s\S]*)$/.exec(cHtml);
+        cHtml = mLead ? `${mLead[1] || ''}${mLead[2] || ''}${vnum}${mLead[3] || ''}` : `${vnum}${cHtml}`;
+      }
+      html += `<span class="pv${row.v === vv ? ' sel' : ''}" data-v="${row.v}" data-col="${i}">${cHtml}</span> `;
+    }
+    html += '</div></div>';
+  } else {
+    html = '<table class="chapter"><colgroup><col class="vn"><col></colgroup><tbody>';
+    for (const row of rows) html += `<tr data-v="${row.v}"${row.v === vv ? ' class="sel"' : ''}><td class="vn"${row.v === 0 ? ' title="Prologue / superscription"' : ''}><span class="vno">${row.v === 0 ? '¶' : row.v}</span></td><td class="${inf && inf.rtl ? 'rtl' : ''}"${fontOf} data-col="${i}">${lead(row.v)}${cell(row.cells[0])}</td></tr>`;
+    html += '</tbody></table>';
+  }
+  const t = sec.querySelector('.bvtext'); const keep = t.scrollTop;
+  t.innerHTML = html; t.dataset.layout = layout;
+  applyPaneLook(sec, i);
+  t.classList.toggle('colmode', !!show.columns);
+  decorateFootnotes(t, v, show);
+  if (show.columns) columnWords(i, t); else if (show.lemma) showLemmas(t);
+  const first = views().findIndex((_, k) => sameMove(k, i)) === i;
+  TanglawStudy.afterRender({ root: t, col: i, id, b, c, layout, notes: first });
+  if (layout !== 'para') TanglawModules.decorateChapter(b, c, t, show);
+  if (i === state.active && window.TanglawNav) TanglawNav.syncAll(rows);
+  if (scroll) {
+    const el = t.querySelector(`[data-v="${vv}"]`);
+    if (el && vv > 1) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } else t.scrollTop = 0;
+  } else t.scrollTop = keep;
+}
+
+/* ---------------- popups & lookup ---------------- */
+async function lookupHtml(el) {
+  const parts = [];
+  const strongs = (el.dataset.strong || '').split(/\s+/).filter(Boolean);
+  const morphs = (el.dataset.morph || '').split(/\s+/).filter(Boolean);
+  if (el.dataset.lemma) parts.push(`<div class="src">Lemma: <b>${esc(el.dataset.lemma)}</b></div>`);
+  for (const m of morphs) parts.push(await entry('morph', m));
+  for (const s of strongs) parts.push(await entry('strong', s));
+  return parts.join('');
+}
+async function entry(kind, key) {
+  const activeBible = (views()[state.active] || {}).bible || '';
+  const k = kind + ':' + key + ':' + activeBible;
+  if (!lookupCache.has(k)) {
+    lookupCache.set(k, api.lookup(kind, key, activeBible).then(r => r
+      ? `<div class="entry"><h4>${esc(r.subject || key)} <a class="findlink" data-find="${esc(key)}" title="Search the open Bibles for ${esc(key)}">Find ${kind === 'morph' ? 'm/ ' : ''}${esc(key)}</a></h4><div class="src">${esc(r.dict)}</div>${sanitize(r.html)}</div>`
+      : `<div class="entry"><h4>${esc(key)}</h4><div class="src">${kind === 'strong' ? "No Strong's dictionary entry found" : 'No morphology dictionary entry found'}</div></div>`)
+      .catch(e => `<div class="entry"><h4>${esc(key)}</h4><div class="src">${esc(e.message)}</div></div>`));
+  }
+  return lookupCache.get(k);
+}
+
+function sanitize(html) {
+  const t = document.createElement('template'); t.innerHTML = html;
+  t.content.querySelectorAll('script,style,iframe,object,embed').forEach(n => n.remove());
+  t.content.querySelectorAll('*').forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name)) n.removeAttribute(a.name); });
+  t.content.querySelectorAll('a[href]').forEach(a => { a.dataset.href = a.getAttribute('href'); a.removeAttribute('href'); a.classList.add('link'); });
+  return t.innerHTML;
+}
+
+async function noteHtml(el) {
+  if (el.classList.contains('fn')) return `<div class="entry"><div class="src">Footnote</div>${sanitize(TWRender.render(el.dataset.note, { rules: [] }, Object.assign({}, state.settings.show, { footnotes: false })))}</div>`;
+  if (el.classList.contains('xref')) {
+    const out = [];
+    for (const r of el.dataset.xref.split(/[;,]/)) {
+      const m = /^(\d+)\.(\d+)\.(\d+)(?:-(\d+))?/.exec(r); if (!m) continue;
+      out.push(await versePreview(+m[1], +m[2], +m[3], m[4] ? +m[4] : +m[3]));
+    }
+    return out.join('') || '<div class="src">Cross-reference</div>';
+  }
+  return '';
+}
+
+// [B4] Resolve target-specific Bible links (tw://bible.MODID?id=b.c.v)
+function resolveBibleSpec(modSpec) {
+  if (!modSpec || modSpec === '*') return null;
+  const want = decodeURIComponent(modSpec).toLowerCase();
+  for (const b of state.modules.bibles) {
+    const inf = state.infos.get(b.id);
+    if (b.id.toLowerCase() === want || (b.abbr || '').toLowerCase() === want || (inf && (inf.abbr || '').toLowerCase() === want) || b.name.replace(/\.[^.]+$/, '').toLowerCase() === want) {
+      return b.id;
+    }
+  }
+  return null;
+}
+window.resolveBibleSpec = resolveBibleSpec;
+
+async function versePreview(b, c, v1, v2, modSpec) {
+  let targetId = resolveBibleSpec(modSpec);
+  if (!targetId) {
+    const ids = state.settings.openBibles;
+    if (!ids.length) return '';
+    targetId = ids[0];
+  }
+  await ensureInfo(targetId);
+  const data = await api.chapter([targetId], b, c);
+  const inf = state.infos.get(targetId);
+  const show = Object.assign({}, state.settings.show, { strongs: false, morph: false, footnotes: false });
+  const rows = data.rows.filter(r => r.v >= v1 && r.v <= v2);
+  const modAttr = modSpec && modSpec !== '*' ? modSpec : '*';
+  return `<div class="entry"><h4><a class="link" data-href="tw://bible.${esc(modAttr)}?id=${b}.${c}.${v1}">${esc(data.book.name)} ${c}:${v1}${v2 > v1 ? '–' + v2 : ''}${modSpec && modSpec !== '*' && inf ? ` (${esc(inf.abbr)})` : ''}</a></h4>${rows.map(r => `<sup>${r.v}</sup> ${TWRender.render(r.cells[0], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}`).join(' ') || '<div class="src">Not in this Bible</div>'}</div>`;
+}
+
+let hoverTimer = null, hoverEl = null;
+function popupTarget(el) { return el && el.closest('[data-strong],[data-morph],sup.fn,sup.xref'); }
+function wireHover() {
+  document.addEventListener('mouseover', e => {
+    const t = popupTarget(e.target);
+    if (t === hoverEl) return;
+    hoverEl = t; clearTimeout(hoverTimer);
+    if (!t) { if (!e.target.closest('#popup')) hidePopupSoon(); return; }
+    hoverTimer = setTimeout(() => showPopup(t), 280);
+  });
+  $('#popup').addEventListener('mouseleave', hidePopupSoon);
+  $('#popup').addEventListener('mouseenter', () => clearTimeout(hideTimer));
+}
+let hideTimer = null;
+let popupHold = false;
+function hidePopupSoon() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (!popupHold) $('#popup').classList.add('hidden'); }, 300); }
+function wirePopupResize() {
+  const p = $('#popup');
+  const sz = (TanglawOptions.appearance().popupSize) || null;
+  if (sz) { p.style.width = sz.w + 'px'; p.style.height = sz.h + 'px'; p.classList.add('sized'); }
+  p.addEventListener('mousedown', e => {
+    const r = p.getBoundingClientRect();
+    if (e.clientX < r.right - 18 || e.clientY < r.bottom - 18) return;
+    popupHold = true; clearTimeout(hideTimer);
+    p.style.width = p.offsetWidth + 'px'; p.style.height = p.offsetHeight + 'px'; p.classList.add('sized');
+    const up = () => {
+      document.removeEventListener('mouseup', up, true);
+      setTimeout(() => { popupHold = false; }, 50);
+      const a = TanglawOptions.appearance(); a.popupSize = { w: p.offsetWidth, h: p.offsetHeight };
+      p.style.width = a.popupSize.w + 'px'; p.style.height = a.popupSize.h + 'px'; p.classList.add('sized');
+      save({ appearance: a });
+      if (!p.matches(':hover')) hidePopupSoon();
+    };
+    document.addEventListener('mouseup', up, true);
+  });
+}
+async function showPopup(el) {
+  clearTimeout(hideTimer);
+  const html = el.matches('sup.fn,sup.xref') ? await noteHtml(el) : await lookupHtml(el);
+  if (hoverEl !== el || !html) return;
+  showPopupHtml(el, html);
+}
+function showPopupHtml(el, html) {
+  clearTimeout(hideTimer);
+  const p = $('#popup'); p.innerHTML = html; p.classList.remove('hidden'); p.scrollTop = 0;
+  const r = el.getBoundingClientRect(); const W = window.innerWidth, H = window.innerHeight;
+  const pw = Math.min(p.offsetWidth || 440, W - 20);
+  let x = Math.min(Math.max(10, r.left), W - pw - 10); let y = r.bottom + 6;
+  p.style.left = x + 'px'; p.style.top = y + 'px';
+  const ph = p.offsetHeight; if (y + ph > H - 10) p.style.top = Math.max(10, r.top - ph - 6) + 'px';
+}
+
+async function pin(el) {
+  let html = el.matches('sup.fn,sup.xref') ? await noteHtml(el) : await lookupHtml(el);
+  if (!el.matches('sup.fn,sup.xref')) {
+    const rawW = (el.classList.contains('word') ? el.textContent : '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    const lemmaW = (el.dataset.lemma || '').trim();
+    const wordsToTry = [...new Set([rawW, lemmaW].filter(w => w && w.length >= 2 && !/^[GH]\d+$/i.test(w)))];
+    for (const w of wordsToTry) {
+      const res = await api.wordLookup(w, true).catch(() => []);
+      if (res && res.length) {
+        const first = res[0];
+        const t = await api.bookTopic(first.id, first.hits[0].id).catch(() => null);
+        const others = res.map(r => r.hits.map(h => `<a class="link" data-book="${esc(r.id)}" data-tid="${esc(String(h.id))}">${esc(r.abbr)}: ${esc(h.subject)}${h.exact ? '' : ' ~'}</a>`).join(' · ')).join(' · ');
+        if (t && t.html) {
+          html += `<div class="entry"><h4>${esc(t.subject || w)}</h4><div class="src">${esc(first.title)}</div>${sanitize(t.html)}</div>`;
+        }
+        if (others) {
+          html += `<div class="entry"><div class="src">“${esc(w)}” in your dictionaries &amp; books</div>${others}</div>`;
+        }
+      }
+    }
+  }
+  setLookupHtml(html || '<p class="hint">Nothing to show.</p>');
+  openTab('lookup');
+}
+
+async function followLink(href) {
+  if (!href) return;
+  if (/^https?:/i.test(href)) return api.openExternal(href);
+  if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href) && await TanglawModules.followBookLink(href)) return;
+  const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
+  const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
+  if (/^tw:\/\/bible/i.test(href) && id) {
+    // [B4] Honor target-specific Bible if specified (e.g. tw://bible.KJV?id=1.1.1)
+    if (bm && bm[1] && bm[1] !== '*') {
+      const targetBible = resolveBibleSpec(bm[1]);
+      if (targetBible) {
+        const existingIdx = views().findIndex(v => v.bible === targetBible);
+        if (existingIdx >= 0) setActive(existingIdx, true);
+        else await useBible(targetBible);
+      }
+    }
+    return go({ b: +id[1], c: +id[2], v: id[3] ? +id[3] : 1 });
+  }
+  const st = /[?&]t=([GH]\d+)/i.exec(href) || /\?([GH]\d+)\b/i.exec(href);
+  if (st) { const fake = document.createElement('span'); fake.dataset.strong = st[1].toUpperCase(); return pin(fake); }
+  const mo = /\[morph\][^?]*\?t=([^&|]+)/i.exec(href);
+  if (mo) { const fake = document.createElement('span'); fake.dataset.morph = decodeURIComponent(mo[1]); return pin(fake); }
+}
+
+function openTab(name, focus) {
+  TanglawDock.show(name);
+  if (name === 'search') TanglawSearch.onOpen(focus);
+  if (name === 'bsearch') TanglawBookSearch.onOpen(focus);
+  if (name === 'study') TanglawStudy.onOpen();
+}
+window.openTab = openTab;
+
+function about() {
+  setLookupHtml(`<div class="entry"><h4>Tanglaw Bible 0.6.0</h4><div class="src">Reads unencrypted theWord modules (Bibles, commentaries, dictionaries, books, devotionals, cross-references, headings/paragraph overlays, verse lists, reading plans) and e-Sword modules (Bibles, commentaries, dictionaries, lexicons, topic and reference books, devotionals, maps, harmonies, study notes), with the Apocrypha in the Bible view and full user module authoring. Tanglaw is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</div><p>Module folders: ${(state.settings.moduleFolders || []).map(esc).join('<br>') || 'none'}</p></div>`);
+  openTab('lookup');
+}
+
+/* ---------------- wiring ---------------- */
+function wireUi() {
+  $('#refForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const r = await api.parseRef($('#refInput').value);
+    if (r) { await go(r); $('#refInput').value = ''; $('#view').focus(); }
+    else { $('#refInput').select(); }
+  });
+  $('#bookSel').addEventListener('change', () => { const nb = +$('#bookSel').value; const bk = state.nav.find(x => x.id === nb); go({ b: nb, c: bk && bk.chapterList && bk.chapterList[0] ? bk.chapterList[0] : 1, v: 1 }); });
+  $('#chapSel').addEventListener('change', () => go({ b: state.ref.b, c: +$('#chapSel').value, v: 1 }));
+  $('#prevBtn').onclick = () => step(-1);
+  $('#nextBtn').onclick = () => step(1);
+  $('#backBtn').onclick = () => historyGo(-1);
+  $('#fwdBtn').onclick = () => historyGo(1);
+  if ($('#lkpBack')) $('#lkpBack').onclick = () => lookupStep(-1);
+  if ($('#lkpFwd')) $('#lkpFwd').onclick = () => lookupStep(1);
+  $('#searchBtn').onclick = () => openTab('search', true);
+  $('#addFolderBtn').onclick = addFolder;
+  $('#rescanBtn').onclick = rescan;
+  $('#apPlacement').value = ['end', 'catholic', 'nets', 'orthodox'].includes(state.settings.apocryphaPlacement) ? state.settings.apocryphaPlacement : '1611';
+  $('#apPlacement').onchange = async () => { await api.setSettings({ apocryphaPlacement: $('#apPlacement').value }); state.settings.apocryphaPlacement = $('#apPlacement').value; await rebuildNav(); await go(state.ref, false); };
+  $('#importBtn2').onclick = () => TanglawModules.importModules();
+  document.addEventListener('click', e => {
+    const fl = e.target.closest('[data-find]');
+    if (fl) { e.preventDefault(); $('#popup').classList.add('hidden'); TanglawSearch.find((/^[GH]\d/i.test(fl.dataset.find) ? '' : 'm/ ') + fl.dataset.find); return; }
+    const link = e.target.closest('[data-href]');
+    if (link) { e.preventDefault(); followLink(link.dataset.href); return; }
+    const t = popupTarget(e.target);
+    if (t) { pin(t); return; }
+    const vn = e.target.closest('#view td.vn, #view sup.vnum');
+    if (vn) selectVerse(+vn.closest('[data-v]').dataset.v, false);
+  });
+  wireHover();
+}
+function font(d) { zoomView(state.active, d); }
+
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+init().catch(e => { document.body.insertAdjacentHTML('beforeend', `<pre style="color:red;padding:20px">${esc(e.stack || e)}</pre>`); });

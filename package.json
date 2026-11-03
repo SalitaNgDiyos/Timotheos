@@ -1,0 +1,18 @@
+{
+  "name": "tanglaw-bible",
+  "productName": "Tanglaw Bible",
+  "version": "0.6.0",
+  "description": "Offline Bible study app that reads and authors theWord and e-Sword modules, including the Apocrypha in the Bible view.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "license": "MIT",
+  "dependencies": {
+    "sql.js": "1.11.0"
+  },
+  "devDependencies": {
+    "electron": "37.10.3",
+    "@electron/packager": "18.3.6"
+  }
+}
