@@ -1,6 +1,6 @@
 'use strict';
 /* global api, state, $, esc, go, selectVerse, step, stepBook, historyGo, refName, save, activeText,
-   TanglawIcons, TanglawStudy, TanglawDock, TWRender, EMPTY_MOD */
+   TimotheosIcons, TimotheosStudy, TimotheosDock, TWRender, EMPTY_MOD */
 // 0.5.4: Three theWord-inspired Bible View Navigation systems + interactive switcher (1 | 2 | 3 | All):
 // - Design 1: Interactive Bible View Header Bar ([Book] [Chapter] [:Verse] pills), 3-Step Visual Grid Popover,
 //             directional step icons (Prev/Next Book, Chapter, Verse), and Passage History dropdown menu.
@@ -102,17 +102,17 @@
     if (chHead) chHead.classList.toggle('hidden', mode === '1' || mode === 'all');
     if (strip) strip.classList.toggle('hidden', mode === '1' || mode === '3');
 
-    if (mode === '3' && window.TanglawDock) {
-      TanglawDock.show('tree');
+    if (mode === '3' && window.TimotheosDock) {
+      TimotheosDock.show('tree');
     }
-    if (announce && window.TanglawStudy) {
+    if (announce && window.TimotheosStudy) {
       const names = {
         '1': 'Nav Design 1: Interactive Header Pills, 3-Step Visual Grid & Step Icons',
         '2': 'Nav Design 2: Chapter Strip, Verse Minimap, Headings Outline & Bookmarks',
         '3': 'Nav Design 3: Color-Coded Sidebar Bible Tree & Book Tile Matrix',
         'all': 'All 3 Bible Navigation Designs Active',
       };
-      TanglawStudy.flash(names[mode]);
+      TimotheosStudy.flash(names[mode]);
     }
   }
 
@@ -244,7 +244,7 @@
           <button type="button" id="npLayoutBtn" class="nptog" title="Switch between 3-Step Cascade and 3-Column All-in-One view">${layout === 'cascade' ? '3-Step' : '3-Col'}</button>
         </div>
         <button type="button" id="npGoNow" class="primary npgo" title="Go directly to ${esc(bk.name)} ${popState.selC}:1">Go ${esc(bk.abbr)} ${popState.selC}</button>
-        <button type="button" id="npClose" class="cpx" title="Close (Esc)">${TanglawIcons.icon('close', 14)}</button>
+        <button type="button" id="npClose" class="cpx" title="Close (Esc)">${TimotheosIcons.icon('close', 14)}</button>
       </div>`;
 
     let bodyHtml = '';
@@ -538,14 +538,14 @@
     if (bmBox) {
       bmBox.onclick = e => {
         const bt = e.target.closest('button[data-bm]');
-        if (!bt || !window.TanglawStudy || !TanglawStudy.study.ud) return;
+        if (!bt || !window.TimotheosStudy || !TimotheosStudy.study.ud) return;
         const d = +bt.dataset.bm;
         const slotIdx = d === 0 ? 9 : d - 1;
-        const curBm = TanglawStudy.study.ud.bookmarks[slotIdx];
+        const curBm = TimotheosStudy.study.ud.bookmarks[slotIdx];
         if (e.ctrlKey || e.shiftKey || !curBm) {
-          TanglawStudy.study.ud.bookmarks[slotIdx] = { ...state.ref };
-          api.setUserData('bookmarks', TanglawStudy.study.ud.bookmarks).catch(() => {});
-          TanglawStudy.flash(`Bookmark ${d} set to ${refName(state.ref)}`);
+          TimotheosStudy.study.ud.bookmarks[slotIdx] = { ...state.ref };
+          api.setUserData('bookmarks', TimotheosStudy.study.ud.bookmarks).catch(() => {});
+          TimotheosStudy.flash(`Bookmark ${d} set to ${refName(state.ref)}`);
           renderBookmarkRibbon();
         } else {
           go(curBm);
@@ -553,13 +553,13 @@
       };
       bmBox.oncontextmenu = e => {
         const bt = e.target.closest('button[data-bm]');
-        if (!bt || !window.TanglawStudy || !TanglawStudy.study.ud) return;
+        if (!bt || !window.TimotheosStudy || !TimotheosStudy.study.ud) return;
         e.preventDefault();
         const d = +bt.dataset.bm;
         const slotIdx = d === 0 ? 9 : d - 1;
-        TanglawStudy.study.ud.bookmarks[slotIdx] = { ...state.ref };
-        api.setUserData('bookmarks', TanglawStudy.study.ud.bookmarks).catch(() => {});
-        TanglawStudy.flash(`Bookmark ${d} set to ${refName(state.ref)}`);
+        TimotheosStudy.study.ud.bookmarks[slotIdx] = { ...state.ref };
+        api.setUserData('bookmarks', TimotheosStudy.study.ud.bookmarks).catch(() => {});
+        TimotheosStudy.flash(`Bookmark ${d} set to ${refName(state.ref)}`);
         renderBookmarkRibbon();
       };
     }
@@ -654,7 +654,7 @@
   function renderBookmarkRibbon() {
     const bmBox = $('#stripBookmarks');
     if (!bmBox) return;
-    const ud = (window.TanglawStudy && TanglawStudy.study && TanglawStudy.study.ud) || { bookmarks: [] };
+    const ud = (window.TimotheosStudy && TimotheosStudy.study && TimotheosStudy.study.ud) || { bookmarks: [] };
     const bms = ud.bookmarks || [];
     let html = `<span class="nslbl" title="Bookmarks 1–0">🔖</span>`;
     for (const d of [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]) {
@@ -864,7 +864,7 @@
 
     const vsBox = $('#stripVerses');
     if (vsBox) {
-      const ud = (window.TanglawStudy && TanglawStudy.study && TanglawStudy.study.ud) || {};
+      const ud = (window.TimotheosStudy && TimotheosStudy.study && TimotheosStudy.study.ud) || {};
       const notes = ud.notes || {};
       const openId = (state.settings && state.settings.openBibles && state.settings.openBibles[state.active || 0]) || '';
       const hls = (ud.highlights && ud.highlights[openId]) || {};
@@ -899,7 +899,7 @@
     renderEnhancedTree(false);
   }
 
-  window.TanglawNav = {
+  window.TimotheosNav = {
     init,
     syncAll,
     renderEnhancedTree,

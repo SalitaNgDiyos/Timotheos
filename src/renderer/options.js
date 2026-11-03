@@ -1,7 +1,7 @@
 'use strict';
 /* Skins and the Options window (fonts, background, colours, verse numbers, layout, modules,
  * [E1] language switcher, and [E2] customizable keyboard shortcuts). */
-/* global state, save, renderChapter, TanglawIcons, TanglawDock, TanglawModules, TanglawI18n */
+/* global state, save, renderChapter, TimotheosIcons, TimotheosDock, TimotheosModules, TimotheosI18n */
 (function () {
   const $ = s => document.querySelector(s);
 
@@ -164,7 +164,7 @@
     if (window.refreshPaneLooks) window.refreshPaneLooks();
     if (window.applyZoom) window.applyZoom();
     if (window.applyLibSide) window.applyLibSide();
-    if (window.TanglawI18n) TanglawI18n.apply(state.settings.lang || 'en');
+    if (window.TimotheosI18n) TimotheosI18n.apply(state.settings.lang || 'en');
   }
 
   /** faces "TwGreek"/"TwHebrew" cover only Greek/Hebrew letters, so a Greek font can differ from the Latin one */
@@ -211,36 +211,36 @@
   /* ------------------------------------------------------------ panels menu */
   function fillPanelsMenu() {
     const m = $('#panelsMenu');
-    const rows = TanglawDock.panels().map(p => {
-      const at = TanglawDock.located(p.id); const on = at && !at.hidden;
-      return `<button data-p="${p.id}">${TanglawIcons.icon(on ? 'check' : 'plus', 15)}<span class="pic" style="color:var(--cap-${p.cap})">${TanglawIcons.icon(p.icon, 15)}</span>${p.title}</button>`;
+    const rows = TimotheosDock.panels().map(p => {
+      const at = TimotheosDock.located(p.id); const on = at && !at.hidden;
+      return `<button data-p="${p.id}">${TimotheosIcons.icon(on ? 'check' : 'plus', 15)}<span class="pic" style="color:var(--cap-${p.cap})">${TimotheosIcons.icon(p.icon, 15)}</span>${p.title}</button>`;
     }).join('');
-    const presets = Object.entries(TanglawDock.PRESETS).map(([id, p]) => `<button data-preset="${id}">${TanglawIcons.icon('layout', 15)}${p.label}</button>`).join('');
-    const saved = Object.keys(state.settings.savedLayouts || {}).map(n => `<button data-saved="${esc(n)}">${TanglawIcons.icon('study', 15)}${esc(n)}</button>`).join('');
+    const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => `<button data-preset="${id}">${TimotheosIcons.icon('layout', 15)}${p.label}</button>`).join('');
+    const saved = Object.keys(state.settings.savedLayouts || {}).map(n => `<button data-saved="${esc(n)}">${TimotheosIcons.icon('study', 15)}${esc(n)}</button>`).join('');
     m.innerHTML = `<div class="mh">Panels <span class="small">(click to show or close)</span></div>${rows}
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
-      <div class="msep"></div><button data-act="save">${TanglawIcons.icon('plus', 15)}Save current layout as…</button>
+      <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
 `;
     m.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
-      const at = TanglawDock.located(b.dataset.p);
-      if (at && !at.hidden) TanglawDock.hide(b.dataset.p); else window.openTab(b.dataset.p);
+      const at = TimotheosDock.located(b.dataset.p);
+      if (at && !at.hidden) TimotheosDock.hide(b.dataset.p); else window.openTab(b.dataset.p);
       fillPanelsMenu();
     });
-    m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TanglawDock.applyPreset(b.dataset.preset); closeMenus(); });
-    m.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TanglawDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); closeMenus(); });
+    m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TimotheosDock.applyPreset(b.dataset.preset); closeMenus(); });
+    m.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TimotheosDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); closeMenus(); });
     m.querySelector('[data-act="save"]').onclick = () => { closeMenus(); saveLayoutAs(); };
   }
   async function saveLayoutAs() {
-    const name = await TanglawModules.modal('Save layout', '<label class="field">Name of this layout <input id="layName" type="text" placeholder="e.g. Sermon preparation"></label>',
+    const name = await TimotheosModules.modal('Save layout', '<label class="field">Name of this layout <input id="layName" type="text" placeholder="e.g. Sermon preparation"></label>',
       [{ label: 'Cancel', value: null }, { label: 'Save', value: 'ok', primary: true }]).then(v => v && document.getElementById('layName').value.trim());
     if (!name) return;
-    const all = Object.assign({}, state.settings.savedLayouts || {}); all[name] = TanglawDock.state();
+    const all = Object.assign({}, state.settings.savedLayouts || {}); all[name] = TimotheosDock.state();
     save({ savedLayouts: all }); renderSavedLayouts();
   }
   function renderSavedLayouts() {
     const ul = $('#savedLayouts'); const all = state.settings.savedLayouts || {};
     ul.innerHTML = Object.keys(all).map(n => `<li><span>${esc(n)}</span><button data-use="${esc(n)}">Use</button><button data-del="${esc(n)}" title="Delete this layout">×</button></li>`).join('');
-    ul.querySelectorAll('[data-use]').forEach(b => b.onclick = () => TanglawDock.setLayout(all[b.dataset.use]));
+    ul.querySelectorAll('[data-use]').forEach(b => b.onclick = () => TimotheosDock.setLayout(all[b.dataset.use]));
     ul.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const c = Object.assign({}, all); delete c[b.dataset.del]; save({ savedLayouts: c }); renderSavedLayouts(); });
   }
 
@@ -295,7 +295,7 @@
           }
           document.removeEventListener('keydown', onKey, true);
           save({ shortcuts: next });
-          if (window.TanglawTitlebar && TanglawTitlebar.rebuild) TanglawTitlebar.rebuild();
+          if (window.TimotheosTitlebar && TimotheosTitlebar.rebuild) TimotheosTitlebar.rebuild();
           renderShortcutsEditor();
         };
         document.addEventListener('keydown', onKey, true);
@@ -306,7 +306,7 @@
         const next = Object.assign({}, state.settings.shortcuts || {});
         delete next[btn.dataset.screset];
         save({ shortcuts: next });
-        if (window.TanglawTitlebar && TanglawTitlebar.rebuild) TanglawTitlebar.rebuild();
+        if (window.TimotheosTitlebar && TimotheosTitlebar.rebuild) TimotheosTitlebar.rebuild();
         renderShortcutsEditor();
       };
     });
@@ -314,7 +314,7 @@
     if (resetAll) {
       resetAll.onclick = () => {
         save({ shortcuts: {} });
-        if (window.TanglawTitlebar && TanglawTitlebar.rebuild) TanglawTitlebar.rebuild();
+        if (window.TimotheosTitlebar && TimotheosTitlebar.rebuild) TimotheosTitlebar.rebuild();
         renderShortcutsEditor();
       };
     }
@@ -333,7 +333,7 @@
   function fontOptions(sel, cur, withSystem) {
     const grp = (label, list) => `<optgroup label="${label}">${list.map(f => `<option value="${esc(f)}" style="font-family:${esc(q(f))}">${esc(f)}</option>`).join('')}</optgroup>`;
     let h = withSystem ? '<option value="system">Windows default (Segoe UI)</option>' : '';
-    h += grp('Included with Tanglaw', BUNDLED);
+    h += grp('Included with Timotheos', BUNDLED);
     if (installed && installed.length) h += grp('Installed on this computer', installed.filter(f => !BUNDLED.includes(f)));
     else h += grp('Common Windows fonts (if installed)', COMMON);
     sel.innerHTML = h;
@@ -393,7 +393,7 @@
     if ($('#uiLang')) {
       $('#uiLang').onchange = () => {
         save({ lang: $('#uiLang').value });
-        if (window.TanglawI18n) TanglawI18n.apply($('#uiLang').value);
+        if (window.TimotheosI18n) TimotheosI18n.apply($('#uiLang').value);
       };
     }
     $('#fontText').onchange = () => set({ fontText: $('#fontText').value });
@@ -414,7 +414,7 @@
     $('#density').onchange = () => set({ density: $('#density').value });
     $('#showStatus').onchange = () => set({ showStatus: $('#showStatus').checked });
     $('#optReset').onclick = async () => {
-      const ok = await TanglawModules.confirmBox('Reset appearance', 'Put the skin, fonts, colours, verse numbers and toolbar back to how Tanglaw starts? Your modules, notes and layouts are not touched.');
+      const ok = await TimotheosModules.confirmBox('Reset appearance', 'Put the skin, fonts, colours, verse numbers and toolbar back to how Timotheos starts? Your modules, notes and layouts are not touched.');
       if (!ok) return;
       state.settings.appearance = Object.assign({}, DEFAULTS, { colors: {} }); save({ fontSize: 17, theme: 'light' }); store(); apply(); syncForm(); fillFontSelects(); renderChapter();
     };
@@ -429,8 +429,8 @@
     const a = A();
     fontOptions($('#fontText'), a.fontText); fontOptions($('#fontGreek'), a.fontGreek); fontOptions($('#fontHebrew'), a.fontHebrew); fontOptions($('#fontUi'), a.fontUi, true);
     $('#fontNote').textContent = installed && installed.length
-      ? `The fonts installed on this computer are listed (${installed.length}). Fonts "Included with Tanglaw" work on every computer.`
-      : 'Tanglaw could not list the fonts on this computer, so common Windows fonts are offered; one that is not installed shows as the fallback font. Fonts "Included with Tanglaw" always work.';
+      ? `The fonts installed on this computer are listed (${installed.length}). Fonts "Included with Timotheos" work on every computer.`
+      : 'Timotheos could not list the fonts on this computer, so common Windows fonts are offered; one that is not installed shows as the fallback font. Fonts "Included with Timotheos" always work.';
   }
   function page(o) {
     $('#optNav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.o === o));
@@ -439,8 +439,8 @@
   async function open(pg) {
     const fontsP = listFonts();
     syncForm(); fillSkinGrid(); renderSavedLayouts();
-    $('#layoutPresets').innerHTML = Object.entries(TanglawDock.PRESETS).map(([id, p]) => `<button data-preset="${id}" class="presetbtn">${TanglawIcons.icon('layout', 16)}${p.label}</button>`).join('');
-    $('#layoutPresets').querySelectorAll('[data-preset]').forEach(b => b.onclick = () => TanglawDock.applyPreset(b.dataset.preset));
+    $('#layoutPresets').innerHTML = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => `<button data-preset="${id}" class="presetbtn">${TimotheosIcons.icon('layout', 16)}${p.label}</button>`).join('');
+    $('#layoutPresets').querySelectorAll('[data-preset]').forEach(b => b.onclick = () => TimotheosDock.applyPreset(b.dataset.preset));
     page(pg || 'look');
     $('#optionsDlg').classList.remove('hidden');
     fillFontSelects();
@@ -449,7 +449,7 @@
 
   function init() {
     ensure(); apply();
-    TanglawIcons.fillIcons();
+    TimotheosIcons.fillIcons();
     wireForm();
     $('#optionsBtn').onclick = () => open();
     $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', fillSkinMenu); };
@@ -463,8 +463,8 @@
     const a = ensure();
     const next = Math.round(Math.max(11, Math.min(22, (+a.uiSize || 13) + d * 0.5)) * 2) / 2;
     set({ uiSize: next });
-    if (window.TanglawStudy && TanglawStudy.flash) TanglawStudy.flash(`Menus & panels size ${next} px`);
+    if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(`Menus & panels size ${next} px`);
   }
 
-  window.TanglawOptions = { init, apply, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])] };
+  window.TimotheosOptions = { init, apply, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])] };
 })();

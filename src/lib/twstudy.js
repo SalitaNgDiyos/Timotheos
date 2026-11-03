@@ -87,7 +87,7 @@ async function exportVerseLists(listsObj, title = 'My Verse Lists') {
   }
 }
 
-/** Read a .rdp.twm reading plan module and convert it to a Tanglaw reading plan object */
+/** Read a .rdp.twm reading plan module and convert it to a Timotheos reading plan object */
 function readReadingPlan(file) {
   const db = openDb(file);
   try {
@@ -130,7 +130,7 @@ function readReadingPlan(file) {
   }
 }
 
-/** Export a Tanglaw reading plan object to a .rdp.twm SQLite buffer */
+/** Export a Timotheos reading plan object to a .rdp.twm SQLite buffer */
 async function exportReadingPlan(plan) {
   const SQL = await sqljs();
   const db = new SQL.Database();

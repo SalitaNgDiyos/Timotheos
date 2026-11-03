@@ -10,7 +10,7 @@ const CHARSET_CP = { 0: 'windows-1252', 1: 'windows-1252', 161: 'windows-1253', 
 const decoders = {};
 function dec(cp) { return decoders[cp] || (decoders[cp] = new TextDecoder(cp)); }
 
-// ordinary text fonts: their letters are Unicode, so Tanglaw's own fonts are used instead (unless preserve.fonts=1)
+// ordinary text fonts: their letters are Unicode, so Timotheos's own fonts are used instead (unless preserve.fonts=1)
 const PLAIN_FONT = /^(times|arial|tahoma|segoe|calibri|cambria|verdana|georgia|courier|consolas|ms sans serif|microsoft sans serif|ms shell|system|helvetica|lucida|palatino|book antiqua|garamond|gentium|cardo|sbl |ezra sil|noto|dejavu|liberation|symbol$|wingdings|trebuchet|century|franklin|candara|constantia|corbel|default|times new roman)/i;
 const SKIP_DEST = new Set([
   'fonttbl', 'colortbl', 'stylesheet', 'info', 'pict', 'object', 'header', 'footer',

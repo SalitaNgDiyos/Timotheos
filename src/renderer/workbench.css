@@ -248,7 +248,7 @@ button.cpx:hover { color: var(--woj); }
 .popup.sized { max-width: 96vw; max-height: 90vh; }
 .popup .entry:first-child { margin-top: 0; }
 
-/* title bar (drawn by Tanglaw so it follows the skin; Windows' own buttons sit at the right) */
+/* title bar (drawn by Timotheos so it follows the skin; Windows' own buttons sit at the right) */
 .titlebar { display: flex; align-items: center; height: 36px; flex: none; background: var(--tool); color: var(--tooltext); -webkit-app-region: drag; user-select: none;
   padding-left: 8px; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)); }
 .titlebar .brand { gap: 7px; font: 600 var(--ui-size, 13px) var(--font-ui); margin-right: 8px; }

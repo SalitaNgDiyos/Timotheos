@@ -1,8 +1,8 @@
-// Checks against real e-Sword modules supplied by the user (folder given in TANGLAW_REAL); not shipped.
+// Checks against real e-Sword modules supplied by the user (folder given in TIMOTHEOS_REAL); not shipped.
 'use strict';
 const assert = require('assert');
 const { Library } = require('../src/lib/library');
-const D = process.env.TANGLAW_REAL || '/home/claude/esreal';
+const D = process.env.TIMOTHEOS_REAL || '/home/claude/esreal';
 let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; console.log('  ✓', m); };
 (async () => {
   const lib = new Library({ moduleFolders: [D], apocryphaPlacement: '1611' });

@@ -12,7 +12,7 @@ const canon = require('./canon');
 
 function atomicWrite(file, data) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tmp = file + '.tanglaw-tmp';
+  const tmp = file + '.timotheos-tmp';
   fs.writeFileSync(tmp, data);
   fs.renameSync(tmp, file);
 }
@@ -60,7 +60,7 @@ async function createModule(opts, destDir) {
     }
     const cfg = [
       ['id', id], ['type', TYPE_FOR[kind]], ['title', title], ['abbrev', abbr],
-      ['description', opts.description || `User ${kind} created in Tanglaw Bible`],
+      ['description', opts.description || `User ${kind} created in Timotheos`],
       ['author', opts.author || ''], ['user', '1'], ['content.type', 'rtf'],
       ['schema.version', '1'], ['version.major', '1'], ['version.minor', '0'], ['version.date', today],
     ];
@@ -204,7 +204,7 @@ async function deleteTopic(file, tid) {
  * [A4] Export personal JSON verse notes ({"b.c.v": {html, t}}) into a standalone theWord .cmt.twm module.
  */
 async function exportNotesToCommentary(notesObj, destFile, opts = {}) {
-  const title = opts.title || 'My Tanglaw Verse Notes';
+  const title = opts.title || 'My Timotheos Verse Notes';
   const abbr = opts.abbr || 'MyNotes';
   const today = new Date().toISOString().slice(0, 10);
   if (fs.existsSync(destFile)) fs.unlinkSync(destFile);
@@ -217,8 +217,8 @@ async function exportNotesToCommentary(notesObj, destFile, opts = {}) {
     db.run('CREATE INDEX idx_bible_refs ON bible_refs(bi, ci, fvi, tvi)');
     db.run('CREATE TABLE content (topic_id INTEGER PRIMARY KEY, data BLOB, data2 BLOB)');
     const cfg = [
-      ['id', 'tanglaw_notes_' + Date.now().toString(36)], ['type', '2'], ['title', title], ['abbrev', abbr],
-      ['description', 'Personal verse notes exported from Tanglaw Bible'], ['user', '1'],
+      ['id', 'timotheos_notes_' + Date.now().toString(36)], ['type', '2'], ['title', title], ['abbrev', abbr],
+      ['description', 'Personal verse notes exported from Timotheos'], ['user', '1'],
       ['content.type', 'rtf'], ['schema.version', '1'], ['version.major', '1'], ['version.minor', '0'], ['version.date', today],
     ];
     const stC = db.prepare('INSERT INTO config(name, value) VALUES (?, ?)');

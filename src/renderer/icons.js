@@ -1,5 +1,5 @@
 'use strict';
-/* Line icons drawn for Tanglaw (24×24, stroke = currentColor). Original artwork, no third-party icon set. */
+/* Line icons drawn for Timotheos (24×24, stroke = currentColor). Original artwork, no third-party icon set. */
 const ICONS = {
   back: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
   forward: '<path d="M5 12h14M13 6l6 6-6 6"/>',
@@ -68,4 +68,4 @@ function fillIcons(root = document) {
     el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon, +(el.dataset.iconSize || 18)));
   }
 }
-window.TanglawIcons = { icon, fillIcons, ICONS };
+window.TimotheosIcons = { icon, fillIcons, ICONS };

@@ -28,7 +28,7 @@ const SKIP_TWM = /\.(lyts|vsls|bhls|rdp|layouts?)\.twm$/i;
 class Library {
   constructor(settings, opts = {}) {
     this.settings = settings;
-    this.extraFolders = opts.extraFolders || []; // e.g. Tanglaw's own imported-modules folder
+    this.extraFolders = opts.extraFolders || []; // e.g. Timotheos's own imported-modules folder
     this.bibles = new Map();     // id -> loaded Bible module
     this.entries = [];           // Bible files found
     this.books = new Map();      // id -> {file, name, kind, format, mod?}
@@ -89,7 +89,7 @@ class Library {
         let itemName = it.name;
         let viaLink = null;
         if (it.isDirectory()) { if (depth < 4 && !/^[-.]/.test(it.name)) walk(p, depth + 1); continue; }
-        if (itemName.toLowerCase().endsWith('.tanglaw-link')) {
+        if (itemName.toLowerCase().endsWith('.timotheos-link')) {
           try {
             const target = fs.readFileSync(p, 'utf8').trim();
             if (!target || !fs.existsSync(target)) continue;
@@ -100,7 +100,7 @@ class Library {
         }
         if (seen.has(p)) continue; seen.add(p);
         const low = itemName.toLowerCase();
-        // the same module in two folders (e.g. theWord's folder and Tanglaw's imports): keep the first
+        // the same module in two folders (e.g. theWord's folder and Timotheos's imports): keep the first
         const dupKey = low;
         if (BIBLE_EXT.test(low)) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: path.extname(low), linkFile: viaLink }); }
         else if (usfm.isUsfmFile(low)) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: ".usfm", linkFile: viaLink }); }

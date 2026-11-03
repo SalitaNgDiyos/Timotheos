@@ -37,24 +37,24 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   document.querySelector('#ctxMenu button[data-a="hl"][data-s="yellow"]').click(); await sleep(700);
   const mk = document.querySelector('#view tr[data-v="16"] mark.hl-yellow'); ok(mk && mk.textContent === 'loved', 'highlight "loved" (' + (mk && mk.textContent) + ')');
   // note
-  TanglawStudy.editNote('43.3.16'); await sleep(300);
+  TimotheosStudy.editNote('43.3.16'); await sleep(300);
   document.getElementById('noteEd').innerHTML = 'God\'s love: compare Rom 5:8 and 1 John 4:9.';
   [...document.querySelectorAll('#modalBtns button')].find(b => b.textContent === 'Save').click(); await sleep(800);
   const un = document.querySelector('.unote'); ok(un && un.querySelectorAll('a.link').length === 2, 'note saved under the verse with 2 reference links');
   // verse list
-  key('l', { ctrlKey: true }); await sleep(300); ok((TanglawStudy.study.ud.lists['My verses'] || []).length === 1, 'Ctrl+L adds to verse list');
+  key('l', { ctrlKey: true }); await sleep(300); ok((TimotheosStudy.study.ud.lists['My verses'] || []).length === 1, 'Ctrl+L adds to verse list');
   // search
-  await TanglawSearch.run('G26'); await sleep(300);
+  await TimotheosSearch.run('G26'); await sleep(300);
   ok(/\b106\b/.test(document.getElementById('searchStatus').textContent), 'search G26 → ' + document.getElementById('searchStatus').textContent.slice(0, 60));
-  await TanglawSearch.run('faith NEARv2 hope'); ok(/\b31\b/.test(document.getElementById('searchStatus').textContent), 'NEARv search in UI');
-  await TanglawSearch.run('Tobie'); ok(document.getElementById('searchResults').innerHTML.includes('Tob'), 'Wycliffe Apocrypha in results');
+  await TimotheosSearch.run('faith NEARv2 hope'); ok(/\b31\b/.test(document.getElementById('searchStatus').textContent), 'NEARv search in UI');
+  await TimotheosSearch.run('Tobie'); ok(document.getElementById('searchResults').innerHTML.includes('Tob'), 'Wycliffe Apocrypha in results');
   // rows + diff
   key('j', { ctrlKey: true }); await sleep(600); ok(document.getElementById('view').dataset.arrange === 'rows', 'Ctrl+J: Bible views one under another');
   document.getElementById('diffToggle').click(); await sleep(700); ok(document.querySelector('mark.dif') && document.querySelector('.diffpct'), 'differences marked with %');
   document.getElementById('diffToggle').click(); key('h', { ctrlKey: true }); await sleep(600);
   // reading plan
   const plan = await api.createPlan({ name: 'Bible in a year', groups: ['Gen-Mal', 'Matt-Rev'], start: new Date().toISOString().slice(0, 10), mode: 'days', sessions: 365, days: [0,1,2,3,4,5,6] }, state.settings.openBibles);
-  TanglawStudy.study.ud.plans.push(plan); await api.setUserData('plans', TanglawStudy.study.ud.plans);
+  TimotheosStudy.study.ud.plans.push(plan); await api.setUserData('plans', TimotheosStudy.study.ud.plans);
   ok(plan.sessions.length > 300, 'reading plan created: ' + plan.sessions.length + ' sessions');
   // persisted?
   const ud = await api.userData(); ok(ud.notes['43.3.16'] && ud.highlights['tw:kjv.ont']['43.3.16'] && ud.bookmarks[0] && ud.lists['My verses'].length, 'study data saved to disk');

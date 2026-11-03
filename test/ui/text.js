@@ -55,9 +55,9 @@ const sec = i => document.querySelectorAll('#view > .bv')[i];
   ok(/3:16/.test($('#cmpHead').textContent), 'the Compare panel follows the verse');
   // reading aloud: starts, or (no voice on this machine) opens the voices window
   sec(0).querySelector('[data-a="speak"]').click(); await sleep(2500);
-  const speaking = TanglawSpeech.isSpeaking(); const dlg = !$('#modal').classList.contains('hidden') && /voices/i.test($('#modalTitle').textContent);
+  const speaking = TimotheosSpeech.isSpeaking(); const dlg = !$('#modal').classList.contains('hidden') && /voices/i.test($('#modalTitle').textContent);
   ok(speaking || dlg, 'read aloud: ' + (speaking ? 'reading' : dlg ? 'no voice on this machine – the voices window opened' : 'nothing happened'));
-  if (speaking) TanglawSpeech.stop();
+  if (speaking) TimotheosSpeech.stop();
   if (dlg) { $('#modalBtns button').click(); await sleep(300); }
   runCommand('voices'); await sleep(2000);
   ok(!$('#modal').classList.contains('hidden') && $('#ttsRate'), 'Read aloud: voices… window: ' + ($('#modalBody p') || {}).textContent);

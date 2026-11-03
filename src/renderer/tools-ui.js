@@ -1,11 +1,11 @@
 'use strict';
 /* Tools (0.4.8+): picture viewer, clipboard monitor, export of topics (with Word styles.xml),
  * your own marks in books, printing a topic. */
-/* global api, state, save, esc, go, TWRender, TanglawModules, TanglawStudy, TanglawIcons */
+/* global api, state, save, esc, go, TWRender, TimotheosModules, TimotheosStudy, TimotheosIcons */
 (function () {
   const $ = s => document.querySelector(s);
-  const flash = m => TanglawStudy.flash(m);
-  const icon = (n, s) => TanglawIcons.icon(n, s);
+  const flash = m => TimotheosStudy.flash(m);
+  const icon = (n, s) => TimotheosIcons.icon(n, s);
 
   /* ------------------------------------------------------------ picture viewer */
   let imgs = [], at = 0, zoom = 1, fit = true, px = 0, py = 0, caption = '';
@@ -91,14 +91,14 @@
       body += `<div class="cref" data-go="${r.b}.${r.c}.${r.v}"><a class="cgo">${esc(r.label)}</a> <span>${txt || '<span class="small">(not in this Bible)</span>'}</span></div>`;
     }
     box.innerHTML = `<div class="clcap"><b>Clipboard: ${refs.length} reference${refs.length === 1 ? '' : 's'}</b><select class="cbible" title="Bible">${all.map(b => `<option value="${esc(b.id)}"${b.id === id ? ' selected' : ''}>${esc((state.infos.get(b.id) || {}).abbr || b.abbr)}</option>`).join('')}</select>
-      <button class="tb clist" title="Add all to the current verse list">+ List</button><label class="small" title="Bring Tanglaw to the front when references are copied"><input type="checkbox" class="cfront"${c.front ? ' checked' : ''}> to front</label><button class="tb cclose" title="Close (the monitor stays on)">×</button></div><div class="cbody">${body}</div>`;
+      <button class="tb clist" title="Add all to the current verse list">+ List</button><label class="small" title="Bring Timotheos to the front when references are copied"><input type="checkbox" class="cfront"${c.front ? ' checked' : ''}> to front</label><button class="tb cclose" title="Close (the monitor stays on)">×</button></div><div class="cbody">${body}</div>`;
     box.classList.remove('hidden');
     if (c.front) api.appCmd('front').catch(() => {});
   }
   function wireClip(box) {
     box.addEventListener('click', e => {
       if (e.target.closest('.cclose')) { box.classList.add('hidden'); return; }
-      if (e.target.closest('.clist')) { TanglawStudy.addToList(refs.map(r => ({ b: r.b, c: r.c, v: r.v, v2: r.v2 }))); return; }
+      if (e.target.closest('.clist')) { TimotheosStudy.addToList(refs.map(r => ({ b: r.b, c: r.c, v: r.v, v2: r.v2 }))); return; }
       const g = e.target.closest('.cgo') && e.target.closest('[data-go]'); if (g) { const [b, c, v] = g.dataset.go.split('.').map(Number); go({ b, c, v }); }
     });
     box.addEventListener('change', e => {
@@ -166,16 +166,16 @@
   }
   /** export the open topic, or every topic of the module */
   async function exportTopics() {
-    const id = TanglawModules.lib.cur; if (!id) return flash('Open a module in the Library first');
+    const id = TimotheosModules.lib.cur; if (!id) return flash('Open a module in the Library first');
     const info = (state.modules.books || []).find(b => b.id === id) || {}; const curLi = $('#libTopics li.cur');
-    const r = await TanglawModules.modal('Export topics', `<p>From <b>${esc(info.title || info.name || '')}</b></p>
-      <label class="field">What <select id="exW"><option value="one">The open topic${curLi ? ': ' + esc(curLi.textContent.trim().slice(0, 50)) : ''}</option><option value="all">All ${TanglawModules.lib.topics.length} topics of the module</option></select></label>
+    const r = await TimotheosModules.modal('Export topics', `<p>From <b>${esc(info.title || info.name || '')}</b></p>
+      <label class="field">What <select id="exW"><option value="one">The open topic${curLi ? ': ' + esc(curLi.textContent.trim().slice(0, 50)) : ''}</option><option value="all">All ${TimotheosModules.lib.topics.length} topics of the module</option></select></label>
       <label class="field">Format <select id="exF"><option value="docx">Word document (.docx)</option><option value="rtf">Rich Text (.rtf)</option><option value="html">Web page (.html)</option><option value="txt">Plain text (.txt)</option></select></label>
       <label><input type="checkbox" id="exT" checked> Topic titles as headings</label>
       <p class="small">Locked (encrypted) modules are never read, so they cannot be exported.</p>`, [{ label: 'Cancel', value: null }, { label: 'Export…', value: 'ok', primary: true }]);
     const what = ($('#exW') || {}).value, fmt = ($('#exF') || {}).value || 'docx', titles = ($('#exT') || {}).checked !== false;
     if (r !== 'ok') return;
-    const tids = what === 'all' ? TanglawModules.lib.topics.map(t => t.id) : [curLi ? (isNaN(+curLi.dataset.tid) ? curLi.dataset.tid : +curLi.dataset.tid) : null].filter(x => x != null);
+    const tids = what === 'all' ? TimotheosModules.lib.topics.map(t => t.id) : [curLi ? (isNaN(+curLi.dataset.tid) ? curLi.dataset.tid : +curLi.dataset.tid) : null].filter(x => x != null);
     if (!tids.length) return flash('Open a topic first');
     let html = '', first = '', n = 0;
     for (const tid of tids) { const t = await api.bookTopic(id, tid).catch(() => null); if (!t) continue; n++; if (!first) first = t.subject; html += (titles ? `<h2>${esc(t.subject)}</h2>` : '') + `<div>${window.sanitize ? sanitize(t.html) : t.html}</div>`; if (n % 50 === 0) flash(`Reading ${n} of ${tids.length}…`); }
@@ -189,7 +189,7 @@
 
   /* ------------------------------------------------------------ your own marks in books */
   const STYLES = ['yellow', 'green', 'blue', 'pink', 'orange', 'bold', 'ul'];
-  const store = () => (TanglawStudy.study.ud.bookMarks = TanglawStudy.study.ud.bookMarks || {});
+  const store = () => (TimotheosStudy.study.ud.bookMarks = TimotheosStudy.study.ud.bookMarks || {});
   const saveMarks = () => api.setUserData('bookMarks', store()).catch(() => {});
   const textNodes = el => { const out = []; const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) out.push(n); return out; };
   const orig = new WeakMap();
@@ -267,8 +267,8 @@
     if (ccfg().on) startClip();
     const ex = $('#libExport'); if (ex) ex.onclick = exportTopics;
     const pr = $('#libPrint'); if (pr) pr.onclick = printTopic;
-    // what Tanglaw itself copies is not shown by the clipboard monitor
+    // what Timotheos itself copies is not shown by the clipboard monitor
     document.addEventListener('copy', () => { setTimeout(() => api.clipRead().then(t => { myCopy = t; lastSeen = t; }).catch(() => {}), 50); });
   }
-  window.TanglawTools = { init, openImage, setClipmon, clipOn: () => !!ccfg().on, exportTopics, printTopic, applyMarks, bodyHtml, markSelection, clipTestReader: f => { reader = f; }, docxFiles, rtf, blocks };
+  window.TimotheosTools = { init, openImage, setClipmon, clipOn: () => !!ccfg().on, exportTopics, printTopic, applyMarks, bodyHtml, markSelection, clipTestReader: f => { reader = f; }, docxFiles, rtf, blocks };
 })();

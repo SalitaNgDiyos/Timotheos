@@ -1,5 +1,5 @@
 'use strict';
-/* global api, state, $, esc, go, openTab, save, TanglawModules, TanglawStudy */
+/* global api, state, $, esc, go, openTab, save, TimotheosModules, TimotheosStudy */
 // Search panel: theWord-style Boolean / regex search across Bibles (engine: src/lib/search.js).
 
 const srch = { last: null, filterBook: null, timer: null, ranges: [] };
@@ -32,13 +32,13 @@ async function init() {
   $('#rangeBtn').onclick = async () => { await customRange(); saveOpts(); };
   $('#searchHistBtn').onclick = e => historyMenu(e);
   $('#searchTabs').onclick = e => { const b = e.target.closest('button[data-st]'); if (b) showPart(b.dataset.st); };
-  $('#searchToList').onclick = () => { if (!srch.last) return; TanglawStudy.addToList(visible().map(x => ({ b: x.b, c: x.c, v: x.v, v2: x.v2 > x.v ? x.v2 : undefined }))); };
-  $('#searchCopy').onclick = async () => { if (!srch.last) return; await api.copyText(visible().map(x => `${x.ref} ${x.text}`).join('\n')); TanglawStudy.flash(`${visible().length} verses copied`); };
+  $('#searchToList').onclick = () => { if (!srch.last) return; TimotheosStudy.addToList(visible().map(x => ({ b: x.b, c: x.c, v: x.v, v2: x.v2 > x.v ? x.v2 : undefined }))); };
+  $('#searchCopy').onclick = async () => { if (!srch.last) return; await api.copyText(visible().map(x => `${x.ref} ${x.text}`).join('\n')); TimotheosStudy.flash(`${visible().length} verses copied`); };
   $('#searchResults').onclick = e => { const li = e.target.closest('li[data-i]'); if (li) { const x = visible()[+li.dataset.i]; go({ b: x.b, c: x.c, v: x.v }); } };
   $('#searchBooks').onclick = e => { const r = e.target.closest('[data-fb]'); if (r) { srch.filterBook = r.dataset.fb === srch.filterBook ? null : r.dataset.fb; renderResults(); showPart('res'); } };
 }
 function fillScopes(sel) {
-  const s = $('#searchScope'); const ud = TanglawStudy.study.ud || {};
+  const s = $('#searchScope'); const ud = TimotheosStudy.study.ud || {};
   const ap = state.settings.apocryphaPlacement !== 'end';
   s.innerHTML = srch.ranges.map(r => `<option value="${esc(r.id)}">${esc(r.id === 'OT' && !ap ? 'Old Testament' : r.label)}</option>`).join('')
     + '<option value="book">Current book</option><option value="chapter">Current chapter</option>'
@@ -49,15 +49,15 @@ function fillScopes(sel) {
 }
 async function customRange() {
   const cur = $('#searchScope').value; const isText = ![...srch.ranges.map(r => r.id), 'book', 'chapter', '__custom'].includes(cur);
-  const p = TanglawModules.modal('Custom search range', `<label class="field">Passages, separated by ; or new lines<textarea id="rgText" rows="4" placeholder="Gen-Deut; Matt 5-7; Rom 3:21-26">${isText ? esc(cur) : ''}</textarea></label><div id="rgCheck" class="small"></div><label class="field">Save as (optional) <input id="rgName" placeholder="e.g. Sermon on the Mount"></label>`,
+  const p = TimotheosModules.modal('Custom search range', `<label class="field">Passages, separated by ; or new lines<textarea id="rgText" rows="4" placeholder="Gen-Deut; Matt 5-7; Rom 3:21-26">${isText ? esc(cur) : ''}</textarea></label><div id="rgCheck" class="small"></div><label class="field">Save as (optional) <input id="rgName" placeholder="e.g. Sermon on the Mount"></label>`,
     [{ label: 'Cancel', value: null }, { label: 'Use range', value: 'ok', primary: true }]);
   setTimeout(() => { $('#rgText').oninput = async () => { const r = await api.checkRange($('#rgText').value); $('#rgCheck').textContent = r.ok ? '✓ understood' : r.errors.length ? 'Not understood: ' + r.errors.join('; ') : ''; }; $('#rgText').focus(); }, 30);
   const res = await p;
   if (res !== 'ok') { fillScopes(opts().scope); return; }
   const text = $('#rgText').value.trim(); const name = $('#rgName').value.trim();
   const chk = await api.checkRange(text);
-  if (!chk.ok) { TanglawModules.messageBox('Range not understood', esc(chk.errors.join('; ') || 'empty range')); fillScopes(opts().scope); return; }
-  if (name) { TanglawStudy.study.ud.ranges[name] = text; api.setUserData('ranges', TanglawStudy.study.ud.ranges); }
+  if (!chk.ok) { TimotheosModules.messageBox('Range not understood', esc(chk.errors.join('; ') || 'empty range')); fillScopes(opts().scope); return; }
+  if (name) { TimotheosStudy.study.ud.ranges[name] = text; api.setUserData('ranges', TimotheosStudy.study.ud.ranges); }
   fillScopes(text);
 }
 function explainSoon() {
@@ -83,7 +83,7 @@ async function run(q) {
   try {
     const r = await api.search(ids, q, Object.assign(engineOpts(o), { limit: 3000 }));
     srch.last = r; srch.filterBook = null;
-    const ud = TanglawStudy.study.ud; ud.searchHistory = [q, ...(ud.searchHistory || []).filter(x => x !== q)].slice(0, 50); api.setUserData('searchHistory', ud.searchHistory);
+    const ud = TimotheosStudy.study.ud; ud.searchHistory = [q, ...(ud.searchHistory || []).filter(x => x !== q)].slice(0, 50); api.setUserData('searchHistory', ud.searchHistory);
     $('#searchStatus').innerHTML = `<b>${r.total}</b> ${r.total === 1 ? 'verse' : 'verses'} in ${ids.length} Bible${ids.length === 1 ? '' : 's'}${r.total > r.results.length ? ` (first ${r.results.length} listed)` : ''} · ${(r.ms / 1000).toFixed(2)} s<div class="small">${esc(r.explanation)}</div>`;
     $('#searchTabs').classList.toggle('hidden', !r.total);
     renderResults(); renderBooks(); renderStats(); showPart('res');
@@ -122,7 +122,7 @@ function showPart(p) {
 }
 function historyMenu(e) {
   e.stopPropagation();
-  const h = (TanglawStudy.study.ud.searchHistory || []).slice(0, 25);
+  const h = (TimotheosStudy.study.ud.searchHistory || []).slice(0, 25);
   const m = $('#ctxMenu');
   m.innerHTML = '<div class="mh">Earlier searches</div>' + (h.map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join('') || '<div class="small" style="padding:4px 10px">none yet</div>');
   m.classList.remove('hidden');
@@ -133,4 +133,4 @@ function onOpen(focus) { fillScopes($('#searchScope').value || opts().scope); if
 /** "Find …" from elsewhere (context menu, popups) */
 function find(q) { openTab('search'); run(q); }
 
-window.TanglawSearch = { init, run, find, onOpen };
+window.TimotheosSearch = { init, run, find, onOpen };

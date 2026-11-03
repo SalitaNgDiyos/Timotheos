@@ -1,5 +1,5 @@
 'use strict';
-/* global api, TWRender, TanglawOptions, TanglawDock, TanglawModules, TanglawStudy, TanglawSearch, TanglawBookSearch, TanglawCompare, TanglawTools, TanglawSpeech, TanglawTitlebar, TanglawProps, TanglawIcons, TanglawI18n */
+/* global api, TWRender, TimotheosOptions, TimotheosDock, TimotheosModules, TimotheosStudy, TimotheosSearch, TimotheosBookSearch, TimotheosCompare, TimotheosTools, TimotheosSpeech, TimotheosTitlebar, TimotheosProps, TimotheosIcons, TimotheosI18n */
 const $ = s => document.querySelector(s);
 const state = { settings: null, modules: { bibles: [], books: [], dicts: [], errors: [] }, infos: new Map(), nav: [], ref: { b: 43, c: 1, v: 1 }, back: [], fwd: [] };
 const lookupCache = new Map();
@@ -40,7 +40,7 @@ async function init() {
   state.settings = await api.getSettings();
   state.ref = state.settings.ref || state.ref;
   initViews();
-  TanglawOptions.init();
+  TimotheosOptions.init();
   initDock();
   wireBiblesDrawer();
   wireZoom();
@@ -51,19 +51,19 @@ async function init() {
   syncViewMenu();
   wireUi();
   wireViews();
-  TanglawModules.wireModules();
-  await TanglawStudy.init();
-  if (window.TanglawNav) TanglawNav.init();
-  TanglawSearch.init();
-  TanglawBookSearch.init();
-  TanglawCompare.init();
-  TanglawTools.init();
+  TimotheosModules.wireModules();
+  await TimotheosStudy.init();
+  if (window.TimotheosNav) TimotheosNav.init();
+  TimotheosSearch.init();
+  TimotheosBookSearch.init();
+  TimotheosCompare.init();
+  TimotheosTools.init();
   window.BOOK_ABBR = {}; for (const bk of await api.books()) window.BOOK_ABBR[bk.id] = bk.abbr;
   await refreshModules();
   api.onMenu(cmd => runCommand(cmd));
-  TanglawTitlebar.init();
-  TanglawProps.init();
-  if (window.TanglawI18n) TanglawI18n.apply(state.settings.lang || 'en');
+  TimotheosTitlebar.init();
+  TimotheosProps.init();
+  if (window.TimotheosI18n) TimotheosI18n.apply(state.settings.lang || 'en');
   if (api.onExternalSync) api.onExternalSync(handleExternalSync);
 }
 
@@ -92,7 +92,7 @@ async function handleExternalSync(data) {
         await go({ b: targetB, c: targetC, v: targetV, history: false }, false);
       }
       const bk = (state.nav || []).find(x => x.id === state.ref.b);
-      if (bk) document.title = `${bk.name} ${state.ref.c}:${state.ref.v} - Tanglaw Bible`;
+      if (bk) document.title = `${bk.name} ${state.ref.c}:${state.ref.v} - Timotheos`;
     }
   } catch (_) {}
 }
@@ -100,15 +100,15 @@ async function handleExternalSync(data) {
 /** every menu command (title-bar menus, keyboard shortcuts) */
 function runCommand(cmd) {
   const local = {
-    newUserMod: () => TanglawModules.newUserModuleDialog(),
-    import: () => TanglawModules.importModules(), addFolder, rescan,
+    newUserMod: () => TimotheosModules.newUserModuleDialog(),
+    import: () => TimotheosModules.importModules(), addFolder, rescan,
     search: () => openTab('search', true), bookSearch: () => openTab('bsearch', true),
-    compare: () => TanglawCompare.open(), exportTopics: () => TanglawTools.exportTopics(),
-    printTopic: () => TanglawTools.printTopic(), clipmon: () => TanglawTools.setClipmon(!TanglawTools.clipOn()),
-    voices: () => TanglawSpeech.voicesDialog(), goto: () => { $('#refInput').focus(); $('#refInput').select(); }, about,
-    options: () => TanglawOptions.open(), resetLayout: () => TanglawDock.applyPreset('classic'),
-    copyVerses: () => TanglawStudy.copyDialog(), daily: () => TanglawStudy.openStudy('plans'), keys: () => TanglawStudy.showKeys(), print: () => window.print(),
-    guide: () => api.appCmd('guide', TanglawOptions.appearance().skin)
+    compare: () => TimotheosCompare.open(), exportTopics: () => TimotheosTools.exportTopics(),
+    printTopic: () => TimotheosTools.printTopic(), clipmon: () => TimotheosTools.setClipmon(!TimotheosTools.clipOn()),
+    voices: () => TimotheosSpeech.voicesDialog(), goto: () => { $('#refInput').focus(); $('#refInput').select(); }, about,
+    options: () => TimotheosOptions.open(), resetLayout: () => TimotheosDock.applyPreset('classic'),
+    copyVerses: () => TimotheosStudy.copyDialog(), daily: () => TimotheosStudy.openStudy('plans'), keys: () => TimotheosStudy.showKeys(), print: () => window.print(),
+    guide: () => api.appCmd('guide', TimotheosOptions.appearance().skin)
   };
   if (local[cmd]) return local[cmd]();
   return api.appCmd(cmd);
@@ -120,12 +120,12 @@ function initDock() {
   const P = [['tree', 'Books & chapters', 'tree', 'bible', '#pane-tree'], ['library', 'Modules', 'library', 'lib', '#pane-library'],
     ['lookup', 'Lookup', 'lookup', 'dict', '#tab-lookup'], ['cmt', 'Commentary', 'commentary', 'cmt', '#tab-cmt'], ['lib', 'Library', 'book', 'lib', '#tab-lib'],
     ['search', 'Bible search', 'search', 'search', '#tab-search'], ['bsearch', 'Book search', 'search', 'search', '#tab-bsearch'], ['study', 'My Study', 'study', 'study', '#tab-study'], ['compare', 'Compare', 'copy', 'bible', '#tab-compare']];
-  for (const [id, title, icon, cap, sel] of P) TanglawDock.register({ id, title, icon, cap, el: $(sel) });
-  TanglawDock.init(state.settings.dock, {
+  for (const [id, title, icon, cap, sel] of P) TimotheosDock.register({ id, title, icon, cap, el: $(sel) });
+  TimotheosDock.init(state.settings.dock, {
     onSave: layout => save({ dock: layout }),
     zoomable: id => !!ZOOM_TARGETS[id],
     onZoom: (id, d) => zoomPanel(id, d),
-    onActivate: id => { if (id === 'compare') TanglawCompare.render(); if (id === 'bsearch') TanglawBookSearch.onOpen(false); if (id === 'search') TanglawSearch.onOpen(false); if (id === 'study') TanglawStudy.onOpen(); }
+    onActivate: id => { if (id === 'compare') TimotheosCompare.render(); if (id === 'bsearch') TimotheosBookSearch.onOpen(false); if (id === 'search') TimotheosSearch.onOpen(false); if (id === 'study') TimotheosStudy.onOpen(); }
   });
 }
 
@@ -143,15 +143,15 @@ const ZOOM_NAMES = {
 function zoomPanel(id, d) {
   if (id === 'bible') return zoomView(state.active, d);
   if (typeof id === 'number') return zoomView(id, d);
-  if (id === 'ui') { if (window.TanglawOptions && TanglawOptions.stepUiSize) TanglawOptions.stepUiSize(d); return; }
+  if (id === 'ui') { if (window.TimotheosOptions && TimotheosOptions.stepUiSize) TimotheosOptions.stepUiSize(d); return; }
   if (!ZOOM_TARGETS[id]) return;
-  const a = TanglawOptions.appearance(); a.zoom = Object.assign({}, a.zoom);
+  const a = TimotheosOptions.appearance(); a.zoom = Object.assign({}, a.zoom);
   const z = Math.round(Math.min(2.5, Math.max(0.6, (a.zoom[id] || 1) + d * 0.1)) * 10) / 10;
   a.zoom[id] = z; save({ appearance: a }); applyZoom();
-  TanglawStudy.flash(`${ZOOM_NAMES[id] || id} text ${Math.round(z * 100)}%`);
+  TimotheosStudy.flash(`${ZOOM_NAMES[id] || id} text ${Math.round(z * 100)}%`);
 }
 function applyZoom() {
-  const z = TanglawOptions.appearance().zoom || {};
+  const z = TimotheosOptions.appearance().zoom || {};
   for (const [id, sels] of Object.entries(ZOOM_TARGETS)) for (const s of sels) { const el = $(s); if (el) el.style.zoom = z[id] || 1; }
 }
 window.applyZoom = applyZoom;
@@ -206,7 +206,7 @@ function applyToolbarItems() {
   for (const cb of document.querySelectorAll('[data-tbshow]')) {
     cb.checked = ti[cb.dataset.tbshow] !== false;
   }
-  if (window.TanglawTitlebar && TanglawTitlebar.rebuild) TanglawTitlebar.rebuild();
+  if (window.TimotheosTitlebar && TimotheosTitlebar.rebuild) TimotheosTitlebar.rebuild();
 }
 function setToolbarItem(key, on) {
   const ti = toolbarItemsState();
@@ -243,8 +243,8 @@ async function refreshModules(list) {
   syncOpen();
   for (const v of vs) await ensureInfo(v.bible);
   renderModuleList(); renderDictSelects(); renderFolders();
-  TanglawModules.renderLibraryList(); TanglawModules.fillLibSelect(); TanglawBookSearch.fillScope();
-  if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.modules = Object.assign(l, { errors: state.modules.errors }); renderDictSelects(); TanglawModules.renderLibraryList(); TanglawModules.fillLibSelect(); TanglawBookSearch.fillScope(); }).catch(() => {});
+  TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope();
+  if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.modules = Object.assign(l, { errors: state.modules.errors }); renderDictSelects(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {});
   $('#empty').classList.toggle('hidden', ids.length > 0);
   statusMods();
   $('#view').classList.toggle('hidden', ids.length === 0);
@@ -297,7 +297,7 @@ function wireBiblesDrawer() {
   setBiblesDrawerOpen(!!(state.settings && state.settings.bvdOpen), false);
   if (btn) btn.onclick = () => setBiblesDrawerOpen();
   if (closeBtn) closeBtn.onclick = () => setBiblesDrawerOpen(false);
-  if (impBtn) impBtn.onclick = () => TanglawModules.importModules();
+  if (impBtn) impBtn.onclick = () => TimotheosModules.importModules();
   if (fi) {
     fi.oninput = () => filterBiblesDrawer(fi.value);
     fi.onkeydown = e => {
@@ -386,7 +386,7 @@ function renderModuleList() {
         <span class="ttl">${esc(ttl)}</span>
       </button>
       ${on && openIdx > 0 ? '<button type="button" class="mv" title="Move its view to the left">↑</button>' : ''}
-      <button type="button" class="pp" title="Module properties (${esc(fmt)})">${TanglawIcons.icon('info', 13)}</button>`;
+      <button type="button" class="pp" title="Module properties (${esc(fmt)})">${TimotheosIcons.icon('info', 13)}</button>`;
 
     li.querySelector('.bvd-cb').addEventListener('change', async e => {
       if (e.target.checked) await addView(m.id);
@@ -406,7 +406,7 @@ function renderModuleList() {
       }
       if (state.settings && state.settings.bvdAutoHide) setBiblesDrawerOpen(false);
     };
-    li.querySelector('.pp').onclick = e => { e.preventDefault(); e.stopPropagation(); TanglawProps.open(m.id); };
+    li.querySelector('.pp').onclick = e => { e.preventDefault(); e.stopPropagation(); TimotheosProps.open(m.id); };
     const mv = li.querySelector('.mv');
     if (mv) mv.addEventListener('click', async e => {
       e.stopPropagation();
@@ -466,7 +466,7 @@ function renderModuleList() {
     for (const w of (info && info.warnings) || []) { const li = document.createElement('li'); li.className = /are shown as/.test(w) ? 'info' : ''; li.textContent = `${info.abbr}: ${w}`; errs.appendChild(li); }
   }
 }
-function flashMsg(m) { if (window.TanglawStudy) TanglawStudy.flash(m); }
+function flashMsg(m) { if (window.TimotheosStudy) TimotheosStudy.flash(m); }
 
 function renderDictSelects() {
   for (const [sel, key] of [['#greekDict', 'greekDict'], ['#hebrewDict', 'hebrewDict'], ['#morphDict', 'morphDict']]) {
@@ -514,7 +514,7 @@ function commitRef() {
   const v = views()[state.active];
   if (v && !v.linked) { v.ref = state.ref; storeViews(); } else { state.linkRef = state.ref; save({ ref: state.ref }); }
   const bk = (state.nav || []).find(x => x.id === state.ref.b);
-  if (bk) document.title = `${bk.name} ${state.ref.c}:${state.ref.v} - Tanglaw Bible`;
+  if (bk) document.title = `${bk.name} ${state.ref.c}:${state.ref.v} - Timotheos`;
   if (Date.now() >= extSyncSuppressUntil && api.syncOut) {
     api.syncOut({ ref: state.ref, bookName: bk ? bk.name : '' }).catch(() => {});
   }
@@ -553,7 +553,7 @@ function setActive(i, quiet) {
   document.querySelectorAll('#view > .bv').forEach((sec, k) => sec.classList.toggle('active', k === i));
   storeViews();
   syncNavControls();
-  if (!quiet) TanglawModules.updateCommentary();
+  if (!quiet) TimotheosModules.updateCommentary();
   syncViewMenu();
 }
 window.setActiveView = setActive;
@@ -575,7 +575,7 @@ function zoomView(i, d) {
 }
 const baseSize = () => state.settings.fontSize || 17;
 function applyPaneLook(sec, i) {
-  const v = views()[i]; const ap = TanglawOptions.appearance(); const t = sec.querySelector('.bvtext');
+  const v = views()[i]; const ap = TimotheosOptions.appearance(); const t = sec.querySelector('.bvtext');
   t.style.setProperty('--size', Math.round(baseSize() * (v.zoom || 1) * 10) / 10 + 'px');
   t.style.fontFamily = v.font ? `'TwGreek', 'TwHebrew', '${String(v.font).replace(/['\\]/g, '')}', var(--font-text)` : '';
   if (v.font) t.style.setProperty('--font-text', `'TwGreek', 'TwHebrew', '${String(v.font).replace(/['\\]/g, '')}', 'Gentium Plus', Georgia, serif`); else t.style.removeProperty('--font-text');
@@ -588,11 +588,11 @@ function ensurePanes() {
   while (host.children.length < vs.length) {
     const sec = document.createElement('section'); sec.className = 'bv';
     sec.innerHTML = `<header class="bvcap"><button class="bvbible" data-a="bible" title="Choose the Bible of this view"></button><span class="bvref"></span><span class="grow"></span>
-      <button class="dbtn bvlink" data-a="link" title="Move together with the other Bible views (click to let this view read on by itself)">${TanglawIcons.icon('link', 14)}</button>
-      <button class="dbtn" data-a="zout" title="Smaller text in this view (Ctrl + mouse wheel down)">${TanglawIcons.icon('textDown', 14)}</button><span class="bvzoom" title="Text size of this view"></span><button class="dbtn" data-a="zin" title="Larger text in this view (Ctrl + mouse wheel up)">${TanglawIcons.icon('textUp', 14)}</button>
-      <button class="dbtn" data-a="close" title="Close this Bible view">${TanglawIcons.icon('close', 14)}</button></header>
+      <button class="dbtn bvlink" data-a="link" title="Move together with the other Bible views (click to let this view read on by itself)">${TimotheosIcons.icon('link', 14)}</button>
+      <button class="dbtn" data-a="zout" title="Smaller text in this view (Ctrl + mouse wheel down)">${TimotheosIcons.icon('textDown', 14)}</button><span class="bvzoom" title="Text size of this view"></span><button class="dbtn" data-a="zin" title="Larger text in this view (Ctrl + mouse wheel up)">${TimotheosIcons.icon('textUp', 14)}</button>
+      <button class="dbtn" data-a="close" title="Close this Bible view">${TimotheosIcons.icon('close', 14)}</button></header>
       <div class="bvbody"><nav class="bvside" aria-label="What this view shows">${SIDE.map(([k, l, t]) => `<button data-k="${k}" title="${esc(t)}">${l}</button>`).join('')}
-        <span class="bvsep"></span><button data-a="vnum" title="Verse numbers in this view: column, in the text, hidden">#</button><button data-a="font" title="Font of this view">Aa</button><button data-a="speak" class="bvspeak" title="Read this chapter aloud (again: stop)">${TanglawIcons.icon('speaker', 14)}</button><button data-a="opts" title="More options of this view: footnote marks, column text lines, this Bible's own switches">${TanglawIcons.icon('gear', 14)}</button></nav>
+        <span class="bvsep"></span><button data-a="vnum" title="Verse numbers in this view: column, in the text, hidden">#</button><button data-a="font" title="Font of this view">Aa</button><button data-a="speak" class="bvspeak" title="Read this chapter aloud (again: stop)">${TimotheosIcons.icon('speaker', 14)}</button><button data-a="opts" title="More options of this view: footnote marks, column text lines, this Bible's own switches">${TimotheosIcons.icon('gear', 14)}</button></nav>
         <div class="bvtext view" tabindex="0"></div></div>`;
     host.appendChild(sec);
   }
@@ -622,7 +622,7 @@ function wireViews() {
   host.addEventListener('click', e => {
     const sec = e.target.closest('#view > .bv'); if (!sec) return; const i = +sec.dataset.i; const v = views()[i];
     const refSpan = e.target.closest('.bvref');
-    if (refSpan && refSpan.textContent && window.TanglawNav) { setActive(i); TanglawNav.openNavPopover('book', refSpan, i); return; }
+    if (refSpan && refSpan.textContent && window.TimotheosNav) { setActive(i); TimotheosNav.openNavPopover('book', refSpan, i); return; }
     const k = e.target.closest('.bvside [data-k]');
     if (k) { const on = toggleViewShow(i, k.dataset.k); flashMsg(`${k.title.replace(/ \(.\)$/, '')}: ${on ? 'on' : 'off'} in this view`); return; }
     const a = e.target.closest('[data-a]'); if (!a) return;
@@ -637,19 +637,19 @@ function wireViews() {
       renderChapter(false); syncNavControls(); return;
     }
     if (act === 'vnum') {
-      const order = ['margin', 'inline', 'hidden']; const ap = TanglawOptions.appearance();
+      const order = ['margin', 'inline', 'hidden']; const ap = TimotheosOptions.appearance();
       v.vnPos = order[(order.indexOf(v.vnPos || ap.vnPos) + 1) % 3]; if (v.vnPos === ap.vnPos) delete v.vnPos;
       storeViews(); renderChapter(false);
       return flashMsg('Verse numbers: ' + { margin: 'in a column', inline: 'in the text', hidden: 'hidden' }[v.vnPos || ap.vnPos]);
     }
     if (act === 'font') {
-      const fonts = TanglawOptions.fonts();
+      const fonts = TimotheosOptions.fonts();
       return paneMenu(a, `<div class="mh">Font of this view</div><select class="bvfont" size="12"><option value="">As in Options</option>${fonts.map(f => `<option${f === v.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>`, m => {
         const s = m.querySelector('select'); if (!v.font) s.value = '';
         s.onchange = () => { v.font = s.value || undefined; if (!v.font) delete v.font; storeViews(); ensurePanes(); };
       });
     }
-    if (act === 'speak') return window.TanglawSpeech && TanglawSpeech.speakView(i, a);
+    if (act === 'speak') return window.TimotheosSpeech && TimotheosSpeech.speakView(i, a);
     if (act === 'opts') return viewOptions(i, a);
     if (act === 'bible') {
       const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}</span></button>`; }).join('');
@@ -688,7 +688,7 @@ async function originalFor(key) {
   origCache.set(ck, o); return o;
 }
 function columnWords(i, root) {
-  const tl = w => (window.TanglawTranslit ? TanglawTranslit.translit(w) : '');
+  const tl = w => (window.TimotheosTranslit ? TimotheosTranslit.translit(w) : '');
   const need = [];
   for (const w of root.querySelectorAll('span.word[data-strong], span.word[data-morph], span.word[data-lemma]')) {
     const st = (w.dataset.strong || '').split(/\s+/).filter(Boolean); const lem = w.dataset.lemma || '';
@@ -765,7 +765,7 @@ function syncNavControls() {
   $('#stRef').textContent = `${bk.name} ${r.c}:${r.v}`;
   $('#chapterHead').innerHTML = `${esc(bk.name)} ${r.c}<span class="sub">${esc(groupLabel(bk.grp))}</span>`;
   updateHistoryButtons();
-  if (window.TanglawNav) TanglawNav.syncAll();
+  if (window.TimotheosNav) TimotheosNav.syncAll();
 }
 
 async function go(ref, pushSave = true) {
@@ -784,7 +784,7 @@ async function go(ref, pushSave = true) {
   commitRef();
   syncNavControls();
   await renderChapter(true, views().map((_, i) => i).filter(i => sameMove(i, state.active) || !(paneTexts()[i] && paneTexts()[i].childElementCount)));
-  TanglawModules.updateCommentary();
+  TimotheosModules.updateCommentary();
 }
 
 function historyGo(d) {
@@ -813,7 +813,7 @@ function selectVerse(v, scroll = true) {
   state.ref.v = v; commitRef();
   syncNavControls();
   if (scroll) el.scrollIntoView({ block: 'nearest' });
-  TanglawModules.updateCommentary();
+  TimotheosModules.updateCommentary();
   return true;
 }
 
@@ -839,8 +839,8 @@ async function renderChapter(scroll, only) {
   const which = only || vs.map((_, i) => i);
   await Promise.all(which.map(i => renderPane(i, scroll, (paneSeq[i] = (paneSeq[i] || 0) + 1))));
   if (seq !== renderSeq) return;
-  if (state.settings.diff) TanglawStudy.markDifferences();
-  TanglawStudy.renderTree();
+  if (state.settings.diff) TimotheosStudy.markDifferences();
+  TimotheosStudy.renderTree();
 }
 window.renderChapter = renderChapter;
 async function renderPane(i, scroll, seq) {
@@ -852,7 +852,7 @@ async function renderPane(i, scroll, seq) {
   const inf = state.infos.get(id);
   const layout = show.paragraph ? 'para' : 'cols';
   const ctx = { fn: { n: 0 }, b };
-  const ap = TanglawOptions.appearance();
+  const ap = TimotheosOptions.appearance();
   const vnPos = v.vnPos || ap.vnPos;
   const fontOf = ap.useModFont && !v.font && inf && inf.font ? ` style="font-family:'TwGreek', 'TwHebrew', '${esc(inf.font.split(',')[0])}', var(--font-text)"` : '';
   const cell = raw => TWRender.render(raw, inf || EMPTY_MOD, show, ctx);
@@ -887,9 +887,9 @@ async function renderPane(i, scroll, seq) {
   decorateFootnotes(t, v, show);
   if (show.columns) columnWords(i, t); else if (show.lemma) showLemmas(t);
   const first = views().findIndex((_, k) => sameMove(k, i)) === i;
-  TanglawStudy.afterRender({ root: t, col: i, id, b, c, layout, notes: first });
-  if (layout !== 'para') TanglawModules.decorateChapter(b, c, t, show);
-  if (i === state.active && window.TanglawNav) TanglawNav.syncAll(rows);
+  TimotheosStudy.afterRender({ root: t, col: i, id, b, c, layout, notes: first });
+  if (layout !== 'para') TimotheosModules.decorateChapter(b, c, t, show);
+  if (i === state.active && window.TimotheosNav) TimotheosNav.syncAll(rows);
   if (scroll) {
     const el = t.querySelector(`[data-v="${vv}"]`);
     if (el && vv > 1) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } else t.scrollTop = 0;
@@ -987,7 +987,7 @@ let popupHold = false;
 function hidePopupSoon() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (!popupHold) $('#popup').classList.add('hidden'); }, 300); }
 function wirePopupResize() {
   const p = $('#popup');
-  const sz = (TanglawOptions.appearance().popupSize) || null;
+  const sz = (TimotheosOptions.appearance().popupSize) || null;
   if (sz) { p.style.width = sz.w + 'px'; p.style.height = sz.h + 'px'; p.classList.add('sized'); }
   p.addEventListener('mousedown', e => {
     const r = p.getBoundingClientRect();
@@ -997,7 +997,7 @@ function wirePopupResize() {
     const up = () => {
       document.removeEventListener('mouseup', up, true);
       setTimeout(() => { popupHold = false; }, 50);
-      const a = TanglawOptions.appearance(); a.popupSize = { w: p.offsetWidth, h: p.offsetHeight };
+      const a = TimotheosOptions.appearance(); a.popupSize = { w: p.offsetWidth, h: p.offsetHeight };
       p.style.width = a.popupSize.w + 'px'; p.style.height = a.popupSize.h + 'px'; p.classList.add('sized');
       save({ appearance: a });
       if (!p.matches(':hover')) hidePopupSoon();
@@ -1049,7 +1049,7 @@ async function pin(el) {
 async function followLink(href) {
   if (!href) return;
   if (/^https?:/i.test(href)) return api.openExternal(href);
-  if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href) && await TanglawModules.followBookLink(href)) return;
+  if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href) && await TimotheosModules.followBookLink(href)) return;
   const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
   const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
   if (/^tw:\/\/bible/i.test(href) && id) {
@@ -1071,15 +1071,15 @@ async function followLink(href) {
 }
 
 function openTab(name, focus) {
-  TanglawDock.show(name);
-  if (name === 'search') TanglawSearch.onOpen(focus);
-  if (name === 'bsearch') TanglawBookSearch.onOpen(focus);
-  if (name === 'study') TanglawStudy.onOpen();
+  TimotheosDock.show(name);
+  if (name === 'search') TimotheosSearch.onOpen(focus);
+  if (name === 'bsearch') TimotheosBookSearch.onOpen(focus);
+  if (name === 'study') TimotheosStudy.onOpen();
 }
 window.openTab = openTab;
 
 function about() {
-  setLookupHtml(`<div class="entry"><h4>Tanglaw Bible 0.6.0</h4><div class="src">Reads unencrypted theWord modules (Bibles, commentaries, dictionaries, books, devotionals, cross-references, headings/paragraph overlays, verse lists, reading plans) and e-Sword modules (Bibles, commentaries, dictionaries, lexicons, topic and reference books, devotionals, maps, harmonies, study notes), with the Apocrypha in the Bible view and full user module authoring. Tanglaw is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</div><p>Module folders: ${(state.settings.moduleFolders || []).map(esc).join('<br>') || 'none'}</p></div>`);
+  setLookupHtml(`<div class="entry"><h4>Timotheos 0.6.0</h4><div class="src">Reads unencrypted theWord modules (Bibles, commentaries, dictionaries, books, devotionals, cross-references, headings/paragraph overlays, verse lists, reading plans) and e-Sword modules (Bibles, commentaries, dictionaries, lexicons, topic and reference books, devotionals, maps, harmonies, study notes), with the Apocrypha in the Bible view and full user module authoring. Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</div><p>Module folders: ${(state.settings.moduleFolders || []).map(esc).join('<br>') || 'none'}</p></div>`);
   openTab('lookup');
 }
 
@@ -1104,10 +1104,10 @@ function wireUi() {
   $('#rescanBtn').onclick = rescan;
   $('#apPlacement').value = ['end', 'catholic', 'nets', 'orthodox'].includes(state.settings.apocryphaPlacement) ? state.settings.apocryphaPlacement : '1611';
   $('#apPlacement').onchange = async () => { await api.setSettings({ apocryphaPlacement: $('#apPlacement').value }); state.settings.apocryphaPlacement = $('#apPlacement').value; await rebuildNav(); await go(state.ref, false); };
-  $('#importBtn2').onclick = () => TanglawModules.importModules();
+  $('#importBtn2').onclick = () => TimotheosModules.importModules();
   document.addEventListener('click', e => {
     const fl = e.target.closest('[data-find]');
-    if (fl) { e.preventDefault(); $('#popup').classList.add('hidden'); TanglawSearch.find((/^[GH]\d/i.test(fl.dataset.find) ? '' : 'm/ ') + fl.dataset.find); return; }
+    if (fl) { e.preventDefault(); $('#popup').classList.add('hidden'); TimotheosSearch.find((/^[GH]\d/i.test(fl.dataset.find) ? '' : 'm/ ') + fl.dataset.find); return; }
     const link = e.target.closest('[data-href]');
     if (link) { e.preventDefault(); followLink(link.dataset.href); return; }
     const t = popupTarget(e.target);

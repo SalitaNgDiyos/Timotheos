@@ -19,7 +19,7 @@ async function sqljs() {
       SQL = {
         Database: class {
           constructor(buf) {
-            this._tmp = path.join(os.tmpdir(), `tanglaw-db-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.sqlite`);
+            this._tmp = path.join(os.tmpdir(), `timotheos-db-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}.sqlite`);
             if (buf && buf.length) fs.writeFileSync(this._tmp, Buffer.from(buf));
             this._db = openDb(this._tmp, { writable: true });
           }

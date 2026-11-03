@@ -6,4 +6,4 @@ Generators for the synthetic test modules used by `test/readers.test.js` and `te
 
 `mkmods.py` expects theWord's own `kjv.ont`, `default.xrefs.twm` and `Mickelson's Strong.dct.twm`
 copied into `<dir>` from a theWord installation (they are theWord's files and are not distributed here).
-`test/real-esword.test.js` runs against real e-Sword modules in `TANGLAW_REAL` (not distributed).
+`test/real-esword.test.js` runs against real e-Sword modules in `TIMOTHEOS_REAL` (not distributed).

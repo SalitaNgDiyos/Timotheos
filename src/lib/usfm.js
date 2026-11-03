@@ -1,7 +1,7 @@
 'use strict';
 // USFM (Unified Standard Format Markers 2.x / 3.0: .usfm, .sfm, .ptx, folders, and .zip archives)
 // and USFX (Unified Scripture Format XML: .usfx, .usfx.xml, .xml with <usfx> root, and .zip archives)
-// Bible module readers for Tanglaw Bible.
+// Bible module readers for Timotheos.
 // Supports all 66 canonical books plus all Deuterocanonical / Apocryphal books (67..87) and embedded
 // Deuterocanonical chapters (Daniel 13-14, Daniel 3:24-90, Esther 11-16, Baruch 6, Psalms 151).
 const fs = require('fs');
@@ -48,7 +48,7 @@ function normStrong(raw) {
 }
 
 /**
- * Parse a USFM/USFX reference like "GEN.1.1", "JHN 3:16", "1MA.2.5" -> Tanglaw {b, c, v}
+ * Parse a USFM/USFX reference like "GEN.1.1", "JHN 3:16", "1MA.2.5" -> Timotheos {b, c, v}
  */
 function parseUbsOrTextRef(str) {
   if (!str) return null;
@@ -75,7 +75,7 @@ function mapDeutChapter(b, c, hasStandalone) {
 }
 
 /**
- * Render a word with optional Strong's, morphology, and lemma into Tanglaw's interactive HTML span.
+ * Render a word with optional Strong's, morphology, and lemma into Timotheos's interactive HTML span.
  */
 function renderTaggedWord(wordHtml, strongs, morphs, lemma) {
   const st = normStrong(strongs);
@@ -96,7 +96,7 @@ function renderTaggedWord(wordHtml, strongs, morphs, lemma) {
  * ========================================================================== */
 
 /**
- * Convert USFM inline markup within a single verse/heading fragment to Tanglaw HTML.
+ * Convert USFM inline markup within a single verse/heading fragment to Timotheos HTML.
  */
 function usfmInlineToHtml(raw, state = {}) {
   let s = String(raw || '');
@@ -225,7 +225,7 @@ function formatUsfmNote(body, isXref) {
 }
 
 /**
- * Parse one or more USFM text strings into a Tanglaw book/chapter/verse map.
+ * Parse one or more USFM text strings into a Timotheos book/chapter/verse map.
  */
 function parseUsfmTexts(texts) {
   const meta = { title: '', abbr: '', about: '', lang: '', hasStrongs: false };
@@ -254,7 +254,7 @@ function parseUsfmTexts(texts) {
       const line = rawLine.trim();
       if (!line) continue;
       if (line.startsWith('#')) {
-        const mMeta = /^#\s*tanglaw\.(title|abbr|lang)\s*=\s*(.+)$/i.exec(line);
+        const mMeta = /^#\s*timotheos\.(title|abbr|lang)\s*=\s*(.+)$/i.exec(line);
         if (mMeta) meta[mMeta[1].toLowerCase()] = mMeta[2].trim();
         continue;
       }
@@ -759,7 +759,7 @@ function bundleUsfmTexts(textItems, outFile, defaultTitle = '') {
     return { b, txt: String(txt || '').replace(/^\uFEFF/, '').trim() };
   }).filter(x => x.txt);
   withBook.sort((a, b) => a.b - b.b);
-  const header = defaultTitle ? `# tanglaw.title=${defaultTitle}\n` : '';
+  const header = defaultTitle ? `# timotheos.title=${defaultTitle}\n` : '';
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   fs.writeFileSync(outFile, header + withBook.map(x => x.txt).join('\n\n') + '\n', 'utf8');
   return outFile;

@@ -1,5 +1,5 @@
 'use strict';
-/* global api, state, $, esc, go, openTab, sanitize, versePreview, refreshModules, setLookupHtml, TanglawIcons, TanglawOptions, TanglawProps, TanglawTools, TanglawSpeech, TanglawStudy */
+/* global api, state, $, esc, go, openTab, sanitize, versePreview, refreshModules, setLookupHtml, TimotheosIcons, TimotheosOptions, TimotheosProps, TimotheosTools, TimotheosSpeech, TimotheosStudy */
 // Book modules (commentaries, dictionaries, books, devotionals), importing, cross-references,
 // [A1-A3] user module creation & topic authoring, and [B1-B3] tw:// bookmark popups & anchor scrolling.
 
@@ -22,9 +22,9 @@ function renderLibraryList() {
       const it = document.createElement('li');
       it.className = b.locked ? 'locked' : '';
       it.title = `${b.title || b.name}\n${b.file}${b.locked ? '\n\nCannot be opened: ' + b.reason : ''}`;
-      it.innerHTML = `<span class="ttl2">${esc(b.title && b.opened ? b.title : b.name.replace(/\.[^.]+(\.twm)?$/i, ''))}</span>${b.user ? '<span class="fmt" title="Editable user module">user</span>' : ''}<span class="fmt">${b.format === 'e-Sword' ? 'e-Sword' : 'theWord'}</span><button class="pp" title="Properties">${TanglawIcons.icon('info', 13)}</button>${b.imported ? '<button class="rm" title="Remove this imported copy (moves it to the Recycle Bin)">×</button>' : ''}`;
+      it.innerHTML = `<span class="ttl2">${esc(b.title && b.opened ? b.title : b.name.replace(/\.[^.]+(\.twm)?$/i, ''))}</span>${b.user ? '<span class="fmt" title="Editable user module">user</span>' : ''}<span class="fmt">${b.format === 'e-Sword' ? 'e-Sword' : 'theWord'}</span><button class="pp" title="Properties">${TimotheosIcons.icon('info', 13)}</button>${b.imported ? '<button class="rm" title="Remove this imported copy (moves it to the Recycle Bin)">×</button>' : ''}`;
       it.querySelector('.ttl2').onclick = () => openBookModule(b.id);
-      it.querySelector('.pp').onclick = e => { e.stopPropagation(); TanglawProps.open(b.id); };
+      it.querySelector('.pp').onclick = e => { e.stopPropagation(); TimotheosProps.open(b.id); };
       const rm = it.querySelector('.rm');
       if (rm) rm.onclick = async e => { e.stopPropagation(); if (await confirmBox('Remove module', `Move the imported copy of <b>${esc(b.name)}</b> to the Recycle Bin?`)) { const l = await api.removeImported(b.file); await refreshModules(l); } };
       sub.appendChild(it);
@@ -40,8 +40,8 @@ async function importModules(paths) {
   catch (e) { return messageBox('Import failed', esc(e.message)); }
   if (!r) return;
   state.infos.clear();
-  if (r.results && r.results.some(x => x.studyData) && window.TanglawStudy) {
-    TanglawStudy.study.ud = await api.userData();
+  if (r.results && r.results.some(x => x.studyData) && window.TimotheosStudy) {
+    TimotheosStudy.study.ud = await api.userData();
   }
   await refreshModules(r.list);
   const label = { imported: 'Imported', updated: 'Updated', already: 'Already in library', skipped: 'Not imported' };
@@ -92,7 +92,7 @@ async function newUserModuleDialog(defaultKind = 'commentary') {
       <label>Abbreviation <input id="umAbbr" type="text" placeholder="e.g. MyCmt"></label>
     </div>
     <label class="field">Description (optional) <input id="umDesc" type="text" placeholder="Short summary of this module"></label>
-    <p class="small">Saved in your Tanglaw modules folder in standard theWord (.twm) SQLite format with <code>user=1</code>.</p>`;
+    <p class="small">Saved in your Timotheos modules folder in standard theWord (.twm) SQLite format with <code>user=1</code>.</p>`;
   const res = await modal('New user module', html, [{ label: 'Cancel', value: null }, { label: 'Create module', value: 'ok', primary: true }]);
   if (res !== 'ok') return null;
   const kind = $('#umKind').value;
@@ -102,7 +102,7 @@ async function newUserModuleDialog(defaultKind = 'commentary') {
   try {
     const out = await api.userModCreate({ kind, title, abbr, description });
     await refreshModules(out.list);
-    TanglawStudy.flash(`Created ${out.created.name}`);
+    TimotheosStudy.flash(`Created ${out.created.name}`);
     if (kind === 'commentary') {
       lib.cmtSel = out.id;
       openTab('cmt');
@@ -160,7 +160,7 @@ async function editUserTopicDialog(modId, existingTopic, parentId = 0) {
   });
   lib.cur = null;
   await openBookModule(modId, saved.id, false);
-  TanglawStudy.flash('Topic saved');
+  TimotheosStudy.flash('Topic saved');
 }
 
 async function editUserCommentaryDialog(modId) {
@@ -208,7 +208,7 @@ async function editUserCommentaryDialog(modId) {
   await api.userModSaveCmt(modId, ref, bodyHtml);
   await updateCommentary();
   await window.renderChapter(false);
-  TanglawStudy.flash(res === 'del' ? 'Comment deleted' : 'Comment saved');
+  TimotheosStudy.flash(res === 'del' ? 'Comment deleted' : 'Comment saved');
 }
 
 /* ---------------- Library tab ---------------- */
@@ -229,7 +229,7 @@ async function openBookModule(id, topicId, addHistory = true, anchor = null) {
   let info;
   try { info = await api.bookOpen(id); } catch (e) { $('#libBody').innerHTML = `<p class="note">${esc(e.message)}</p>`; return; }
   const m = (state.modules.books || []).find(b => b.id === id); if (m) Object.assign(m, info);
-  if (info.locked) { $('#libTopics').innerHTML = ''; $('#libBody').innerHTML = `<div class="entry"><h4>${esc(info.title)}</h4><p class="note">This module cannot be opened in Tanglaw: ${esc(info.reason)}.</p></div>`; return; }
+  if (info.locked) { $('#libTopics').innerHTML = ''; $('#libBody').innerHTML = `<div class="entry"><h4>${esc(info.title)}</h4><p class="note">This module cannot be opened in Timotheos: ${esc(info.reason)}.</p></div>`; return; }
   if (lib.cur !== id) {
     lib.cur = id; lib.topics = await api.bookTopics(id);
     await fillLibSelect(); $('#libMod').value = id; $('#libFilter').value = '';
@@ -300,8 +300,8 @@ async function showTopic(id, tid, addHistory = true, anchor = null) {
   const effectiveAnchor = anchor || t.anchor || null;
   if (addHistory) { lib.history.push({ id, tid: effectiveTid, anchor: effectiveAnchor }); if (lib.history.length > 100) lib.history.shift(); }
   const info = (state.modules.books || []).find(b => b.id === id) || {};
-  $('#libBody').innerHTML = `<div class="entry"><h4>${esc(t.subject)}</h4><div class="src">${esc(info.title || '')}</div>${TanglawTools.bodyHtml(id, effectiveTid, sanitize(t.html) || '<p class="hint">(empty)</p>')}</div>`;
-  TanglawTools.applyMarks($('#libBody'));
+  $('#libBody').innerHTML = `<div class="entry"><h4>${esc(t.subject)}</h4><div class="src">${esc(info.title || '')}</div>${TimotheosTools.bodyHtml(id, effectiveTid, sanitize(t.html) || '<p class="hint">(empty)</p>')}</div>`;
+  TimotheosTools.applyMarks($('#libBody'));
   $('#libBody').scrollTop = 0;
   document.querySelectorAll('#libTopics li.cur').forEach(x => x.classList.remove('cur'));
   const li = document.querySelector(`#libTopics li[data-tid="${CSS.escape(String(tid))}"]`) || document.querySelector(`#libTopics li[data-tid="${CSS.escape(String(effectiveTid))}"]`);
@@ -323,8 +323,8 @@ function wireLibrary() {
   };
   $('#libBack').onclick = () => { if (lib.history.length < 2) return; lib.history.pop(); const p = lib.history[lib.history.length - 1]; if (p.id !== lib.cur) openBookModule(p.id, p.tid, false, p.anchor); else showTopic(p.id, p.tid, false, p.anchor); };
   $('#libToday').onclick = () => openBookModule(lib.cur);
-  $('#libInfo').onclick = () => { if (lib.cur) TanglawProps.open(lib.cur); };
-  $('#libCompress').onclick = () => { if (lib.cur) TanglawProps.open(lib.cur, 'file'); };
+  $('#libInfo').onclick = () => { if (lib.cur) TimotheosProps.open(lib.cur); };
+  $('#libCompress').onclick = () => { if (lib.cur) TimotheosProps.open(lib.cur, 'file'); };
   $('#libPrev').onclick = () => stepTopic(-1);
   $('#libNext').onclick = () => stepTopic(1);
   // [A1-A3] User module authoring buttons in Library bar
@@ -369,7 +369,7 @@ function wireLibrary() {
   $('#tab-lib').addEventListener('keydown', e => {
     if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); e.stopPropagation(); stepTopic(e.key === 'ArrowLeft' ? -1 : 1); }
   });
-  const ap = () => TanglawOptions.appearance();
+  const ap = () => TimotheosOptions.appearance();
   const applySide = () => {
     const a = ap(); const w = Math.max(120, Math.min(700, a.libSideW || 230));
     $('#libSplit').style.gridTemplateColumns = a.libSideHidden ? 'minmax(0, 1fr)' : `${w}px 6px minmax(0, 1fr)`;
@@ -642,7 +642,7 @@ function openCmtMenu(anchorBtn) {
 }
 
 async function updateCommentary() {
-  if (window.TanglawCompare) TanglawCompare.render();
+  if (window.TimotheosCompare) TimotheosCompare.render();
   const { b, c, v } = state.ref; const seq = ++cmtSeq;
   const rawList = await api.commentaries(b, c, v).catch(() => []);
   if (seq !== cmtSeq) return;
@@ -713,7 +713,7 @@ async function updateCommentary() {
       const isVerse = x.hit.level === "verse";
       const dot = isVerse ? '<span class="dot full" title="Exact verse comment"></span>' : '<span class="dot light" title="Passage / chapter comment"></span>';
       const lvlBadge = isVerse ? esc(x.hit.subject) : `${esc(x.hit.level)}: ${esc(x.hit.subject)}`;
-      const bodyContent = t ? TanglawTools.bodyHtml(x.id, x.hit.id, sanitize(t.html)) : '<p class="hint">(empty)</p>';
+      const bodyContent = t ? TimotheosTools.bodyHtml(x.id, x.hit.id, sanitize(t.html)) : '<p class="hint">(empty)</p>';
       return `
         <article class="cmtcard ${isCol ? "collapsed" : ""} ${x.id === lib.cmtSel ? "active" : ""}" data-cid="${esc(x.id)}">
           <header class="cmtcard-hdr" data-toggle-card="${esc(x.id)}">
@@ -731,7 +731,7 @@ async function updateCommentary() {
     }).join("");
 
     $("#cmtBody").innerHTML = filterBar + (`<div class="cmtfeed">${cardsHtml || '<p class="hint">No exact verse comments on this verse. Click <b>●+○ All Notes</b> above to see chapter/passage notes.</p>'}</div>`);
-    TanglawTools.applyMarks($("#cmtBody"));
+    TimotheosTools.applyMarks($("#cmtBody"));
     $("#cmtBody").scrollTop = 0;
 
     const bAll = $("#cfAllScopes"), bVerse = $("#cfVerseOnly"), bExp = $("#cfExpandAll"), bCol = $("#cfCollapseAll");
@@ -777,9 +777,9 @@ async function updateCommentary() {
   const t = await api.bookTopic(sel.id, sel.hit.id);
   if (seq !== cmtSeq) return;
   const lvl = { verse: "", passage: "Comment on the passage", chapter: "Comment on the whole chapter", book: "Introduction to the book" }[sel.hit.level];
-  $("#cmtBody").innerHTML = `${editBar}<div class="entry"><h4>${esc(sel.hit.subject)}</h4><div class="src">${esc(sel.title)}${lvl ? " · " + lvl : ""}</div>${t ? TanglawTools.bodyHtml(sel.id, sel.hit.id, sanitize(t.html)) : ""}</div>`;
+  $("#cmtBody").innerHTML = `${editBar}<div class="entry"><h4>${esc(sel.hit.subject)}</h4><div class="src">${esc(sel.title)}${lvl ? " · " + lvl : ""}</div>${t ? TimotheosTools.bodyHtml(sel.id, sel.hit.id, sanitize(t.html)) : ""}</div>`;
   const eb = $("#cmtEditUserBtn"); if (eb) eb.onclick = () => editUserCommentaryDialog(sel.id);
-  TanglawTools.applyMarks($("#cmtBody"));
+  TimotheosTools.applyMarks($("#cmtBody"));
   $("#cmtBody").scrollTop = 0;
   if (sel.hit.anchor) scrollToBookmark($("#cmtBody"), sel.hit.anchor);
 }
@@ -827,7 +827,7 @@ async function addXref(v) {
   if (val !== 'ok') return;
   const txt = ($('#xrInput') || {}).value || '';
   const r = await api.parseRef(txt);
-  if (!r) return messageBox('Not a reference', `Tanglaw could not read “${esc(txt)}” as a Bible reference.`);
+  if (!r) return messageBox('Not a reference', `Timotheos could not read “${esc(txt)}” as a Bible reference.`);
   const m = /[-–]\s*(\d+)\s*$/.exec(txt);
   await api.xrefsAdd({ b, c, v }, { b: r.b, c: r.c, v: r.v, v2: m ? +m[1] : r.v });
   state.settings.show.xrefs = true;
@@ -975,7 +975,7 @@ function wireModules() {
     const bl = e.target.closest('a[data-book]'); if (bl) { e.stopPropagation(); return openBookModule(bl.dataset.book, isNaN(+bl.dataset.tid) ? bl.dataset.tid : +bl.dataset.tid); }
     const cm = e.target.closest('td.vn span.cm'); if (cm) setTimeout(() => openTab('cmt'), 0);
   }, true);
-  $('#libSpeak').onclick = () => TanglawSpeech.speakTopic($('#libSpeak'));
+  $('#libSpeak').onclick = () => TimotheosSpeech.speakTopic($('#libSpeak'));
   $('#view').addEventListener('click', e => {
     if (e.target.closest('a, sup, td.vn, [data-strong], [data-morph], .xrs')) return;
     if (!e.target.closest('td') || String(window.getSelection())) return;
@@ -1026,4 +1026,4 @@ function wireModules() {
   });
 }
 
-window.TanglawModules = { lib, stepTopic, renderLibraryList, fillLibSelect, updateCommentary, decorateChapter, followBookLink, extractBookmarkSlice, importModules, newUserModuleDialog, editUserTopicDialog, editUserCommentaryDialog, wireModules, openBookModule, modal, messageBox, confirmBox, wordAt, lookupWord, showAllXrefs, addXref };
+window.TimotheosModules = { lib, stepTopic, renderLibraryList, fillLibSelect, updateCommentary, decorateChapter, followBookLink, extractBookmarkSlice, importModules, newUserModuleDialog, editUserTopicDialog, editUserCommentaryDialog, wireModules, openBookModule, modal, messageBox, confirmBox, wordAt, lookupWord, showAllXrefs, addXref };

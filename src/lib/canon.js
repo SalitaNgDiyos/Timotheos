@@ -2,7 +2,7 @@
 // Book list, KJV versification and reference parsing.
 // Books 1-66 follow the Protestant canon (theWord order).
 // Books 67+ are the deuterocanonical / apocryphal books. Their numbering here is
-// Tanglaw's own; e-Sword book numbers are mapped onto it in esword.js (auto-detected & editable).
+// Timotheos's own; e-Sword book numbers are mapped onto it in esword.js (auto-detected & editable).
 
 const KJV = require('./kjv_versification.json'); // [book][chapter] = verse count, books 1-66
 
@@ -44,7 +44,7 @@ const BOOKS = [
   [62, '1 John', ['1John', '1Jn', '1Jo', '1 John'], 'NT'], [63, '2 John', ['2John', '2Jn', '2Jo', '2 John'], 'NT'],
   [64, '3 John', ['3John', '3Jn', '3Jo', '3 John'], 'NT'], [65, 'Jude', ['Jude', 'Jud', 'Jd'], 'NT'],
   [66, 'Revelation', ['Rev', 'Re', 'Rv', 'Apoc', 'Apocalypse'], 'NT'],
-  // Deuterocanonical / Apocrypha (Tanglaw numbering)
+  // Deuterocanonical / Apocrypha (Timotheos numbering)
   [67, 'Tobit', ['Tob', 'Tb', 'Tobias', 'Tobie'], 'AP'],
   [68, 'Judith', ['Jdt', 'Jth'], 'AP'],
   [69, 'Additions to Esther', ['AddEsth', 'EsthGr', 'AEs', 'GkEsth', 'RestEsth', 'Rest of Esther', 'The Rest of Esther'], 'AP'],
@@ -74,7 +74,7 @@ const byId = new Map(BOOKS.map(b => [b[0], { id: b[0], name: b[1], abbr: b[2][0]
 // '1611'    : as in the 1611 King James Bible – the Apocrypha stands between Malachi and Matthew,
 //             in the order of the 1611 table of contents, and counts as part of the Old Testament
 //             section (navigation, Old Testament search scope).
-// 'end'     : the Apocrypha is a separate section after Revelation (Tanglaw 0.1 behaviour).
+// 'end'     : the Apocrypha is a separate section after Revelation (Timotheos 0.1 behaviour).
 // 'catholic': Roman Catholic / Western Deuterocanonical 46-book Old Testament order (Tobit and Judith
 //             after Nehemiah; 1–2 Maccabees after Esther; Wisdom and Sirach after Song of Solomon;
 //             Baruch and Letter of Jeremiah after Lamentations; Greek Daniel additions after Daniel).

@@ -52,5 +52,5 @@
     $('#cmpCtx').onchange = () => { c.ctx = $('#cmpCtx').checked; save({ compare: c }); render(); };
     $('#cmpBody').addEventListener('click', e => { const v = e.target.closest('[data-gov]'); if (v) go({ b: state.ref.b, c: state.ref.c, v: +v.dataset.gov }); });
   }
-  window.TanglawCompare = { init, open, render };
+  window.TimotheosCompare = { init, open, render };
 })();

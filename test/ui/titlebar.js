@@ -11,9 +11,9 @@ const key = (k, o = {}) => document.dispatchEvent(new KeyboardEvent('keydown', O
   ok(tb && document.querySelectorAll('.tmenu').length === 3, 'title bar with File / View / Help');
   const bg = () => getComputedStyle(tb).backgroundColor;
   ok(bg() === 'rgb(235, 230, 219)', 'title bar uses the Parchment skin: ' + bg());
-  TanglawOptions.setSkin('narra'); await sleep(200);
+  TimotheosOptions.setSkin('narra'); await sleep(200);
   ok(bg() === 'rgb(59, 42, 30)' && getComputedStyle(tb).color === 'rgb(246, 235, 221)', 'Narra: title bar ' + bg());
-  TanglawOptions.setSkin('sampaguita'); await sleep(200);
+  TimotheosOptions.setSkin('sampaguita'); await sleep(200);
   ok(bg() === 'rgb(255, 255, 255)', 'Sampaguita: title bar ' + bg());
   // menus
   document.querySelector('.tmenu[data-i="2"]').click(); await sleep(100);
@@ -26,7 +26,7 @@ const key = (k, o = {}) => document.dispatchEvent(new KeyboardEvent('keydown', O
   // menu command runs
   document.querySelector('.tmenu[data-i="1"]').click(); await sleep(50);
   document.querySelector('.tmdrop [data-cmd="search"]').click(); await sleep(200);
-  ok(TanglawDock.isVisible('search'), 'View → Search opens the Search panel');
+  ok(TimotheosDock.isVisible('search'), 'View → Search opens the Search panel');
   key('F5'); await sleep(400); ok(!document.getElementById('modal').classList.contains('hidden') && document.getElementById('cvm'), 'F5 opens Copy verses');
   key('F5'); await sleep(200); ok(document.querySelectorAll('#cvm').length === 1, 'F5 inside the dialog does not open a second one');
   key('Escape'); await sleep(200);

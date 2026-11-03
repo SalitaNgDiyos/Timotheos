@@ -2,7 +2,7 @@
 const assert = require('assert');
 const theword = require('../src/lib/theword');
 const S = require('../src/lib/search');
-const D = process.env.TANGLAW_TESTMODS || '/home/claude/testmods';
+const D = process.env.TIMOTHEOS_TESTMODS || '/home/claude/testmods';
 const kjv = theword.load(D + '/kjv.ont');
 const mods = [{ id: 'kjv', abbr: 'KJV', mod: kjv }];
 let pass = 0;

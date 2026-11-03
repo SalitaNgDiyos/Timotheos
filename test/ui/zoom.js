@@ -33,7 +33,7 @@ const zoomOf = sel => +getComputedStyle(document.querySelector(sel)).zoom;
   ok(Math.abs(zoomOf('#lookup') - 1.1) < .001, 'Ctrl+wheel over Lookup → ' + zoomOf('#lookup'));
   openTab('lib'); await sleep(100); lg.querySelector('[data-act="zoom-"]').click(); await sleep(100);
   ok(Math.abs(zoomOf('.libsplit') - 0.9) < .001 && Math.abs(zoomOf('#lookup') - 1.1) < .001, 'buttons act on the active tab (Library ' + zoomOf('.libsplit') + ')');
-  openTab('search'); await TanglawSearch.run('faith'); await sleep(200);
+  openTab('search'); await TimotheosSearch.run('faith'); await sleep(200);
   wheelAt(document.getElementById('searchResults'), -100); await sleep(100);
   ok(Math.abs(zoomOf('#searchResults') - 1.1) < .001, 'Search results → ' + zoomOf('#searchResults'));
   openTab('study'); await sleep(100);

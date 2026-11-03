@@ -2,7 +2,7 @@
 /* Reading aloud: a Bible view (verse by verse, the verse being read is marked, on into the next chapter) and
  * the open Library topic. The voices are the ones Windows offers (through the web engine); you choose one
  * per language in "Read aloud: voices…". */
-/* global state, save, esc, TanglawModules, TanglawStudy, refOfView, views, paneTexts, step, setActiveView */
+/* global state, save, esc, TimotheosModules, TimotheosStudy, refOfView, views, paneTexts, step, setActiveView */
 (function () {
   const LANG = { eng: 'en', en: 'en', tgl: 'fil', tl: 'fil', fil: 'fil', ceb: 'ceb', ilo: 'ilo', spa: 'es', es: 'es', por: 'pt', fre: 'fr', fra: 'fr', fr: 'fr', ger: 'de', deu: 'de', de: 'de', ita: 'it', dut: 'nl', nld: 'nl', grc: 'el', gre: 'el', ell: 'el', el: 'el', heb: 'he', hbo: 'he', he: 'he', rus: 'ru', chi: 'zh', zho: 'zh', kor: 'ko', jpn: 'ja', ind: 'id', may: 'ms', msa: 'ms', vie: 'vi', tha: 'th', ara: 'ar', lat: 'la' };
   const NAMES = { en: 'English', fil: 'Filipino / Tagalog', ceb: 'Cebuano', ilo: 'Ilocano', es: 'Spanish', pt: 'Portuguese', fr: 'French', de: 'German', it: 'Italian', nl: 'Dutch', el: 'Greek', he: 'Hebrew', ru: 'Russian', zh: 'Chinese', ko: 'Korean', ja: 'Japanese', id: 'Indonesian', ms: 'Malay', vi: 'Vietnamese', th: 'Thai', ar: 'Arabic', la: 'Latin' };
@@ -10,7 +10,7 @@
   const sameLang = (vl, l) => { const v = String(vl).toLowerCase().replace('_', '-'); return v === l || v.startsWith(l + '-') || (l === 'fil' && /^(tl|fil)\b/.test(v)); };
   const cfg = () => (state.settings.tts = Object.assign({ voices: {} }, state.settings.tts || {}));
   const store = () => save({ tts: cfg() });
-  const flash = m => TanglawStudy.flash(m);
+  const flash = m => TimotheosStudy.flash(m);
 
   async function voices() {
     if (typeof speechSynthesis === 'undefined') return [];
@@ -89,7 +89,7 @@
   function speakTopic(btn) {
     const body = document.querySelector('#libBody'); if (!body || !body.textContent.trim()) return flash('Open a topic first');
     if (busy) { stop(); return; }
-    const m = (state.modules.books || []).find(b => b.id === TanglawModules.lib.cur) || {};
+    const m = (state.modules.books || []).find(b => b.id === TimotheosModules.lib.cur) || {};
     const blocks = [...body.querySelectorAll('h4, p, li, td')].filter(e => !e.querySelector('p, li, td') && readable(e));
     const pieces = blocks.length ? blocks.map(el => ({ text: readable(el), el })) : readable(body).split(/(?<=[.!?])\s+/).map(text => ({ text }));
     speakPieces(pieces, langOf(m.lang), btn);
@@ -108,7 +108,7 @@
       <div class="ttsrow"><span>Another language</span><select id="ttsAdd"><option value="">Add…</option>${Object.entries(NAMES).filter(([k]) => !langs.includes(k)).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}</select></div>
       <label class="field">Speed <input type="range" id="ttsRate" min="0.5" max="2" step="0.05" value="${c.rate || 1}"> <b id="ttsRateV">${(c.rate || 1).toFixed(2)}</b></label>
       <label><input type="checkbox" id="ttsNext"${c.nextChapter !== false ? ' checked' : ''}> In a Bible, go on into the next chapter</label>`;
-    const p = TanglawModules.modal('Read aloud: voices', html, [{ label: 'Done', value: 'ok', primary: true }]);
+    const p = TimotheosModules.modal('Read aloud: voices', html, [{ label: 'Done', value: 'ok', primary: true }]);
     setTimeout(() => {
       const b = document.getElementById('modalBody'); if (!b) return;
       b.addEventListener('change', e => {
@@ -122,5 +122,5 @@
     }, 0);
     await p; if (busy) stop();
   }
-  window.TanglawSpeech = { speakView, speakTopic, voicesDialog, stop, isSpeaking: () => busy, langOf };
+  window.TimotheosSpeech = { speakView, speakTopic, voicesDialog, stop, isSpeaking: () => busy, langOf };
 })();

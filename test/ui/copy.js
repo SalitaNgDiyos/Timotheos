@@ -11,7 +11,7 @@ const keyOn = (el, k) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k,
 (async () => {
   await sleep(2500);
   await go({ b: 43, c: 3, v: 16 }); await sleep(400);
-  TanglawStudy.copyDialog(); await sleep(600);
+  TimotheosStudy.copyDialog(); await sleep(600);
   ok($('#cpFromLbl').textContent === 'John 3:16' && $('#cpToLbl').textContent === 'John 3:16' && $('#cpCount').textContent === '(1 verse)', 'opens on the current verse: ' + $('#cpFromLbl').textContent + ' – ' + $('#cpToLbl').textContent + ' ' + $('#cpCount').textContent);
   wheel($('#cpToBtn'), 100); await sleep(150); wheel($('#cpToBtn'), 100); await sleep(250);
   ok($('#cpToLbl').textContent === 'John 3:18' && $('#cpCount').textContent === '(3 verses)', 'wheel down on To adds verses → ' + $('#cpToLbl').textContent + ' ' + $('#cpCount').textContent);
@@ -56,7 +56,7 @@ const keyOn = (el, k) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k,
   box.style.width = '860px'; box.style.height = '520px'; await sleep(300);
   [...document.querySelectorAll('#modalBtns button')].find(b => b.textContent === 'Close').click(); await sleep(500);
   const ud = await api.userData(); ok(ud.copySize && ud.copySize.w === 860 && ud.copySize.h === 520, 'size saved ' + JSON.stringify(ud.copySize));
-  TanglawStudy.copyDialog(); await sleep(500);
+  TimotheosStudy.copyDialog(); await sleep(500);
   ok($('#modal .box').offsetWidth === 860, 'opens again at that size (' + $('#modal .box').offsetWidth + 'px)');
   // copy and close puts the passage on the clipboard
   wheel($('#cpToBtn'), 100); await sleep(250);
@@ -66,5 +66,5 @@ const keyOn = (el, k) => el.dispatchEvent(new KeyboardEvent('keydown', { key: k,
   ok($('#modal .box').style.width === '', 'other dialogs keep their normal size');
   ok(window.__errs.length === 0, 'no script errors ' + JSON.stringify(window.__errs));
   console.log('RESULT ' + out.join(' | '));
-  TanglawStudy.copyDialog({ b: 45, c: 2, v: 1, v2: 5 }); await sleep(500);
+  TimotheosStudy.copyDialog({ b: 45, c: 2, v: 1, v2: 5 }); await sleep(500);
 })();

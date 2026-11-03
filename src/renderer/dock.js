@@ -6,7 +6,7 @@
  * layout = { v, zones: { left|right|bottom: { size, groups: [{ panels: [id], active, size }] } },
  *            floats: [{ panels: [id], active, x, y, w, h }], hidden: [id] }
  */
-/* global TanglawIcons */
+/* global TimotheosIcons */
 (function () {
   const ZONES = ['left', 'right', 'bottom'];
   const PANELS = new Map();          // id → { id, title, icon, cap, el, home }
@@ -14,7 +14,7 @@
   let opts = {};                     // { onSave(layout), onActivate(id) }
   let focusMode = false;
   let maxed = null;                  // id of the panel whose group is maximized
-  const ic = (n, s) => TanglawIcons.icon(n, s);
+  const ic = (n, s) => TimotheosIcons.icon(n, s);
   const $ = s => document.querySelector(s);
   const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -427,7 +427,7 @@
     window.addEventListener('resize', () => document.querySelectorAll('.dfloat').forEach(clampFloat));
   }
 
-  window.TanglawDock = {
+  window.TimotheosDock = {
     init, register, render, show, hide, activate, toggleFloat, toggleFocus, applyPreset, setLayout, isVisible,
     panels: () => [...PANELS.values()], state: () => clone(L), located: id => locate(id), PRESETS,
     get focus() { return focusMode; }

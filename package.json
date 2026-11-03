@@ -1,7 +1,7 @@
 {
-  "name": "tanglaw-bible",
-  "productName": "Tanglaw Bible",
-  "version": "0.6.0",
+  "name": "timotheos",
+  "productName": "Timotheos",
+  "version": "0.6.1",
   "description": "Offline Bible study app that reads and authors theWord and e-Sword modules, including the Apocrypha in the Bible view.",
   "main": "src/main.js",
   "scripts": {

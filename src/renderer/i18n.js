@@ -30,7 +30,7 @@
     'Developer Tools': 'Kasangkapan ng Developer',
     'User Guide': 'Gabay sa Paggamit',
     'Keyboard Shortcuts': 'Mga Shortcut sa Keyboard',
-    'About Tanglaw Bible': 'Tungkol sa Tanglaw Bible',
+    'About Timotheos': 'Tungkol sa Timotheos',
     // Toolbar
     'Search': 'Hanapin',
     'Copy': 'Kopyahin',
@@ -131,19 +131,19 @@
       }
     }
     // Dock panel tabs
-    if (window.TanglawDock) {
-      for (const p of TanglawDock.panels()) {
+    if (window.TimotheosDock) {
+      for (const p of TimotheosDock.panels()) {
         p.baseTitle = p.baseTitle || p.title;
         p.title = t(p.baseTitle, lg);
       }
       document.querySelectorAll('.dtab[data-id]').forEach(btn => {
         const sp = btn.querySelector('span');
-        const p = TanglawDock.panels().find(x => x.id === btn.dataset.id);
+        const p = TimotheosDock.panels().find(x => x.id === btn.dataset.id);
         if (sp && p) sp.textContent = p.title;
       });
     }
-    if (window.TanglawTitlebar && TanglawTitlebar.rebuild) TanglawTitlebar.rebuild();
+    if (window.TimotheosTitlebar && TimotheosTitlebar.rebuild) TimotheosTitlebar.rebuild();
   }
 
-  window.TanglawI18n = { t, apply, lang, TL };
+  window.TimotheosI18n = { t, apply, lang, TL };
 })();

@@ -1,7 +1,7 @@
 'use strict';
 // Cross-reference sets in theWord's open .xrefs.twm format:
 //   xrefs(id, vi1, vi2) where vi = book<<24 | chapter<<16 | verse<<8 | span (extra verses).
-// Sets found in module folders are read-only; the user's own set is kept in Tanglaw's data folder
+// Sets found in module folders are read-only; the user's own set is kept in Timotheos's data folder
 // in the same format (so it can also be used by theWord).
 const fs = require('fs');
 const path = require('path');
@@ -38,7 +38,7 @@ class Xrefs {
       try { const db = openDb(this.userFile); userRows = (db.exec('select vi1, vi2 from xrefs')[0] || { values: [] }).values; db.close(); }
       catch (e) { this.errors.push('My cross-references: ' + e.message); }
     }
-    this.sets.push({ name: 'My cross-references (Tanglaw)', file: this.userFile, user: true, rows: userRows });
+    this.sets.push({ name: 'My cross-references (Timotheos)', file: this.userFile, user: true, rows: userRows });
     this.reindex();
   }
 
@@ -80,7 +80,7 @@ class Xrefs {
     db.run('create table xrefs(id integer primary key, vi1 int, vi2 int)');
     db.run('create table config(name text, value text)');
     db.run('create index xrefs_idx_vi1 on xrefs(vi1)'); db.run('create index xrefs_idx_vi2 on xrefs(vi2)');
-    db.run("insert into config values ('table.xrefs','xrefs'),('tables.xrefs.description','My cross-references (Tanglaw)'),('type','10')");
+    db.run("insert into config values ('table.xrefs','xrefs'),('tables.xrefs.description','My cross-references (Timotheos)'),('type','10')");
     const st = db.prepare('insert into xrefs(vi1, vi2) values (?, ?)');
     for (const [a, b] of this.userSet().rows) { st.run([a, b]); }
     st.free();

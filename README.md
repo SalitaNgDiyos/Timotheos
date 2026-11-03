@@ -1,23 +1,23 @@
-# Tanglaw Bible 0.6.0
+# Timotheos 0.6.0
 
 An offline Bible study app for Windows that reads and creates **theWord** and **e-Sword** modules and shows the
 **Apocrypha in the Bible view, in its 1611 King James place** (between Malachi and Matthew), or in the **Septuagint (NETS)** or **Greek Orthodox** order, side by side with your other Bibles.
 
 ## Install and run
-1. Unzip the Windows package anywhere (e.g. `C:\Tools\Tanglaw Bible`).
-2. Run `TanglawBible.exe`. Windows SmartScreen may warn because the program is not code-signed:
+1. Unzip the Windows package anywhere (e.g. `C:\Tools\Timotheos`).
+2. Run `Timotheos.exe`. Windows SmartScreen may warn because the program is not code-signed:
    choose *More info → Run anyway*.
-   - **Portable mode (new in 0.4.9):** create a folder named `Tanglaw Data` (or an empty file `portable.json`) next to `TanglawBible.exe` to keep all settings, imported modules, and study data on a USB drive without touching `%APPDATA%`.
+   - **Portable mode (new in 0.4.9):** create a folder named `Timotheos Data` (or an empty file `portable.json`) next to `Timotheos.exe` to keep all settings, imported modules, and study data on a USB drive without touching `%APPDATA%`.
 3. Bring in modules either way:
    - **Import** (toolbar or the *Modules* panel, or *File → Import Modules…*, *Ctrl+I*), or drag module files onto
-     the window. Tanglaw checks each file, copies the ones it can use into its own library
-     (`%APPDATA%\Tanglaw Bible\modules`) and shows a report saying, for every file, what it was
+     the window. Timotheos checks each file, copies the ones it can use into its own library
+     (`%APPDATA%\Timotheos\modules`) and shows a report saying, for every file, what it was
      recognised as or why it was not imported. `.zip` and theWord `.twzip` downloads are unpacked.
    - **Options → Modules → Add folder…** reads modules where they are (for example theWord's or e-Sword's own module
      folder) without copying them. Sub-folders are scanned (4 levels; folders starting with `-` or `.`
      are skipped, as in theWord).
 
-Settings are stored in `%APPDATA%\Tanglaw Bible\settings.json` (or `Tanglaw Data\settings.json` in portable mode).
+Settings are stored in `%APPDATA%\Timotheos\settings.json` (or `Timotheos Data\settings.json` in portable mode).
 
 ## What it reads and writes
 | Program | Module | Extension | Shown in |
@@ -39,7 +39,7 @@ Settings are stored in `%APPDATA%\Tanglaw Bible\settings.json` (or `Tanglaw Data
 
 **Cannot be opened (by design):** encrypted modules – theWord `.ontx/.otx/.ntx` and locked/paid
 `.twm` modules (`secure=1`), and encrypted e-Sword modules. Both programs' licenses forbid getting
-around that protection, so Tanglaw names these modules and skips them.
+around that protection, so Timotheos names these modules and skips them.
 
 ## New in 0.4.9
 - **Your own commentaries, dictionaries and books** (*File → New User Module…* or *New user module…* in the Modules panel): create editable `.cmt.twm`, `.dct.twm`, and `.gbk.twm` modules (`user=1`). Add, edit, rename, reorder (`↑`/`↓`), nest (`+Sub`), and delete topics in the Library panel, or write verse, passage, chapter, and book comments directly in the Commentary panel.

@@ -651,7 +651,7 @@ function openESword(db, tabs, stub) {
     const it = byId.get(id); if (!it) return null;
     const raw = content(it);
     if (raw && typeof raw === 'object' && raw.isRenderedHtml) return { id, subject: it.subject, html: raw.html };
-    if (raw && (!/^[\s\S]{0,40}[{<\w&]/.test(raw) || (raw.match(/[\u0000-\u0008\uFFFD]/g) || []).length > 3)) return { id, subject: it.subject, html: '<p class="note">This entry is stored in a compressed or encrypted form that Tanglaw cannot read. If this is an e-Sword 10 reference book (.refx), the e-Sword 11 version of the same book (.refi) will work.</p>' };
+    if (raw && (!/^[\s\S]{0,40}[{<\w&]/.test(raw) || (raw.match(/[\u0000-\u0008\uFFFD]/g) || []).length > 3)) return { id, subject: it.subject, html: '<p class="note">This entry is stored in a compressed or encrypted form that Timotheos cannot read. If this is an e-Sword 10 reference book (.refx), the e-Sword 11 version of the same book (.refi) will work.</p>' };
     return { id, subject: it.subject, html: esw.eswordToHtml(raw) };
   }
   function forVerse(b, c, v) {

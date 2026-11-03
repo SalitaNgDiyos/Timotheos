@@ -3,8 +3,8 @@
 //   theWord Bibles (.ont/.ot/.nt): "key=value" lines after the verse lines
 //   theWord book modules (.twm): the config(name, value) table
 //   e-Sword modules (SQLite): the one-row Details table
-// Encrypted/locked modules are never changed. Before the first change Tanglaw keeps a copy of the
-// original file next to it ("<name>.tanglaw-backup").
+// Encrypted/locked modules are never changed. Before the first change Timotheos keeps a copy of the
+// original file next to it ("<name>.timotheos-backup").
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
@@ -14,7 +14,7 @@ const canon = require('./canon');
 const esw = require('./eswordfmt');
 
 const MAX_BYTES = 450 * 1024 * 1024;
-const BACKUP = '.tanglaw-backup';
+const BACKUP = '.timotheos-backup';
 
 // the fields shown first, with friendly labels (others go under "All settings")
 const TW_FIELDS = [['title', 'Title'], ['short.title', 'Short title'], ['abbrev', 'Abbreviation'], ['description', 'Description'], ['author', 'Author'],
@@ -151,7 +151,7 @@ async function read(file) {
   let writable = true; try { fs.accessSync(file, fs.constants.W_OK); } catch (e) { writable = false; }
   if (k.type === 'locked') return Object.assign(base, { format: 'theWord', editable: false, reason: 'an encrypted theWord Bible – it opens only in theWord', fields: [], extra: [], about: '' });
   const tooLargeToEdit = st.size > MAX_BYTES;
-  if (tooLargeToEdit && k.type !== 'twm' && k.type !== 'esword') return Object.assign(base, { format: '?', editable: false, reason: 'the file is too large for Tanglaw to edit', fields: [], extra: [], about: '' });
+  if (tooLargeToEdit && k.type !== 'twm' && k.type !== 'esword') return Object.assign(base, { format: '?', editable: false, reason: 'the file is too large for Timotheos to edit', fields: [], extra: [], about: '' });
   let out;
   if (k.type === 'usfm' || k.type === 'usfx') {
     const usfm = require('./usfm');
@@ -214,7 +214,7 @@ async function read(file) {
 
 /* ---------------------------------------------------------------- writing */
 function backupOnce(file) { const b = file + BACKUP; if (!fs.existsSync(b)) fs.copyFileSync(file, b); return b; }
-function atomicWrite(file, data) { const tmp = file + '.tanglaw-tmp'; fs.writeFileSync(tmp, data); fs.renameSync(tmp, file); }
+function atomicWrite(file, data) { const tmp = file + '.timotheos-tmp'; fs.writeFileSync(tmp, data); fs.renameSync(tmp, file); }
 
 /** change properties. changes: { key: value }, aboutHtml: new About text (HTML) or undefined */
 async function write(file, changes, aboutHtml) {
@@ -285,7 +285,7 @@ function encode1252(text) {
 function rawAboutStyleHint(info) { return info.aboutStyle === 'html' ? '<p></p>' : info.aboutStyle === 'plain' ? 'x' : '{\\rtf1}'; }
 
 /** make a module file smaller: compact it (SQLite VACUUM) and, for theWord books, optionally
- *  compress the text of every topic with zlib ("compressed=1", which Tanglaw reads) */
+ *  compress the text of every topic with zlib ("compressed=1", which Timotheos reads) */
 async function compress(file, opts = {}) {
   const info = await read(file);
   const k = kindOf(file);
@@ -307,7 +307,7 @@ async function compress(file, opts = {}) {
         stmt.run([zlib.deflateSync(Buffer.from(data, 'utf8'), { level: 9 }), id]); zipped++;
       }
       stmt.free();
-      if (skipped) throw new Error(`${skipped} topics are stored in a form Tanglaw does not compress (e.g. RichView); nothing was changed`);
+      if (skipped) throw new Error(`${skipped} topics are stored in a form Timotheos does not compress (e.g. RichView); nothing was changed`);
       if (db.exec("select count(*) from config where name = 'compressed'")[0].values[0][0]) db.run("update config set value = '1' where name = 'compressed'");
       else db.run("insert into config(name, value) values('compressed', '1')");
     }

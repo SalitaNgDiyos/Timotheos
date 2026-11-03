@@ -13,7 +13,7 @@ let n = 0, bad = 0; const ok = (c, m) => { n++; if (!c) bad++; console.log((c ? 
   const m = tw.load(D + 'kjv.ont');
   ok(m.title === 'King James Version (edited)' && m.props.publisher === 'Test Press', '.ont: new title and added publisher read back: ' + m.title);
   ok(m.rules.length > 0, '.ont: verse.rule lines kept (' + m.rules.length + ')');
-  ok(fs.existsSync(D + 'kjv.ont.tanglaw-backup'), '.ont: backup kept');
+  ok(fs.existsSync(D + 'kjv.ont.timotheos-backup'), '.ont: backup kept');
   const r1 = await mp.read(D + 'kjv.ont'); ok(/First/.test(r1.about) && /bold/.test(r1.about) && r1.about.includes('Second'), '.ont about round trip: ' + r1.about.slice(0, 80));
   // .twm
   await mp.write(D + 'Test Book.gbk.twm', { title: 'Test Book 2', author: 'Me' }, '<p>About <i>this</i> book – ἀγάπη</p>');
@@ -24,12 +24,12 @@ let n = 0, bad = 0; const ok = (c, m) => { n++; if (!c) bad++; console.log((c ? 
   const c = await mp.compress(D + 'Test Book.gbk.twm', { zlib: true });
   ok(c.zipped > 0, `.twm compress: ${c.zipped} topics, ${c.before} → ${c.after} bytes`);
   const b2 = await bm.open(D + 'Test Book.gbk.twm'); const t1 = b2.topics().map(t => b2.topic(t.id).html); b2.close();
-  ok(JSON.stringify(t0) === JSON.stringify(t1), 'compressed book reads exactly the same in Tanglaw');
+  ok(JSON.stringify(t0) === JSON.stringify(t1), 'compressed book reads exactly the same in Timotheos');
   const r2 = await mp.read(D + 'Test Book.gbk.twm'); ok(r2.compressed && !r2.canZlib, 'marked compressed=1');
   // rvf book: zlib refused, nothing changed
   const sz = fs.statSync(D + 'kjva.gbk.twm').size;
   let err = ''; try { await mp.compress(D + 'kjva.gbk.twm', { zlib: true }); } catch (e) { err = e.message; }
-  ok(/RichView/.test(err) && fs.statSync(D + 'kjva.gbk.twm').size === sz && !fs.existsSync(D + 'kjva.gbk.twm.tanglaw-backup'), 'RichView book: zlib refused, file untouched: ' + err.slice(0, 70));
+  ok(/RichView/.test(err) && fs.statSync(D + 'kjva.gbk.twm').size === sz && !fs.existsSync(D + 'kjva.gbk.twm.timotheos-backup'), 'RichView book: zlib refused, file untouched: ' + err.slice(0, 70));
   const c2 = await mp.compress(D + 'kjva.gbk.twm', {}); ok(c2.after <= c2.before, `compact only: ${c2.before} → ${c2.after}`);
   const kb = await bm.open(D + 'kjva.gbk.twm'); ok(kb.topics().length > 10 && kb.topic(kb.topics()[1].id), 'compacted book still opens'); kb.close();
   // e-Sword

@@ -1,5 +1,5 @@
 'use strict';
-// The user's own study data, kept in one JSON file in Tanglaw's data folder:
+// The user's own study data, kept in one JSON file in Timotheos's data folder:
 //   bookmarks[10]  lists{name:[{b,c,v,v2,bible}]}  highlights{bibleId:{"b.c.v":[{s,e,style}]}}
 //   notes{"b.c.v": {html, t}}  plans[]  searchHistory[]  ranges{name:text}  copy{…}
 //   bookMarks{moduleId:{topicId:[{s,e,style}]}}  (your marks in commentaries, dictionaries and books)

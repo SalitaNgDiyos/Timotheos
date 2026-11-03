@@ -9,7 +9,7 @@ const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   // RichView
   const rv = state.modules.books.find(b => /RVF Test/.test(b.name));
   ok(rv && rv.kind === 'book', 'the RichView module is listed as a book: ' + (rv ? rv.name + ' / ' + rv.kind : 'none'));
-  await TanglawModules.openBookModule(rv.id); await sleep(800);
+  await TimotheosModules.openBookModule(rv.id); await sleep(800);
   const tp = [...document.querySelectorAll('#libTopics li[data-tid]')].find(li => /Grace/.test(li.textContent)); if (tp) tp.click(); await sleep(700);
   const body = $('#libBody');
   ok(/Grace is the free favour of God/.test(body.textContent) && !/cannot display/.test(body.textContent), 'RichView text shown: ' + body.textContent.replace(/\s+/g, ' ').slice(0, 70));
@@ -23,21 +23,21 @@ const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   ok(document.querySelector('[data-panel="bsearch"]') && document.querySelector('[data-panel="search"]'), 'Bible search and Book search are two panels');
   openTab('bsearch', true); await sleep(300);
   ok(document.activeElement === $('#bsInput'), 'the Book search panel opens with the cursor in its box');
-  await TanglawBookSearch.run('favour'); await sleep(300);
+  await TimotheosBookSearch.run('favour'); await sleep(300);
   const hits = [...document.querySelectorAll('#bsResults .bshit')];
   ok(hits.some(h => h.dataset.mod === rv.id) && /favour/.test($('#bsResults mark').textContent), 'finds words inside RichView topics, marked: ' + $('#bsStatus').textContent);
-  await TanglawBookSearch.run('"God so loved"'); await sleep(200);
+  await TimotheosBookSearch.run('"God so loved"'); await sleep(200);
   const h2 = [...document.querySelectorAll('#bsResults .bshit')];
   ok(h2.length >= 1 && /Commentary|commentar/i.test($('#bsResults').textContent), 'a phrase in a commentary: ' + $('#bsStatus').textContent);
   h2[0].click(); await sleep(1200);
   ok($('#libBody mark.bsmark'), 'clicking a result opens it in the Library with the words marked');
   // one kind only
-  $('#bsScope').value = 'dictionary'; await TanglawBookSearch.run('love'); await sleep(200);
+  $('#bsScope').value = 'dictionary'; await TimotheosBookSearch.run('love'); await sleep(200);
   const kinds = new Set([...document.querySelectorAll('#bsResults .bshit')].map(h => state.modules.books.find(b => b.id === h.dataset.mod).kind));
   ok(kinds.size === 1 && kinds.has('dictionary'), 'searching only the dictionaries: ' + $('#bsStatus').textContent);
   // a module set
-  save({ moduleSets: { 'Just the RichView': [rv.id] } }); TanglawBookSearch.fillScope();
-  $('#bsScope').value = 'set:Just the RichView'; await TanglawBookSearch.run('faith'); await sleep(200);
+  save({ moduleSets: { 'Just the RichView': [rv.id] } }); TimotheosBookSearch.fillScope();
+  $('#bsScope').value = 'set:Just the RichView'; await TimotheosBookSearch.run('faith'); await sleep(200);
   const h3 = [...document.querySelectorAll('#bsResults .bshit')];
   ok(h3.length >= 1 && h3.every(h => h.dataset.mod === rv.id), 'a module set limits the search: ' + $('#bsStatus').textContent);
   // the Bible search is untouched

@@ -8,7 +8,7 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
 (async () => {
   await sleep(2500);
   const book = state.modules.books.find(b => /Edit Book/.test(b.name));
-  await TanglawModules.openBookModule(book.id); await sleep(500);
+  await TimotheosModules.openBookModule(book.id); await sleep(500);
   const side = document.getElementById('libSide').getBoundingClientRect(), body = document.getElementById('libBody').getBoundingClientRect();
   ok(side.left < body.left && Math.abs(side.top - body.top) < 40, `topics on the left (${Math.round(side.left)}) of the text (${Math.round(body.left)})`);
   const items = () => [...document.querySelectorAll('#libTopics li[data-tid]')];
@@ -27,7 +27,7 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
   pe(sp, 'pointerdown', r.left + 2, r.top + 20); pe(sp, 'pointermove', r.left + 72, r.top + 20); pe(sp, 'pointerup', r.left + 72, r.top + 20); await sleep(400);
   const w1 = document.getElementById('libSide').offsetWidth;
   ok(Math.abs(w1 - w0 - 70) <= 2, `drag the edge: topic list ${w0} → ${w1}px`);
-  const st = await api.getSettings(); ok(st.appearance.libSideW === TanglawOptions.appearance().libSideW, 'width saved (' + st.appearance.libSideW + ')');
+  const st = await api.getSettings(); ok(st.appearance.libSideW === TimotheosOptions.appearance().libSideW, 'width saved (' + st.appearance.libSideW + ')');
   document.getElementById('libSideBtn').click(); await sleep(100);
   ok(document.getElementById('libSide').classList.contains('hidden') && document.getElementById('libBody').offsetWidth > w1, 'topic list can be hidden');
   document.getElementById('libSideBtn').click(); await sleep(100);
@@ -42,7 +42,7 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
   document.getElementById('ppAbout').innerHTML = '<p>About <b>this</b> book.</p>'; document.getElementById('ppAbout').dispatchEvent(new Event('input'));
   ok(!document.getElementById('ppSave').disabled, 'Save is enabled after edits');
   document.getElementById('ppSave').click(); await sleep(1500);
-  ok(/Saved/.test(document.getElementById('ppNote').textContent) && /tanglaw-backup/.test(document.getElementById('ppNote').textContent), 'saved, backup kept: ' + document.getElementById('ppNote').textContent);
+  ok(/Saved/.test(document.getElementById('ppNote').textContent) && /timotheos-backup/.test(document.getElementById('ppNote').textContent), 'saved, backup kept: ' + document.getElementById('ppNote').textContent);
   const b2 = state.modules.books.find(b => b.id === book.id);
   ok(b2 && b2.title === 'My Edited Book', 'library shows the new title: ' + (b2 && b2.title));
   ok(/About\s+this\s+book/.test(document.getElementById('ppAbout').textContent) && document.querySelector('#ppAbout b, #ppAbout [style*="bold"]'), 'About text read back from the module (RTF → HTML)');
@@ -51,16 +51,16 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
   document.getElementById('ppZlib').checked = true; document.getElementById('ppCompress').click(); await sleep(2000);
   ok(/→/.test(document.getElementById('ppResult').textContent) && /compressed/.test(document.getElementById('ppCard').textContent), 'compressed: ' + document.getElementById('ppResult').textContent);
   document.getElementById('ppCancel').click(); await sleep(300);
-  await TanglawModules.openBookModule(book.id); await sleep(400);
+  await TimotheosModules.openBookModule(book.id); await sleep(400);
   ok(items().length >= 3 && document.getElementById('libBody').textContent.length > 20, 'compressed module still reads in the Library: ' + document.querySelector('#libBody h4').textContent);
   // restore
-  await TanglawProps.open(book.id, 'file'); await sleep(300);
+  await TimotheosProps.open(book.id, 'file'); await sleep(300);
   document.getElementById('ppRestore').click(); await sleep(300);
   [...document.querySelectorAll('#modalBtns button')].find(b => b.textContent === 'OK').click(); await sleep(1500);
   ok(/original file is back/.test(document.getElementById('ppNote').textContent) && state.modules.books.find(b => b.id === book.id).title === 'Edit Book', 'restored the original');
   document.getElementById('ppCancel').click();
   // Bible properties (read-only check: theWord's KJV stays untouched — only opened)
-  await TanglawProps.open('tw:kjv.ont'); await sleep(300);
+  await TimotheosProps.open('tw:kjv.ont'); await sleep(300);
   ok(/King James/.test(document.getElementById('ppAbout').textContent) || document.querySelectorAll('#ppPages input').length > 3, 'Bible properties shown (' + document.getElementById('ppTitle').textContent + ')');
   window.__shot = true;
   ok(window.__errs.length === 0, 'no script errors ' + JSON.stringify(window.__errs));

@@ -10,7 +10,7 @@ const { openDb } = require('./sqlite');
 const canon = require('./canon');
 const esw = require('./eswordfmt');
 
-// Known chapter counts of apocryphal books (Tanglaw ids), used to warn when the numbering looks wrong.
+// Known chapter counts of apocryphal books (Timotheos ids), used to warn when the numbering looks wrong.
 const AP_CHAPTERS = { 67: 14, 68: 16, 70: 19, 71: 51, 77: 16, 78: 15, 79: 9, 82: 7, 83: 16, 84: 18 };
 
 function str(v) { return v == null ? '' : typeof v === 'string' ? v : Buffer.from(v).toString('utf8'); }

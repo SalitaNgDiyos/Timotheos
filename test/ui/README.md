@@ -1,4 +1,4 @@
-Headless UI checks (Linux + xvfb). `run.sh <script.js> <out.png> [wait-ms]` starts Tanglaw with a fresh
+Headless UI checks (Linux + xvfb). `run.sh <script.js> <out.png> [wait-ms]` starts Timotheos with a fresh
 data folder whose settings.json points at the test module folders, runs the script inside the page,
 and saves a screenshot. `features.js` drives navigation keys, bookmarks, quick keys, paragraph mode,
 the right-click menu, highlighting, notes, verse lists, search, rows layout, differences and reading

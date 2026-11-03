@@ -1,7 +1,7 @@
 'use strict';
 /* Module properties window: shows a module's information as a readable page and lets you edit it;
  * "File & size" compacts or compresses the module file. Works for Bibles and library modules. */
-/* global api, state, esc, sanitize, refreshModules, TanglawModules, TanglawIcons */
+/* global api, state, esc, sanitize, refreshModules, TimotheosModules, TimotheosIcons */
 (function () {
   const $ = s => document.querySelector(s);
   let cur = null;      // { id, info }
@@ -13,7 +13,7 @@
 
   async function open(id, page) {
     let info;
-    try { info = await api.modProps(id); } catch (e) { return TanglawModules.messageBox('Properties', esc(e.message)); }
+    try { info = await api.modProps(id); } catch (e) { return TimotheosModules.messageBox('Properties', esc(e.message)); }
     cur = { id, info }; dirty = {}; aboutDirty = false;
     render(page || 'about');
     $('#propsDlg').classList.remove('hidden');
@@ -28,7 +28,7 @@
       <div class="small ppfile" title="${esc(i.file)}">${esc(i.name)} · ${kb(i.size)}</div>`;
     const pages = $('#ppPages');
     const ro = !i.editable;
-    const note = ro ? `<p class="note">${TanglawIcons.icon('info', 14)} This module cannot be changed: ${esc(i.reason)}.</p>` : '';
+    const note = ro ? `<p class="note">${TimotheosIcons.icon('info', 14)} This module cannot be changed: ${esc(i.reason)}.</p>` : '';
     pages.innerHTML = `
       <section class="optpage" data-p="about">${note}
         <div class="pptools ${ro ? 'hidden' : ''}"><button id="ppEdit" data-icon="edit" data-icon-size="15">Edit</button>
@@ -50,11 +50,11 @@
         <h4>Make the file smaller</h4>
         ${!i.canCompact ? '<p class="small">theWord Bibles (.ont/.ot/.nt) are plain text files; there is nothing to compact.</p>' : ro ? note : `
         <label class="ppopt"><input type="checkbox" checked disabled> <span><b>Compact</b> – removes unused space inside the file. Nothing in the module changes; theWord and e-Sword read it as before.</span></label>
-        ${i.ext === 'twm' ? `<label class="ppopt"><input type="checkbox" id="ppZlib" ${i.canZlib ? '' : 'disabled'}> <span><b>Compress the text</b> (zlib, theWord's “compressed” setting)${i.compressed ? ' – already compressed' : ''}. Tanglaw reads such modules; whether theWord reads a module compressed by Tanglaw has not been checked yet, so test it in theWord and keep the backup until you have.</span></label>` : '<p class="small">e-Sword has no compressed form for this kind of module, so only compacting is offered.</p>'}
+        ${i.ext === 'twm' ? `<label class="ppopt"><input type="checkbox" id="ppZlib" ${i.canZlib ? '' : 'disabled'}> <span><b>Compress the text</b> (zlib, theWord's “compressed” setting)${i.compressed ? ' – already compressed' : ''}. Timotheos reads such modules; whether theWord reads a module compressed by Timotheos has not been checked yet, so test it in theWord and keep the backup until you have.</span></label>` : '<p class="small">e-Sword has no compressed form for this kind of module, so only compacting is offered.</p>'}
         <div class="row"><button id="ppCompress" class="primary" data-icon="compress" data-icon-size="15">Make smaller</button><span id="ppResult" class="small"></span></div>`}
         ${i.backup && !ro ? `<h4>Undo all changes</h4><div class="row"><button id="ppRestore" data-icon="undo" data-icon-size="15">Put the original file back</button></div>` : ''}
       </section>`;
-    TanglawIcons.fillIcons(pages);
+    TimotheosIcons.fillIcons(pages);
     // navigation
     $('#ppNav').querySelectorAll('button[data-p]').forEach(b => b.onclick = () => show(b.dataset.p));
     show(page);
@@ -71,7 +71,7 @@
     pages.querySelectorAll('#ppFmt [data-cmd]').forEach(b => b.onmousedown = e => { e.preventDefault(); document.execCommand(b.dataset.cmd); aboutDirty = true; updateSave(); });
     const cb = $('#ppCompress'); if (cb) cb.onclick = compress;
     const rb = $('#ppRestore'); if (rb) rb.onclick = restore;
-    $('#ppNote').textContent = i.editable ? 'Before the first change Tanglaw keeps a copy of the original file.' : '';
+    $('#ppNote').textContent = i.editable ? 'Before the first change Timotheos keeps a copy of the original file.' : '';
     updateSave();
   }
   function show(p) {
@@ -83,8 +83,8 @@
   async function afterChange(id) {
     state.infos.clear();
     await refreshModules();
-    const L = TanglawModules.lib;
-    if (L.cur === id) { L.cur = null; await TanglawModules.openBookModule(id); }
+    const L = TimotheosModules.lib;
+    if (L.cur === id) { L.cur = null; await TimotheosModules.openBookModule(id); }
   }
   async function save() {
     const id = cur.id;
@@ -100,7 +100,7 @@
       await afterChange(id);
       render(activePage());
       flashNote('Saved.' + (r.backup ? ' The original is kept as ' + r.backup.split(/[\\/]/).pop() + '.' : ''));
-    } catch (e) { TanglawModules.messageBox('Could not save', esc(e.message)); }
+    } catch (e) { TimotheosModules.messageBox('Could not save', esc(e.message)); }
   }
   function activePage() { const b = $('#ppNav button.on'); return b ? b.dataset.p : 'about'; }
   function flashNote(t) { $('#ppNote').textContent = t; }
@@ -117,16 +117,16 @@
       $('#ppResult').textContent = `${kb(r.before)} → ${kb(r.after)} (${pct > 0 ? pct + '% smaller' : 'no change: there was no unused space'})${r.zipped ? `; text of ${r.zipped} topics compressed` : ''}.`;
     } catch (e) {
       $('#ppCompress').disabled = false; $('#ppResult').textContent = '';
-      TanglawModules.messageBox('Not made smaller', esc(e.message));
+      TimotheosModules.messageBox('Not made smaller', esc(e.message));
     }
   }
   async function restore() {
-    if (!await TanglawModules.confirmBox('Put the original back', 'Replace this module with the copy kept before your first change? All changes made in Tanglaw are undone.')) return;
+    if (!await TimotheosModules.confirmBox('Put the original back', 'Replace this module with the copy kept before your first change? All changes made in Timotheos are undone.')) return;
     try { await api.modRestore(cur.id); cur.info = await api.modProps(cur.id); await afterChange(cur.id); render('file'); flashNote('The original file is back.'); }
-    catch (e) { TanglawModules.messageBox('Could not restore', esc(e.message)); }
+    catch (e) { TimotheosModules.messageBox('Could not restore', esc(e.message)); }
   }
   async function close() {
-    if ((Object.keys(dirty).length || aboutDirty) && !await TanglawModules.confirmBox('Unsaved changes', 'Close without saving your changes?')) return;
+    if ((Object.keys(dirty).length || aboutDirty) && !await TimotheosModules.confirmBox('Unsaved changes', 'Close without saving your changes?')) return;
     $('#propsDlg').classList.add('hidden'); cur = null;
   }
 
@@ -135,5 +135,5 @@
     $('#ppCancel').onclick = close; $('#ppClose').onclick = close;
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#propsDlg').classList.contains('hidden') && $('#modal').classList.contains('hidden')) { e.stopPropagation(); close(); } }, true);
   }
-  window.TanglawProps = { init, open, close };
+  window.TimotheosProps = { init, open, close };
 })();

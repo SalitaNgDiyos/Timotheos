@@ -1,7 +1,7 @@
 'use strict';
 /* Book search panel: words in commentaries, dictionaries, books, devotionals and maps – apart from the
  * Bible search, as in theWord. Supports Boolean (AND, OR, NOT, XOR), NEARw (@n), wildcards, and regex. */
-/* global api, state, save, esc, TanglawModules, TanglawStudy */
+/* global api, state, save, esc, TimotheosModules, TimotheosStudy */
 (function () {
   const $ = s => document.querySelector(s);
   const KINDS = [['all', 'All book modules'], ['commentary', 'Commentaries'], ['dictionary', 'Dictionaries'], ['book', 'Books'], ['devotional', 'Devotionals'], ['map', 'Maps & images']];
@@ -49,7 +49,7 @@
   /** open a result in the Library, with the words marked */
   async function openHit(li) {
     const tid = isNaN(+li.dataset.tid) ? li.dataset.tid : +li.dataset.tid;
-    await TanglawModules.openBookModule(li.dataset.mod, tid);
+    await TimotheosModules.openBookModule(li.dataset.mod, tid);
     document.querySelectorAll('#bsResults .bshit.cur').forEach(x => x.classList.remove('cur')); li.classList.add('cur');
     if (last) markIn($('#libBody'), last.words);
   }
@@ -93,12 +93,12 @@
     const html = `<label class="field">Name of the set <input id="msName" type="text" value="${esc(cur)}" placeholder="e.g. My commentaries"></label>
       <div class="mslist">${mods.map(m => `<label><input type="checkbox" value="${esc(m.id)}"${inSet.has(m.id) ? ' checked' : ''}> ${esc(m.opened ? m.title : m.name)} <span class="small">${esc(KIND_NAME[m.kind])}</span></label>`).join('')}</div>
       ${Object.keys(sets()).length ? `<p class="small">Your sets: ${Object.keys(sets()).map(esc).join(', ')}. Saving under an existing name replaces that set.</p>` : ''}`;
-    const r = await TanglawModules.modal('Module sets', html, [cur ? { label: 'Delete this set', value: 'del' } : null, { label: 'Cancel', value: null }, { label: 'Save set', value: 'save', primary: true }].filter(Boolean));
+    const r = await TimotheosModules.modal('Module sets', html, [cur ? { label: 'Delete this set', value: 'del' } : null, { label: 'Cancel', value: null }, { label: 'Save set', value: 'save', primary: true }].filter(Boolean));
     const all = Object.assign({}, sets());
     if (r === 'del' && cur) { delete all[cur]; save({ moduleSets: all }); fillScope(); $('#bsScope').value = 'all'; return; }
     if (r !== 'save') return;
     const name = (($('#msName') || {}).value || '').trim(); const ids = [...document.querySelectorAll('.mslist input:checked')].map(i => i.value);
-    if (!name || !ids.length) return TanglawStudy.flash('A set needs a name and at least one module');
+    if (!name || !ids.length) return TimotheosStudy.flash('A set needs a name and at least one module');
     all[name] = ids; save({ moduleSets: all }); fillScope(); $('#bsScope').value = 'set:' + name;
   }
 
@@ -113,5 +113,5 @@
     fillScope();
   }
   function onOpen(focus) { fillScope(); if (focus) $('#bsInput').focus(); }
-  window.TanglawBookSearch = { init, run, onOpen, fillScope, markIn };
+  window.TimotheosBookSearch = { init, run, onOpen, fillScope, markIn };
 })();

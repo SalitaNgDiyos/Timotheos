@@ -13,23 +13,38 @@ const modprops = require('./lib/modprops');
 const usermod = require('./lib/usermod');
 const twstudy = require('./lib/twstudy');
 
-// [E3] Portable Mode detection: if "Tanglaw Data" or "portable.json" exists next to the executable
-// (or TANGLAW_PORTABLE_DIR is set), keep settings, imported modules, and study data there.
+// [E3] Portable Mode detection: if "Timotheos Data" or "portable.json" exists next to the executable
+// (or TIMOTHEOS_PORTABLE_DIR is set), keep settings, imported modules, and study data there.
 (function detectPortableMode() {
   const exeDir = path.dirname(process.execPath);
   const candidates = [
-    process.env.TANGLAW_PORTABLE_DIR,
-    fs.existsSync(path.join(exeDir, 'portable.json')) ? path.join(exeDir, 'Tanglaw Data') : null,
-    fs.existsSync(path.join(exeDir, 'Tanglaw Data')) ? path.join(exeDir, 'Tanglaw Data') : null,
-    fs.existsSync(path.join(__dirname, '..', 'portable.json')) ? path.join(__dirname, '..', 'Tanglaw Data') : null,
+    process.env.TIMOTHEOS_PORTABLE_DIR,
+    fs.existsSync(path.join(exeDir, 'portable.json')) ? path.join(exeDir, 'Timotheos Data') : null,
+    fs.existsSync(path.join(exeDir, 'Timotheos Data')) ? path.join(exeDir, 'Timotheos Data') : null,
+    fs.existsSync(path.join(__dirname, '..', 'portable.json')) ? path.join(__dirname, '..', 'Timotheos Data') : null,
   ].filter(Boolean);
   if (candidates.length) {
     try {
       fs.mkdirSync(candidates[0], { recursive: true });
       app.setPath('userData', candidates[0]);
-      process.env.TANGLAW_IS_PORTABLE = '1';
+      process.env.TIMOTHEOS_IS_PORTABLE = '1';
     } catch (e) { /* fallback to standard userData */ }
   }
+})();
+
+// Timotheos was called Tanglaw Bible: on the first start, take over the settings, modules and study data of the old folder.
+(function takeOverTanglaw() {
+  try {
+    const here = app.getPath('userData');
+    if (fs.existsSync(path.join(here, 'settings.json'))) return;
+    const exeDir = path.dirname(process.execPath);
+    const olds = process.env.TIMOTHEOS_IS_PORTABLE === '1'
+      ? [path.join(exeDir, 'Tanglaw Data')]
+      : [path.join(app.getPath('appData'), 'Tanglaw Bible')];
+    for (const o of olds) {
+      if (o !== here && fs.existsSync(path.join(o, 'settings.json'))) { fs.cpSync(o, here, { recursive: true, force: false }); return; }
+    }
+  } catch (e) { /* start fresh */ }
 })();
 
 const MODULES_DIR = () => path.join(app.getPath('userData'), 'modules');   // imported & user modules live here
@@ -61,7 +76,7 @@ function loadSettings() {
       env.ProgramFiles && path.join(env.ProgramFiles, 'The Word'),
       env.APPDATA && path.join(env.APPDATA, 'e-Sword'),
       env['ProgramFiles(x86)'] && path.join(env['ProgramFiles(x86)'], 'e-Sword'),
-      env.TANGLAW_MODULES,
+      env.TIMOTHEOS_MODULES,
     ].filter(Boolean);
     s.moduleFolders = cands.filter(p => { try { return fs.statSync(p).isDirectory(); } catch (e) { return false; } });
   }
@@ -156,8 +171,8 @@ function createWindow() {
   const wb = resolveWindowBounds(settings.windowBounds, 1280, 860, 720, 480);
   const winOpts = {
     width: wb.width, height: wb.height, minWidth: 720, minHeight: 480,
-    title: 'Tanglaw Bible',
-    // Tanglaw draws its own title bar and menus in the skin's colours; Windows keeps its min/max/close
+    title: 'Timotheos',
+    // Timotheos draws its own title bar and menus in the skin's colours; Windows keeps its min/max/close
     // buttons, recoloured to match (setTitleBarOverlay below)
     titleBarStyle: 'hidden',
     titleBarOverlay: titleBarColours(),
@@ -173,15 +188,15 @@ function createWindow() {
   session.defaultSession.setPermissionCheckHandler((wc, perm) => perm === 'local-fonts');
   session.defaultSession.setPermissionRequestHandler((wc, perm, cb) => cb(perm === 'local-fonts'));
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  if (process.env.TANGLAW_SCREENSHOT) {
+  if (process.env.TIMOTHEOS_SCREENSHOT) {
     // test hook: run a script in the page, capture the window, then quit
     win.webContents.once('did-finish-load', () => setTimeout(async () => {
       try {
-        if (process.env.TANGLAW_SCRIPT) await win.webContents.executeJavaScript(fs.readFileSync(process.env.TANGLAW_SCRIPT, 'utf8'));
-        await new Promise(r => setTimeout(r, +(process.env.TANGLAW_WAIT || 2500)));
+        if (process.env.TIMOTHEOS_SCRIPT) await win.webContents.executeJavaScript(fs.readFileSync(process.env.TIMOTHEOS_SCRIPT, 'utf8'));
+        await new Promise(r => setTimeout(r, +(process.env.TIMOTHEOS_WAIT || 2500)));
         const img = await win.webContents.capturePage();
-        fs.writeFileSync(process.env.TANGLAW_SCREENSHOT, img.toPNG());
-        if (guideWin && !guideWin.isDestroyed()) fs.writeFileSync(process.env.TANGLAW_SCREENSHOT.replace(/\.png$/, '') + '-guide.png', (await guideWin.webContents.capturePage()).toPNG());
+        fs.writeFileSync(process.env.TIMOTHEOS_SCREENSHOT, img.toPNG());
+        if (guideWin && !guideWin.isDestroyed()) fs.writeFileSync(process.env.TIMOTHEOS_SCREENSHOT.replace(/\.png$/, '') + '-guide.png', (await guideWin.webContents.capturePage()).toPNG());
       } catch (e) { console.error('screenshot failed', e); }
       app.quit();
     }, 3000));
@@ -204,7 +219,7 @@ function openGuide(skin) {
   if (guideWin && !guideWin.isDestroyed()) { guideWin.focus(); return; }
   const gwb = resolveWindowBounds(settings.guideWindowBounds, 980, 820, 560, 400);
   const gOpts = {
-    width: gwb.width, height: gwb.height, minWidth: 560, minHeight: 400, title: 'Tanglaw Bible – User Guide',
+    width: gwb.width, height: gwb.height, minWidth: 560, minHeight: 400, title: 'Timotheos – User Guide',
     titleBarStyle: 'hidden', titleBarOverlay: titleBarColours(), backgroundColor: titleBarColours().color,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false },
   };
@@ -233,14 +248,14 @@ function handle(name, fn) {
 
 app.whenReady().then(async () => {
   settings = loadSettings();
-  if (process.env.TANGLAW_MODULES && !settings.moduleFolders.includes(process.env.TANGLAW_MODULES)) settings.moduleFolders.push(process.env.TANGLAW_MODULES);
+  if (process.env.TIMOTHEOS_MODULES && !settings.moduleFolders.includes(process.env.TIMOTHEOS_MODULES)) settings.moduleFolders.push(process.env.TIMOTHEOS_MODULES);
   fs.mkdirSync(MODULES_DIR(), { recursive: true });
   lib = new Library(settings, { extraFolders: [MODULES_DIR()], cacheFile: path.join(app.getPath('userData'), 'module-cache.json') });
   xrefs = new Xrefs(USER_XREFS());
   userData = new UserData(path.join(app.getPath('userData'), 'my-study-data.json'));
   await rescanAll();
 
-  handle('settings:get', () => Object.assign({}, settings, { portable: process.env.TANGLAW_IS_PORTABLE === '1', userDataDir: app.getPath('userData') }));
+  handle('settings:get', () => Object.assign({}, settings, { portable: process.env.TIMOTHEOS_IS_PORTABLE === '1', userDataDir: app.getPath('userData') }));
   ipcMain.handle('win:titlebar', (e, c) => {
     try {
       nativeTheme.themeSource = c.dark ? 'dark' : 'light';
@@ -304,7 +319,7 @@ app.whenReady().then(async () => {
       try { fs.unlinkSync(lf); } catch (e) { await shell.trashItem(lf); }
       return rescanAll();
     }
-    if (!path.resolve(file).startsWith(root + path.sep)) throw new Error('Only modules imported into Tanglaw can be removed here.');
+    if (!path.resolve(file).startsWith(root + path.sep)) throw new Error('Only modules imported into Timotheos can be removed here.');
     lib.release(file);
     await shell.trashItem(file);
     return rescanAll();
@@ -359,7 +374,7 @@ app.whenReady().then(async () => {
   handle('usermod:exportNotes', async (opts = {}) => {
     const dir = path.join(MODULES_DIR(), 'theWord');
     fs.mkdirSync(dir, { recursive: true });
-    const safe = ((opts.title || 'My Tanglaw Notes').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'My Tanglaw Notes') + '.cmt.twm';
+    const safe = ((opts.title || 'My Timotheos Notes').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'My Timotheos Notes') + '.cmt.twm';
     const dest = opts.saveDialog ? (await dialog.showSaveDialog(win, { defaultPath: safe, filters: [{ name: 'theWord Commentary (.cmt.twm)', extensions: ['cmt.twm', 'twm'] }] })).filePath : path.join(dir, safe);
     if (!dest) return null;
     lib.release(dest);
@@ -448,7 +463,7 @@ app.whenReady().then(async () => {
       const r = refObj || (settings && settings.ref) || { b: 43, c: 1, v: 1 };
       const bk = bookName || (canon.book(r.b, settings ? settings.apocryphaPlacement : '1611') || {}).name || ('Book ' + r.b);
       if (win && !win.isDestroyed()) {
-        try { win.setTitle(`${bk} ${r.c}:${r.v} - Tanglaw Bible`); } catch (_) {}
+        try { win.setTitle(`${bk} ${r.c}:${r.v} - Timotheos`); } catch (_) {}
       }
       const outData = {
         b: r.b, c: r.c, v: r.v,

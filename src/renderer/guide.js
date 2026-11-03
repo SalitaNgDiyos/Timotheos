@@ -1,9 +1,9 @@
 'use strict';
-/* User Guide window: takes the colours of the skin chosen in Tanglaw, builds the contents list, finds text. */
-/* global TanglawOptions */
+/* User Guide window: takes the colours of the skin chosen in Timotheos, builds the contents list, finds text. */
+/* global TimotheosOptions */
 (function () {
   const skin = new URLSearchParams(location.search).get('skin') || 'parchment';
-  const sk = TanglawOptions.SKINS[skin] || TanglawOptions.SKINS.parchment;
+  const sk = TimotheosOptions.SKINS[skin] || TimotheosOptions.SKINS.parchment;
   const root = document.documentElement;
   for (const [k, v] of Object.entries(sk.v)) root.style.setProperty('--' + k, v);
   root.dataset.theme = sk.dark ? 'dark' : 'light';

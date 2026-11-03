@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('assert'); const fs = require('fs'); const path = require('path'); const { execFileSync } = require('child_process');
 const { importFiles } = require('../src/lib/importer');
-const D = process.env.TANGLAW_TESTMODS || '/home/claude/testmods';
+const D = process.env.TIMOTHEOS_TESTMODS || '/home/claude/testmods';
 const W = '/tmp/claude-0/imptest'; fs.rmSync(W, { recursive: true, force: true }); fs.mkdirSync(W + '/in', { recursive: true });
 // a .twzip with a commentary + a Bible, and a zip with an e-Sword module plus a readme
 execFileSync('python3', ['-I', '-c', `

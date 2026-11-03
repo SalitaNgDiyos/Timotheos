@@ -1,10 +1,10 @@
-// Reader tests against synthetic modules (TANGLAW_TESTMODS) – run: node test/readers.test.js
+// Reader tests against synthetic modules (TIMOTHEOS_TESTMODS) – run: node test/readers.test.js
 'use strict';
 const assert = require('assert');
 const path = require('path');
 const { Library } = require('../src/lib/library');
 const { Xrefs } = require('../src/lib/xrefs');
-const D = process.env.TANGLAW_TESTMODS || '/home/claude/testmods';
+const D = process.env.TIMOTHEOS_TESTMODS || '/home/claude/testmods';
 let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; };
 (async () => {
   const lib = new Library({ moduleFolders: [D], apocryphaPlacement: '1611' });

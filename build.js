@@ -1,8 +1,8 @@
 const { packager } = require('@electron/packager');
 const fs = require('fs');
 const path = require('path');
-// Size: Electron itself (TanglawBible.exe and its DLLs) cannot be made smaller here, but two big parts
-// are not needed: Chromium's translations of its own built-in messages for 55 languages (Tanglaw's
+// Size: Electron itself (Timotheos.exe and its DLLs) cannot be made smaller here, but two big parts
+// are not needed: Chromium's translations of its own built-in messages for 55 languages (Timotheos's
 // windows are its own; English and Filipino are kept) and the 18 spare builds of sql.js
 // (only sql-wasm.js + sql-wasm.wasm are used).
 const KEEP_LOCALES = new Set(['en-US.pak', 'fil.pak']);
@@ -34,14 +34,14 @@ function trimApp(buildPath, electronVersion, platform, arch, done) {
   done();
 }
 (async () => {
-  const outDir = process.env.TANGLAW_OUT || (fs.existsSync('/home/claude') ? '/home/claude/tanglaw-dist' : path.join(__dirname, 'dist'));
+  const outDir = process.env.TIMOTHEOS_OUT || (fs.existsSync('/home/claude') ? '/home/claude/timotheos-dist' : path.join(__dirname, 'dist'));
   const opts = {
     dir: __dirname, out: outDir, overwrite: true,
     platform: 'win32', arch: 'x64', electronVersion: '37.10.3',
-    name: 'Tanglaw Bible', executableName: 'TanglawBible', appVersion: require('./package.json').version,
+    name: 'Timotheos', executableName: 'Timotheos', appVersion: require('./package.json').version,
     asar: true, prune: true, afterExtract: [trimElectron], afterPrune: [trimApp],
     ignore: [/^\/build\.js$/, /^\/installer($|\/)/, /^\/test($|\/)/, /^\/node_modules\/electron($|\/)/, /^\/node_modules\/@electron($|\/)/, /^\/dist($|\/)/],
-    win32metadata: { CompanyName: 'Tanglaw Bible', FileDescription: 'Tanglaw Bible', ProductName: 'Tanglaw Bible' },
+    win32metadata: { CompanyName: 'Timotheos', FileDescription: 'Timotheos', ProductName: 'Timotheos' },
   };
   if (process.env.ELECTRON_ZIP_DIR) opts.electronZipDir = process.env.ELECTRON_ZIP_DIR;
   else if (fs.existsSync('/tmp/ezip')) opts.electronZipDir = '/tmp/ezip';

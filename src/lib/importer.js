@@ -1,5 +1,5 @@
 'use strict';
-// "Import modules…": checks each chosen file, copies usable modules into Tanglaw's own module
+// "Import modules…": checks each chosen file, copies usable modules into Timotheos's own module
 // folder (<userData>/modules/theWord, /e-Sword, /USFM, or /USFX) and reports what happened to every file.
 // Archives (.zip, .twzip) are unpacked; multi-file USFM archives (e.g. eBible.org *_usfm.zip) are
 // bundled into a single consolidated .usfm Bible module. Verse lists (.vsls.twm) and reading plans
@@ -56,7 +56,7 @@ function isModuleName(n) {
   return TW_BIBLE.test(n) || TW_LOCKED.test(n) || TW_BOOK.test(n) || ES_BIBLE.test(n) || ES_BOOK.test(n) || ES_OTHER.test(n) || USFM_BIBLE.test(n) || USFX_BIBLE.test(n);
 }
 
-/** what kind of module is this file, and can Tanglaw open it? (does not copy) */
+/** what kind of module is this file, and can Timotheos open it? (does not copy) */
 async function inspect(file, settings) {
   const name = path.basename(file);
   const fmt = /\.twm$|\.(ont|ot|nt)x?$/i.test(name) ? 'theWord'
@@ -91,7 +91,7 @@ async function inspect(file, settings) {
       Object.assign(r, { kind: 'reading plan', title: rp.name, ok: true, studyData: { readingPlan: rp } });
       return r;
     }
-    if (/\.(lyts|bhls)\.twm$/i.test(name)) { r.kind = 'theWord settings/data file'; r.reason = 'layouts and highlight files from theWord are not modules Tanglaw uses'; return r; }
+    if (/\.(lyts|bhls)\.twm$/i.test(name)) { r.kind = 'theWord settings/data file'; r.reason = 'layouts and highlight files from theWord are not modules Timotheos uses'; return r; }
     if (/\.gbk\.twm$/i.test(name) && await twbook.probe(file).catch(() => false)) { const m = await twbook.load(file); Object.assign(r, { kind: 'Bible text (book module)', title: m.title, ok: true }); if (m.close) m.close(); return r; }
     if (TW_BOOK.test(name) || ES_BOOK.test(name)) {
       const m = await bookmod.open(file);
@@ -111,7 +111,7 @@ async function inspect(file, settings) {
  */
 async function importFiles(paths, destRoot, settings = {}, userData = null) {
   const results = [];
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tanglaw-import-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'timotheos-import-'));
   const queue = [];
 
   // Check if multiple loose per-book .usfm/.sfm files were chosen together; if so, bundle them into one .usfm Bible
@@ -130,7 +130,7 @@ async function importFiles(paths, destRoot, settings = {}, userData = null) {
   for (const p of paths) {
     if (handledLooseUsfm.has(p)) continue;
     const name = path.basename(p);
-    if (/\.exe$/i.test(name)) { results.push({ name, from: p, status: 'skipped', reason: 'installer program – Tanglaw does not run installers. Unpack the module file from it (or install it in e-Sword/theWord) and import the module file itself.' }); continue; }
+    if (/\.exe$/i.test(name)) { results.push({ name, from: p, status: 'skipped', reason: 'installer program – Timotheos does not run installers. Unpack the module file from it (or install it in e-Sword/theWord) and import the module file itself.' }); continue; }
     if (ARCHIVE.test(name)) {
       try {
         const buf = fs.readFileSync(p);
@@ -183,7 +183,7 @@ async function importFiles(paths, destRoot, settings = {}, userData = null) {
     const dir = path.join(destRoot, info.format);
     fs.mkdirSync(dir, { recursive: true });
     const dest = path.join(dir, info.name);
-    const linkDest = dest + '.tanglaw-link';
+    const linkDest = dest + '.timotheos-link';
     let status = 'imported';
     if (fs.existsSync(dest)) {
       const same = filesAreSame(dest, q.file);

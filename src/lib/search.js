@@ -1,6 +1,6 @@
 'use strict';
 // Bible search engine. The query language follows the behaviour described in theWord's user manual
-// (Boolean searches, Regex searches, Detailed/Options tabs); the code is Tanglaw's own.
+// (Boolean searches, Regex searches, Detailed/Options tabs); the code is Timotheos's own.
 //
 //   words, w*rd, ?use        word terms; * = any letters, ? = zero or one letter
 //   "a phrase"   {a b c}     exact phrase / consecutive words
@@ -51,7 +51,7 @@ function applySearchRules(raw, mod, b) {
 }
 
 /**
- * Turns verse markup (theWord tags or Tanglaw HTML) into:
+ * Turns verse markup (theWord tags or Timotheos HTML) into:
  *   plain: visible text; words: [{t, s, e, g}] (text, char start/end, segment index);
  *   segs:  [{strongs, morphs, lemmas, w0, w1}] – a run of text and the tags that follow it
  */

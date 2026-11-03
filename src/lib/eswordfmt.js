@@ -12,7 +12,7 @@
 const { rtfToHtml } = require('./rtf');
 const canon = require('./canon');
 
-// Standard e-Sword / BibleMultiConverter Apocrypha book numbers (67..87) -> Tanglaw book ids.
+// Standard e-Sword / BibleMultiConverter Apocrypha book numbers (67..87) -> Timotheos book ids.
 const ESWORD_AP = {
   67: 67, // Tobit (14 ch)
   68: 68, // Judith (16 ch)
@@ -112,13 +112,13 @@ const ESWORD_SCHEMES = {
     75: 75, 76: 76, 77: 77, 78: 78, 79: 82, 80: 84, 81: 81, 82: 80,
     83: 83, 84: 85, 85: 86,
   }),
-  // Direct Tanglaw IDs (67..87)
+  // Direct Timotheos IDs (67..87)
   direct: (() => { const m = {}; for (let i = 1; i <= 87; i++) m[i] = i; return m; })(),
   catholic_inline_drb: MAP_CATHOLIC_DRB,
   catholic_inline_nab: MAP_CATHOLIC_NAB,
 };
 
-// Expected chapter counts for Tanglaw Apocrypha/Deuterocanonical book IDs (67..87)
+// Expected chapter counts for Timotheos Apocrypha/Deuterocanonical book IDs (67..87)
 const EXPECTED_AP_CHS = {
   67: [14],
   68: [16],
@@ -269,7 +269,7 @@ function detectBookMap(chCounts = {}, firstVerses = {}, customOverride = {}) {
 }
 
 /**
- * Map an e-Sword (Book, Chapter) pair to Tanglaw [book, chapter], splitting embedded
+ * Map an e-Sword (Book, Chapter) pair to Timotheos [book, chapter], splitting embedded
  * Deuterocanonical chapters (Daniel 13 -> Susanna, Daniel 14 -> Bel, Esther 11-16 -> Additions to Esther,
  * Baruch 6 -> Letter of Jeremiah, Psalms 151 -> Psalm 151) when no standalone book already occupies that ID.
  */
@@ -358,7 +358,7 @@ function formatPlainTextTopic(s, inline) {
 }
 
 /**
- * e-Sword 11 HTML -> Tanglaw HTML.
+ * e-Sword 11 HTML -> Timotheos HTML.
  * @param notes optional map "N1" -> note html (Bible Notes table)
  */
 function v11(s, notes, inline) {

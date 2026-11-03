@@ -1,5 +1,5 @@
 'use strict';
-// Comprehensive automated test suite for Tanglaw Bible 0.4.9 (Categories A through F).
+// Comprehensive automated test suite for Timotheos 0.4.9 (Categories A through F).
 // Runs standalone on Node 18+ (using Python's built-in sqlite3 when node:sqlite / sql.js is not installed).
 const assert = require('assert');
 const fs = require('fs');
@@ -53,14 +53,14 @@ class PyDatabaseSync {
   close() {}
 }
 
-global.__TANGLAW_SQLITE_SHIM = PyDatabaseSync;
+global.__TIMOTHEOS_SQLITE_SHIM = PyDatabaseSync;
 
 // Also shim dict.js sqljs() when node_modules/sql.js is absent
 const dictMod = require('../src/lib/dict');
 dictMod.sqljs = async () => ({
   Database: class {
     constructor(buf) {
-      this.tmp = path.join(os.tmpdir(), 'tanglaw-sqljs-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.sqlite');
+      this.tmp = path.join(os.tmpdir(), 'timotheos-sqljs-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.sqlite');
       if (buf) fs.writeFileSync(this.tmp, Buffer.from(buf));
     }
     exec(sql, params) {
@@ -107,8 +107,8 @@ function ok(cond, msg) {
 }
 
 (async () => {
-  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'tanglaw-049-test-'));
-  console.log('Running Tanglaw Bible 0.4.9 verification suite in', work);
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'timotheos-049-test-'));
+  console.log('Running Timotheos 0.4.9 verification suite in', work);
 
   // =========================================================================
   // Category F: Bug Fixes (F1–F5)
@@ -596,7 +596,7 @@ function ok(cond, msg) {
   };
   require("../src/renderer/icons.js");
   require("../src/renderer/nav-ui.js");
-  const tNav = global.window.TanglawNav;
+  const tNav = global.window.TimotheosNav;
   ok(
     tNav &&
     typeof tNav.init === "function" &&
@@ -611,7 +611,7 @@ function ok(cond, msg) {
     tNav.bookCategory(66, "NT").id === "apoc" &&
     wbCss.includes(".navpop") &&
     iconsJs.includes("prevBook"),
-    "[I4] TanglawNav module initializes cleanly and classifies all 9 canonical book divisions across OT, Deuterocanon, and NT"
+    "[I4] TimotheosNav module initializes cleanly and classifies all 9 canonical book divisions across OT, Deuterocanon, and NT"
   );
 
 
@@ -823,12 +823,12 @@ function ok(cond, msg) {
   );
   ok(
     opts059.includes("function stepUiSize") &&
-    app059.includes("TanglawOptions.stepUiSize") &&
+    app059.includes("TimotheosOptions.stepUiSize") &&
     app059.includes("state.settings.bibleZoom = z") &&
     idx058.includes('id="uiSize" min="11" max="22"') &&
     idx058.includes('id="paneSize" min="11" max="24"') &&
     pkg059.version === "0.6.0" &&
-    app059.includes("Tanglaw Bible 0.6.0"),
+    app059.includes("Timotheos 0.6.0"),
     "[N3] options.js, app.js, and index.html support expanded UI/pane font scaling (up to 22px/24px), Ctrl+Wheel UI chrome scaling, and version 0.5.9"
   );
 

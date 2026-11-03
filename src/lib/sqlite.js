@@ -10,7 +10,7 @@ const emit = process.emitWarning;
 process.emitWarning = function (w, ...rest) { if (/SQLite is an experimental feature/.test(String(w && w.message || w))) return; return emit.call(process, w, ...rest); };
 let DatabaseSync = null;
 try { ({ DatabaseSync } = require('node:sqlite')); } catch (e) {
-  if (global.__TANGLAW_SQLITE_SHIM) DatabaseSync = global.__TANGLAW_SQLITE_SHIM;
+  if (global.__TIMOTHEOS_SQLITE_SHIM) DatabaseSync = global.__TIMOTHEOS_SQLITE_SHIM;
 }
 process.emitWarning = emit;
 

@@ -1,6 +1,6 @@
 'use strict';
 /* global api, state, $, esc, go, openTab, save, setShow, renderChapter, selectVerse, step, stepBook, historyGo, font,
-   TWRender, EMPTY_MOD, refName, TanglawModules, TanglawOptions, effShow, activeText, ownSwitchKeys, toggleOwnSwitch, refreshModules */
+   TWRender, EMPTY_MOD, refName, TimotheosModules, TimotheosOptions, effShow, activeText, ownSwitchKeys, toggleOwnSwitch, refreshModules */
 // Study tools modelled on theWord's manual: View options & quick keys, history keys, bookmarks 0–9,
 // verse lists (with .vsls.twm export), user highlighting, personal verse notes (with .cmt.twm export),
 // Copy Verses dialog, compare differences, paragraph mode, Bible tree, reading plans (with .rdp.twm export).
@@ -80,7 +80,7 @@ function wireKeys() {
     if (!e.ctrlKey && !e.altKey && !e.metaKey && d != null) { e.preventDefault(); return typeNumber(d, e.shiftKey); }
 
     // [E2] Check customizable shortcuts
-    const sc = window.TanglawOptions && TanglawOptions.shortcuts ? TanglawOptions.shortcuts() : {};
+    const sc = window.TimotheosOptions && TimotheosOptions.shortcuts ? TimotheosOptions.shortcuts() : {};
     const cb = comboOf(e);
     if (sc.addVerseList && sc.addVerseList.toLowerCase() === cb) { e.preventDefault(); return addToList([{ ...state.ref }]); }
     if (sc.layoutCols && sc.layoutCols.toLowerCase() === cb) { e.preventDefault(); return setLayout('cols'); }
@@ -247,8 +247,8 @@ function showNotes(p) {
 }
 async function editNote(k) {
   const r = parseKey(k); const cur = (study.ud.notes[k] || {}).html || '';
-  const html = `<div class="row tight noted"><button type="button" data-cmd="bold"><b>B</b></button><button type="button" data-cmd="italic"><i>I</i></button><button type="button" data-cmd="underline"><u>U</u></button><button type="button" data-cmd="insertUnorderedList">• List</button></div><div id="noteEd" class="noteed" contenteditable="true">${cur}</div><p class="small">Saved in Tanglaw's study data. Bible references you type (e.g. Rom 5:8) become links.</p>`;
-  const p = TanglawModules.modal(`My note on ${refName(r)}`, html, [cur ? { label: 'Delete note', value: 'del' } : null, { label: 'Cancel', value: null }, { label: 'Save', value: 'save', primary: true }].filter(Boolean));
+  const html = `<div class="row tight noted"><button type="button" data-cmd="bold"><b>B</b></button><button type="button" data-cmd="italic"><i>I</i></button><button type="button" data-cmd="underline"><u>U</u></button><button type="button" data-cmd="insertUnorderedList">• List</button></div><div id="noteEd" class="noteed" contenteditable="true">${cur}</div><p class="small">Saved in Timotheos's study data. Bible references you type (e.g. Rom 5:8) become links.</p>`;
+  const p = TimotheosModules.modal(`My note on ${refName(r)}`, html, [cur ? { label: 'Delete note', value: 'del' } : null, { label: 'Cancel', value: null }, { label: 'Save', value: 'save', primary: true }].filter(Boolean));
   setTimeout(() => {
     document.querySelectorAll('.noted button').forEach(bt => { bt.onmousedown = e => { e.preventDefault(); document.execCommand(bt.dataset.cmd); }; });
     const ed = $('#noteEd'); if (ed) { ed.focus(); const s = window.getSelection(); s.selectAllChildren(ed); s.collapseToEnd(); }
@@ -283,7 +283,7 @@ function bookIdOf(name) {
 
 /* ======================================================================= bookmarks */
 const slot = d => (d === 0 ? 9 : d - 1);
-function setBookmark(d) { study.ud.bookmarks[slot(d)] = { ...state.ref }; saveUD('bookmarks', true); flash(`Bookmark ${d}: ${refName(state.ref)}`); if (study.seg === 'marks') renderStudy(); if (window.TanglawNav) TanglawNav.syncAll(); }
+function setBookmark(d) { study.ud.bookmarks[slot(d)] = { ...state.ref }; saveUD('bookmarks', true); flash(`Bookmark ${d}: ${refName(state.ref)}`); if (study.seg === 'marks') renderStudy(); if (window.TimotheosNav) TimotheosNav.syncAll(); }
 function gotoBookmark(d) { const r = study.ud.bookmarks[slot(d)]; if (r) go(r); else flash(`Bookmark ${d} is empty – set it with Ctrl+Shift+${d}`); }
 
 /* ======================================================================= verse lists */
@@ -421,7 +421,7 @@ async function copyDialog(range) {
   if (range && range.b) { from.b = to.b = range.b; from.c = to.c = range.c; }
   const fmt = copyFormat();
   const bibles = state.settings.openBibles.map(id => { const inf = state.infos.get(id) || {}; return `<option value="${esc(id)}">${esc(inf.abbr || id)}${inf.title ? ' – ' + esc(inf.title) : ''}</option>`; }).join('');
-  const ic = (n, sz = 15) => TanglawIcons.icon(n, sz);
+  const ic = (n, sz = 15) => TimotheosIcons.icon(n, sz);
   const html = `<div class="cvm" id="cvm">
     <div class="cvmleft">
       <section class="cvstep"><h5>Step 1: select the range of verses you want to copy <span class="grow"></span><span id="cpCount" class="cpcount"></span><button id="cpOne" class="cpx" title="Back to one verse">${ic('close', 13)}</button></h5>
@@ -444,7 +444,7 @@ async function copyDialog(range) {
     <div class="cvmright"><div class="cphead">Preview <span id="cpPrevNote" class="small"></span></div><div id="cpPreview" class="cpprev"></div></div>
     <div id="vpick" class="vpick hidden"></div>
   </div>`;
-  const p = TanglawModules.modal('Copy verses', html, [{ label: 'Close', value: null }, { label: 'Copy', value: 'copy' }, { label: 'Copy and close', value: 'copyclose', primary: true }], true);
+  const p = TimotheosModules.modal('Copy verses', html, [{ label: 'Close', value: null }, { label: 'Copy', value: 'copy' }, { label: 'Copy and close', value: 'copyclose', primary: true }], true);
   const box = document.querySelector('#modal .box'); box.classList.add('cvmbox');
   const sz = study.ud.copySize; if (sz && sz.w) { box.style.width = sz.w + 'px'; box.style.height = sz.h + 'px'; }
   const f = { ...fmt };
@@ -570,7 +570,7 @@ function wireContextMenu() {
     const col = cellEl ? +cellEl.dataset.col : 0;
     const sv = selectedVerses();
     const tgt = selectionTarget(cellEl);
-    const word = (TanglawModules.wordAt(e) || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    const word = (TimotheosModules.wordAt(e) || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
     const strongEl = e.target.closest('[data-strong]');
     const strongs = strongEl ? strongEl.dataset.strong.split(/\s+/).filter(Boolean) : [];
     const ref = { b: state.ref.b, c: state.ref.c, v };
@@ -578,7 +578,7 @@ function wireContextMenu() {
     const label = rangeRef.v2 ? `${refName(ref).replace(/:\d+$/, '')}:${rangeRef.v}–${rangeRef.v2}` : refName(ref);
     const id = state.settings.openBibles[col]; const abbr = (state.infos.get(id) || {}).abbr || '';
     const nk = vkey(ref.b, ref.c, v);
-    const sc = window.TanglawOptions && TanglawOptions.shortcuts ? TanglawOptions.shortcuts() : {};
+    const sc = window.TimotheosOptions && TimotheosOptions.shortcuts ? TimotheosOptions.shortcuts() : {};
     const items = [
       `<div class="mh">${esc(label)} <span class="small">${esc(abbr)}</span></div>`,
       `<button data-a="copy">Copy ${rangeRef.v2 ? 'verses' : 'verse'} <kbd>Ctrl+C</kbd></button>`,
@@ -608,11 +608,11 @@ function wireContextMenu() {
       else if (a === 'bm') { study.ud.bookmarks[slot(+bt.dataset.d)] = { ...ref }; saveUD('bookmarks', true); flash(`Bookmark ${bt.dataset.d}: ${refName(ref)}`); }
       else if (a === 'hl') { if (tgt) highlight(tgt, bt.dataset.s || null); }
       else if (a === 'note') editNote(nk);
-      else if (a === 'xr') TanglawModules.showAllXrefs(v);
-      else if (a === 'addxr') TanglawModules.addXref(v);
+      else if (a === 'xr') TimotheosModules.showAllXrefs(v);
+      else if (a === 'addxr') TimotheosModules.addXref(v);
       else if (a === 'cmt') openTab('cmt');
-      else if (a === 'find') window.TanglawSearch.find(bt.dataset.q);
-      else if (a === 'look') TanglawModules.lookupWord(bt.dataset.q);
+      else if (a === 'find') window.TimotheosSearch.find(bt.dataset.q);
+      else if (a === 'look') TimotheosModules.lookupWord(bt.dataset.q);
     };
   });
   $('#view').addEventListener('click', e => { const n = e.target.closest('.unote, .noteicon'); if (n) { e.stopPropagation(); editNote(n.dataset.note); } }, true);
@@ -620,7 +620,7 @@ function wireContextMenu() {
 
 /* ======================================================================= Bible tree (sidebar) */
 function renderTree() {
-  if (window.TanglawNav) return TanglawNav.renderEnhancedTree(false);
+  if (window.TimotheosNav) return TimotheosNav.renderEnhancedTree(false);
   const sig = state.nav.map(b => b.id + ':' + b.chapterList.length).join(',');
   const box = $('#bibleTree');
   if (sig !== study.treeSig) {
@@ -661,7 +661,7 @@ async function renderLists(body) {
   $('#vlSel').onchange = () => { ud.currentList = $('#vlSel').value; saveUD('currentList', true); renderStudy(); };
   $('#vlNew').onclick = async () => { const n = await ask('New verse list', 'Name'); if (n && !ud.lists[n]) { ud.lists[n] = []; ud.currentList = n; saveUD('lists', true); saveUD('currentList', true); renderStudy(); } };
   $('#vlRen').onclick = async () => { const n = await ask('Rename list', 'New name', ud.currentList); if (n && !ud.lists[n]) { ud.lists[n] = ud.lists[ud.currentList]; delete ud.lists[ud.currentList]; ud.currentList = n; saveUD('lists', true); saveUD('currentList', true); renderStudy(); } };
-  $('#vlDel').onclick = async () => { if (await TanglawModules.confirmBox('Delete list', `Delete the verse list <b>${esc(ud.currentList)}</b>?`)) { delete ud.lists[ud.currentList]; if (!Object.keys(ud.lists).length) ud.lists['My verses'] = []; ud.currentList = Object.keys(ud.lists)[0]; saveUD('lists', true); saveUD('currentList', true); renderStudy(); } };
+  $('#vlDel').onclick = async () => { if (await TimotheosModules.confirmBox('Delete list', `Delete the verse list <b>${esc(ud.currentList)}</b>?`)) { delete ud.lists[ud.currentList]; if (!Object.keys(ud.lists).length) ud.lists['My verses'] = []; ud.currentList = Object.keys(ud.lists)[0]; saveUD('lists', true); saveUD('currentList', true); renderStudy(); } };
   $('#vlAdd').onclick = () => addToList([{ ...state.ref }]);
   $('#vlSort').onclick = () => { list.sort((a, b) => orderOf(a.b) - orderOf(b.b) || a.c - b.c || a.v - b.v); saveUD('lists', true); renderStudy(); };
   $('#vlCopyRefs').onclick = async () => { await api.copyText(list.map(r => refName(r) + (r.v2 ? '–' + r.v2 : '')).join('; ')); flash('References copied'); };
@@ -679,7 +679,7 @@ async function renderLists(body) {
   if (first) for (const [i, r] of list.entries()) textAny(r).then(({ id, vs }) => { const el = body.querySelector(`[data-t="${i}"]`); if (el) el.textContent = vs.length ? vs.map(x => x.text).join(' ').slice(0, 260) + (id !== first ? ` (${(state.infos.get(id) || {}).abbr || ''})` : '') : '(not in the open Bibles)'; });
 }
 function ask(title, label, value = '') {
-  const p = TanglawModules.modal(title, `<label class="field">${esc(label)}<input id="askInput" value="${esc(value)}"></label>`, [{ label: 'Cancel', value: null }, { label: 'OK', value: 'ok', primary: true }]);
+  const p = TimotheosModules.modal(title, `<label class="field">${esc(label)}<input id="askInput" value="${esc(value)}"></label>`, [{ label: 'Cancel', value: null }, { label: 'OK', value: 'ok', primary: true }]);
   return p.then(r => (r === 'ok' ? ($('#askInput').value || '').trim() : null));
 }
 
@@ -691,7 +691,7 @@ function renderNotesList(body) {
   const exBtn = $('#exportNotesCmtBtn');
   if (exBtn) {
     exBtn.onclick = async () => {
-      const res = await TanglawModules.modal('Export notes as theWord commentary (.cmt.twm)', `<div class="grid2"><label>Title <input id="enTitle" value="My Tanglaw Verse Notes"></label><label>Abbreviation <input id="enAbbr" value="MyNotes"></label></div><p class="small">Creates a standard <code>.cmt.twm</code> commentary module in your Tanglaw library so it appears in the Commentary panel and can also be opened in theWord.</p>`, [{ label: 'Cancel', value: null }, { label: 'Save to file…', value: 'file' }, { label: 'Add to library', value: 'lib', primary: true }]);
+      const res = await TimotheosModules.modal('Export notes as theWord commentary (.cmt.twm)', `<div class="grid2"><label>Title <input id="enTitle" value="My Timotheos Verse Notes"></label><label>Abbreviation <input id="enAbbr" value="MyNotes"></label></div><p class="small">Creates a standard <code>.cmt.twm</code> commentary module in your Timotheos library so it appears in the Commentary panel and can also be opened in theWord.</p>`, [{ label: 'Cancel', value: null }, { label: 'Save to file…', value: 'file' }, { label: 'Add to library', value: 'lib', primary: true }]);
       if (!res) return;
       const out = await api.userModExportNotes({ title: $('#enTitle').value.trim(), abbr: $('#enAbbr').value.trim(), saveDialog: res === 'file' });
       if (out) {
@@ -753,9 +753,9 @@ async function renderPlans(body) {
     const pl = e.target.closest('.plan'); const act = e.target.closest('[data-act]');
     if (pl && act) {
       const i = plans.findIndex(x => x.id === pl.dataset.p); const p = plans[i];
-      if (act.dataset.act === 'del') { if (await TanglawModules.confirmBox('Delete plan', `Delete <b>${esc(p.name)}</b> and its progress?`)) { plans.splice(i, 1); saveUD('plans', true); renderStudy(); } return; }
+      if (act.dataset.act === 'del') { if (await TimotheosModules.confirmBox('Delete plan', `Delete <b>${esc(p.name)}</b> and its progress?`)) { plans.splice(i, 1); saveUD('plans', true); renderStudy(); } return; }
       if (act.dataset.act === 'catch') { plans[i] = await api.planCatchUp(p); saveUD('plans', true); return renderStudy(); }
-      if (act.dataset.act === 'restart') { if (await TanglawModules.confirmBox('Restart plan', 'Mark every reading as unread and start again from today?')) { plans[i] = await api.planRestart(p); saveUD('plans', true); renderStudy(); } return; }
+      if (act.dataset.act === 'restart') { if (await TimotheosModules.confirmBox('Restart plan', 'Mark every reading as unread and start again from today?')) { plans[i] = await api.planRestart(p); saveUD('plans', true); renderStudy(); } return; }
       if (act.dataset.act === 'export') { const fp = await api.exportRdp(p); if (fp) flash(`Exported to ${fp.split(/[\\/]/).pop()}`); return; }
       if (act.dataset.act === 'list') {
         const box = pl.querySelector('.sched'); box.classList.toggle('hidden');
@@ -783,7 +783,7 @@ async function newPlanDialog() {
       <label><input type="radio" name="plMode" value="perSession"> Read <input id="plPer" type="number" value="3" min="1" class="num"> chapters each time</label>
       <label><input type="checkbox" id="plNoCal"> Don't tie the plan to dates (read sessions whenever you like)</label>
       <label><input type="checkbox" id="plCycle"> Repeat shorter parts so every day has something from each</label></div></div>`;
-  const p = TanglawModules.modal('New reading plan', html, [{ label: 'Cancel', value: null }, { label: 'Create plan', value: 'ok', primary: true }]);
+  const p = TimotheosModules.modal('New reading plan', html, [{ label: 'Cancel', value: null }, { label: 'Create plan', value: 'ok', primary: true }]);
   setTimeout(() => { $('#plPreset').onchange = () => $('#plCustomBox').classList.toggle('hidden', $('#plPreset').value !== 'custom'); }, 30);
   if (await p !== 'ok') return;
   const preset = presets.find(x => x.id === $('#plPreset').value);
@@ -798,19 +798,19 @@ async function newPlanDialog() {
   try {
     const plan = await api.createPlan(o, state.settings.openBibles);
     study.ud.plans.push(plan); saveUD('plans', true); flash(`Plan created: ${plan.sessions.length} readings`); renderStudy();
-  } catch (e) { TanglawModules.messageBox('Could not create the plan', esc(e.message)); }
+  } catch (e) { TimotheosModules.messageBox('Could not create the plan', esc(e.message)); }
 }
 
 /* ======================================================================= keyboard help */
 function showKeys() {
-  const sc = window.TanglawOptions && TanglawOptions.shortcuts ? TanglawOptions.shortcuts() : {};
+  const sc = window.TimotheosOptions && TimotheosOptions.shortcuts ? TimotheosOptions.shortcuts() : {};
   const rows = [['←  →', 'Previous / next chapter'], ['Ctrl+← →', 'Previous / next book'], ['↑  ↓', 'Previous / next verse'], ['Alt+← →, Backspace', 'Back / forward in history'],
     ['type a number', 'Go to that verse (Shift+number: chapter)'], [sc.goto || 'Ctrl+G', 'Go to a reference'], [sc.search || 'Ctrl+F', 'Bible search'], [sc.bookSearch || 'Ctrl+Shift+F', 'Book search'], [sc.guide || 'F1', 'User Guide'], ['Alt+F / Alt+V / Alt+H', 'Open the File, View or Help menu'], [sc.import || 'Ctrl+I', 'Import modules'], [sc.addFolder || 'Ctrl+O', 'Add a module folder'], ['Ctrl+Shift+1…0 / Ctrl+1…0', 'Set / go to bookmark'],
     ['Ctrl+C', 'Copy the current verse (or the selection)'], [sc.copyVerses || 'F5', 'Copy Verses dialog'], [sc.addVerseList || 'Ctrl+L', 'Add the current verse to the verse list'], [`${sc.layoutCols || 'Ctrl+H'} / ${sc.layoutRows || 'Ctrl+J'}`, 'Bibles side by side / one under another'],
     [`${sc.toggleStrongs || 'S'} ${sc.toggleMorph || 'M'} ${sc.toggleFootnotes || 'F'} ${sc.toggleHeadings || 'H'} ${sc.toggleWoj || 'J'} ${sc.toggleAdded || 'I'} ${sc.toggleXrefs || 'X'} ${sc.toggleCmtLinks || 'C'}`, "Strong's, morphology, footnotes, headings, red letters, italics, cross-references, commentary marks"], [`${sc.toggleHighlights || 'U'} ${sc.toggleNotes || 'N'} ${sc.toggleParagraph || 'P'}`, 'My highlighting, my notes, paragraph mode'],
     ['Ctrl + / Ctrl −', 'Bible text size'], ['Ctrl + mouse wheel', 'Text size of the Bible, Commentary, Lookup, Library or Search panel under the mouse'], ['Ctrl+P', 'Print'], [sc.options || 'Ctrl+,', 'Options (fonts, skins, verse numbers, shortcuts…)'], ['drag a panel caption', 'Move, tab, stack or float a panel'], ['Esc', 'Close menus and popups'], ['right-click a verse', 'Copy, bookmark, highlight, note, cross-references, find']];
-  TanglawModules.messageBox('Keyboard shortcuts', `<table class="imp">${rows.map(([k, d]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(d)}</td></tr>`).join('')}</table><div class="row"><button id="editKeysFromHelp" class="primary">Customize shortcuts in Options…</button></div>`);
-  setTimeout(() => { const b = $('#editKeysFromHelp'); if (b) b.onclick = () => { $('#modal').classList.add('hidden'); TanglawOptions.open('keys'); }; }, 30);
+  TimotheosModules.messageBox('Keyboard shortcuts', `<table class="imp">${rows.map(([k, d]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(d)}</td></tr>`).join('')}</table><div class="row"><button id="editKeysFromHelp" class="primary">Customize shortcuts in Options…</button></div>`);
+  setTimeout(() => { const b = $('#editKeysFromHelp'); if (b) b.onclick = () => { $('#modal').classList.add('hidden'); TimotheosOptions.open('keys'); }; }, 30);
 }
 
-window.TanglawStudy = { init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, flash, verseText, study };
+window.TimotheosStudy = { init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, flash, verseText, study };

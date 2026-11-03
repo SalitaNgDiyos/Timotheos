@@ -1,12 +1,12 @@
 'use strict';
-/* Title bar drawn by Tanglaw (so it follows the skin): app name, File / View / Help menus,
+/* Title bar drawn by Timotheos (so it follows the skin): app name, File / View / Help menus,
  * and the keyboard shortcuts those menus list. Supports [E1] Tagalog localization and
  * [E2] customizable keyboard shortcuts. */
-/* global api, TanglawIcons, TanglawOptions, TanglawI18n */
+/* global api, TimotheosIcons, TimotheosOptions, TimotheosI18n */
 (function () {
   const $ = s => document.querySelector(s);
-  const tr = s => (window.TanglawI18n ? TanglawI18n.t(s) : s);
-  const sc = id => (window.TanglawOptions && TanglawOptions.shortcuts ? TanglawOptions.shortcuts()[id] || '' : '');
+  const tr = s => (window.TimotheosI18n ? TimotheosI18n.t(s) : s);
+  const sc = id => (window.TimotheosOptions && TimotheosOptions.shortcuts ? TimotheosOptions.shortcuts()[id] || '' : '');
 
   function getMenus() {
     return [
@@ -50,7 +50,7 @@
         ['User Guide', sc('guide'), 'guide', 'book'],
         ['Keyboard Shortcuts', '', 'keys', 'keyboard'],
         '-',
-        ['About Tanglaw Bible', '', 'about'],
+        ['About Timotheos', '', 'about'],
       ]],
     ];
   }
@@ -72,7 +72,7 @@
         if (it === '-') return '<div class="msep"></div>';
         const isTb = String(it[2] || '').startsWith('tb:');
         const tbKey = isTb ? it[2].slice(3) : '';
-        const icHtml = isTb ? (ti[tbKey] !== false ? TanglawIcons.icon('check', 14) : '') : (it[3] ? TanglawIcons.icon(it[3], 15) : '');
+        const icHtml = isTb ? (ti[tbKey] !== false ? TimotheosIcons.icon('check', 14) : '') : (it[3] ? TimotheosIcons.icon(it[3], 15) : '');
         return `<button data-cmd="${it[2]}"><span class="tmic">${icHtml}</span><span class="tml">${tr(it[0])}</span>${it[1] ? `<kbd>${it[1]}</kbd>` : ''}</button>`;
       }).join('');
       d.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => { close(); if (b.dataset.cmd.startsWith('tb:') && window.setToolbarItem) window.setToolbarItem(b.dataset.cmd.slice(3)); else window.runCommand(b.dataset.cmd); });
@@ -102,7 +102,7 @@
   }
   function matchShortcut(e) {
     const kn = keyName(e);
-    const cur = window.TanglawOptions && TanglawOptions.shortcuts ? TanglawOptions.shortcuts() : {};
+    const cur = window.TimotheosOptions && TimotheosOptions.shortcuts ? TimotheosOptions.shortcuts() : {};
     const MENU_CMDS = ['import', 'addFolder', 'rescan', 'search', 'bookSearch', 'compare', 'goto', 'copyVerses', 'guide', 'options', 'devtools'];
     for (const cmd of MENU_CMDS) {
       if (cur[cmd] && cur[cmd].toLowerCase() === kn) return cmd;
@@ -145,5 +145,5 @@
   }
 
   function init() { build(); wireKeys(); sync(); new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-skin', 'style'] }); }
-  window.TanglawTitlebar = { init, rebuild: build, sync, close };
+  window.TimotheosTitlebar = { init, rebuild: build, sync, close };
 })();

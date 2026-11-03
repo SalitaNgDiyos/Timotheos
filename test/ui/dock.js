@@ -5,7 +5,7 @@ window.addEventListener('unhandledrejection', e => window.__errs.push('rejection
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const out = [];
 const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
-const D = TanglawDock;
+const D = TimotheosDock;
 const where = id => { const a = D.located(id); return !a ? 'none' : a.hidden ? 'hidden' : a.float ? 'float' : a.zone + ':' + a.gi; };
 const ctr = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
 const pe = (type, x, y, tgt = document) => tgt.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0, pointerId: 1, isPrimary: true }));

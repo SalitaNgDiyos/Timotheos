@@ -1,7 +1,7 @@
 'use strict';
 // Transliteration of Greek and Hebrew words into Latin letters (SBL-like), for column text and popups.
 // (Shared with the Tauri edition's src/translit.ts.)
-var TanglawTranslit = (() => {
+var TimotheosTranslit = (() => {
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __getOwnPropNames = Object.getOwnPropertyNames;
