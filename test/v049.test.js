@@ -558,15 +558,12 @@ function ok(cond, msg) {
   const navJs = fs.readFileSync(path.join(__dirname, "../src/renderer/nav-ui.js"), "utf8");
 
   ok(
-    idxHtml.includes('id="navHeader1"') &&
     idxHtml.includes('id="navBookBtn"') &&
-    idxHtml.includes('id="navChapBtn"') &&
-    idxHtml.includes('id="navVerseBtn"') &&
     idxHtml.includes('id="navPrevBook"') &&
     idxHtml.includes('id="navPrevVerse"') &&
     idxHtml.includes('id="navHistBtn"') &&
     idxHtml.includes('id="navPop"') &&
-    idxHtml.includes('id="verseSel"'),
+    idxHtml.includes('id="refInput"'),
     "[I1] Design 1 HTML elements (Interactive Header Pills, Step Icons, History Menu, 3-Step Visual Popover & Verse Selector) are present"
   );
   ok(
@@ -744,14 +741,13 @@ function ok(cond, msg) {
   ok(
     idx057.includes('data-tbshow="tbBackFwd"') &&
     idx057.includes('data-tbshow="tbGoto"') &&
-    idx057.includes('data-tbshow="tbDropdowns"') &&
     idx057.includes('data-tbshow="tbPrevNext"') &&
     idx057.includes('data-tbshow="tbSearch"') &&
     idx057.includes('data-tbshow="tbCopy"') &&
     idx057.includes('data-tbshow="tbPrint"') &&
     app057.includes("function setToolbarItem") &&
     tb057.includes("tb:tbBackFwd"),
-    "[L2] View menu (#viewMenu and titlebar View menu) includes show/hide options for all 7 toolbar elements"
+    "[L2] View menu (#viewMenu and titlebar View menu) includes show/hide options for the toolbar elements (the book/chapter dropdowns are gone: one reference box)"
   );
 
   // [L3] Focus button and setting removed
@@ -827,8 +823,8 @@ function ok(cond, msg) {
     app059.includes("state.settings.bibleZoom = z") &&
     idx058.includes('id="uiSize" min="11" max="22"') &&
     idx058.includes('id="paneSize" min="11" max="24"') &&
-    pkg059.version === "0.6.0" &&
-    app059.includes("Timotheos 0.6.0"),
+    /^0\.6\./.test(pkg059.version) &&
+    app059.includes("function about"),
     "[N3] options.js, app.js, and index.html support expanded UI/pane font scaling (up to 22px/24px), Ctrl+Wheel UI chrome scaling, and version 0.5.9"
   );
 

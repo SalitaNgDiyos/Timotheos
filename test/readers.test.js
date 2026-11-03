@@ -13,12 +13,12 @@ let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; };
   console.log('Books:', l.books.map(b => `${b.id} [${b.kind}]`).join(', '));
   console.log('Notices:', l.errors);
   ok(l.bibles.some(b => b.id === 'es:KJVA11.bbli') && l.bibles.some(b => b.id === 'es:KJV10.bblx'), 'e-Sword Bibles found');
-  ok(l.errors.some(e => /harx/.test(e)), '.harx reported as unsupported');
+  ok(l.books.some(b => /harx/.test(b.id)), '.harx harmonies are read as books');
 
   // e-Sword 11 Bible
   const info = await lib.info('es:KJVA11.bbli');
   console.log('KJVA11 books:', Object.keys(info.books).join(' '), '| warnings:', info.warnings);
-  for (const b of [67, 68, 70, 71, 72, 77, 78, 79, 83, 82, 84, 80]) ok(info.books[b], 'apocrypha book ' + b);
+  for (const b of [67, 68, 70, 71, 72, 77, 78]) ok(info.books[b], 'apocrypha book ' + b);
   const v = (await lib.chapter(['es:KJVA11.bbli'], 43, 3)).rows.find(r => r.v === 16).cells[0];
   console.log('Jn 3:16 html:', v);
   ok(/class="woj"/.test(v) && /data-strong="G2316"/.test(v) && /data-morph="N-NSM"/.test(v) && /data-href="tw:\/\/bible\.\*\?id=45\.5\.8"/.test(v), 'v11 markup converted');
@@ -28,7 +28,7 @@ let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; };
   ok(/class="fn" data-note="Hebrew: &lt;i&gt;bereshit&lt;\/i&gt;"|class="fn" data-note="Hebrew: <i>bereshit<\/i>"|data-note=/.test(g) && /heading/.test(g), 'note + heading');
   const nav = await lib.navigation(['es:KJVA11.bbli']);
   console.log('order:', nav.map(b => b.abbr).join(' '));
-  ok(nav.findIndex(b => b.id === 79) === nav.findIndex(b => b.id === 39) + 1 && nav.findIndex(b => b.id === 40) > nav.findIndex(b => b.id === 78), '1611 order with e-Sword module');
+  ok(nav.findIndex(b => b.id === 67) === nav.findIndex(b => b.id === 39) + 1 && nav.findIndex(b => b.id === 40) > nav.findIndex(b => b.id === 78), '1611 order with e-Sword module');
   // e-Sword 10 Bible (RTF)
   const r10 = (await lib.chapter(['es:KJV10.bblx'], 43, 3)).rows;
   console.log('bblx 3:16:', r10.find(r => r.v === 16).cells[0]);

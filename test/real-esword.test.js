@@ -19,7 +19,7 @@ let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; console.log('  ✓
     const sus = (await lib.chapter([id], 75, 1)).rows[0].cells[0]; console.log('   Susanna 1:1 =', sus.replace(/<[^>]*>/g, '').slice(0, 80));
     const nav = await lib.navigation([id]);
     const order = nav.map(b => b.abbr).join(' ');
-    ok(/Mal Tob Jdt Wis Sir Bar Sus Bel 1Macc 2Macc Matt/.test(order), id + ': 1611 order ' + order.slice(order.indexOf('Mal'), order.indexOf('Matt') + 4));
+    ok(/Mal Tob Jdt Wis Sir Bar (PrAzar )?Sus Bel 1Macc 2Macc Matt/.test(order), id + ': 1611 order ' + order.slice(order.indexOf('Mal'), order.indexOf('Matt') + 4));
   }
   const s = await lib.search(['es:a_001_b_wycliffe_1394_-_purvey_revision.bbli'], 'Tobie', { scope: 'OT' });
   ok(s.total > 10 && s.results.some(r => r.b === 67) && s.results.findIndex(r => r.b === 67) > s.results.findIndex(r => r.b === 16), 'search finds Tobit inside the Old Testament scope (' + s.total + ')');
