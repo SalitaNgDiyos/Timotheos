@@ -26,6 +26,9 @@ url = "2"
 [target.'cfg(not(target_os = "android"))'.dependencies]
 trash = "5"
 
+[target.'cfg(target_os = "android")'.dependencies]
+tauri-plugin-tts = "0.2"   # Android's own text-to-speech: the web view has no speech engine of its own
+
 [profile.release]
 opt-level = "s"
 lto = true

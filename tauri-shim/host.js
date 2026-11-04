@@ -8,11 +8,13 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { open as dlgOpen, save as dlgSave } from '@tauri-apps/plugin-dialog';
 import { readText, writeText, writeHtml } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl, openPath } from '@tauri-apps/plugin-opener';
+import { installAndroidSpeech } from './tts.js';
 
 let info = null;
 const isAndroid = /Android/i.test(navigator.userAgent);
 const isMobile = isAndroid || /iPhone|iPad/i.test(navigator.userAgent);
 document.documentElement.classList.toggle('mobile', isMobile);
+if (isAndroid) installAndroidSpeech();
 const win = getCurrentWindow();
 
 /* ---------- worker ---------- */

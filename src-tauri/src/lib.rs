@@ -221,7 +221,10 @@ fn read_text_file(path: String) -> Result<String, String> { fs::read_to_string(p
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(tauri_plugin_tts::init());
+    builder
         .manage(Dbs::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
