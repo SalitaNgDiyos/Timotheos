@@ -65,16 +65,24 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with: { workspaces: src-tauri }
       - run: npm ci
-      - name: Build the APK (debug-signed, for testing)
+      - name: Build the release APK (small) and sign it with the test key
         run: |
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
           echo "Android SDK: $ANDROID_HOME, NDK: $NDK_HOME"
           npx tauri android init --ci
-          npx tauri android build --apk --debug --target aarch64 --target armv7
+          npx tauri android build --apk --target aarch64 --target armv7
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name '*.apk' | head -1)
+          echo "built: $APK"
+          mkdir -p signed
+          "$BT/zipalign" -p -f 4 "$APK" signed/aligned.apk
+          "$BT/apksigner" sign --ks .github/test-signing.jks --ks-pass pass:timotheos --key-pass pass:timotheos --out signed/Timotheos-android.apk signed/aligned.apk
+          "$BT/apksigner" verify signed/Timotheos-android.apk
+          ls -la signed
       - uses: actions/upload-artifact@v4
         with:
           name: timotheos-android
-          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          path: signed/Timotheos-android.apk
 
   draft:
     # every push leaves its files in a private DRAFT release (only people with access to the repository see it)

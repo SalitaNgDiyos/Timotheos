@@ -175,7 +175,8 @@ fn host_info(app: tauri::AppHandle) -> Value {
     let data = app.path().app_data_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
     let exe = std::env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_string_lossy().to_string())).unwrap_or_default();
     let home = app.path().home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
-    let tmp = std::env::temp_dir().to_string_lossy().to_string();
+    let tmp = if cfg!(target_os = "android") { app.path().app_cache_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default() } else { std::env::temp_dir().to_string_lossy().to_string() };
+    let _ = fs::create_dir_all(&tmp);
     let os = if cfg!(target_os = "android") { "android" } else if cfg!(target_os = "windows") { "win32" } else if cfg!(target_os = "macos") { "darwin" } else { "linux" };
     let fwd = |s: String| s.replace('\\', "/");
     let (data, exe, home, tmp) = (fwd(data), fwd(exe), fwd(home), fwd(tmp));
@@ -214,7 +215,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_fs::init())
         .register_asynchronous_uri_scheme_protocol("tfs", |ctx, request, responder| {
             let app = ctx.app_handle().clone();
             std::thread::spawn(move || {

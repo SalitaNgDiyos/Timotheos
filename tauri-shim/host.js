@@ -8,7 +8,6 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { open as dlgOpen, save as dlgSave } from '@tauri-apps/plugin-dialog';
 import { readText, writeText, writeHtml } from '@tauri-apps/plugin-clipboard-manager';
 import { openUrl, openPath } from '@tauri-apps/plugin-opener';
-import { open as fsOpen } from '@tauri-apps/plugin-fs';
 
 let info = null;
 const isAndroid = /Android/i.test(navigator.userAgent);
@@ -44,21 +43,25 @@ async function call(ch, ...args) {
 /* ---------- things done for the worker ---------- */
 let importSeq = 0;
 const fwd = p => String(p).replace(/\\/g, '/');   // Windows paths with forward slashes: one kind of path inside
-// Android hands out content:// addresses that only the system can read: copy each chosen file into the app's folder
-async function androidCopy(uri) {
-  const name = decodeURIComponent(String(uri).split(/[/%]2F|\//).pop() || 'module').replace(/^.*:/, '') || 'module';
-  const dest = info.tmp + '/import-' + (++importSeq) + '-' + Date.now() + '/' + name;
-  const f = await fsOpen(uri, { read: true });
-  try {
-    const buf = new Uint8Array(4 << 20); let first = true;
-    for (;;) {
-      const n = await f.read(buf);
-      if (!n) break;
-      let bin = ''; for (let i = 0; i < n; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, Math.min(n, i + 0x8000)));
-      await invoke('write_b64', { path: dest, data: btoa(bin), append: !first }); first = false;
-    }
-    if (first) await invoke('write_b64', { path: dest, data: '', append: false });
-  } finally { await f.close(); }
+// Android: the file picker of the web view (<input type=file>) gives each file with its real name, which the module
+// recognition needs (.ont, .twm, ...); the dialog plugin only gives opaque content:// addresses. Each chosen file is
+// copied piece by piece into the app's own folder and the import works on the copy.
+function androidPick(multiple) {
+  return new Promise(resolve => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.multiple = !!multiple; inp.style.display = 'none';
+    inp.addEventListener('change', () => { const f = [...inp.files]; inp.remove(); resolve(f); });
+    inp.addEventListener('cancel', () => { inp.remove(); resolve([]); });
+    document.body.appendChild(inp); inp.click();
+  });
+}
+async function androidCopy(file, dir) {
+  const dest = dir + '/' + String(file.name || 'module').replace(/[\\/:*?"<>|]+/g, '_');
+  const PIECE = 2 << 20; let first = true;
+  for (let o = 0; o < file.size || first; o += PIECE) {
+    const buf = new Uint8Array(await file.slice(o, o + PIECE).arrayBuffer());
+    let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    await invoke('write_b64', { path: dest, data: btoa(bin), append: !first }); first = false;
+  }
   return dest;
 }
 async function hostOp(op, a) {
@@ -66,11 +69,16 @@ async function hostOp(op, a) {
     case 'open': {
       const o = a[0] || {}; const props = o.properties || [];
       if (isAndroid && props.includes('openDirectory')) throw new Error('Choosing a folder is not possible on Android. Use Import to add module files.');
-      const r = await dlgOpen({ title: o.title, multiple: props.includes('multiSelections'), directory: props.includes('openDirectory'), filters: isAndroid ? undefined : (o.filters || []).filter(f => !(f.extensions || []).includes('*')) });
+      if (isAndroid) {
+        const files = await androidPick(props.includes('multiSelections'));
+        if (!files.length) return { canceled: true, filePaths: [] };
+        const dir = info.tmp + '/import-' + (++importSeq) + '-' + Date.now();
+        const out = []; for (const f of files) out.push(await androidCopy(f, dir));
+        return { canceled: false, filePaths: out };
+      }
+      const r = await dlgOpen({ title: o.title, multiple: props.includes('multiSelections'), directory: props.includes('openDirectory'), filters: (o.filters || []).filter(f => !(f.extensions || []).includes('*')) });
       if (!r) return { canceled: true, filePaths: [] };
-      let list = Array.isArray(r) ? r : [r];
-      if (isAndroid) list = await Promise.all(list.map(androidCopy));
-      return { canceled: false, filePaths: list.map(fwd) };
+      return { canceled: false, filePaths: (Array.isArray(r) ? r : [r]).map(fwd) };
     }
     case 'save': {
       const o = a[0] || {};
