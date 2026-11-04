@@ -155,7 +155,7 @@ async function restoreBounds() {
   if (isMobile) return;
   try {
     const s = await api.getSettings(); const b = s.windowBounds || {};
-    if (b.width && b.height) await win.setSize(new LogicalSize(Math.max(720, b.width), Math.max(480, b.height)));
+    if (b.width && b.height) await win.setSize(new LogicalSize(Math.max(360, b.width), Math.max(480, b.height)));
     if (b.maximized) await win.maximize();
     let t = null;
     const save = () => { clearTimeout(t); t = setTimeout(async () => {
