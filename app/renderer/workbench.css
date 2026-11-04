@@ -797,3 +797,5 @@ html.mobile .dcap .navpill .np-short { max-width: none; overflow: visible; }
 html.mobile .dcap .navsteps { gap: 0; margin-left: auto; padding-left: 2px; flex: none; }
 html.mobile .dcap .navic, html.mobile .dcap [data-nav] { display: inline-flex !important; align-items: center; justify-content: center; width: 25px; height: 34px; padding: 0; border-radius: 8px; }
 html.mobile .dcap .navic svg, html.mobile .dcap .navic .ic { width: 21px; height: 21px; }
+
+html.mobile .bv .bvtext { touch-action: pan-y; }   /* up and down scroll; a sideways swipe changes the chapter */

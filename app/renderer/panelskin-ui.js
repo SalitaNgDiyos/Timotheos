@@ -33,6 +33,8 @@
     // the tab name sits in the caption of the area, which belongs to the panel in front
     const grp = el.closest('.dgroup'); const tab = grp && grp.querySelector(`.dtab[data-id="${id}"]`);
     if (tab) tab.style.color = k.tab || '';
+    // a Bible view shows no tab name (only its icon): its name is the verse button next to it, so the colour goes there
+    const nav = grp && /^bv\d+$/.test(id) && grp.querySelector('.dnav'); if (nav) nav.style.color = k.tab || '';
   }
   function applyAll() { for (const id of allIds()) apply(id); }
   function set(id, key, val) {

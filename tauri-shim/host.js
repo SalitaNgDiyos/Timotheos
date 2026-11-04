@@ -90,7 +90,12 @@ async function hostOp(op, a) {
     case 'openUrl': return openUrl(a[0]);
     case 'openPath': return openPath(a[0]);
     case 'clipRead': try { return await readText(); } catch (e) { return ''; }
-    case 'clipWrite': { const o = a[0] || {}; return o.html ? writeHtml(o.html, o.text) : writeText(o.text || ''); }
+    case 'clipWrite': {
+      const o = a[0] || {};
+      // Android's clipboard takes plain text only: the formatted version is tried, and the plain text is the fallback
+      if (o.html && !isMobile) { try { await writeHtml(o.html, o.text); return true; } catch (e) { /* plain text below */ } }
+      await writeText(o.text || ''); return true;
+    }
     case 'title': return win.setTitle(a[0]);
     case 'front': try { await win.unminimize(); await win.show(); await win.setFocus(); } catch (e) { /* ignore */ } return true;
     case 'quit': return invoke('quit');

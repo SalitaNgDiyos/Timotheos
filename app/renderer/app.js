@@ -92,7 +92,7 @@ async function init() {
   applyToolbarItems();
   syncViewMenu();
   wireUi();
-  wireViews(); wireScrollSync(); TimotheosViewUI.init();
+  wireViews(); wireScrollSync(); wireSwipe(); TimotheosViewUI.init();
   TimotheosModules.wireModules();
   await TimotheosStudy.init();
   if (window.TimotheosNav) TimotheosNav.init();
@@ -810,6 +810,26 @@ function wireScrollSync() {
       if (v !== state.ref.v) selectVerse(v, false, i);
     }, 150);
   }, true);
+}
+
+/** Android: swipe in a Bible view. A swipe to the left shows the previous chapter, a swipe to the right the next one. */
+function wireSwipe() {
+  let t0 = null;
+  const mobile = () => document.documentElement.classList.contains('mobile');
+  document.addEventListener('touchstart', e => {
+    const el = e.target.closest && e.target.closest('.bv .bvtext');
+    if (!el || e.touches.length !== 1 || !mobile()) { t0 = null; return; }
+    const p = e.touches[0]; t0 = { x: p.clientX, y: p.clientY, t: Date.now(), el };
+  }, { passive: true });
+  document.addEventListener('touchcancel', () => { t0 = null; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!t0) return; const p = e.changedTouches[0]; const a = t0; t0 = null;
+    const dx = p.clientX - a.x, dy = p.clientY - a.y;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.5 || Date.now() - a.t > 800) return;
+    const sel = window.getSelection(); if (sel && !sel.isCollapsed) return;          // selecting text is not a swipe
+    const i = +a.el.closest('.bv').dataset.i; if (i !== state.active) setActive(i, true);
+    step(dx < 0 ? -1 : 1);
+  }, { passive: true });
 }
 
 function step(d) {
