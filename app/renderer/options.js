@@ -439,6 +439,7 @@
   function page(o) {
     $('#optNav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.o === o));
     document.querySelectorAll('.optpage').forEach(p => p.classList.toggle('hidden', p.dataset.o !== o));
+    if (o === 'speech' && window.TimotheosSpeech) TimotheosSpeech.fillOptions(document.getElementById('ttsOpt'));
   }
   async function open(pg) {
     const fontsP = listFonts();

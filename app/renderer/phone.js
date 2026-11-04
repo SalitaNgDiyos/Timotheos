@@ -54,5 +54,63 @@
       return g.apply(this, a);
     };
   });
+  // a link that opens another panel (a dictionary entry, a commentary) shows that panel's page
+  window.addEventListener('load', () => {
+    const ot = window.openTab; if (typeof ot !== 'function') return;
+    window.openTab = function (name) {
+      const r = ot.apply(this, arguments);
+      if (document.documentElement.classList.contains('phone') && groups().some(x => holds(x, name))) { current = name; apply(); }
+      return r;
+    };
+  });
+
+  /* ---- global Back / Forward: the screens you have seen, whichever panel they were in ---- */
+  const H = { list: [], at: -1, busy: false, pend: null, after: 0 };
+  const curTid = () => { const li = document.querySelector('#libTopics li.cur'); return li ? li.dataset.tid : null; };
+  function snap() {
+    const g = groups().find(x => holds(x, current)); if (!g || typeof state === 'undefined' || !state.nav || !state.nav.length) return null;
+    const tab = idOf(g); const s = { page: current, tab, ref: { b: state.ref.b, c: state.ref.c, v: state.ref.v } };
+    if (tab === 'lib' && window.TimotheosModules) {
+      s.feed = window.TimotheosLookup ? TimotheosLookup.snapshot() : null;
+      if (!s.feed) { s.lib = TimotheosModules.lib.cur; s.tid = curTid(); }
+    }
+    return s;
+  }
+  const keyOf = s => [s.page, s.tab, s.ref.b + ':' + s.ref.c, s.lib, s.tid, s.feed ? s.feed.title + '/' + s.feed.html.length : ''].join('|');
+  function buttons() {
+    const b = document.getElementById('gBack'), f = document.getElementById('gFwd'); if (!b) return;
+    b.disabled = H.at <= 0 || H.busy; f.disabled = H.at >= H.list.length - 1 || H.busy;
+  }
+  function tick() {
+    if (H.busy) return;
+    const s = snap(); if (!s) return;
+    if (H.after > 0) { H.after--; if (H.list[H.at]) H.list[H.at] = s; return; }   // just put back: what shows now is that entry
+    const k = keyOf(s), e = H.list[H.at];
+    if (e && keyOf(e) === k) { H.list[H.at] = s; H.pend = null; return; }
+    if (H.pend !== k) { H.pend = k; return; }                                         // it must stay put for a moment to count
+    H.list.length = H.at + 1; H.list.push(s); if (H.list.length > 100) H.list.shift(); H.at = H.list.length - 1; H.pend = null; buttons();
+  }
+  async function hgo(d) {
+    const n = H.at + d; if (H.busy || n < 0 || n >= H.list.length) return;
+    H.busy = true; H.at = n; buttons(); const e = H.list[n];
+    try {
+      if (e.ref.b !== state.ref.b || e.ref.c !== state.ref.c) await window.go({ b: e.ref.b, c: e.ref.c, v: e.ref.v });
+      if (e.tab === 'lib') {
+        if (e.feed) TimotheosLookup.restore(e.feed);
+        else if (e.lib != null && (TimotheosModules.lib.cur !== e.lib || String(curTid()) !== String(e.tid))) await TimotheosModules.openBookModule(e.lib, e.tid == null ? undefined : (isNaN(+e.tid) ? e.tid : +e.tid), false);
+      }
+      current = e.page; if (e.tab && window.TimotheosDock) TimotheosDock.show(e.tab); apply();
+    } catch (x) { /* stay where we are */ }
+    H.pend = null; H.after = 2; H.busy = false; buttons();
+  }
+  window.addEventListener('load', () => {
+    const tool = document.getElementById('toolbar'); if (!tool || document.getElementById('gnav')) return;
+    const nav = document.createElement('span'); nav.id = 'gnav';
+    const mk = (id, icon, t) => `<button type="button" id="${id}" class="tb" title="${t}" aria-label="${t}" disabled>${window.TimotheosIcons ? TimotheosIcons.icon(icon, 24) : ''}</button>`;
+    nav.innerHTML = mk('gBack', 'prev', 'Back to the previous screen') + mk('gFwd', 'next', 'Forward to the next screen');
+    tool.insertBefore(nav, tool.querySelector('.grow'));
+    document.getElementById('gBack').onclick = () => hgo(-1); document.getElementById('gFwd').onclick = () => hgo(1);
+    setInterval(tick, 250);
+  });
   window.TimotheosPhone = { show: id => { current = id; queue(); } };
 })();

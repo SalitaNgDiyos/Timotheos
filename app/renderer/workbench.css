@@ -799,3 +799,10 @@ html.mobile .dcap .navic, html.mobile .dcap [data-nav] { display: inline-flex !i
 html.mobile .dcap .navic svg, html.mobile .dcap .navic .ic { width: 21px; height: 21px; }
 
 html.mobile .bv .bvtext { touch-action: pan-y; }   /* up and down scroll; a sideways swipe changes the chapter */
+
+/* Android: global Back / Forward in the middle of the top bar */
+#gnav { display: none; }
+html.mobile #gnav { display: inline-flex; margin: 0 auto; gap: 6px; align-items: center; }
+html.mobile #gnav .tb { width: 42px; height: 36px; padding: 0; display: inline-grid; place-items: center; border-radius: 9px; }
+html.mobile #gnav .tb:disabled { opacity: .35; }
+html.mobile .toolbar .grow { display: none; }

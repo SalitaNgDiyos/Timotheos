@@ -11,6 +11,9 @@ const EMPTY_MOD = { rules: [] };
 const lkpState = { back: [], fwd: [], cur: null };
 function showFeed(on) { const t = $('#tab-lib'); if (t) t.classList.toggle('lookfeed', !!on); }
 window.hideLookupFeed = () => showFeed(false);
+// what the phone's global Back / Forward (phone.js) needs to know about, and put back, on the lookup page
+window.TimotheosLookup = { snapshot: () => { const t = $('#tab-lib'); return t && t.classList.contains('lookfeed') && lkpState.cur ? { html: lkpState.cur.html, title: lkpState.cur.title } : null; },
+  restore: s => setLookupHtml(s.html, false, s.title) };
 function setLookupHtml(html, pushHistory = true, title = '') {
   const box = $('#libFeed'); if (!box) return;
   if (pushHistory && lkpState.cur && lkpState.cur.html !== html) {
@@ -521,6 +524,7 @@ function paneHtml() {
         <button data-a="menu" class="bvmenubtn" title="What this view shows, and its options" aria-haspopup="true">${TimotheosIcons.icon('menu', 16)}</button>
         <span class="bvsep"></span>
         <button data-a="copyv" title="Copy the current verse (Ctrl+C)">${TimotheosIcons.icon('copy', 15)}</button>
+        <button data-a="speak" class="bvspeak" title="Read aloud from the active verse (press again to stop). Voice, speed, repeat: Options → Read aloud">${TimotheosIcons.icon('speaker', 15)}</button>
         <button data-a="info" title="Bible info: about this module">${TimotheosIcons.icon('info', 15)}</button>
         <button data-a="link" class="bvlink" title="Sync: move together with the other Bible views (click to let this view read on by itself)">${TimotheosIcons.icon('link', 15)}</button>
         <button data-a="zin" title="Font up (Ctrl + mouse wheel up)">${TimotheosIcons.icon('textUp', 15)}</button>
@@ -812,7 +816,7 @@ function wireScrollSync() {
   }, true);
 }
 
-/** Android: swipe in a Bible view. A swipe to the left shows the previous chapter, a swipe to the right the next one. */
+/** Android: swipe in a Bible view. A swipe to the left shows the next chapter, a swipe to the right the previous one. */
 function wireSwipe() {
   let t0 = null;
   const mobile = () => document.documentElement.classList.contains('mobile');
@@ -828,7 +832,7 @@ function wireSwipe() {
     if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.5 || Date.now() - a.t > 800) return;
     const sel = window.getSelection(); if (sel && !sel.isCollapsed) return;          // selecting text is not a swipe
     const i = +a.el.closest('.bv').dataset.i; if (i !== state.active) setActive(i, true);
-    step(dx < 0 ? -1 : 1);
+    step(dx < 0 ? 1 : -1);
   }, { passive: true });
 }
 
