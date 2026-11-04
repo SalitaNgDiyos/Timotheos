@@ -54,6 +54,7 @@ fn copy_rec(from: &Path, to: &Path, force: bool) -> std::io::Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn to_json(v: SqlValue) -> Value {
     match v {
         SqlValue::Null => Value::Null,
@@ -103,7 +104,17 @@ fn sql_op(dbs: &Dbs, op: &str, pairs: &HashMap<String, String>) -> Resp {
             let n = cols.len();
             let rows = st.query_map(rusqlite::params_from_iter(params.iter()), |r| {
                 let mut out = Vec::with_capacity(n);
-                for i in 0..n { out.push(to_json(r.get::<_, SqlValue>(i)?)); }
+                // text that is not valid UTF-8 (old ANSI modules) is turned into U+FFFD signs, as Node's sqlite does; rusqlite's own
+                // conversion would stop the whole program on it
+                for i in 0..n {
+                    out.push(match r.get_ref(i)? {
+                        rusqlite::types::ValueRef::Null => Value::Null,
+                        rusqlite::types::ValueRef::Integer(v) => json!(v),
+                        rusqlite::types::ValueRef::Real(v) => json!(v),
+                        rusqlite::types::ValueRef::Text(b) => Value::String(String::from_utf8_lossy(b).into_owned()),
+                        rusqlite::types::ValueRef::Blob(b) => json!({ "$b": STANDARD.encode(b) }),
+                    });
+                }
                 Ok(Value::Array(out))
             });
             match rows {
@@ -219,7 +230,9 @@ pub fn run() {
             let app = ctx.app_handle().clone();
             std::thread::spawn(move || {
                 let dbs = app.state::<Dbs>();
-                responder.respond(handle(&dbs, request));
+                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| handle(&dbs, request)))
+                    .unwrap_or_else(|_| fail("EIO", "internal error while reading"));
+                responder.respond(r);
             });
         })
         .setup(|app| {
@@ -237,4 +250,27 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64])
         .run(tauri::generate_context!())
         .expect("error while running Timotheos");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn text_that_is_not_utf8_does_not_stop_the_program() {
+        let f = std::env::temp_dir().join("timotheos-utf8-test.sqlite");
+        let _ = fs::remove_file(&f);
+        let c = Connection::open(&f).unwrap();
+        c.execute_batch("create table t(a text); insert into t values (cast(x'41424344e9ff41' as text)); insert into t values ('ok');").unwrap();
+        drop(c);
+        let dbs = Dbs::default();
+        let mut p = HashMap::new(); p.insert("p".to_string(), f.to_string_lossy().to_string());
+        let r = sql_op(&dbs, "open", &p);
+        let id = serde_json::from_slice::<Value>(r.body()).unwrap()["id"].as_u64().unwrap();
+        let mut q = HashMap::new(); q.insert("id".to_string(), id.to_string());
+        q.insert("d".to_string(), URL_SAFE_NO_PAD.encode(json!({"sql":"select a from t"}).to_string()));
+        let r = sql_op(&dbs, "all", &q);
+        let v: Value = serde_json::from_slice(r.body()).unwrap();
+        assert_eq!(v["r"][1][0], "ok");
+        assert!(v["r"][0][0].as_str().unwrap().starts_with("ABCD"));
+    }
 }
