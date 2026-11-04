@@ -9,6 +9,9 @@
 
   function groups() { return [...document.querySelectorAll('#workbench > .dgroup, #workbench .dgroup')].filter(g => !g.closest('.dfloat')); }
   const idOf = g => { const t = g.querySelector('.dtab.on') || g.querySelector('.dtab'); return t ? t.dataset.id : null; };
+  // a group is chosen by any panel it holds: changing the tab inside it (Bible search ↔ Book search) keeps it shown
+  const holds = (g, id) => !!id && [...g.querySelectorAll('.dtab')].some(t => t.dataset.id === id);
+  const isBv = g => /^bv/.test(idOf(g) || '');
 
   function apply() {
     queued = false;
@@ -16,14 +19,15 @@
     document.documentElement.classList.toggle('phone', phone);
     if (!phone) { if (bar) bar.classList.add('hidden'); return; }
     const gs = groups(); if (!gs.length) return;
-    if (!gs.some(g => idOf(g) === current)) { const first = gs.find(g => /^bv/.test(idOf(g) || '')) || gs[0]; current = idOf(first); }
-    gs.forEach(g => g.classList.toggle('pactive', idOf(g) === current));
+    if (!gs.some(g => holds(g, current))) { const first = gs.find(isBv) || gs[0]; current = idOf(first); }
+    gs.forEach(g => g.classList.toggle('pactive', holds(g, current)));
     if (!bar) { bar = document.createElement('nav'); bar.id = 'phonebar'; document.body.appendChild(bar); bar.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { current = b.dataset.id; queue(); } }); }
     document.querySelectorAll('.optnav button').forEach(b => { if (!b.title) b.title = b.textContent.replace(/\s+/g, ' ').trim(); });   // the sidebar of Options shows only icons
     bar.classList.remove('hidden');
     const html = gs.map(g => { const t = g.querySelector('.dtab.on') || g.querySelector('.dtab'); if (!t) return '';
-      const svg = t.querySelector('svg'); const label = (t.textContent || '').replace(/\s+/g, ' ').trim() || t.dataset.id;
-      return `<button type="button" data-id="${t.dataset.id}" class="${t.dataset.id === current ? 'on' : ''}">${svg ? svg.outerHTML : ''}<span>${label.replace(/[<>&]/g, '')}</span></button>`; }).join('');
+      const svg = t.querySelector('svg'); let label = (t.textContent || '').replace(/\s+/g, ' ').trim() || t.dataset.id;
+      if ([...g.querySelectorAll('.dtab')].some(x => x.dataset.id === 'search' || x.dataset.id === 'bsearch')) label = 'Search';   // Bible search and Book search are one place
+      return `<button type="button" data-id="${t.dataset.id}" class="${holds(g, current) ? 'on' : ''}">${svg ? svg.outerHTML : ''}<span>${label.replace(/[<>&]/g, '')}</span></button>`; }).join('');
     if (bar.innerHTML !== html) bar.innerHTML = html;
   }
   function queue() { if (!queued) { queued = true; requestAnimationFrame(apply); } }
@@ -39,7 +43,7 @@
   window.addEventListener('load', () => {
     const g = window.go; if (typeof g !== 'function') return;
     window.go = function (...a) {
-      if (document.documentElement.classList.contains('phone') && !/^bv/.test(current || '')) { const b = groups().find(x => /^bv/.test(idOf(x) || '')); if (b) { current = idOf(b); queue(); } }
+      if (document.documentElement.classList.contains('phone')) { const cur = groups().find(x => holds(x, current)); if (!cur || !isBv(cur)) { const b = groups().find(isBv); if (b) { current = idOf(b); queue(); } } }
       return g.apply(this, a);
     };
   });
