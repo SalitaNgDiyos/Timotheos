@@ -1090,6 +1090,8 @@ function about() {
     <blockquote id="aboutVerse" class="aboutverse" tabindex="0" role="button" title="Click to switch between Filipino and English" data-l="${lang0}">${verse(lang0)}</blockquote>
     <p class="small">Click the verse to switch between Filipino (AMB) and English (KJV).</p></div>`;
   const p = TimotheosModules.modal('About Timotheos', html, [{ label: 'OK', value: true, primary: true }], true);
+  const abox = document.querySelector('#modal .box'); abox.classList.add('aboutbox');
+  p.then(() => { abox.classList.remove('aboutbox'); abox.style.width = ''; abox.style.height = ''; });
   setTimeout(() => {
     const q = $('#aboutVerse'); if (!q) return;
     const flip = () => { const l = q.dataset.l === 'fil' ? 'en' : 'fil'; q.dataset.l = l; q.innerHTML = verse(l); save({ aboutVerse: l }); };

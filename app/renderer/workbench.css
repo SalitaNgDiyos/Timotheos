@@ -64,7 +64,7 @@ body.dragging .dcorner { display: none; }
 .dtab span { overflow: hidden; text-overflow: ellipsis; }
 .dtab:hover { opacity: 1; }
 .dtab.on { opacity: 1; background: rgba(255,255,255,.2); font-weight: 600; }
-.dbtns { display: flex; flex: none; }
+.dbtns { display: flex; flex: none; margin-left: auto; }
 .dbtn { border: 0; background: transparent; color: inherit; padding: 4px; border-radius: 5px; opacity: .72; display: grid; }
 .dbtn:hover { opacity: 1; background: rgba(255,255,255,.2); border: 0; }
 :root[data-caps="plain"] .dcap { background: var(--panel); color: var(--text); border-bottom: 1px solid var(--line); box-shadow: inset 3px 0 0 var(--cap); }
@@ -393,7 +393,7 @@ body.altkeys .tmenu u { text-decoration: underline; }
 #center > .ccap, #navStripBar, #refForm, #prevBtn, #nextBtn, .toolbar .tsep { display: none !important; }
 #center { border-bottom: 0; }
 /* the verse browser bar sits in the caption of a Bible view, next to the palette button */
-.dnav { flex: 0 1 auto; min-width: 0; overflow: hidden; display: flex; align-items: center; margin: 0 4px 0 auto; }
+.dnav { flex: 0 1 auto; min-width: 0; overflow: hidden; display: flex; align-items: center; margin: 0 4px 0 0; }
 .dcap { container-type: inline-size; }
 .dcap .navpill .np-lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 12em; }
 /* narrow panels drop the less used arrows first */
@@ -757,3 +757,16 @@ html.phone .mmrow .mmname { white-space: normal; overflow-wrap: anywhere; }
 html.phone .mmrow .mmfile { display: none; }
 html.phone .mmrow button { padding: 6px 12px; font-size: 13px; }
 html.phone .mmrow .mmdel { margin-left: auto; }
+
+/* About: the person can drag its corner to resize it */
+#modal .box.aboutbox { resize: both; min-width: 320px; min-height: 240px; max-width: 98vw; max-height: 96vh; }
+/* Copy verses: settings above, preview below, with a divider the finger can slide up or down */
+.cvsplit { display: none; }
+html.phone #modal .box.cvmbox { width: 100vw; max-width: 100vw; min-width: 0; height: 94vh; max-height: 96vh; border-radius: 8px; padding: 10px 10px; resize: none; }
+html.phone .cvm { display: flex; flex-direction: column; gap: 0; }
+html.phone .cvmleft { flex: 0 0 55%; min-height: 0; }
+html.phone .cvsplit { display: block; flex: none; height: 14px; margin: 0; cursor: row-resize; touch-action: none; position: relative; }
+html.phone .cvsplit::before { content: ''; position: absolute; left: 0; right: 0; top: 6px; height: 2px; background: var(--accent); border-radius: 2px; }
+html.phone .cvsplit::after { content: ''; position: absolute; left: 50%; top: 2px; width: 44px; height: 10px; margin-left: -22px; border-radius: 5px; background: var(--accent); opacity: .55; }
+html.phone .cvmright { flex: 1 1 0; min-height: 0; }
+html.phone .vpick { width: calc(100% - 4px); height: 100%; left: 2px !important; top: 0 !important; }

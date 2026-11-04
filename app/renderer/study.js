@@ -438,6 +438,7 @@ async function copyDialog(range) {
           <label>Before each chapter <input id="cpChapter"></label><span class="small">%r range · %t Bible · %b book · %c chapter · %v verse · %T verse text · %n new line</span></div></details>
       </section>
     </div>
+    <div id="cvSplit" class="cvsplit" title="Drag up or down to give more room to the settings or to the preview"></div>
     <div class="cvmright"><div class="cphead">Preview <span id="cpPrevNote" class="small"></span></div><div id="cpPreview" class="cpprev"></div></div>
     <div id="vpick" class="vpick hidden"></div>
   </div>`;
@@ -503,6 +504,14 @@ async function copyDialog(range) {
     });
     new ResizeObserver(() => { if (box.isConnected && box.classList.contains('cvmbox') && !$('#modal').classList.contains('hidden')) study.copySizeNow = { w: box.offsetWidth, h: box.offsetHeight }; }).observe(box);
     document.querySelectorAll('#modalBtns button').forEach(bt => { if (bt.textContent === 'Copy') bt.onclick = async () => { await refresh(); const out = await buildCopy(from, to, f); await api.copyText(out.text, f.textOnly ? null : out.html); flash(`Copied ${out.count} verse${out.count === 1 ? '' : 's'}`); }; });
+    const cs = $('#cvSplit'), cl = document.querySelector('.cvmleft');
+    cs.addEventListener('pointerdown', e => {
+      e.preventDefault(); try { cs.setPointerCapture(e.pointerId); } catch (x) { /* synthetic */ }
+      const y0 = e.clientY, h0 = cl.offsetHeight, tot = () => $('#cvm').clientHeight - 14;
+      const move = ev => { cl.style.flex = '0 0 ' + Math.round(Math.max(40, Math.min(tot() - 40, h0 + ev.clientY - y0))) + 'px'; };
+      const up = () => { cs.removeEventListener('pointermove', move); cs.removeEventListener('pointerup', up); document.removeEventListener('pointerup', up); };
+      cs.addEventListener('pointermove', move); cs.addEventListener('pointerup', up); document.addEventListener('pointerup', up);
+    });
     $('#cpToBtn').focus();
   }, 30);
 
