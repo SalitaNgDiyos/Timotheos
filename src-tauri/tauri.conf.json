@@ -1,27 +1,27 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Tanglaw Bible",
-  "version": "0.8.0",
-  "identifier": "org.tanglaw.bible",
+  "productName": "Timotheos",
+  "version": "0.6.5",
+  "identifier": "org.timotheos.bible",
   "build": {
     "frontendDist": "../dist",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run build:web"
   },
   "app": {
     "withGlobalTauri": false,
     "windows": [
-      { "title": "Tanglaw Bible", "width": 1200, "height": 820, "minWidth": 360, "minHeight": 480, "decorations": false }
+      { "label": "main", "title": "Timotheos", "width": 1280, "height": 860, "minWidth": 360, "minHeight": 480, "decorations": false }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; script-src 'self'; connect-src ipc: http://ipc.localhost https://api.github.com"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; script-src 'self' blob:; worker-src 'self' blob:; child-src 'self' blob:; frame-src 'self'; connect-src 'self' ipc: http://ipc.localhost tfs: http://tfs.localhost"
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage", "nsis", "msi"],
+    "targets": ["deb", "appimage", "nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico", "icons/icon.png"],
     "category": "Education",
     "shortDescription": "Offline Bible study with theWord and e-Sword modules",
-    "copyright": "Tanglaw Bible"
+    "copyright": "Timotheos"
   }
 }

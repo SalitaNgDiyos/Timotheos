@@ -1,36 +1,36 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What Tanglaw's window may do",
-  "windows": [
-    "main"
-  ],
+  "description": "What the windows of Timotheos may do",
+  "windows": ["main", "guide"],
   "permissions": [
     "core:default",
+    "core:event:default",
     "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
     "core:window:allow-is-maximized",
-    "dialog:allow-open",
-    "fs:allow-read-file",
-    "dialog:allow-save",
-    "fs:allow-write-file",
-    "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text",
-    "core:window:allow-request-user-attention",
-    "core:window:allow-set-focus",
+    "core:window:allow-set-size",
+    "core:window:allow-inner-size",
+    "core:window:allow-scale-factor",
+    "core:window:allow-set-title",
     "core:window:allow-unminimize",
     "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-create",
+    "core:webview:allow-create-webview-window",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-write-html",
     "opener:default",
-    "tts:default",
-    {
-      "identifier": "fs:scope",
-      "allow": [
-        {
-          "path": "**"
-        }
-      ]
-    }
+    { "identifier": "opener:allow-open-path", "allow": [{ "path": "**" }] },
+    "fs:allow-open",
+    "fs:allow-read",
+    { "identifier": "fs:scope", "allow": [{ "path": "**" }, { "path": "content://**" }] }
   ]
 }
