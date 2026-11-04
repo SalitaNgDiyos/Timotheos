@@ -70,7 +70,8 @@ jobs:
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
           echo "Android SDK: $ANDROID_HOME, NDK: $NDK_HOME"
           npx tauri android init --ci
-          npx tauri android build --apk --target aarch64 --target armv7
+          # every build gets a higher versionCode (the run number), so that Android installs it as an update of the one on the phone
+          npx tauri android build --apk --target aarch64 --target armv7 --config "{\"bundle\":{\"android\":{\"versionCode\":$((100000 + GITHUB_RUN_NUMBER))}}}"
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           APK=$(find src-tauri/gen/android/app/build/outputs/apk -name '*.apk' | head -1)
           echo "built: $APK"
