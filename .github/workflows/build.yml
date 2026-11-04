@@ -39,7 +39,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
         with: { workspaces: src-tauri }
-      - run: npm ci
+      # not `npm ci`: the lock file was made on Linux and lacks the Windows copies of the tauri and esbuild programs
+      - run: npm install --no-audit --no-fund
       - run: npx tauri build --bundles nsis
       - uses: actions/upload-artifact@v4
         with:
