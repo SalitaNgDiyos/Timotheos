@@ -779,3 +779,20 @@ html.phone .vpick { width: calc(100% - 4px); height: 100%; left: 2px !important;
 .ppstrip .ppchips { margin: 0; }
 .ppstrip .ppfile { margin-left: auto; text-align: right; }
 html.phone #ppNav .ppcard { display: none; }
+
+/* Android only: every control in a panel's coloured strip grows with the strip (its height is the toolbar's) and all of them stay visible */
+html.mobile .dcap { gap: 2px; padding: 0 4px; }
+html.mobile .dcap .dtab { padding: 0 8px; height: calc(100% - 8px); gap: 6px; font-size: 16px; border-radius: 9px; flex: 0 1 auto; }
+html.mobile .dcap .dtab svg, html.mobile .dcap .dtab .ic { width: 24px; height: 24px; flex: none; }
+html.mobile .dcap .dtab:not(.on) > span { display: none; }
+html.mobile .dcap .dbtns { gap: 0; flex: none; }
+html.mobile .dcap .dbtn { padding: 0; width: 30px; height: 38px; place-items: center; border-radius: 9px; }
+html.mobile .dcap .dbtn svg, html.mobile .dcap .dbtn .ic { width: 23px; height: 23px; }
+html.mobile .dcap .dnav { min-width: 0; flex: 1 1 auto; margin: 0 2px 0 0; overflow: visible; }
+html.mobile .dcap .navhdr1 { gap: 2px; width: 100%; }
+html.mobile .dcap .navpill { height: 34px; padding: 0 6px; gap: 4px; font-size: 16px; border-radius: 9px; min-width: 0; flex: 0 1 auto; }
+html.mobile .dcap .navpill .np-cat { font-size: 20px; }
+html.mobile .dcap .navpill .np-short { max-width: 6.5em; }
+html.mobile .dcap .navsteps { gap: 0; margin-left: auto; padding-left: 2px; flex: none; }
+html.mobile .dcap .navic, html.mobile .dcap [data-nav] { display: inline-flex !important; align-items: center; justify-content: center; width: 25px; height: 34px; padding: 0; border-radius: 8px; }
+html.mobile .dcap .navic svg, html.mobile .dcap .navic .ic { width: 21px; height: 21px; }
