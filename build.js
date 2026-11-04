@@ -37,7 +37,7 @@ function trimApp(buildPath, electronVersion, platform, arch, done) {
   const outDir = process.env.TIMOTHEOS_OUT || (fs.existsSync('/home/claude') ? '/home/claude/timotheos-dist' : path.join(__dirname, 'dist'));
   const opts = {
     dir: __dirname, out: outDir, overwrite: true,
-    platform: 'win32', arch: 'x64', electronVersion: '37.10.3',
+    platform: process.env.TIMOTHEOS_PLATFORM || 'win32', arch: process.env.TIMOTHEOS_ARCH || 'x64', electronVersion: '37.10.3',
     name: 'Timotheos', executableName: 'Timotheos', appVersion: require('./package.json').version,
     asar: true, prune: true, afterExtract: [trimElectron], afterPrune: [trimApp],
     ignore: [/^\/build\.js$/, /^\/installer($|\/)/, /^\/test($|\/)/, /^\/node_modules\/electron($|\/)/, /^\/node_modules\/@electron($|\/)/, /^\/dist($|\/)/],
