@@ -6,6 +6,27 @@ on:
   workflow_dispatch:
   push:
     branches: ["**"]
+  draft:
+    # every push leaves its files in a private DRAFT release (only people with access to the repository see it)
+    if: ${{ !cancelled() && github.event_name != 'release' }}
+    needs: [linux, windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dl }
+      - name: Keep the files in a draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir out
+          find dl -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.exe' \) -exec cp {} out/ \;
+          n=0; for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Timotheos_android-test-${n}.apk"; done
+          ls -la out
+          TAG="build-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
+          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Build $TAG" --notes "Files of the build of ${GITHUB_SHA::7}" out/*
+
   release:
     types: [published]
 
@@ -40,7 +61,11 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with: { workspaces: src-tauri }
       # not `npm ci`: the lock file was made on Linux and lacks the Windows copies of the tauri and esbuild programs
-      - run: npm install --no-audit --no-fund
+      - name: Install (without the Linux-made lock file)
+        shell: pwsh
+        run: |
+          Remove-Item package-lock.json
+          npm install --no-audit --no-fund
       - run: npx tauri build --bundles nsis
       - uses: actions/upload-artifact@v4
         with:
