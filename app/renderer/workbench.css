@@ -791,8 +791,9 @@ html.mobile .dcap .dbtn svg, html.mobile .dcap .dbtn .ic { width: 23px; height: 
 html.mobile .dcap .dnav { min-width: 0; flex: 1 1 auto; margin: 0 2px 0 0; overflow: visible; }
 html.mobile .dcap .navhdr1 { gap: 2px; width: 100%; }
 html.mobile .dcap .navpill { height: 34px; padding: 0 6px; gap: 4px; font-size: 16px; border-radius: 9px; min-width: 0; flex: 0 1 auto; }
-html.mobile .dcap .navpill .np-cat { font-size: 20px; }
-html.mobile .dcap .navpill .np-short { max-width: 6.5em; }
+html.mobile .dcap .navpill { flex: none; }
+html.mobile .dcap .navpill .np-cat { display: none; }   /* room for the whole verse reference */
+html.mobile .dcap .navpill .np-short { max-width: none; overflow: visible; }
 html.mobile .dcap .navsteps { gap: 0; margin-left: auto; padding-left: 2px; flex: none; }
 html.mobile .dcap .navic, html.mobile .dcap [data-nav] { display: inline-flex !important; align-items: center; justify-content: center; width: 25px; height: 34px; padding: 0; border-radius: 8px; }
 html.mobile .dcap .navic svg, html.mobile .dcap .navic .ic { width: 21px; height: 21px; }
