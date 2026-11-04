@@ -23,4 +23,13 @@
   const h1=l.getBoundingClientRect().height; ok(h1<h0-60,'dragging the divider up shrinks the settings: '+Math.round(h0)+' -> '+Math.round(h1));
   const y2=sp.getBoundingClientRect().top+7; ev('pointerdown',y2);ev('pointermove',y2+150);ev('pointerup',y2+150); await sl(200);
   ok(l.getBoundingClientRect().height>h1+100,'dragging it down grows the settings');}
+ document.querySelector('#modalBtns button').click(); await sl(200);
+ {const m=document.getElementById('tbMenus'),t=document.getElementById('toolbar'),d=document.querySelector('.dgroup.pactive .dcap'),tb=document.getElementById('titlebar');
+  ok(m.parentNode===t,'File/View/Help sit in the toolbar row'); ok(tb.offsetHeight<8,'title bar row is gone: '+tb.offsetHeight);
+  ok(Math.abs(d.offsetHeight-t.offsetHeight)<=2,'panel strip as tall as the toolbar: '+d.offsetHeight+' vs '+t.offsetHeight);
+  const mb=m.getBoundingClientRect(); ok(mb.left<60&&mb.top>=t.getBoundingClientRect().top-1,'menu is at the left of the toolbar');}
+ const mid=(state.modules.bibles||[])[0].id; TimotheosProps.open(mid); await sl(900);
+ {const st=document.querySelector('#ppPages .ppstrip'),nav=document.getElementById('ppNav');
+  ok(st&&st.offsetHeight>0&&st.textContent.length>3,'properties: module tags and file name are in the strip above the text: '+(st&&st.textContent.trim().slice(0,50)));
+  ok(!document.querySelector('#ppNav .ppcard').offsetHeight,'properties: nothing but icons left in the sidebar');}
  console.log('RESULT '+out.join(' | '));})();

@@ -17,6 +17,13 @@
     queued = false;
     const phone = mq.matches || document.documentElement.classList.contains('mobile');
     document.documentElement.classList.toggle('phone', phone);
+    // the menu (File View Help) sits at the left of the toolbar row on a phone, and goes back to the title bar otherwise
+    const menus = document.getElementById('tbMenus'), tool = document.getElementById('toolbar'), tb = document.getElementById('titlebar');
+    if (menus && tool && tb) {
+      if (phone && menus.parentNode !== tool) tool.insertBefore(menus, tool.firstChild);
+      else if (!phone && menus.parentNode === tool) tb.insertBefore(menus, tb.querySelector('.tbdrag'));
+    }
+    if (tool) { const h = tool.offsetHeight; document.documentElement.style.setProperty('--phone-bar-h', phone && h > 20 ? h + 'px' : ''); }   // the coloured panel strips are as tall as the toolbar
     if (!phone) { if (bar) bar.classList.add('hidden'); return; }
     const gs = groups(); if (!gs.length) return;
     if (!gs.some(g => holds(g, current))) { const first = gs.find(isBv) || gs[0]; current = idOf(first); }

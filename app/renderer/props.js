@@ -23,13 +23,14 @@
     const i = cur.info; const m = findMod(cur.id);
     const title = (i.fields.find(f => f.key === 'title') || {}).value || m.title || i.name;
     $('#ppTitle').textContent = 'Properties – ' + title;
-    $('#ppCard').innerHTML = `<div class="ppt">${esc(title)}</div>
-      <div class="ppchips"><span class="chip st">${esc(i.format)}</span><span class="chip st">${esc(i.kind || m.kind || '')}</span>${i.compressed ? '<span class="chip st">compressed</span>' : ''}${i.editable ? '' : '<span class="chip st ro">read-only</span>'}</div>
+    const chips = `<div class="ppchips"><span class="chip st">${esc(i.format)}</span><span class="chip st">${esc(i.kind || m.kind || '')}</span>${i.compressed ? '<span class="chip st">compressed</span>' : ''}${i.editable ? '' : '<span class="chip st ro">read-only</span>'}</div>
       <div class="small ppfile" title="${esc(i.file)}">${esc(i.name)} · ${kb(i.size)}</div>`;
+    $('#ppCard').innerHTML = `<div class="ppt">${esc(title)}</div>` + chips;
+    const strip = document.documentElement.classList.contains('phone') ? `<div class="ppstrip">${chips}</div>` : '';
     const pages = $('#ppPages');
     const ro = !i.editable;
     const note = ro ? `<p class="note">${TimotheosIcons.icon('info', 14)} This module cannot be changed: ${esc(i.reason)}.</p>` : '';
-    pages.innerHTML = `
+    pages.innerHTML = strip + `
       <section class="optpage" data-p="about">${note}
         <div class="pptools ${ro ? 'hidden' : ''}"><button id="ppEdit" data-icon="edit" data-icon-size="15">Edit</button>
           <span class="ppfmt hidden" id="ppFmt"><button data-cmd="bold" title="Bold"><b>B</b></button><button data-cmd="italic" title="Italic"><i>I</i></button><button data-cmd="underline" title="Underline"><u>U</u></button><button data-cmd="insertUnorderedList" title="List">• List</button><button data-cmd="removeFormat" title="Plain text">Clear</button></span></div>

@@ -725,7 +725,10 @@ html.phone #workbench .dgroup.pactive { display: flex !important; flex-direction
 html.phone #workbench .gut, html.phone #workbench .dcorner, html.phone .dfloat, html.phone .dbtn[data-act="float"], html.phone .dbtn[data-act="max"], html.phone .dgrip { display: none !important; }
 html.phone .titlebar .brand span { display: none; }
 html.phone .statusbar { display: none; }
-html.phone .titlebar { padding-top: env(safe-area-inset-top, 0px); height: calc(36px + env(safe-area-inset-top, 0px)); }
+html.phone .titlebar { padding: 0; height: env(safe-area-inset-top, 0px); overflow: hidden; }
+html.phone .toolbar { flex-wrap: nowrap; }
+html.phone .toolbar .tbmenus { flex: none; }
+html.phone .dcap { height: var(--phone-bar-h, 42px); }
 html.phone .dcap .dtabs { min-width: 0; overflow: hidden; }
 html.phone .modal, html.phone .dialog, html.phone #optionsDlg > *, html.phone #propsDlg > * { max-width: 100vw; }
 
@@ -770,3 +773,9 @@ html.phone .cvsplit::before { content: ''; position: absolute; left: 0; right: 0
 html.phone .cvsplit::after { content: ''; position: absolute; left: 50%; top: 2px; width: 44px; height: 10px; margin-left: -22px; border-radius: 5px; background: var(--accent); opacity: .55; }
 html.phone .cvmright { flex: 1 1 0; min-height: 0; }
 html.phone .vpick { width: calc(100% - 4px); height: 100%; left: 2px !important; top: 0 !important; }
+
+/* phone: the module's name tags and file name sit above the About text, not in the narrow sidebar */
+.ppstrip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 0 0 8px; margin: 0 0 6px; border-bottom: 1px solid var(--line); }
+.ppstrip .ppchips { margin: 0; }
+.ppstrip .ppfile { margin-left: auto; text-align: right; }
+html.phone #ppNav .ppcard { display: none; }
