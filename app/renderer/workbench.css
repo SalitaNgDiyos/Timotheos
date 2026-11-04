@@ -728,3 +728,32 @@ html.phone .statusbar { display: none; }
 html.phone .titlebar { padding-top: env(safe-area-inset-top, 0px); height: calc(36px + env(safe-area-inset-top, 0px)); }
 html.phone .dcap .dtabs { min-width: 0; overflow: hidden; }
 html.phone .modal, html.phone .dialog, html.phone #optionsDlg > *, html.phone #propsDlg > * { max-width: 100vw; }
+
+/* ---------------- Bible view header: the verse browser at the left edge, no Bible icon ---------------- */
+.dgroup.isbv.solo .dtabs { display: none; }
+.dgroup.isbv.solo .dnav { margin: 0 4px 0 0; flex: 1 1 auto; }
+.dgroup.isbv.solo .dnav .navhdr1 { width: 100%; }
+.dgroup.isbv.solo .dnav .navsteps { margin-left: auto; }
+.np-short { display: none; }
+@container (max-width: 400px) { .dcap .navpill .np-lbl { display: none; } .dcap .navpill .np-short { display: inline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 9em; } }
+html.phone .dcap .navpill .np-lbl { display: none; }
+html.phone .dcap .navpill .np-short { display: inline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 9em; }
+html.phone .dcap [data-nav="prevVerse"], html.phone .dcap [data-nav="nextVerse"] { display: inline-flex; }
+.d-mob { display: none; }
+html.phone .d-mob { display: inline; }
+html.phone .d-desk { display: none; }
+
+/* ---------------- phone: Options, modules list, Library splitter ---------------- */
+#libSplitter { touch-action: none; position: relative; }
+#libSplitter::after { content: ''; position: absolute; top: 0; bottom: 0; left: -8px; right: -8px; }
+html.phone .optmain { grid-template-columns: 56px 1fr; }
+html.phone .optnav { padding: 8px 4px; }
+html.phone .optnav button { font-size: 0; justify-content: center; padding: 12px 0; gap: 0; }
+html.phone .optnav button .ic, html.phone .optnav button svg { width: 22px; height: 22px; }
+html.phone .optpages { padding: 6px 12px 18px; }
+html.phone .mmrow { flex-wrap: wrap; row-gap: 4px; padding: 6px 0; }
+html.phone .mmrow label { flex: 1 1 100%; }
+html.phone .mmrow .mmname { white-space: normal; overflow-wrap: anywhere; }
+html.phone .mmrow .mmfile { display: none; }
+html.phone .mmrow button { padding: 6px 12px; font-size: 13px; }
+html.phone .mmrow .mmdel { margin-left: auto; }

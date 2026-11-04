@@ -19,6 +19,7 @@
     if (!gs.some(g => idOf(g) === current)) { const first = gs.find(g => /^bv/.test(idOf(g) || '')) || gs[0]; current = idOf(first); }
     gs.forEach(g => g.classList.toggle('pactive', idOf(g) === current));
     if (!bar) { bar = document.createElement('nav'); bar.id = 'phonebar'; document.body.appendChild(bar); bar.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { current = b.dataset.id; queue(); } }); }
+    document.querySelectorAll('.optnav button').forEach(b => { if (!b.title) b.title = b.textContent.replace(/\s+/g, ' ').trim(); });   // the sidebar of Options shows only icons
     bar.classList.remove('hidden');
     const html = gs.map(g => { const t = g.querySelector('.dtab.on') || g.querySelector('.dtab'); if (!t) return '';
       const svg = t.querySelector('svg'); const label = (t.textContent || '').replace(/\s+/g, ' ').trim() || t.dataset.id;

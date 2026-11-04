@@ -21,7 +21,9 @@ const corner = (id, c) => { const g = document.querySelector(`[data-panel="${id}
   ok(!document.getElementById('navModeSw') && !document.querySelector('[data-navmode]'), 'Nav 1 / 2 / 3 / All is gone');
   ok(getComputedStyle(document.querySelector('.dtab[data-id="bv0"] span')).display === 'none', 'the tab name of a Bible view is not shown');
   const lbl0 = cap.querySelector('.np-lbl').textContent;
-  cap.querySelector('[data-nav="nextChap"]').click(); await sleep(600);
+  ok(!cap.querySelector('[data-nav="prevChap"], [data-nav="nextChap"]') && cap.querySelector('[data-nav="back"]') && cap.querySelector('[data-nav="fwd"]'), 'Back and Forward history arrows replace the chapter arrows');
+  ok(getComputedStyle(cap.querySelector('.dtabs')).display === 'none' && cap.querySelector('.dnav').getBoundingClientRect().left < cap.getBoundingClientRect().left + 40, 'no Bible icon: the verse browser is at the left edge');
+  cap.querySelector('[data-nav="nextBook"]').click(); await sleep(600);
   ok(cap.querySelector('.np-lbl').textContent !== lbl0, 'the arrows work from the header: ' + lbl0 + ' → ' + cap.querySelector('.np-lbl').textContent);
   document.getElementById('panelsBtn') && document.getElementById('panelsBtn').click();
   // corners

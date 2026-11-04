@@ -94,10 +94,10 @@
 
   /* ======================================================================= Design 1: Interactive Header & 3-Step Popover */
   /** the verse browser bar (book pill, step arrows, history) that sits in the header of every Bible view */
-  const NAV_STEPS = [['prevBook', 'prevBook', 'Previous book (Ctrl+←)'], ['prevChap', 'prev', 'Previous chapter (←)'], ['prevVerse', 'up', 'Previous verse (↑)'],
-    ['nextVerse', 'down', 'Next verse (↓)'], ['nextChap', 'next', 'Next chapter (→)'], ['nextBook', 'nextBook', 'Next book (Ctrl+→)'], ['hist', 'history', 'Recent passage history (Back / Forward list)']];
+  const NAV_STEPS = [['prevBook', 'prevBook', 'Previous book (Ctrl+←)'], ['back', 'back', 'Back to the previous passage (Alt+←)'], ['prevVerse', 'up', 'Previous verse (↑)'],
+    ['nextVerse', 'down', 'Next verse (↓)'], ['fwd', 'forward', 'Forward to the next passage (Alt+→)'], ['nextBook', 'nextBook', 'Next book (Ctrl+→)'], ['hist', 'history', 'Recent passage history (Back / Forward list)']];
   function barHtml() {
-    return `<span class="navhdr1"><button type="button" class="navpill" title="Browse books, chapters and verses (mouse wheel steps the book)"><span class="np-cat">📜</span><span class="np-lbl">Genesis</span><span class="np-caret">▾</span></button><span class="navsteps">${NAV_STEPS.map(([a, ic, t]) => `<button type="button" class="dbtn navic" data-nav="${a}" title="${t}" aria-label="${t}">${TimotheosIcons.icon(ic, 14)}</button>`).join('')}</span></span>`;
+    return `<span class="navhdr1"><button type="button" class="navpill" title="Browse books, chapters and verses (mouse wheel steps the book)"><span class="np-cat">📜</span><span class="np-lbl">Genesis</span><span class="np-short">Gen</span><span class="np-caret">▾</span></button><span class="navsteps">${NAV_STEPS.map(([a, ic, t]) => `<button type="button" class="dbtn navic" data-nav="${a}" title="${t}" aria-label="${t}">${TimotheosIcons.icon(ic, 14)}</button>`).join('')}</span></span>`;
   }
   function wireHeaderBar() {
     const vSel = $('#verseSel');
@@ -114,7 +114,7 @@
       if (!ic) return;
       const a = ic.dataset.nav;
       if (a === 'prevBook') stepBook(-1); else if (a === 'nextBook') stepBook(1);
-      else if (a === 'prevChap') step(-1); else if (a === 'nextChap') step(1);
+      else if (a === 'back') historyGo(-1); else if (a === 'fwd') historyGo(1);
       else if (a === 'prevVerse') stepVerse(-1); else if (a === 'nextVerse') stepVerse(1);
       else if (a === 'hist') { e.stopPropagation(); openHistoryMenu(ic); }
     });
@@ -803,6 +803,10 @@
       const cat1 = h.querySelector('.np-cat'), lbl = h.querySelector('.np-lbl'), hist = h.querySelector('[data-nav="hist"]');
       if (cat1) cat1.textContent = cat.icon;
       if (lbl) lbl.textContent = `${bk.name} ${r.c}:${r.v || 1}`;
+      const sh = h.querySelector('.np-short'); if (sh) sh.textContent = `${bk.abbr || bk.name} ${r.c}:${r.v || 1}`;   // the short form is shown in a narrow panel, with the verse
+      const bb = h.querySelector('[data-nav="back"]'), ff = h.querySelector('[data-nav="fwd"]');
+      if (bb) bb.disabled = !(state.back && state.back.length);
+      if (ff) ff.disabled = !(state.fwd && state.fwd.length);
       if (hist) hist.disabled = !(state.back && state.back.length) && !(state.fwd && state.fwd.length);
     });
 

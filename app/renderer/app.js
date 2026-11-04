@@ -347,7 +347,7 @@ function renderModuleManager() {
   let html = '';
   for (const k of Object.keys(MOD_KINDS)) {
     const list = shown.filter(r => r.kind === k).sort((a, b) => a.name.localeCompare(b.name)); if (!list.length) continue;
-    html += `<div class="mmk"><b>${MOD_KINDS[k]}</b> <span class="small">${list.length}</span></div>` + list.map(r => `<div class="mmrow${r.hidden ? ' off' : ''}" data-id="${esc(r.id)}"><label title="Untick to take this module out of every list; the file stays"><input type="checkbox" class="mmshow"${r.hidden ? '' : ' checked'}> <span class="mmname">${esc(r.name)}</span></label><span class="small mmfile" title="${esc(r.file)}">${esc(r.file)}</span><button type="button" class="mminfo" title="Properties">${TimotheosIcons.icon('info', 13)}</button><button type="button" class="mmdel" title="Move the file of this module to the Recycle Bin">Delete file…</button></div>`).join('');
+    html += `<div class="mmk"><b>${MOD_KINDS[k]}</b> <span class="small">${list.length}</span></div>` + list.map(r => `<div class="mmrow${r.hidden ? ' off' : ''}" data-id="${esc(r.id)}"><label title="Untick to take this module out of every list; the file stays"><input type="checkbox" class="mmshow"${r.hidden ? '' : ' checked'}> <span class="mmname">${esc(r.name)}</span></label><span class="small mmfile" title="${esc(r.file)}">${esc(r.file)}</span><button type="button" class="mminfo" title="Properties">${TimotheosIcons.icon('info', 13)}</button><button type="button" class="mmdel" title="Remove this module"><span class="d-desk">Delete file…</span><span class="d-mob">Uninstall</span></button></div>`).join('');
   }
   box.innerHTML = html || '<p class="hint">No modules.</p>';
   const nh = rows.filter(r => r.hidden).length;
@@ -368,9 +368,12 @@ function wireModuleManager() {
     if (e.target.closest('.mminfo')) return TimotheosProps.open(id);
     if (e.target.closest('.mmdel')) {
       const r = (state.allModules.bibles || []).concat(state.allModules.books || []).find(m => m.id === id) || {};
-      const ok = await TimotheosModules.confirmBox('Delete the module file', `Move the file <b>${esc(r.name || id)}</b> to the Recycle Bin?<br><span class="small">It disappears from Timotheos and from every other program that reads the same folder. You can get it back from the Recycle Bin.</span>`);
+      const mob = document.documentElement.classList.contains('mobile');
+      const ok = mob
+        ? await TimotheosModules.confirmBox('Uninstall the module', `Uninstall <b>${esc(r.name || id)}</b>?<br><span class="small">Its file is deleted from this device. To get it back, import it again.</span>`)
+        : await TimotheosModules.confirmBox('Delete the module file', `Move the file <b>${esc(r.name || id)}</b> to the Recycle Bin?<br><span class="small">It disappears from Timotheos and from every other program that reads the same folder. You can get it back from the Recycle Bin.</span>`);
       if (!ok) return;
-      try { await refreshModules(await api.deleteModuleFile(id)); flashMsg('Moved to the Recycle Bin: ' + (r.name || id)); }
+      try { await refreshModules(await api.deleteModuleFile(id)); flashMsg((mob ? 'Uninstalled: ' : 'Moved to the Recycle Bin: ') + (r.name || id)); }
       catch (err) { TimotheosModules.messageBox('Could not delete', esc(err.message)); }
     }
   });

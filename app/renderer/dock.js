@@ -265,6 +265,7 @@
     div.style.setProperty('--cap', `var(--cap-${act.cap})`);
     div.classList.toggle('zoomable', !!(opts.zoomable && opts.zoomable(act0)));
     div.classList.toggle('isbv', isBible(act0));
+    div.classList.toggle('solo', ids.length === 1);
     if (maxed && ids.includes(maxed)) div.classList.add('max');
     const tabs = ids.map(id => {
       const p = PANELS.get(id);
