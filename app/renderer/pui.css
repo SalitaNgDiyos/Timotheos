@@ -7,7 +7,7 @@ html.sk button { font-family: var(--p-ui); -webkit-tap-highlight-color: transpar
 html.sk #workbench .dgroup > .dcap { display: none !important; }
 html.sk .bv .bvcap, html.sk .bv .bvside { display: none !important; }
 html.sk .bv, html.sk .bv .bvbody { background: var(--p-bg) !important; border: 0 !important; box-shadow: none !important; }
-html.sk .bv .bvtext { background: var(--p-bg) !important; color: var(--p-ink); padding: var(--rd-top, 70px) 26px var(--rd-bot, 150px) !important; font-family: var(--p-serif); font-size: calc(var(--size, 17px) * 1.1); line-height: 1.75; scroll-padding-top: var(--rd-top, 70px); -webkit-user-select: none; user-select: none; }
+html.sk .bv .bvtext { background: var(--p-bg) !important; color: var(--p-ink); padding: var(--rd-top, 70px) 26px var(--rd-bot, 150px) !important; font-family: var(--p-serif); font-size: calc(var(--size, 17px) * 1.12); line-height: 1.72; scroll-padding-top: var(--rd-top, 70px); -webkit-user-select: none; user-select: none; }
 html.sk.sk-selecting .bv .bvtext { -webkit-user-select: text; user-select: text; }
 html.sk .bv .bvtext .sk-ttl { margin: 4px 0 18px; font: 400 2.1em/1.05 Literata, Georgia, serif; color: var(--p-ink); letter-spacing: -.01em; }
 html.sk .bv .bvtext .sk-ttl small { display: block; font: 600 11.5px var(--p-ui); letter-spacing: .24em; text-transform: uppercase; color: var(--p-acc); margin-bottom: 10px; }
@@ -197,3 +197,6 @@ html.sk #flash, html.sk .flash { z-index: 120; }
 .pgbody { overflow-x: hidden; }
 html.sk .bvtext td.vn .noteicon { display: inline; font-size: .62em; vertical-align: .6em; margin-right: 4px; color: var(--p-acc); }
 html.sk .bvtext .unote { display: block; font-family: var(--p-ui); margin: 6px 0 2px; background: var(--p-accsoft); border-left-color: var(--p-acc); border-radius: 10px; }
+html.sk .bvtext table.chapter, html.sk .bvtext .paraview { font: inherit; line-height: inherit; font-family: var(--p-serif); }
+html.sk .bvtext td.vn .vno { font-size: 11px; vertical-align: .55em; }
+html.sk .bvtext::-webkit-scrollbar, html.sk .pgbody::-webkit-scrollbar, html.sk .psheet::-webkit-scrollbar, html.sk .c-drawer::-webkit-scrollbar { width: 0; height: 0; }
