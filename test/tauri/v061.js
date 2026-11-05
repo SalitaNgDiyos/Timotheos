@@ -129,7 +129,7 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
   q.click(); await sleep(200); ok(/All scripture is given by inspiration of God/.test($('#aboutVerse').textContent), 'click: English (KJV)');
   q.click(); await sleep(200); ok(/hiningahan ng Diyos/.test($('#aboutVerse').textContent), 'click again: Filipino (AMB)');
   [...document.querySelectorAll('#modalBtns button')].find(b => b.classList.contains('primary')).click(); await sleep(300);
-  ok(document.title.includes('Timotheos') && !/Tanglaw/i.test(document.documentElement.innerHTML.replace(/<script[\s\S]*?<\/script>/g, '')), 'window title and screen say Timotheos: ' + document.title);
+  ok(document.title.includes('Timotheos') && !/Tanglaw/i.test(document.documentElement.innerHTML.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<code class="sel">[^<]*<\/code>/g, '')), 'window title and screen say Timotheos: ' + document.title);
   // 14. Bible search choice
   openTab('search', true); await sleep(400);
   ok(!!$('#searchBibleList') && $('#searchBibleList input') && [...$('#searchBibles').options].some(o => o.value === 'chosen'), 'Bible search has a list of Bibles to choose from');

@@ -85,8 +85,9 @@
 
   const REV = Object.fromEntries(Object.entries(TL).map(([en, tl]) => [tl, en]));
 
+  let cur = null;   // the language last applied (state is not a window property, so it is read with typeof)
   function lang() {
-    return (window.state && state.settings && state.settings.lang) || 'en';
+    return cur || (typeof state !== 'undefined' && state.settings && state.settings.lang) || 'en';
   }
 
   function t(str, lg = lang()) {
@@ -96,6 +97,7 @@
   }
 
   function apply(lg = lang()) {
+    cur = lg;
     document.documentElement.lang = lg === 'fil' ? 'fil' : 'en';
     // Toolbar labels
     for (const [sel, en] of [

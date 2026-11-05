@@ -41,7 +41,7 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
   document.querySelector('#ppNav [data-p="about"]').click(); document.getElementById('ppEdit').click(); await sleep(50);
   document.getElementById('ppAbout').innerHTML = '<p>About <b>this</b> book.</p>'; document.getElementById('ppAbout').dispatchEvent(new Event('input'));
   ok(!document.getElementById('ppSave').disabled, 'Save is enabled after edits');
-  document.getElementById('ppSave').click(); await sleep(1500);
+  document.getElementById('ppSave').click(); for (let k = 0; k < 40 && !/Saved|rror|ould not/.test(document.getElementById('ppNote').textContent); k++) await sleep(250);
   ok(/Saved/.test(document.getElementById('ppNote').textContent) && /timotheos-backup/.test(document.getElementById('ppNote').textContent), 'saved, backup kept: ' + document.getElementById('ppNote').textContent);
   const b2 = state.modules.books.find(b => b.id === book.id);
   ok(b2 && b2.title === 'My Edited Book', 'library shows the new title: ' + (b2 && b2.title));

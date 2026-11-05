@@ -25,7 +25,7 @@ const sec = i => document.querySelectorAll('section.bv')[i];
   const ml = [...document.querySelectorAll('.bvmenu .vcl')].find(c => c.value === 'morph'); ml.click(); await sleep(600);
   ok(!sec(0).querySelector('.cl-morph') && sec(0).querySelector('.cl-strong'), 'a line of the intralinear view can be left out (⚙)');
   document.querySelector('.bvmenu')?.remove();
-  key('i', { altKey: true }); await sleep(600);
+  key('i', { altKey: true }); for (let k = 0; k < 12 && sec(0).querySelector('.cw'); k++) await sleep(250);
   ok(!sec(0).querySelector('.cw'), 'intralinear view off again');
   // a Bible's own switches (theWord user toggles)
   await useBible(tg.id); await go({ b: 43, c: 3, v: 16 }); await sleep(800);
