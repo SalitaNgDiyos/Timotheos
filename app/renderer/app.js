@@ -150,7 +150,7 @@ function runCommand(cmd) {
     exportTopics: () => TimotheosTools.exportTopics(),
     printTopic: () => TimotheosTools.printTopic(), clipmon: () => TimotheosTools.setClipmon(!TimotheosTools.clipOn()),
     voices: () => TimotheosSpeech.voicesDialog(), goto: () => { const p = document.querySelector('.dgroup.isbv .navpill') || document.querySelector('.navpill'); if (p && window.TimotheosNav) TimotheosNav.openNavPopover('book', p); }, about,
-    options: () => TimotheosOptions.open(), resetLayout: () => TimotheosDock.applyPreset('classic'),
+    options: () => TimotheosOptions.open(), resetLayout: () => { TimotheosDock.applyPreset('classic'); flashMsg('Panel layout reset'); },
     copyVerses: () => TimotheosStudy.copyDialog(), daily: () => TimotheosStudy.openStudy('plans'), keys: () => TimotheosStudy.showKeys(), print: () => window.print(),
     guide: () => api.appCmd('guide', TimotheosOptions.appearance().skin)
   };
