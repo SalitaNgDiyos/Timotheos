@@ -116,20 +116,24 @@
     pal.innerHTML = `<label class="pfield pin">${p.ic('search', 19)}<input id="cPalQ" type="text" placeholder="Verse, word, book or command" autocomplete="off" spellcheck="false" enterkeyhint="go"></label><div class="pbody2"></div>`;
     const qi = pal.querySelector('#cPalQ'), body = pal.querySelector('.pbody2'); let first = null;
     const cmds = CMDS();
-    const draw = async () => {
+    const localRef = t => { const m = /^(\d?\s*[\p{L}][\p{L}.]*(?:\s+[\p{L}]+)*)\s*(\d+)(?:\s*[:.]\s*(\d+))?$/u.exec(t.trim()); if (!m) return null; const n = m[1].replace(/[.\s]/g, '').toLowerCase();
+      const bk = (state.nav || []).find(b => b.name.replace(/\s/g, '').toLowerCase() === n) || (state.nav || []).find(b => (b.abbrs || [b.abbr]).some(x => String(x).replace(/[.\s]/g, '').toLowerCase() === n)) || (state.nav || []).find(b => b.name.replace(/\s/g, '').toLowerCase().startsWith(n));
+      return bk ? { b: bk.id, c: +m[2], v: m[3] ? +m[3] : 1 } : null; };
+    const draw = () => {
       const t = qi.value.trim(); const my = ++palSeq; first = null;
       const cm = cmds.filter(c => !t || (c[0] + ' ' + c[2]).toLowerCase().includes(t.toLowerCase())).slice(0, t ? 10 : 99);
       let h = '';
       if (t) {
-        const r = await api.parseRef(t).catch(() => null); if (my !== palSeq) return;
-        if (r && r.b && /\d/.test(t)) { h += `<div class="pg2">Go to</div><button type="button" class="pr hl" data-go="${r.b}.${r.c || 1}.${r.v || 1}">${p.ic('pin', 18)}<span>${p.esc(p.rn({ b: r.b, c: r.c || 1, v: r.v || 1 }))}</span><small>Go</small></button>`; first = first || 'go'; }
+        const r = localRef(t);
+        h += `<div class="pgo">${r ? `<div class="pg2">Go to</div><button type="button" class="pr hl" data-go="${r.b}.${r.c}.${r.v}">${p.ic('pin', 18)}<span>${p.esc(p.rn(r))}</span><small>Go</small></button>` : ''}</div>`;
+        if (!r && /\d/.test(t)) api.parseRef(t).then(x => { if (my !== palSeq || !x || !x.b) return; const g = body.querySelector('.pgo'); if (g) g.innerHTML = `<div class="pg2">Go to</div><button type="button" class="pr hl" data-go="${x.b}.${x.c || 1}.${x.v || 1}">${p.ic('pin', 18)}<span>${p.esc(p.rn({ b: x.b, c: x.c || 1, v: x.v || 1 }))}</span><small>Go</small></button>`; }).catch(() => {});
         const bks = (state.nav || []).filter(b => b.name.toLowerCase().startsWith(t.toLowerCase())).slice(0, 3);
-        if (bks.length) h += `<div class="pg2">Books of the Bible</div>${bks.map(b => `<button type="button" class="pr" data-go="${b.id}.1.1">${p.ic('book', 18)}<span>${p.esc(b.name)}</span><small>${b.chapterList.length} ch</small></button>`).join('')}`;
-        h += '<div class="pg2v"></div><div class="pg2b">' + (t.length >= 3 ? '<div class="pg2">Books</div><p class="phint bsprog">Searching the books…</p>' : '') + '</div>';
+        if (bks.length && !r) h += `<div class="pg2">Books of the Bible</div>${bks.map(b => `<button type="button" class="pr" data-go="${b.id}.1.1">${p.ic('book', 18)}<span>${p.esc(b.name)}</span><small>${b.chapterList.length} ch</small></button>`).join('')}`;
+        h += '<div class="pg2v"></div><div class="pg2b">' + (t.length >= 3 && !r ? '<div class="pg2">Books</div><p class="phint bsprog">Searching the books…</p>' : '') + '</div>';
       }
       h += `<div class="pg2">Commands</div>${cm.map(c => `<button type="button" class="pr" data-cmd="${cmds.indexOf(c)}">${p.ic(c[1], 18)}<span>${p.esc(c[0])}</span><small>${c[2]}</small></button>`).join('') || '<p class="phint">No command by that name.</p>'}`;
       body.innerHTML = h;
-      if (t && t.length >= 3) { clearTimeout(palT); palT = setTimeout(() => words(t, my, body), 320); }
+      if (t && t.length >= 3 && !localRef(t)) { clearTimeout(palT); palT = setTimeout(() => words(t, my, body), 450); }
     };
     const words = async (t, my, body) => {
       const ids = (state.settings.openBibles || []).slice(0, 1);
