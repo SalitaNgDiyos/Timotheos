@@ -207,6 +207,7 @@
  });
  // ---------- the phone's Back button ----------
  await T('back button',async()=>{
+  PUI.closeSheet(); PUI.clearPages(); if(SK==='c') SkinC.closeAll(); await sl(600);
   PUI.readingSheet(); await sl(400); history.back(); await sl(500); ok(!sheet(),'Back closes a sheet');
   PUI.library(); await sl(500); PUI.openModule((state.modules.books.find(b=>!b.locked&&b.kind==='dictionary')||{}).id); await sl(1200); ok(PUI.pageCount()===2,'two pages open'); history.back(); await sl(500); ok(PUI.pageCount()===1,'Back closes the top page'); history.back(); await sl(500); ok(PUI.pageCount()===0,'Back closes the last page');
   TimotheosOptions.open(); await sl(500); history.back(); await sl(600); ok($('#optionsDlg').classList.contains('hidden'),'Back closes Options');
