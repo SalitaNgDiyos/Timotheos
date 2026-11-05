@@ -48,7 +48,7 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
   ok(/About\s+this\s+book/.test(document.getElementById('ppAbout').textContent) && document.querySelector('#ppAbout b, #ppAbout [style*="bold"]'), 'About text read back from the module (RTF → HTML)');
   // compress
   document.querySelector('#ppNav [data-p="file"]').click(); await sleep(50);
-  document.getElementById('ppZlib').checked = true; document.getElementById('ppCompress').click(); await sleep(2000);
+  document.getElementById('ppZlib').checked = true; document.getElementById('ppCompress').click(); for (let k = 0; k < 40 && !/→/.test(document.getElementById('ppResult').textContent); k++) await sleep(250);
   ok(/→/.test(document.getElementById('ppResult').textContent) && /compressed/.test(document.getElementById('ppCard').textContent), 'compressed: ' + document.getElementById('ppResult').textContent);
   document.getElementById('ppCancel').click(); await sleep(300);
   await TimotheosModules.openBookModule(book.id); await sleep(400);
@@ -56,7 +56,7 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
   // restore
   await TimotheosProps.open(book.id, 'file'); await sleep(300);
   document.getElementById('ppRestore').click(); await sleep(300);
-  [...document.querySelectorAll('#modalBtns button')].find(b => b.textContent === 'OK').click(); await sleep(1500);
+  [...document.querySelectorAll('#modalBtns button')].find(b => b.textContent === 'OK').click(); for (let k = 0; k < 40 && !/original file is back/.test(document.getElementById('ppNote').textContent); k++) await sleep(250); await sleep(500);
   ok(/original file is back/.test(document.getElementById('ppNote').textContent) && state.modules.books.find(b => b.id === book.id).title === 'Edit Book', 'restored the original');
   document.getElementById('ppCancel').click();
   // Bible properties (read-only check: theWord's KJV stays untouched — only opened)
