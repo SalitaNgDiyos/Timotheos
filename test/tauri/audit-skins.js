@@ -112,7 +112,7 @@
  await T('library',async()=>{
   await openLibrary(); const mods=$$('.mod'); ok(mods.length>0,'Library: modules on shelves ('+mods.length+')');
   const kinds=$$('.pseg [data-k]'); ok(kinds.length>=3,'Library: kinds '+kinds.map(k=>k.textContent).join('/'));
-  const dict=$$('.mod').find(m=>/Test Bible Dictionary/.test(m.textContent)); click(dict); await sl(1400);
+  const dict=$$('.mod').find(m=>/Test Bible Dictionary/.test(m.textContent)); click(dict); for(let k=0;k<20&&!$('.modpage #libTopics li');k++) await sl(250);
   ok(!!$('.modpage #libTopics li'),'a module shows its topics'); const f=$('.modpage #libFilter'); f.value='Grace'; f.dispatchEvent(new Event('input',{bubbles:true})); await sl(900); ok($$('.modpage #libTopics li').length>=1,'topic filter');
   click($('.modpage #libTopics li')); await sl(900); ok(!!$('.modpage #libBody .entry h4')&&!$('.modpage .mentry').classList.contains('hidden'),'a topic opens ('+($('.modpage #libBody h4')||{}).textContent+')');
   copied.length=0; click($('.modpage [data-x="copy"]')); await sl(300); ok(copied.length>0,'Copy the topic'); click($('.modpage [data-x="print"]')); await sl(300); ok(true,'Print the topic pressed');

@@ -372,7 +372,9 @@
       if (x.dataset.x === 'speak') $('#libSpeak').click();
       if (x.dataset.x === 'menu') moduleMenu(info);
     });
+    const sameMod = TimotheosModules.lib.cur === id;
     await TimotheosModules.openBookModule(id, tid);
+    if (sameMod && $('#libFilter').value) { $('#libFilter').value = ''; $('#libFilter').dispatchEvent(new Event('input', { bubbles: true })); }   // the whole list again
     showEntry(tid != null || info.kind === 'devotional' || info.kind === 'commentary' || !!$('#libBody .entry'));
     if (tid == null && info.kind !== 'devotional' && info.kind !== 'commentary') showEntry(false);
     return p;
