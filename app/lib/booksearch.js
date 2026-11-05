@@ -165,6 +165,21 @@ function snippet(text, terms, accents) {
   return out.replace(/\s*\n\s*/g, ' ¶ ');
 }
 
+/* the plain text of the modules, kept after a first search so the next ones are quick (e-Sword topics are RTF and slow to read).
+ * Your own modules are read fresh each time (you may have edited them); at most CAP characters are kept, the least used go first. */
+const CACHE = new Map(); let cacheChars = 0; const CAP = 24e6;
+function* textsOf(id, m, info, file) {
+  const c = CACHE.get(id);
+  if (c && c.file === file) { CACHE.delete(id); CACHE.set(id, c); yield* c.items; return; }
+  if (info.user || m.user) { yield* m.texts(); return; }
+  const items = []; let chars = 0;
+  for (const t of m.texts()) { items.push({ id: t.id, subject: t.subject, text: t.text }); chars += (t.text || '').length + (t.subject || '').length; yield t; }
+  if (chars > CAP) return;                                        // read to the end: keep it
+  if (c) { cacheChars -= c.chars; CACHE.delete(id); }
+  CACHE.set(id, { file, items, chars }); cacheChars += chars;
+  for (const [k, v] of CACHE) { if (cacheChars <= CAP) break; CACHE.delete(k); cacheChars -= v.chars; }
+}
+
 /**
  * @param lib       the Library
  * @param query     words / "phrases" / Boolean / regex
@@ -185,7 +200,8 @@ async function run(lib, query, o = {}, progress = () => {}, stopped = () => fals
     const m = await lib.openBook(id); if (!m || m.locked || !m.texts) continue;
     searched++; progress(`Searching ${m.title} (${searched} of ${ids.length})…`);
     const hits = [];
-    for (const t of m.texts()) {
+    const info = lib.books.get(id) || {};
+    for (const t of textsOf(id, m, info, lib.cacheKey ? lib.cacheKey(info.file) : info.file)) {
       if ((++n & 255) === 0) { await new Promise(r => setImmediate(r)); if (stopped()) return null; }
       const f = fold(t.text + ' ' + t.subject, o.accents);
       if (!matcher(f)) continue;

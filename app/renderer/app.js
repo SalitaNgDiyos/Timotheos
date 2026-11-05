@@ -412,7 +412,7 @@ function renderFolders() {
 }
 
 async function addFolder() { const l = await api.addFolder(); if (l) { state.settings = await api.getSettings(); state.infos.clear(); initViews(); await refreshModules(l); } }
-async function rescan() { const l = await api.rescan(); state.infos.clear(); await refreshModules(l); }
+async function rescan() { const l = await api.rescan(); state.infos.clear(); await refreshModules(l); flashMsg(`Modules rescanned: ${(state.modules.bibles || []).length} Bibles, ${(state.modules.books || []).length} other modules`); }
 
 /* ---------------- Bible views ---------------- */
 const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs', 'paragraph'];
@@ -823,7 +823,9 @@ function wireSwipe() {
   document.addEventListener('touchstart', e => {
     const el = e.target.closest && e.target.closest('.bv .bvtext');
     if (!el || e.touches.length !== 1 || !mobile()) { t0 = null; return; }
-    const p = e.touches[0]; t0 = { x: p.clientX, y: p.clientY, t: Date.now(), el };
+    const p = e.touches[0];
+    if (document.documentElement.classList.contains('sk-c') && (p.clientX < 24 || p.clientX > innerWidth - 24)) { t0 = null; return; }   // Study Desk: the edges open its drawers
+    t0 = { x: p.clientX, y: p.clientY, t: Date.now(), el };
   }, { passive: true });
   document.addEventListener('touchcancel', () => { t0 = null; }, { passive: true });
   document.addEventListener('touchend', e => {

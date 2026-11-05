@@ -39,7 +39,10 @@
     marks(false); document.querySelectorAll('.ttsbtn.on').forEach(e => e.classList.remove('on'));
     const b = document.getElementById('ttsbar'); if (b) b.classList.add('hidden');
     document.querySelectorAll('[data-ttsgo]').forEach(x => x.classList.remove('on'));
+    emit('');
   }
+  let lastLabel = '';
+  function emit(label) { if (label != null) lastLabel = label; window.dispatchEvent(new CustomEvent('tw-tts', { detail: { busy, paused: ctl.paused, label: lastLabel } })); }
   function sayOne(text, v) {
     return new Promise(res => {
       const c = cfg(); const u = new SpeechSynthesisUtterance(text); u.voice = v; u.lang = v.lang;
@@ -65,13 +68,14 @@
       b.addEventListener('click', e => {
         const t = e.target.closest('button'); if (!t) return;
         if (t.dataset.t === 'stop') stop();
-        else if (t.dataset.t === 'pause') { ctl.paused = !ctl.paused; t.innerHTML = ctl.paused ? SVG.play : SVG.pause; if (ctl.paused) { try { speechSynthesis.cancel(); } catch (x) { /* none */ } } }
+        else if (t.dataset.t === 'pause') { ctl.paused = !ctl.paused; t.innerHTML = ctl.paused ? SVG.play : SVG.pause; if (ctl.paused) { try { speechSynthesis.cancel(); } catch (x) { /* none */ } } emit(); }
         else { ctl.jump = t.dataset.t === 'next' ? 1 : -1; try { speechSynthesis.cancel(); } catch (x) { /* none */ } }
       });
       document.body.appendChild(b);
     }
     b.classList.remove('hidden'); b.querySelector('[data-t="pause"]').innerHTML = ctl.paused ? SVG.play : SVG.pause;
     document.getElementById('ttsLbl').textContent = label || '';
+    emit(label || '');
   }
   /** read pieces one after another, marking each element while it is read; true when all were read */
   async function speakPieces(pieces, lang, my, label) {
@@ -227,5 +231,8 @@
   }
   /** the old "Read Aloud: Voices…" menu entry: the settings page */
   function voicesDialog() { if (window.TimotheosOptions) TimotheosOptions.open('speech'); }
-  window.TimotheosSpeech = { speakView, speakTopic, voicesDialog, fillOptions, stop, isSpeaking: () => busy, langOf };
+  /** the player's buttons, for the phone screens' own players: 'prev' | 'pause' | 'next' | 'stop' */
+  function control(t) { const b = document.getElementById('ttsbar'); const x = b && b.querySelector(`[data-t="${t}"]`); if (x) x.click(); else if (t === 'stop') stop(); }
+  function setCfg(k, v) { const n = cfg(); n[k] = v; store(n); emit(); }
+  window.TimotheosSpeech = { speakView, speakTopic, voicesDialog, fillOptions, stop, isSpeaking: () => busy, isPaused: () => ctl.paused, label: () => lastLabel, langOf, control, cfg, setCfg, voices, NAMES, sample, have };
 })();
