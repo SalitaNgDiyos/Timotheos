@@ -70,6 +70,11 @@ jobs:
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
           echo "Android SDK: $ANDROID_HOME, NDK: $NDK_HOME"
           npx tauri android init --ci
+          # keep the page between the status bar and the navigation bar (Android 15 draws apps under them)
+          MA=$(find src-tauri/gen/android -name MainActivity.kt | head -1)
+          echo "MainActivity: $MA"
+          sed 's/__PKG__/org.timotheos.bible/' android/MainActivity.kt.tpl > "$MA"
+          grep -n "core-ktx\|androidx.core" src-tauri/gen/android/app/build.gradle.kts || { echo "androidx.core is missing from build.gradle.kts"; exit 1; }
           # every build gets a higher versionCode (the run number), so that Android installs it as an update of the one on the phone
           npx tauri android build --apk --target aarch64 --target armv7 --config "{\"bundle\":{\"android\":{\"versionCode\":$((100000 + GITHUB_RUN_NUMBER))}}}"
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)

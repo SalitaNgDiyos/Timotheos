@@ -75,7 +75,17 @@
     d.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; const k = b.dataset.k; d.classList.add('out'); setTimeout(() => d.remove(), 220); if (k) apply(k); });
     return d;
   }
-  function init() { wireDivider(); if (root.classList.contains('mobile')) picker(false); }
+  // Android: tell the system which colour to paint behind the status and navigation bars, and whether their icons are light or dark
+  function bars() {
+    if (!window.TwBars) return;
+    try {
+      let c = root.classList.contains('sk') ? getComputedStyle(root).getPropertyValue('--p-bg').trim() : '';
+      if (!/^#[0-9a-f]{6}$/i.test(c)) c = '#0d0f13';
+      const n = parseInt(c.slice(1), 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+      window.TwBars.set(c, lum > 0.6);
+    } catch (e) { /* no bars to colour */ }
+  }
+  function init() { wireDivider(); if (root.classList.contains('mobile')) picker(false); bars(); new MutationObserver(bars).observe(root, { attributes: true, attributeFilter: ['class'] }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   window.TimotheosSkins = { picker, apply, current: () => cur, parallel, secondBible, refresh };
 })();
