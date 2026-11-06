@@ -215,6 +215,19 @@
   PUI.readingSheet(); await sl(300); PUI.closeSheet(); await sl(500); PUI.helpSheet(); await sl(300); history.back(); await sl(500); ok(!sheet(),'after closing a sheet by hand, Back still closes the next one');
  });
  // ---------- change screen ----------
+ await T('dialog hides bars',async()=>{ const bar={a:'.a-caps',b:'.b-tabs',c:'.c-dock'}[SK]; const vis=()=>{const e=$(bar); return !!e&&getComputedStyle(e).display!=='none';};
+  ok(vis(),'the main bar shows on the reading screen');
+  TimotheosOptions.open(); await sl(400); ok(!vis(),'Options open: the main bar is hidden');
+  const db=$('#optDone'), dr=db&&db.getBoundingClientRect(), dh=dr&&document.elementFromPoint(dr.left+dr.width/2,dr.top+dr.height/2); ok(!!dh&&db.contains(dh)&&dr.bottom<=innerHeight,'Options: its Done button is on screen and can be tapped');
+  await closeOptions(); await sl(200); ok(vis(),'Options closed: the main bar is back'); });
+ await T('bottom bar',async()=>{ const bar={a:'.a-caps',b:'.b-tabs',c:'.c-dock'}[SK]; const shown=()=>{const e=$(bar); return !!e&&getComputedStyle(e).display!=='none'&&!R.classList.contains('sk-baroff');};
+  const tx=$('.bv.active .bvtext')||$('.bvtext'); tx.scrollTop=0; await sl(100); ok(shown(),'bottom bar shows before scrolling');
+  tx.scrollTop=300; tx.dispatchEvent(new Event('scroll')); await sl(80); tx.scrollTop=600; tx.dispatchEvent(new Event('scroll')); await sl(350);
+  ok(!shown()&&getComputedStyle($(bar)).opacity<0.5,'scrolling the text hides the bottom bar');
+  const r=tx.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; const pe=(ty,dx=0,dy=0)=>tx.dispatchEvent(new PointerEvent(ty,{bubbles:true,clientX:x+dx,clientY:y+dy,pointerId:1}));
+  pe('pointerdown'); pe('pointerup'); await sl(350); ok(shown(),'a tap on the page brings it back');
+  pe('pointerdown'); pe('pointermove',0,-40); pe('pointerup',0,-40); await sl(300); ok(!shown(),'swiping on the page hides it');
+  pe('pointerdown'); pe('pointerup'); await sl(300); ok(shown(),'tap again: it is back'); await closeSheet(); PUI.clearPages&&PUI.clearPages(); await sl(200); });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
  api.copyText=origCopy;

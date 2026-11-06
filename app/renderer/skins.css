@@ -198,3 +198,12 @@ html.sk-c.c-deskon:not(.psplitting) #workbench .dgroup.pactive { bottom: calc((1
 html.sk-c .pdiv { display: none !important; }
 html.sk-c.c-deskon .c-dock, html.sk-c.c-deskon .c-player { display: none; }
 .c-drawer .dtop { position: sticky; top: calc(-1 * (var(--safe-t) + 22px)); margin: calc(-1 * (var(--safe-t) + 22px)) -18px 0; padding: calc(var(--safe-t) + 22px) 18px 2px; background: var(--p-drawer); z-index: 3; }
+
+/* an old dialog (Options, a question, module properties) has the whole screen: no tab bar, capsule, dock or player over it */
+html.sk.sk-dlg .b-tabs, html.sk.sk-dlg .a-caps, html.sk.sk-dlg .c-dock, html.sk.sk-dlg .b-player, html.sk.sk-dlg .c-player, html.sk.sk-dlg .seltb, html.sk.sk-dlg .qrow, html.sk.sk-dlg .c-rail { display: none !important; }
+/* the bottom bar hides while the text is swiped or scrolled; a tap on the page brings it back */
+html.sk .b-tabs { transition: transform .22s ease, opacity .22s ease; }
+html.sk .a-caps, html.sk .c-dock { transition: transform .22s ease, opacity .22s ease; }
+html.sk.sk-baroff .b-tabs { transform: translateY(110%); opacity: 0; pointer-events: none; }
+html.sk.sk-baroff .a-caps, html.sk.sk-baroff .c-dock { transform: translate(-50%, 180%); opacity: 0; pointer-events: none; }
+html.sk.sk-baroff .a-fade { opacity: 0; }

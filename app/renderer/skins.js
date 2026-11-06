@@ -51,7 +51,7 @@
     PUI.closeSheet(); PUI.clearPages(); PUI.H.tap = null; PUI.H.hold = null;
     TimotheosPhone.split(null); TimotheosPhone.overlay(null); TimotheosPhone.show(bibleGroupId());
     cur = k; ['a', 'b', 'c'].forEach(x => root.classList.toggle('sk-' + x, x === k)); root.classList.add('sk');
-    root.classList.remove('sk-selecting', 'pg-open'); root.style.removeProperty('--sk-sp');
+    root.classList.remove('sk-selecting', 'pg-open', 'sk-baroff'); root.style.removeProperty('--sk-sp');
     root.dataset.theme = SK[k].dark ? 'dark' : 'light'; root.dataset.ui = k;
     if (window.TimotheosSkinIcons) TimotheosSkinIcons.install();
     SK[k].mod().mount(); PUI.decorateAll();

@@ -609,10 +609,25 @@
     document.addEventListener('selectionchange', () => { if (root.classList.contains('sk-selecting') && !String(window.getSelection()).trim()) { /* still choosing */ } });
   }
   window.addEventListener('load', wire);
+  // the bottom bar (tab bar, capsule, dock) goes away when the text is swiped or scrolled, and comes back with a tap on the page
+  (() => {
+    const off = on => { if (root.classList.contains('sk-baroff') !== on) root.classList.toggle('sk-baroff', on); };
+    const inText = t => t && t.closest && t.closest('.bvtext');
+    const lastY = new WeakMap(); let sx = null, sy = 0, moved = false;
+    document.addEventListener('scroll', e => { const t = e.target; if (!root.classList.contains('sk') || !t.classList || !t.classList.contains('bvtext')) return;
+      const y = t.scrollTop, y0 = lastY.get(t); lastY.set(t, y); if (y0 !== undefined && Math.abs(y - y0) > 6) off(true); }, { capture: true, passive: true });
+    document.addEventListener('pointerdown', e => { if (!inText(e.target)) { sx = null; return; } sx = e.clientX; sy = e.clientY; moved = false; }, { capture: true, passive: true });
+    document.addEventListener('pointermove', e => { if (sx === null || moved) return; if (Math.abs(e.clientX - sx) > 12 || Math.abs(e.clientY - sy) > 12) { moved = true; if (root.classList.contains('sk')) off(true); } }, { capture: true, passive: true });
+    document.addEventListener('pointerup', e => { if (sx !== null && !moved && root.classList.contains('sk')) off(false); sx = null; }, { capture: true, passive: true });
+    document.addEventListener('pointercancel', () => { sx = null; }, { capture: true, passive: true });
+    window.PUI_bars = off;
+  })();
   // the old dialogs (Options, a question, module properties) close with Back too
   window.addEventListener('load', () => {
+    // while one of them is open, the screen's own bars (tab bar, capsule, dock, players) are hidden: the dialog has the whole screen
+    const dlgMark = () => root.classList.toggle('sk-dlg', ['modal', 'optionsDlg', 'propsDlg'].some(i => { const d = document.getElementById(i); return d && !d.classList.contains('hidden'); }));
     const watch = (id, close) => { const el = document.getElementById(id); if (!el) return; let open = !el.classList.contains('hidden');
-      new MutationObserver(() => { const now = !el.classList.contains('hidden'); if (now === open) return; open = now; if (now) pushBack(() => close(el), 'dlg:' + id); else dropBack('dlg:' + id); }).observe(el, { attributes: true, attributeFilter: ['class'] }); };
+      new MutationObserver(() => { const now = !el.classList.contains('hidden'); if (now === open) return; open = now; if (now) pushBack(() => close(el), 'dlg:' + id); else dropBack('dlg:' + id); dlgMark(); }).observe(el, { attributes: true, attributeFilter: ['class'] }); };
     watch('modal', el => { const b = [...el.querySelectorAll('#modalButtons button, .btns button, button')].reverse().find(x => /cancel|close|no\b/i.test(x.textContent)); if (b) b.click(); else el.classList.add('hidden'); });
     watch('optionsDlg', el => { const b = el.querySelector('#optClose, .optclose, [data-close]'); if (b) b.click(); else el.classList.add('hidden'); });
     watch('propsDlg', el => { const b = el.querySelector('#ppClose, [data-close]'); if (b) b.click(); else el.classList.add('hidden'); });

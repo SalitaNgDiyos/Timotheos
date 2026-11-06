@@ -87,7 +87,7 @@
     }, Object.assign({ capture: true }, sig));
     // scrolling back up shows the bar again, scrolling on hides it
     let lastY = new WeakMap();
-    document.addEventListener('scroll', e => { const t = e.target; if (!t.classList || !t.classList.contains('bvtext')) return; const y = t.scrollTop, y0 = lastY.get(t) || 0; lastY.set(t, y); if (y < 30) return; if (y < y0 - 24) showChrome(true); else if (y > y0 + 12 && root.classList.contains('a-show')) showChrome(false); }, Object.assign({ capture: true, passive: true }, sig));
+    document.addEventListener('scroll', e => { const t = e.target; if (!t.classList || !t.classList.contains('bvtext')) return; const y = t.scrollTop, y0 = lastY.get(t) || 0; lastY.set(t, y); if (y < 30) return; if (Math.abs(y - y0) > 12 && root.classList.contains('a-show')) showChrome(false); }, Object.assign({ capture: true, passive: true }, sig));
     window.addEventListener('tw-tts', refresh, sig);
     P().H.tap = onTap; P().H.hold = onHold;
     showChrome(true);
