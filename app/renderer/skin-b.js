@@ -103,7 +103,9 @@
       else if (a === 'prevv') TimotheosSpeech.control('prev'); else if (a === 'nextv') TimotheosSpeech.control('next');
       setTimeout(refresh, 50);
     }, Object.assign({ capture: true }, sig));
-    document.addEventListener('scroll', e => { if (tb && e.target.classList && e.target.classList.contains('bvtext')) closeTb(); }, Object.assign({ capture: true, passive: true }, sig));
+    const lastTop = new WeakMap();
+    // the toolbar closes when the text is really scrolled, not when the bar going away or coming back nudges it
+    document.addEventListener('scroll', e => { const t = e.target; if (!t.classList || !t.classList.contains('bvtext')) return; const y = t.scrollTop, y0 = lastTop.get(t); lastTop.set(t, y); if (performance.now() - (window.PUI_barAt || 0) < 600) return; if (tb && y0 !== undefined && Math.abs(y - y0) > 24) closeTb(); }, Object.assign({ capture: true, passive: true }, sig));
     window.addEventListener('tw-tts', refresh, sig); window.addEventListener('pui-page', refresh, sig);
     p.H.tap = onTap; p.H.hold = onHold;
     refresh();

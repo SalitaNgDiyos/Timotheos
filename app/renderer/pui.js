@@ -621,7 +621,8 @@
   window.addEventListener('load', wire);
   // the bottom bar (tab bar, capsule, dock) goes away when the text is swiped or scrolled, and comes back with a tap on the page
   (() => {
-    const off = on => { if (root.classList.contains('sk-baroff') !== on) root.classList.toggle('sk-baroff', on); };
+    // (the time of the last change is kept: the text is resized then, and that must not count as scrolling)
+    const off = on => { if (root.classList.contains('sk-baroff') !== on) { window.PUI_barAt = performance.now(); root.classList.toggle('sk-baroff', on); } };
     const inText = t => t && t.closest && t.closest('.bvtext');
     const lastY = new WeakMap(); let sx = null, sy = 0, moved = false;
     document.addEventListener('scroll', e => { const t = e.target; if (!root.classList.contains('sk') || !t.classList || !t.classList.contains('bvtext')) return;
