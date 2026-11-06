@@ -77,7 +77,8 @@
   function popPage(viaBack) {
     const p = stack.pop(); if (!p) return; if (viaBack !== true) dropBack('page'); p.el.classList.remove('in'); p.el.classList.add('out'); setTimeout(() => p.el.remove(), 200);
     if (p.o.onClose) try { p.o.onClose(); } catch (e) { /* */ }
-    if (!stack.length) root.classList.remove('pg-open');
+    // the last page closed: the Bible text is shown again, not the old panel a page may have opened behind it
+    if (!stack.length) { root.classList.remove('pg-open'); if (root.classList.contains('sk') && window.TimotheosPhone && TimotheosPhone.reading) TimotheosPhone.reading(); }
     window.dispatchEvent(new Event('pui-page'));
   }
   function clearPages() { while (stack.length) popPage(); }

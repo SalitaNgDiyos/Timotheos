@@ -209,7 +209,7 @@
  await T('back button',async()=>{
   PUI.closeSheet(); PUI.clearPages(); if(SK==='c') SkinC.closeAll(); await sl(600);
   PUI.readingSheet(); await sl(400); history.back(); await sl(500); ok(!sheet(),'Back closes a sheet');
-  PUI.library(); await sl(500); PUI.openModule((state.modules.books.find(b=>!b.locked&&b.kind==='dictionary')||{}).id); await sl(1200); ok(PUI.pageCount()===2,'two pages open'); history.back(); await sl(500); ok(PUI.pageCount()===1,'Back closes the top page'); history.back(); await sl(500); ok(PUI.pageCount()===0,'Back closes the last page');
+  PUI.library(); await sl(500); PUI.openModule((state.modules.books.find(b=>!b.locked&&b.kind==='dictionary')||{}).id); await sl(1200); ok(PUI.pageCount()===2,'two pages open'); history.back(); await sl(500); ok(PUI.pageCount()===1,'Back closes the top page'); history.back(); await sl(500); ok(PUI.pageCount()===0,'Back closes the last page'); ok(!!$$('.bvtext').find(e=>e.offsetParent),'after the last page: the Bible text is on screen again');
   TimotheosOptions.open(); await sl(500); history.back(); await sl(600); ok($('#optionsDlg').classList.contains('hidden'),'Back closes Options');
   if(SK==='c'){ SkinC.navDrawer(true); await sl(400); history.back(); await sl(500); ok(!$('.c-drawer.l.on'),'Back closes the Navigator'); SkinC.studyDrawer(); await sl(600); SkinC.palette(); await sl(400); history.back(); await sl(500); ok(!$('.c-pal.on')&&!$('.c-drawer.r.on'),'Back closes the command bar'); SkinC.desk('cmt'); await sl(800); history.back(); await sl(500); ok(!$('.c-desk.on'),'Back closes the split desk'); }
   PUI.readingSheet(); await sl(300); PUI.closeSheet(); await sl(500); PUI.helpSheet(); await sl(300); history.back(); await sl(500); ok(!sheet(),'after closing a sheet by hand, Back still closes the next one');
@@ -223,7 +223,7 @@
  await T('bottom bar',async()=>{ const bar={a:'.a-caps',b:'.b-tabs',c:'.c-dock'}[SK]; const shown=()=>{const e=$(bar); return !!e&&getComputedStyle(e).display!=='none'&&!R.classList.contains('sk-baroff');};
   const tx=$('.bv.active .bvtext')||$('.bvtext'); tx.scrollTop=0; await sl(100); ok(shown(),'bottom bar shows before scrolling');
   tx.scrollTop=300; tx.dispatchEvent(new Event('scroll')); await sl(80); tx.scrollTop=600; tx.dispatchEvent(new Event('scroll')); await sl(350);
-  ok(!shown()&&getComputedStyle($(bar)).opacity<0.5,'scrolling the text hides the bottom bar');
+  ok(!shown()&&getComputedStyle($(bar)).opacity<0.5,'scrolling the text hides the bottom bar'+(shown()?'':''));
   const r=tx.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; const pe=(ty,dx=0,dy=0)=>tx.dispatchEvent(new PointerEvent(ty,{bubbles:true,clientX:x+dx,clientY:y+dy,pointerId:1}));
   pe('pointerdown'); pe('pointerup'); await sl(350); ok(shown(),'a tap on the page brings it back');
   pe('pointerdown'); pe('pointermove',0,-40); pe('pointerup',0,-40); await sl(300); ok(!shown(),'swiping on the page hides it');

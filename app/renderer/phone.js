@@ -125,6 +125,8 @@
     show: id => { current = id; over = null; queue(); },
     overlay: (id, side) => { over = id ? { id, side: side || 'l' } : null; queue(); },
     split: id => { split = id || null; queue(); },
+    // back to the Bible text (when the panel in front is not a Bible)
+    reading: () => { const cur = groups().find(x => holds(x, current)); if (!cur || !isBv(cur)) { const b = groups().find(isBv); if (b) { current = idOf(b); over = null; queue(); } } },
     current: () => current, over: () => over, splitId: () => split,
     groups: () => groups().map(g => ({ id: idOf(g), bv: isBv(g) }))
   };
