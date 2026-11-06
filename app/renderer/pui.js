@@ -622,11 +622,26 @@
     document.addEventListener('pointerup', e => { if (sx !== null && !moved && root.classList.contains('sk')) off(false); sx = null; }, { capture: true, passive: true });
     document.addEventListener('pointercancel', () => { sx = null; }, { capture: true, passive: true });
     window.PUI_bars = off;
+    // Options, a question, module properties, the reading settings sheet, quick settings and the command bar have the screen:
+    // no bottom bar over them. A page that opens (Library, Search…) shows the bar again.
+    let was = false, pend = false;
+    const over = () => {
+      pend = false; if (!root.classList.contains('sk')) { root.classList.remove('sk-dlg'); return; }
+      const dlg = ['modal', 'optionsDlg', 'propsDlg'].some(i => { const d = document.getElementById(i); return d && !d.classList.contains('hidden'); })
+        || !!document.getElementById('pSheet') || !!document.querySelector('.c-cc.on, .c-pal.on');
+      if (dlg && !was) off(false);
+      was = dlg; root.classList.toggle('sk-dlg', dlg);
+      if (root.classList.contains('pg-open')) off(false);
+    };
+    window.PUI_over = over;
+    const later = () => { if (!pend) { pend = true; requestAnimationFrame(over); } };
+    new MutationObserver(later).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    window.addEventListener('load', () => new MutationObserver(later).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }));
   })();
   // the old dialogs (Options, a question, module properties) close with Back too
   window.addEventListener('load', () => {
     // while one of them is open, the screen's own bars (tab bar, capsule, dock, players) are hidden: the dialog has the whole screen
-    const dlgMark = () => root.classList.toggle('sk-dlg', ['modal', 'optionsDlg', 'propsDlg'].some(i => { const d = document.getElementById(i); return d && !d.classList.contains('hidden'); }));
+    const dlgMark = () => { if (window.PUI_over) window.PUI_over(); };
     const watch = (id, close) => { const el = document.getElementById(id); if (!el) return; let open = !el.classList.contains('hidden');
       new MutationObserver(() => { const now = !el.classList.contains('hidden'); if (now === open) return; open = now; if (now) pushBack(() => close(el), 'dlg:' + id); else dropBack('dlg:' + id); dlgMark(); }).observe(el, { attributes: true, attributeFilter: ['class'] }); };
     watch('modal', el => { const b = [...el.querySelectorAll('#modalButtons button, .btns button, button')].reverse().find(x => /cancel|close|no\b/i.test(x.textContent)); if (b) b.click(); else el.classList.add('hidden'); });

@@ -227,7 +227,12 @@
   const r=tx.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; const pe=(ty,dx=0,dy=0)=>tx.dispatchEvent(new PointerEvent(ty,{bubbles:true,clientX:x+dx,clientY:y+dy,pointerId:1}));
   pe('pointerdown'); pe('pointerup'); await sl(350); ok(shown(),'a tap on the page brings it back');
   pe('pointerdown'); pe('pointermove',0,-40); pe('pointerup',0,-40); await sl(300); ok(!shown(),'swiping on the page hides it');
-  pe('pointerdown'); pe('pointerup'); await sl(300); ok(shown(),'tap again: it is back'); await closeSheet(); PUI.clearPages&&PUI.clearPages(); await sl(200); });
+  if(SK==='b'){ const g=$('#workbench .dgroup.pactive'); ok(g&&Math.round(g.getBoundingClientRect().bottom)>=innerHeight-6,'Bar away: the Bible text goes down to the bottom of the screen (no blank space)'); }
+  pe('pointerdown'); pe('pointerup'); await sl(400);
+  if(SK==='b'){ const g=$('#workbench .dgroup.pactive'); ok(g&&g.getBoundingClientRect().bottom<=innerHeight-60,'Bar back: the text stops above the bar'); }
+  ok(shown(),'tap again: it is back');
+  PUI.readingSheet(); await sl(500); ok(!shown(),'Reading settings open: no bottom bar'); await closeSheet(); await sl(300); ok(shown(),'Reading settings closed: the bar is back');
+  if(SK==='c'&&SkinC.quick){ SkinC.quick(true); await sl(400); ok(!shown(),'Quick settings open: no dock'); history.back(); await sl(500); } await closeSheet(); PUI.clearPages&&PUI.clearPages(); await sl(200); });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
  api.copyText=origCopy;

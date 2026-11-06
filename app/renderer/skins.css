@@ -207,3 +207,6 @@ html.sk .a-caps, html.sk .c-dock { transition: transform .22s ease, opacity .22s
 html.sk.sk-baroff .b-tabs { transform: translateY(110%); opacity: 0; pointer-events: none; }
 html.sk.sk-baroff .a-caps, html.sk.sk-baroff .c-dock { transform: translate(-50%, 180%); opacity: 0; pointer-events: none; }
 html.sk.sk-baroff .a-fade { opacity: 0; }
+/* Screen B: when the tab bar is away, the Bible text and the pages use the space it covered */
+html.sk-b.sk-baroff { --sk-bot: 0px; --pg-bot: 0px; }
+html.sk-b #workbench .dgroup, html.sk-b #pHost { transition: bottom .22s ease; }
