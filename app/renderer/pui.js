@@ -306,15 +306,24 @@
   function viewBtn(a) { const sec = $(`#workbench .bv[data-i="${state.active}"]`) || $('#workbench .bv'); return sec && sec.querySelector(`[data-a="${a}"]`); }
   function viewAction(a) { const b = viewBtn(a); if (b) { b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); b.click(); } return !!b; }
   const chooseBible = () => viewAction('bible');
+  /* the text's side margins and line height, three levels each (kept on this device) */
+  const RD = { m: [['Narrow', '14px'], ['Normal', '26px'], ['Wide', '46px']], l: [['Tight', '1.5'], ['Normal', '1.72'], ['Roomy', '2']] };
+  const rdGet = () => { try { const o = JSON.parse(localStorage.getItem('tw.rd') || '{}'); return { m: [0, 1, 2].includes(o.m) ? o.m : 1, l: [0, 1, 2].includes(o.l) ? o.l : 1 }; } catch (e) { return { m: 1, l: 1 }; } };
+  function rdApply() { const o = rdGet(); root.style.setProperty('--rd-mx', RD.m[o.m][1]); root.style.setProperty('--rd-lh', RD.l[o.l][1]); }
+  function rdSet(k, i) { const o = rdGet(); o[k] = i; try { localStorage.setItem('tw.rd', JSON.stringify(o)); } catch (e) { /* not kept */ } rdApply(); }
+  rdApply();
   function readingSheet() {
     const v = views()[state.active] || {}; const sh = Object.assign({}, state.settings.show, v.show || {});
     const tog = (k, l, i) => `<button type="button" class="tgl${sh[k] ? ' on' : ''}" data-show="${k}">${ic(i, 20)}<span>${l}</span></button>`;
     const s = sheet(`<div class="prow"><span>Bible</span><button type="button" class="pchip" data-x="bible">${esc(bibleAbbr() || 'Choose')} ${ic('chevD', 14)}</button></div>
       <div class="prow"><span>Text size</span><span class="stepper"><button type="button" class="pib" data-z="-1">${ic('textDown', 20)}</button><b>${Math.round((v.zoom || 1) * 100)}%</b><button type="button" class="pib" data-z="1">${ic('textUp', 20)}</button></span></div>
+      <div class="prow pr3"><span>Margins</span><div class="pseg" data-rd="m">${RD.m.map((x, i) => `<button type="button" data-i="${i}" class="${rdGet().m === i ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>
+      <div class="prow pr3"><span>Line height</span><div class="pseg" data-rd="l">${RD.l.map((x, i) => `<button type="button" data-i="${i}" class="${rdGet().l === i ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>
       <h4 class="sec">Show in the text</h4><div class="tgls">${tog('strongs', "Strong's", 'lexicon')}${tog('morph', 'Morphology', 'hash')}${tog('columns', 'Interlinear', 'compare')}${tog('footnotes', 'Footnotes', 'note')}${tog('headings', 'Headings', 'outline')}${tog('woj', 'Words of Jesus', 'fontColor')}${tog('added', 'Added words', 'type')}${tog('xrefs', 'Cross-refs', 'xref')}${tog('cmtLinks', 'Commentary marks', 'commentary')}${tog('highlights', 'My highlights', 'highlight')}${tog('notes', 'My notes', 'note')}${tog('paragraph', 'Paragraphs', 'menu')}</div>
       <h4 class="sec">This view</h4><div class="pills"><button type="button" class="pill" data-x="font">${ic('type', 16)} Font</button><button type="button" class="pill" data-x="fcolor">${ic('fontColor', 16)} Text colour</button><button type="button" class="pill" data-x="selbg">${ic('verseBg', 16)} Active verse colour</button><button type="button" class="pill" data-x="pen">${ic('highlighter', 16)} Highlighter pen</button><button type="button" class="pill" data-x="ul">${ic('underline', 16)} Underline pen</button><button type="button" class="pill${v.linked ? ' on' : ''}" data-x="link">${ic('link', 16)} Move with other views</button><button type="button" class="pill" data-x="vn">${ic('hash', 16)} Verse numbers</button><button type="button" class="pill" data-x="menu">${ic('menu', 16)} All view options</button><button type="button" class="pill" data-x="info">${ic('info', 16)} About this Bible</button></div>`, { title: 'Reading view' });
     s.addEventListener('click', e => {
       const z = e.target.closest('[data-z]'); if (z) { zoomView(state.active, +z.dataset.z); const vv = views()[state.active] || {}; z.parentNode.querySelector('b').textContent = Math.round((vv.zoom || 1) * 100) + '%'; return; }
+      const rb = e.target.closest('[data-rd] > button'); if (rb) { rdSet(rb.parentNode.dataset.rd, +rb.dataset.i); rb.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === rb)); return; }
       const t = e.target.closest('[data-show]'); if (t) { const on = !t.classList.contains('on'); setShow(t.dataset.show, on); t.classList.toggle('on', on); return; }
       const x = e.target.closest('[data-x]'); if (!x) return; const a = x.dataset.x;
       if (a === 'link') { toggleLink(state.active); x.classList.toggle('on'); return; }

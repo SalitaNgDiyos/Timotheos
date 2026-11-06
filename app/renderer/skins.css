@@ -41,7 +41,7 @@ html.psplitting .pdiv { display: grid; }
 
 /* ===================== A · Quiet Reader ===================== */
 html.sk-a { --rd-top: calc(var(--safe-t) + 60px); --rd-bot: 170px; }
-html.sk-a .bv .bvtext { padding-left: 34px !important; padding-right: 34px !important; }
+html.sk-a .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + 8px) !important; padding-right: calc(var(--rd-mx, 26px) + 8px) !important; }
 .a-chrome { position: fixed; left: 0; right: 0; top: 0; padding: var(--safe-t) 14px 26px; display: flex; align-items: center; gap: 4px; z-index: 60; background: linear-gradient(var(--p-bg) 72%, transparent); transform: translateY(-110%); opacity: 0; transition: transform .25s, opacity .25s; pointer-events: none; }
 html.sk-a.a-show .a-chrome { transform: none; opacity: 1; pointer-events: auto; }
 .a-chrome .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; gap: 8px; font: 600 16px var(--p-ui); color: var(--p-ink); border: 0; background: transparent; }
@@ -93,7 +93,7 @@ html.sk-b .ppage .pgbar { height: 54px; }
 
 /* ===================== C · Study Desk ===================== */
 html.sk-c { --sk-top: calc(var(--safe-t) + 52px); --rd-top: 12px; --rd-bot: 140px; }
-html.sk-c .bv .bvtext { padding-left: 30px !important; padding-right: 30px !important; }
+html.sk-c .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + 4px) !important; padding-right: calc(var(--rd-mx, 26px) + 4px) !important; }
 .c-rail { position: fixed; left: 0; right: 0; top: 0; padding-top: var(--safe-t); height: calc(52px + var(--safe-t)); display: flex; align-items: center; gap: 8px; padding-left: 12px; padding-right: 12px; z-index: 60; background: linear-gradient(var(--p-bg) 78%, transparent); }
 .c-rail .ref { font: 600 17px var(--p-ui); color: var(--p-ink); display: flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0 4px; min-width: 0; }
 .c-rail .ref span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
