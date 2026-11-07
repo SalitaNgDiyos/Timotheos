@@ -187,6 +187,22 @@
   if(SK==='c'){ SkinC.desk('par'); await sl(1500); ok(R.classList.contains('psplitting')&&$('.c-desk').classList.contains('on'),'split desk: parallel Bible below'); for(const k of ['cmt','lib','search']){ click($(`.c-desk [data-dc="${k}"]`)); await sl(1300); ok($('.c-desk .db').children.length>0,'split desk: '+k); } click($('.c-desk [data-dc="close"]')); await sl(400); ok(!$('.c-desk').classList.contains('on'),'split desk closes'); return; }
   if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true);
   await sl(1500); ok(R.classList.contains('psplitting'),'two Bibles, one above the other'); const g=$$('.dgroup.psplit .bv .sk-ttl')[0]; ok(!!g,'each has its label');
+  if(SK!=='c'){
+   const lab=$(SK==='a'?'.a-chrome .mid span':'.b-big h2 span'), chip=$(SK==='a'?'.a-chrome .mid em':'.b-big [data-a="bible"]'); const rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib'), bot=PUI.par.bot(), top=PUI.par.top();
+   ok(!!rs&&!!bc&&getComputedStyle($('.pdiv')).display!=='none','strip between the Bibles: a place selector and a Bible selector of its own');
+   ok(bot!=null&&top!=null&&bot!==top,'the two panes are two different views ('+top+' / '+bot+')');
+   ok(Math.abs(rs.getBoundingClientRect().left-lab.getBoundingClientRect().left)<=1.5,'strip: the lower place lines up with the top one ('+Math.round(rs.getBoundingClientRect().left)+' / '+Math.round(lab.getBoundingClientRect().left)+' px)');
+   ok(Math.abs(bc.getBoundingClientRect().left-chip.getBoundingClientRect().left)<=1.5,'strip: the lower Bible name lines up with the top one ('+Math.round(bc.getBoundingClientRect().left)+' / '+Math.round(chip.getBoundingClientRect().left)+' px)');
+   ok(rs.textContent.trim().length>0&&bc.textContent.trim().length>0&&rs.textContent.trim()===PUI.par.label(bot),'strip shows the lower pane\'s own place and Bible ('+rs.textContent+' · '+bc.textContent+')');
+   const topLab=lab.textContent;
+   click(bc.closest('button')); await sl(600); ok(state.active===bot,'strip: the Bible button works on the lower Bible'); document.body.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); await sl(200);
+   click(rs.closest('button')); await sl(600); ok(!!$('#pSheet')&&state.active===bot&&views()[bot].linked===false,'strip: the place button opens Go to for the lower Bible, which now reads by itself'); PUI.closeSheet(); await sl(300);
+   const t0=JSON.stringify(refOfView(top)); await go({b:43,c:3,v:1}); await sl(1000);
+   ok(refOfView(bot).b===43&&JSON.stringify(refOfView(top))===t0,'the lower Bible moved to John 3, the top one stayed ('+PUI.par.label(top)+')'); await sl(500);
+   ok($('.pdiv .pd-ref span').textContent.trim()==='John 3'&&lab.textContent===topLab,'the strip shows John 3, the top label is unchanged ('+topLab+')');
+   const sy=$('.pdiv .pd-sync'); ok(getComputedStyle(sy).display!=='none','strip: a Sync button shows while the lower Bible reads by itself'); click(sy); await sl(900); ok(views()[bot].linked!==false&&refOfView(bot).b===refOfView(top).b,'Sync: the lower Bible follows the top one again');
+   setActiveView(top); await sl(300);
+  }
   const d=$('.pdiv'); const r=d.getBoundingClientRect(); d.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1,clientY:r.top+14})); d.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:1,clientY:r.top-120})); d.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1})); await sl(200);
   ok(parseFloat(getComputedStyle(R).getPropertyValue('--sk-sp'))<.5,'the divider can be dragged');
   if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(false); await sl(500); ok(!R.classList.contains('psplitting'),'Parallel off');
@@ -236,11 +252,28 @@
   if(SK==='c'&&SkinC.quick){ SkinC.quick(true); await sl(400); ok(!shown(),'Quick settings open: no dock'); history.back(); await sl(500); } await closeSheet(); PUI.clearPages&&PUI.clearPages(); await sl(200); });
  await T('margins and line height',async()=>{ const tx=$('.bv.active .bvtext')||$('.bvtext'); const mx=()=>parseFloat(getComputedStyle(tx).paddingLeft), lh=()=>parseFloat(getComputedStyle(tx).lineHeight)/parseFloat(getComputedStyle(tx).fontSize);
   PUI.readingSheet(); await sl(500); ok($$('#pSheet [data-rd="m"] button').length===3&&$$('#pSheet [data-rd="l"] button').length===3,'Reading view offers 3 margin levels and 3 line heights');
+  click($('#pSheet [data-rd="m"] button[data-i="0"]')); click($('#pSheet [data-rd="l"] button[data-i="0"]')); await sl(300);
+  { let minL=1e9,maxR=-1e9; tx.querySelectorAll('*').forEach(e=>{ const r=e.getBoundingClientRect(); if(!r.width||!r.height||r.bottom<0||r.top>innerHeight) return; minL=Math.min(minL,r.left); maxR=Math.max(maxR,r.right); });
+    ok(mx()===6&&minL>=-.5&&maxR<=innerWidth+.5&&tx.scrollWidth<=tx.clientWidth,'Narrow: text 6 px from the edge, nothing cut off at the left or right ('+mx()+' px; edges '+Math.round(minL)+' / '+Math.round(maxR)+' of '+innerWidth+')');
+    await document.fonts.load('100px Literata'); await document.fonts.load('italic 600 100px Literata'); const cv=document.createElement('canvas').getContext('2d'); let asc=0,desc=0;
+    for(const st of ['normal','italic']) for(const wt of ['400','600']){ cv.font=st+' '+wt+' 100px Literata'; for(const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?\'"()[]{}-—‘’“”&ÁÉÍÓÚÑáéíóúñüÅåÖöÂÊÔÕÇç'){ const m=cv.measureText(ch); asc=Math.max(asc,m.actualBoundingBoxAscent); desc=Math.max(desc,m.actualBoundingBoxDescent); } }
+    const need=(asc+desc)/100, have=lh(); ok(Math.abs(have-1.27)<.01&&have>=need,'Tight: '+have.toFixed(2)+' lines; the tallest and the lowest letters of the font need '+need.toFixed(2)+', so lines never touch'); }
   click($('#pSheet [data-rd="m"] button[data-i="1"]')); click($('#pSheet [data-rd="l"] button[data-i="1"]')); await sl(250); const m0=mx(), l0=lh(); click($('#pSheet [data-rd="m"] button[data-i="0"]')); await sl(200); const mN=mx(); click($('#pSheet [data-rd="m"] button[data-i="2"]')); await sl(200); const mW=mx();
   ok(mN<m0&&mW>m0,'Margins: Narrow < Normal < Wide ('+mN+' / '+m0+' / '+mW+' px)'); click($('#pSheet [data-rd="m"] button[data-i="1"]')); await sl(150); ok(Math.abs(mx()-m0)<1,'Margins: back to Normal');
   click($('#pSheet [data-rd="l"] button[data-i="0"]')); await sl(200); const lT=lh(); click($('#pSheet [data-rd="l"] button[data-i="2"]')); await sl(200); const lR=lh();
   ok(lT<l0&&lR>l0,'Line height: Tight < Normal < Roomy ('+lT.toFixed(2)+' / '+l0.toFixed(2)+' / '+lR.toFixed(2)+')'); click($('#pSheet [data-rd="l"] button[data-i="1"]')); await sl(150); ok(Math.abs(lh()-l0)<.02,'Line height: back to Normal');
   click($('#pSheet [data-rd="m"] button[data-i="2"]')); await sl(100); await closeSheet(); PUI.readingSheet(); await sl(500); ok($('#pSheet [data-rd="m"] button[data-i="2"]').classList.contains('on'),'the choice is shown again when the sheet is reopened'); click($('#pSheet [data-rd="m"] button[data-i="1"]')); await sl(100); await closeSheet(); });
+ await T('pinned label',async()=>{
+  if(SK==='c') return;
+  const lab=()=>$(SK==='a'?'.a-chrome .mid':'.b-big h2'); if(SK==='a') SkinA.showChrome(false); await sl(400);
+  const tx=$('.bv.active .bvtext')||$('.bvtext'); tx.scrollTop=0; tx.dispatchEvent(new Event('scroll')); await sl(300); const y0=Math.round(lab().getBoundingClientRect().top), t0=lab().textContent.trim();
+  const vis=()=>{const r=lab().getBoundingClientRect(), c=getComputedStyle(lab()); return r.top>=0&&r.bottom<=innerHeight*.2&&+c.opacity>.9&&c.visibility!=='hidden';};
+  ok(vis()&&/\d/.test(t0),'the top label shows the place ('+t0+') with the bar hidden');
+  tx.scrollTop=400; tx.dispatchEvent(new Event('scroll')); await sl(400); tx.scrollTop=1200; tx.dispatchEvent(new Event('scroll')); await sl(500);
+  ok(vis()&&Math.round(lab().getBoundingClientRect().top)===y0,'scrolling down: the label stays where it is');
+  tx.scrollTop=300; tx.dispatchEvent(new Event('scroll')); await sl(500); ok(vis()&&Math.round(lab().getBoundingClientRect().top)===y0,'scrolling up: the label stays where it is');
+  if(SK==='a'){ ok(+getComputedStyle($('.a-chrome .pib')).opacity<.2,'the buttons beside it stay away until the page is tapped'); SkinA.showChrome(true); await sl(500); ok(+getComputedStyle($('.a-chrome .pib')).opacity>.9,'tap: the buttons beside it show'); SkinA.showChrome(false); await sl(400); }
+  tx.scrollTop=0; tx.dispatchEvent(new Event('scroll')); await sl(200); });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
  api.copyText=origCopy;

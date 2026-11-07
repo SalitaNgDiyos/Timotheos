@@ -15,8 +15,9 @@
   }
   function refresh() {
     const p = P(); const k = p.bookOf(state.ref.b); if (!k) return;
-    const t = document.querySelector('.a-chrome .mid span'); if (t) t.textContent = `${k.name} ${state.ref.c}`;
-    const ab = document.querySelector('.a-chrome .mid em'); if (ab) ab.textContent = p.bibleAbbr() || 'Bible';
+    // the label at the top belongs to the top Bible (with two Bibles on screen the lower one has its own, in the strip)
+    const ti = p.par.top(); const t = document.querySelector('.a-chrome .mid span'); const lb = p.par.label(ti) || `${k.name} ${state.ref.c}`; if (t && t.textContent !== lb) t.textContent = lb;
+    const ab = document.querySelector('.a-chrome .mid em'); const an = p.par.abbr(ti); if (ab && ab.textContent !== an) ab.textContent = an;
     const tts = p.ttsInfo(); const caps = document.querySelector('.a-caps'); if (!caps) return;
     caps.classList.toggle('playing', !!tts.busy);
     const ref = caps.querySelector('.ref'); ref.textContent = tts.busy ? (tts.label || p.rn(state.ref)) : p.rn(state.ref).replace(/^(\S+(?: \S+)??) (\d+):(\d+)$/, (m) => m);
@@ -72,6 +73,7 @@
       + `<button type="button" class="ref" data-a="go">John 3:16</button><button type="button" class="pib" data-a="nextc" data-r aria-label="Next chapter">${p.ic('chevR', 22)}</button><span class="sep" data-r></span><button type="button" class="pib gold" data-a="read" data-r aria-label="Read aloud">${p.ic('speaker', 22)}</button><button type="button" class="pib" data-a="stop" data-p aria-label="Stop">${p.ic('stop', 20)}</button><div class="prog"><i></i></div>`);
     document.addEventListener('click', e => {
       const b = e.target.closest('.skel [data-a]'); if (!b) return; const a = b.dataset.a; e.stopPropagation();
+      if (b.closest('.a-chrome')) p.par.focus(p.par.top());
       if (a === 'bible') { showChrome(true); return p.chooseBible(); }
       if (b.closest('.a-chrome')) showChrome(true);
       if (a === 'back') { const g = document.getElementById('gBack'); if (g && !g.disabled) g.click(); }

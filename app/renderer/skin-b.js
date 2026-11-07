@@ -73,8 +73,9 @@
 
   function refresh() {
     const p = P(); const k = p.bookOf(state.ref.b); if (!k) return;
-    const h = document.querySelector('.b-big h2 span'); if (h) h.textContent = `${k.name} ${state.ref.c}`;
-    const bb = document.querySelector('.b-big [data-a="bible"] span'); if (bb) bb.textContent = p.bibleAbbr() || 'Bible';
+    // the label at the top belongs to the top Bible (with two Bibles on screen the lower one has its own, in the strip)
+    const ti = p.par.top(); const h = document.querySelector('.b-big h2 span'); const lb = p.par.label(ti) || `${k.name} ${state.ref.c}`; if (h && h.textContent !== lb) h.textContent = lb;
+    const bb = document.querySelector('.b-big [data-a="bible"] span'); const an = p.par.abbr(ti); if (bb && bb.textContent !== an) bb.textContent = an;
     const par = document.querySelector('.b-big [data-a="par"]'); if (par) par.classList.toggle('acc', !!window.TimotheosPhone.splitId());
     const gb = document.getElementById('gBack'), gf = document.getElementById('gFwd');
     const b = document.querySelector('.b-abar [data-a="back"]'), f = document.querySelector('.b-abar [data-a="fwd"]');
@@ -92,6 +93,7 @@
     document.addEventListener('click', e => {
       const t = e.target.closest('.b-tabs [data-t]'); if (t) { e.stopPropagation(); return setTab(t.dataset.t); }
       const b = e.target.closest('.skel [data-a]'); if (!b) return; e.stopPropagation(); const a = b.dataset.a; closeTb();
+      if (b.closest('.b-big')) p.par.focus(p.par.top());
       if (a === 'back') { const g = document.getElementById('gBack'); if (g && !g.disabled) g.click(); }
       else if (a === 'fwd') { const g = document.getElementById('gFwd'); if (g && !g.disabled) g.click(); }
       else if (a === 'go') p.goSheetList();

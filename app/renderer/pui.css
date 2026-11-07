@@ -202,3 +202,10 @@ html.sk .bvtext td.vn .vno { font-size: 11px; vertical-align: .55em; }
 html.sk .bvtext::-webkit-scrollbar, html.sk .pgbody::-webkit-scrollbar, html.sk .psheet::-webkit-scrollbar, html.sk .c-drawer::-webkit-scrollbar { width: 0; height: 0; }
 
 .prow.pr3 { flex-direction: column; align-items: stretch; gap: 8px; } .prow.pr3 .pseg { margin: 0; }
+
+/* Tight lines: a highlight covers the letters (from the top of the tall ones to the bottom of the low ones), not the whole font box,
+   so the highlight of one line never paints over the letters of the line above; the underline keeps clear of the line below */
+html.sk .bvtext mark.hl-yellow { --hlc: #fff09a; } html.sk .bvtext mark.hl-green { --hlc: #c9f0c0; } html.sk .bvtext mark.hl-blue { --hlc: #c8e2ff; } html.sk .bvtext mark.hl-pink { --hlc: #ffd0e4; } html.sk .bvtext mark.hl-orange { --hlc: #ffd8a8; }
+html.sk[data-theme="dark"] .bvtext mark.hl-yellow { --hlc: #6b5d12; } html.sk[data-theme="dark"] .bvtext mark.hl-green { --hlc: #2e5a2a; } html.sk[data-theme="dark"] .bvtext mark.hl-blue { --hlc: #1f4870; } html.sk[data-theme="dark"] .bvtext mark.hl-pink { --hlc: #6a2a48; } html.sk[data-theme="dark"] .bvtext mark.hl-orange { --hlc: #6e4512; }
+html.sk .bvtext mark.hl:not(.hl-ul):not(.hl-bold) { background: linear-gradient(var(--hlc, #fff09a), var(--hlc, #fff09a)) 0 .17em / 100% 1.27em no-repeat !important; border-radius: 0; }
+html.sk .bvtext mark.hl-ul { text-decoration-thickness: .09em; text-underline-offset: .11em; }

@@ -32,9 +32,25 @@
     const id = await secondBible(); if (!id) { PUI.flash('Only one Bible is installed. Import a second Bible to read two side by side.'); return; }
     TimotheosPhone.split(id); refresh();
   }
+  // (made again after the screen's icons are in, so the arrows show)
+  function fillStrip() {
+    const d = document.querySelector('.pdiv'); if (!d) return;
+    d.innerHTML = `<i></i><button type="button" class="pd-ref" data-pd="ref"><span></span>${PUI.ic('chevD', 20)}</button><button type="button" class="pchip pd-bib" data-pd="bible"><span></span>${PUI.ic('chevD', 14)}</button><button type="button" class="pchip ghost pd-sync" data-pd="sync">${PUI.ic('sync', 15)} Sync</button>`;
+  }
   function wireDivider() {
-    const d = document.createElement('div'); d.className = 'pdiv'; d.innerHTML = '<i></i>'; document.body.appendChild(d);
+    const d = document.createElement('div'); d.className = 'pdiv';
+    document.body.appendChild(d); fillStrip();
+    // the lower Bible has its own place and its own Bible: these two choose them
+    d.addEventListener('click', e => {
+      const b = e.target.closest('[data-pd]'); if (!b) return; e.stopPropagation();
+      const i = PUI.par.bot(); if (i == null) return; PUI.par.focus(i);
+      if (b.dataset.pd === 'bible') return PUI.chooseBible();
+      if (b.dataset.pd === 'sync') { if (typeof toggleLink === 'function' && !PUI.par.linked(i)) toggleLink(i); return refresh(); }
+      if (PUI.par.linked(i) && typeof toggleLink === 'function') toggleLink(i);   // from here on it reads by itself
+      if (cur === 'a') PUI.goSheetGrid(); else PUI.goSheetList();
+    });
     d.addEventListener('pointerdown', e => {
+      if (e.target.closest('button')) return;
       e.preventDefault(); d.setPointerCapture(e.pointerId);
       const mv = ev => { const top = parseFloat(getComputedStyle(root).getPropertyValue('--sk-top')) || 0, bot = parseFloat(getComputedStyle(root).getPropertyValue('--sk-bot')) || 0;
         const f = Math.max(.2, Math.min(.8, (ev.clientY - top) / (innerHeight - top - bot))); root.style.setProperty('--sk-sp', f.toFixed(3)); };
@@ -42,7 +58,22 @@
       d.addEventListener('pointermove', mv); d.addEventListener('pointerup', up); d.addEventListener('pointercancel', up);
     });
   }
-  function refresh() { if (!cur) return; try { PUI.decorateAll(); } catch (e) { /* */ } const m = SK[cur].mod(); if (m && m.refresh) m.refresh(); }
+  // the strip shows the lower Bible's place and Bible; the top label and the strip share one width so the two Bible names line up
+  function strip() {
+    const d = document.querySelector('.pdiv'); if (!d) return;
+    if (!PUI.par.on() || (cur !== 'a' && cur !== 'b')) { root.style.removeProperty('--par-w'); root.style.removeProperty('--par-bw'); return; }
+    const t = PUI.par.top(), b = PUI.par.bot(); if (b == null) return;
+    const lab = PUI.par.label(b), ab = PUI.par.abbr(b);
+    const rs = d.querySelector('.pd-ref span'); if (rs.textContent !== lab) rs.textContent = lab;
+    const bs = d.querySelector('.pd-bib span'); if (bs.textContent !== ab) bs.textContent = ab;
+    d.querySelector('.pd-sync').style.display = PUI.par.linked(b) ? 'none' : '';
+    const tl = document.querySelector(cur === 'a' ? '.a-chrome .mid span' : '.b-big h2 span');
+    const w = el => { if (!el) return 0; const r = document.createRange(); r.selectNodeContents(el); return Math.ceil(r.getBoundingClientRect().width); };
+    const need = Math.min(Math.max(w(tl), w(rs)) + 2, Math.round(innerWidth * .5));
+    if (root.style.getPropertyValue('--par-w') !== need + 'px') root.style.setProperty('--par-w', need + 'px');
+    if (cur === 'a') { const tb = document.querySelector('.a-chrome .mid em'), nb = Math.min(Math.max(w(tb), w(bs)) + 21, Math.round(innerWidth * .3)); if (root.style.getPropertyValue('--par-bw') !== nb + 'px') root.style.setProperty('--par-bw', nb + 'px'); }
+  }
+  function refresh() { if (!cur) return; try { PUI.decorateAll(); } catch (e) { /* */ } try { strip(); } catch (e) { /* */ } const m = SK[cur].mod(); if (m && m.refresh) m.refresh(); }
 
   /* ---- choosing ---- */
   function apply(k) {
@@ -53,7 +84,7 @@
     cur = k; ['a', 'b', 'c'].forEach(x => root.classList.toggle('sk-' + x, x === k)); root.classList.add('sk');
     root.classList.remove('sk-selecting', 'pg-open', 'sk-baroff'); root.style.removeProperty('--sk-sp');
     root.dataset.theme = SK[k].dark ? 'dark' : 'light'; root.dataset.ui = k;
-    if (window.TimotheosSkinIcons) TimotheosSkinIcons.install();
+    if (window.TimotheosSkinIcons) TimotheosSkinIcons.install(); fillStrip();
     SK[k].mod().mount(); PUI.decorateAll();
     lsSet('tw.ui', k); try { sessionStorage.setItem('tw.ui', k); } catch (e) { /* */ }
     clearInterval(timer); timer = setInterval(refresh, 400);

@@ -27,23 +27,45 @@ html.sk-b, html.sk-c.sk-light { --strong: #3a6a8a !important; --fn: var(--p-acc)
 html.sk #titlebar, html.sk #toolbar, html.sk #phonebar, html.sk .statusbar, html.sk #center { display: none !important; }
 html.sk body { padding-bottom: 0 !important; background: var(--p-bg); }
 html.sk #workbench { position: fixed; inset: 0; padding: 0; background: var(--p-bg); }
-html.sk #workbench .dgroup { top: var(--sk-top) !important; bottom: var(--sk-bot) !important; background: var(--p-bg); border: 0 !important; }
+html.sk #grid { inset: 0 !important; }
+html.sk #workbench .dgroup { left: 0 !important; right: 0 !important; width: auto !important; top: var(--sk-top) !important; bottom: var(--sk-bot) !important; background: var(--p-bg); border: 0 !important; }
 html.sk svg.ic { stroke-width: 1.6; }
 html.sk svg.ic .d { fill: currentColor; fill-opacity: .16; stroke: none; }
 
 /* split: a second pane in the lower part, with a divider to drag */
-html.sk.psplitting #workbench .dgroup.pbase { bottom: calc(var(--sk-bot) + (100% - var(--sk-top) - var(--sk-bot)) * (1 - var(--sk-sp, .5))) !important; }
-html.sk.psplitting #workbench .dgroup.psplit { top: calc(var(--sk-top) + (100% - var(--sk-top) - var(--sk-bot)) * var(--sk-sp, .5) + var(--sp-head, 0px)) !important; z-index: 2; }
-.pdiv { position: fixed; left: 0; right: 0; height: 28px; display: none; place-items: center; z-index: 30; touch-action: none; top: calc(var(--sk-top) + (100% - var(--sk-top) - var(--sk-bot)) * var(--sk-sp, .5) - 14px); }
-.pdiv::before { content: ''; position: absolute; left: 0; right: 0; top: 13px; height: 1px; background: var(--p-line); }
-.pdiv i { width: 46px; height: 6px; border-radius: 3px; background: var(--p-acc); opacity: .55; position: relative; }
-html.psplitting .pdiv { display: grid; }
+html.sk-a.psplitting, html.sk-b.psplitting { --pd-half: 23px; }
+html.sk.psplitting #workbench .dgroup.pbase { bottom: calc(var(--sk-bot) + (100% - var(--sk-top) - var(--sk-bot)) * (1 - var(--sk-sp, .5)) + var(--pd-half, 0px)) !important; }
+html.sk.psplitting #workbench .dgroup.psplit { top: calc(var(--sk-top) + (100% - var(--sk-top) - var(--sk-bot)) * var(--sk-sp, .5) + var(--sp-head, 0px) + var(--pd-half, 0px)) !important; z-index: 2; }
+/* the strip between the two Bibles: the lower Bible's own place and Bible, lined up with the ones at the top */
+.pdiv { position: fixed; left: 0; right: 0; height: 46px; display: none; align-items: center; z-index: 30; touch-action: none; background: var(--p-bg); border-top: 1px solid var(--p-line); border-bottom: 1px solid var(--p-line); top: calc(var(--sk-top) + (100% - var(--sk-top) - var(--sk-bot)) * var(--sk-sp, .5) - 23px); }
+.pdiv i { position: absolute; left: 50%; top: 3px; width: 40px; height: 4px; margin-left: -20px; border-radius: 3px; background: var(--p-acc); opacity: .5; }
+.pdiv button { margin: 0; }
+.pd-ref { display: flex; align-items: center; gap: 6px; min-width: 0; border: 0; background: transparent; padding: 0; color: var(--p-ink); }
+.pd-ref span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: var(--par-w, 0px); }
+.pd-ref .ic { color: var(--p-muted); flex: none; }
+.pdiv .pd-sync { margin-left: auto; }
+html.psplitting .pdiv { display: flex; }
+html.sk-b .pdiv { padding: 4px 20px 0 24px; gap: 10px; }
+html.sk-b .pd-ref { font: 500 22px/1 Literata, Georgia, serif; letter-spacing: -.01em; text-align: left; }
+html.sk-b .pd-ref span, html.sk-b.psplitting .b-big h2 span { min-width: var(--par-w, 0px); }
+html.sk-a .pdiv { padding: 4px 14px 0; gap: 8px; justify-content: center; }
+html.sk-a .pd-ref { font: 600 16px var(--p-ui); }
+html.sk-a .pd-ref .ic { display: none; }
+html.sk-a .pd-ref span, html.sk-a.psplitting .a-chrome .mid span { min-width: var(--par-w, 0px); text-align: center; }
+html.sk-a .pdiv .pd-bib { font: 500 13px var(--p-ui); line-height: normal; height: auto; min-height: 0; color: var(--p-acc); padding: 3px 9px; border: 1px solid var(--p-accline); background: transparent; border-radius: 20px; gap: 0; box-sizing: border-box; }
+html.sk-a .pdiv .pd-bib, html.sk-a.psplitting .a-chrome .mid em { min-width: var(--par-bw, 0px); text-align: center; justify-content: center; box-sizing: border-box; }
+html.sk-a .pd-bib .ic { display: none; }
+html.sk-a .pdiv .pd-sync { margin-left: 0; }
 
 /* ===================== A · Quiet Reader ===================== */
 html.sk-a { --rd-top: calc(var(--safe-t) + 60px); --rd-bot: 170px; }
-html.sk-a .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + 8px) !important; padding-right: calc(var(--rd-mx, 26px) + 8px) !important; }
-.a-chrome { position: fixed; left: 0; right: 0; top: 0; padding: var(--safe-t) 14px 26px; display: flex; align-items: center; gap: 4px; z-index: 60; background: linear-gradient(var(--p-bg) 72%, transparent); transform: translateY(-110%); opacity: 0; transition: transform .25s, opacity .25s; pointer-events: none; }
-html.sk-a.a-show .a-chrome { transform: none; opacity: 1; pointer-events: auto; }
+html.sk-a .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) !important; padding-right: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) !important; }
+.a-chrome { position: fixed; left: 0; right: 0; top: 0; padding: var(--safe-t) 14px 22px; display: flex; align-items: center; gap: 4px; z-index: 60; background: linear-gradient(var(--p-bg) 72%, transparent); pointer-events: none; }
+/* the label (place and Bible) stays where it is while the text scrolls; the buttons around it come and go */
+.a-chrome .pib { opacity: 0; transform: translateY(-6px); transition: opacity .25s, transform .25s; pointer-events: none; }
+html.sk-a.a-show .a-chrome .pib { opacity: 1; transform: none; pointer-events: auto; }
+.a-chrome .mid { pointer-events: auto; }
+html.sk-a.pg-open .a-chrome, html.sk.sk-dlg .a-chrome { display: none; }
 .a-chrome .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; gap: 8px; font: 600 16px var(--p-ui); color: var(--p-ink); border: 0; background: transparent; }
 .a-chrome .mid span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .a-chrome .mid em { font-style: normal; font-weight: 500; color: var(--p-acc); font-size: 13px; padding: 3px 9px; border: 1px solid var(--p-accline); border-radius: 20px; flex: none; }
@@ -93,7 +115,7 @@ html.sk-b .ppage .pgbar { height: 54px; }
 
 /* ===================== C · Study Desk ===================== */
 html.sk-c { --sk-top: calc(var(--safe-t) + 52px); --rd-top: 12px; --rd-bot: 140px; }
-html.sk-c .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + 4px) !important; padding-right: calc(var(--rd-mx, 26px) + 4px) !important; }
+html.sk-c .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 4px)) !important; padding-right: calc(var(--rd-mx, 26px) + var(--rd-ex, 4px)) !important; }
 .c-rail { position: fixed; left: 0; right: 0; top: 0; padding-top: var(--safe-t); height: calc(52px + var(--safe-t)); display: flex; align-items: center; gap: 8px; padding-left: 12px; padding-right: 12px; z-index: 60; background: linear-gradient(var(--p-bg) 78%, transparent); }
 .c-rail .ref { font: 600 17px var(--p-ui); color: var(--p-ink); display: flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0 4px; min-width: 0; }
 .c-rail .ref span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

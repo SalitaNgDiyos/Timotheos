@@ -307,9 +307,9 @@
   function viewAction(a) { const b = viewBtn(a); if (b) { b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); b.click(); } return !!b; }
   const chooseBible = () => viewAction('bible');
   /* the text's side margins and line height, three levels each (kept on this device) */
-  const RD = { m: [['Narrow', '14px'], ['Normal', '26px'], ['Wide', '46px']], l: [['Tight', '1.5'], ['Normal', '1.72'], ['Roomy', '2']] };
+  const RD = { m: [['Narrow', '6px'], ['Normal', '26px'], ['Wide', '46px']], l: [['Tight', '1.27'], ['Normal', '1.72'], ['Roomy', '2']] };
   const rdGet = () => { try { const o = JSON.parse(localStorage.getItem('tw.rd') || '{}'); return { m: [0, 1, 2].includes(o.m) ? o.m : 1, l: [0, 1, 2].includes(o.l) ? o.l : 1 }; } catch (e) { return { m: 1, l: 1 }; } };
-  function rdApply() { const o = rdGet(); root.style.setProperty('--rd-mx', RD.m[o.m][1]); root.style.setProperty('--rd-lh', RD.l[o.l][1]); }
+  function rdApply() { const o = rdGet(); root.style.setProperty('--rd-mx', RD.m[o.m][1]); root.style.setProperty('--rd-ex', o.m === 0 ? '0px' : ''); root.style.setProperty('--rd-lh', RD.l[o.l][1]); }
   function rdSet(k, i) { const o = rdGet(); o[k] = i; try { localStorage.setItem('tw.rd', JSON.stringify(o)); } catch (e) { /* not kept */ } rdApply(); }
   rdApply();
   function readingSheet() {
@@ -661,7 +661,21 @@
   // the progress of a Book search ("Searching Matthew Henry (3 of 24)…") shows wherever one is waiting
   window.addEventListener('load', () => { try { api.onBookSearchProgress(t => $$('.bsprog').forEach(e => { e.textContent = t; })); } catch (e) { /* none */ } });
 
-  window.PUI = { pushBack, dropBack, $, $$, ic, esc, flash, rn, bookOf, chapterTitle, bibleAbbr, activeBible, sheet, closeSheet, pushPage, popPage, clearPages, pageCount, borrow, decorate, decorateAll, verseOf, markVerse,
+  /* ---- two Bibles on screen (Parallel): the top and the bottom pane each have their own Bible and place ---- */
+  const gIdx = id => { const m = /^bv(\d+)$/.exec(id || ''); return m ? +m[1] : null; };
+  const par = {
+    on: () => !!(window.TimotheosPhone && TimotheosPhone.splitId()),
+    top: () => { if (!par.on()) return state.active; const i = gIdx(TimotheosPhone.current()); return i == null ? state.active : i; },
+    bot: () => (par.on() ? gIdx(TimotheosPhone.splitId()) : null),
+    ref: i => { try { return views()[i] ? refOfView(i) : state.ref; } catch (e) { return state.ref; } },
+    abbr: i => { try { return (views()[i] && viewName(i)) || bibleAbbr() || 'Bible'; } catch (e) { return 'Bible'; } },
+    label: i => { const r = par.ref(i), k = bookOf(r.b); return k ? `${k.name} ${r.c}` : ''; },
+    linked: i => { const v = views()[i]; return !v || v.linked !== false; },
+    // the pane a selector belongs to becomes the one that moves and changes Bible
+    focus: i => { if (par.on() && i != null && i !== state.active && views()[i] && window.setActiveView) setActiveView(i); }
+  };
+
+  window.PUI = { par, pushBack, dropBack, $, $$, ic, esc, flash, rn, bookOf, chapterTitle, bibleAbbr, activeBible, sheet, closeSheet, pushPage, popPage, clearPages, pageCount, borrow, decorate, decorateAll, verseOf, markVerse,
     act, HL, lastColor, setLastColor, verseSheet, commentaryCards, commentarySheet, dictCards, wordSheet, xrefList, xrefSheet, compareSheet, bookmarkSheet,
     goSheetGrid, goSheetList, chooseBible, viewAction, readingSheet, libraryInto, library, openModule, feedPage, searchInto, search, fullPanel, studyInto, studySection,
     highlightsPage, devotionals, studyPage, readAloudInto, readAloudPage, helpSheet, modulesSheet, ttsInfo, ttsProgress, H, wordOf, recents, counts, debounce, text };
