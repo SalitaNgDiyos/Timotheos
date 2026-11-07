@@ -188,10 +188,10 @@
   if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true);
   await sl(1500); ok(R.classList.contains('psplitting'),'two Bibles, one above the other'); const g=$$('.dgroup.psplit .bv .sk-ttl')[0]; ok(!!g,'each has its label');
   if(SK!=='c'){
-   const lab=$(SK==='a'?'.a-chrome .mid span':'.b-big h2 span'), chip=$(SK==='a'?'.a-chrome .mid em':'.b-big [data-a="bible"]'); const rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib'), bot=PUI.par.bot(), top=PUI.par.top();
+   const lab=$(SK==='a'?'.dgroup.pbase .sk-ttl span':'.b-big h2 span'), chip=$(SK==='a'?'.dgroup.pbase .sk-ttl small':'.b-big [data-a="bible"]'); const rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib'), bot=PUI.par.bot(), top=PUI.par.top();
    ok(!!rs&&!!bc&&getComputedStyle($('.pdiv')).display!=='none','strip between the Bibles: a place selector and a Bible selector of its own');
    ok(bot!=null&&top!=null&&bot!==top,'the two panes are two different views ('+top+' / '+bot+')');
-   ok(Math.abs(rs.getBoundingClientRect().left-lab.getBoundingClientRect().left)<=1.5,'strip: the lower place lines up with the top one ('+Math.round(rs.getBoundingClientRect().left)+' / '+Math.round(lab.getBoundingClientRect().left)+' px)');
+   const eg=SK==='a'?'right':'left'; ok(Math.abs(rs.getBoundingClientRect()[eg]-lab.getBoundingClientRect()[eg])<=1.5,'strip: the lower place lines up with the top one ('+Math.round(rs.getBoundingClientRect()[eg])+' / '+Math.round(lab.getBoundingClientRect()[eg])+' px)');
    ok(Math.abs(bc.getBoundingClientRect().left-chip.getBoundingClientRect().left)<=1.5,'strip: the lower Bible name lines up with the top one ('+Math.round(bc.getBoundingClientRect().left)+' / '+Math.round(chip.getBoundingClientRect().left)+' px)');
    ok(rs.textContent.trim().length>0&&bc.textContent.trim().length>0&&rs.textContent.trim()===PUI.par.label(bot),'strip shows the lower pane\'s own place and Bible ('+rs.textContent+' · '+bc.textContent+')');
    const topLab=lab.textContent;
@@ -265,15 +265,25 @@
   click($('#pSheet [data-rd="m"] button[data-i="2"]')); await sl(100); await closeSheet(); PUI.readingSheet(); await sl(500); ok($('#pSheet [data-rd="m"] button[data-i="2"]').classList.contains('on'),'the choice is shown again when the sheet is reopened'); click($('#pSheet [data-rd="m"] button[data-i="1"]')); await sl(100); await closeSheet(); });
  await T('pinned label',async()=>{
   if(SK==='c') return;
-  const lab=()=>$(SK==='a'?'.a-chrome .mid':'.b-big h2'); if(SK==='a') SkinA.showChrome(false); await sl(400);
+  await go({b:19,c:119,v:1}); await sl(900); if(SK==='a'){ SkinA.showChrome(false); await sl(400); }
+  const lab=()=>$(SK==='a'?'.bv .bvtext .sk-ttl':'.b-big h2'); if(SK==='b') await sl(100);
   const tx=$('.bv.active .bvtext')||$('.bvtext'); tx.scrollTop=0; tx.dispatchEvent(new Event('scroll')); await sl(300); const y0=Math.round(lab().getBoundingClientRect().top), t0=lab().textContent.trim();
-  const vis=()=>{const r=lab().getBoundingClientRect(), c=getComputedStyle(lab()); return r.top>=0&&r.bottom<=innerHeight*.2&&+c.opacity>.9&&c.visibility!=='hidden';};
-  ok(vis()&&/\d/.test(t0),'the top label shows the place ('+t0+') with the bar hidden');
+  const vis=()=>{const r=lab().getBoundingClientRect(), c=getComputedStyle(lab()); return r.top>=0&&r.bottom<=innerHeight*.3&&+c.opacity>.9&&c.visibility!=='hidden';};
+  ok(vis()&&/\d/.test(t0),'the chapter label shows the place ('+t0.replace(/\s+/g,' ')+') with the bar hidden');
   tx.scrollTop=400; tx.dispatchEvent(new Event('scroll')); await sl(400); tx.scrollTop=1200; tx.dispatchEvent(new Event('scroll')); await sl(500);
-  ok(vis()&&Math.round(lab().getBoundingClientRect().top)===y0,'scrolling down: the label stays where it is');
+  ok(tx.scrollTop>300,'text really scrolled ('+tx.scrollTop+')'); ok(vis()&&Math.round(lab().getBoundingClientRect().top)===y0,'scrolling down: the label stays where it is');
   tx.scrollTop=300; tx.dispatchEvent(new Event('scroll')); await sl(500); ok(vis()&&Math.round(lab().getBoundingClientRect().top)===y0,'scrolling up: the label stays where it is');
-  if(SK==='a'){ ok(+getComputedStyle($('.a-chrome .pib')).opacity<.2,'the buttons beside it stay away until the page is tapped'); SkinA.showChrome(true); await sl(500); ok(+getComputedStyle($('.a-chrome .pib')).opacity>.9,'tap: the buttons beside it show'); SkinA.showChrome(false); await sl(400); }
+  if(SK==='a'){ ok(!$('.a-chrome .mid span')&&!$('.a-chrome .mid em'),'no duplicate book name or Bible chip at the top'); ok(!!$('.a-chrome .mid [data-a="browse"]'),'a Bible browser icon is there instead');
+   ok(+getComputedStyle($('.a-chrome .pib')).opacity<.2,'the buttons stay away until the page is tapped'); SkinA.showChrome(true); await sl(500); ok(+getComputedStyle($('.a-chrome .pib')).opacity>.9,'tap: the buttons show'); ok(lab().getBoundingClientRect().top>=$('.a-chrome').getBoundingClientRect().bottom-30,'with the buttons shown the pinned label sits below them');
+   click($('.a-chrome [data-a="browse"]')); await sl(600); ok(!!$('#pSheet'),'the browser icon opens Go to'); PUI.closeSheet(); await sl(300);
+   click(lab().querySelector('small')); await sl(600); ok(state.active===PUI.par.top()&&!!$('.biblemenu'),'tapping the translation label opens the Bible chooser for that Bible'); document.body.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); await sl(200); if($('#pSheet')) PUI.closeSheet(); await sl(300);
+   SkinA.showChrome(false); await sl(400); }
   tx.scrollTop=0; tx.dispatchEvent(new Event('scroll')); await sl(200); });
+ await T('label size',async()=>{
+  if(SK==='c'){ await go({b:46,c:12,v:3}); await sl(700); const r=$('.c-rail .ref'), cs=getComputedStyle(r), rr=r.getBoundingClientRect(), bib=$('.c-rail .bib').getBoundingClientRect(), fw=$('.c-rail [data-a="fwd"]').getBoundingClientRect(), bk=$('.c-rail [data-a="back"]').getBoundingClientRect();
+   ok(parseFloat(cs.fontSize)===32&&/Literata/.test(cs.fontFamily),'Study Desk: the place label is as big as Clear Tabs ('+cs.fontSize+')');
+   ok(rr.left>=bk.right-1&&rr.right<=bib.left+1&&bib.right<=fw.left+1,'the label, Bible chip and buttons do not overlap ('+Math.round(rr.right)+' / '+Math.round(bib.left)+')'); ok(r.scrollWidth<=r.clientWidth+1,'the label is not cut off ('+r.textContent.trim()+')'); }
+  if(SK==='b') ok(parseFloat(getComputedStyle($('.b-big h2')).fontSize)===32,'Clear Tabs label is 32px'); });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
  api.copyText=origCopy;

@@ -209,3 +209,10 @@ html.sk .bvtext mark.hl-yellow { --hlc: #fff09a; } html.sk .bvtext mark.hl-green
 html.sk[data-theme="dark"] .bvtext mark.hl-yellow { --hlc: #6b5d12; } html.sk[data-theme="dark"] .bvtext mark.hl-green { --hlc: #2e5a2a; } html.sk[data-theme="dark"] .bvtext mark.hl-blue { --hlc: #1f4870; } html.sk[data-theme="dark"] .bvtext mark.hl-pink { --hlc: #6a2a48; } html.sk[data-theme="dark"] .bvtext mark.hl-orange { --hlc: #6e4512; }
 html.sk .bvtext mark.hl:not(.hl-ul):not(.hl-bold) { background: linear-gradient(var(--hlc, #fff09a), var(--hlc, #fff09a)) 0 .17em / 100% 1.27em no-repeat !important; border-radius: 0; }
 html.sk .bvtext mark.hl-ul { text-decoration-thickness: .09em; text-underline-offset: .11em; }
+
+/* Quiet Reader: the big chapter title and its Bible label stay pinned while the text scrolls */
+html.sk-a .bv .bvtext .sk-ttl { position: sticky; top: 0; z-index: 6; cursor: pointer; margin: 0 0 6px; padding: 8px 0 14px; background: linear-gradient(var(--p-bg) 82%, transparent); transition: top .25s; }
+html.sk-a.a-show .bv .bvtext .sk-ttl { top: 52px; }
+html.sk-a .bv .bvtext .sk-ttl small::after { content: ' ▾'; opacity: .6; }
+html.sk-a.psplitting .bv .bvtext .sk-ttl { margin: 0; padding: 4px 0 6px; }
+html.sk-a.psplitting.a-show .bv .bvtext .sk-ttl { top: 0; }

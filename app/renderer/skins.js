@@ -37,17 +37,23 @@
     const d = document.querySelector('.pdiv'); if (!d) return;
     d.innerHTML = `<i></i><button type="button" class="pd-ref" data-pd="ref"><span></span>${PUI.ic('chevD', 20)}</button><button type="button" class="pchip pd-bib" data-pd="bible"><span></span>${PUI.ic('chevD', 14)}</button><button type="button" class="pchip ghost pd-sync" data-pd="sync">${PUI.ic('sync', 15)} Sync</button>`;
   }
+  // choose a place / a Bible for one pane (the lower Bible, when it is the one asked, starts reading by itself)
+  function place(i) {
+    if (i == null) i = PUI.par.top(); PUI.par.focus(i);
+    if (PUI.par.on() && i === PUI.par.bot() && PUI.par.linked(i) && typeof toggleLink === 'function') toggleLink(i);
+    if (cur === 'a') PUI.goSheetGrid(); else PUI.goSheetList();
+  }
+  function bible(i) { if (i == null) i = PUI.par.top(); PUI.par.focus(i); PUI.chooseBible(); }
   function wireDivider() {
     const d = document.createElement('div'); d.className = 'pdiv';
     document.body.appendChild(d); fillStrip();
     // the lower Bible has its own place and its own Bible: these two choose them
     d.addEventListener('click', e => {
       const b = e.target.closest('[data-pd]'); if (!b) return; e.stopPropagation();
-      const i = PUI.par.bot(); if (i == null) return; PUI.par.focus(i);
-      if (b.dataset.pd === 'bible') return PUI.chooseBible();
-      if (b.dataset.pd === 'sync') { if (typeof toggleLink === 'function' && !PUI.par.linked(i)) toggleLink(i); return refresh(); }
-      if (PUI.par.linked(i) && typeof toggleLink === 'function') toggleLink(i);   // from here on it reads by itself
-      if (cur === 'a') PUI.goSheetGrid(); else PUI.goSheetList();
+      const i = PUI.par.bot(); if (i == null) return;
+      if (b.dataset.pd === 'bible') return bible(i);
+      if (b.dataset.pd === 'sync') { PUI.par.focus(i); if (typeof toggleLink === 'function' && !PUI.par.linked(i)) toggleLink(i); return refresh(); }
+      place(i);
     });
     d.addEventListener('pointerdown', e => {
       if (e.target.closest('button')) return;
@@ -67,11 +73,11 @@
     const rs = d.querySelector('.pd-ref span'); if (rs.textContent !== lab) rs.textContent = lab;
     const bs = d.querySelector('.pd-bib span'); if (bs.textContent !== ab) bs.textContent = ab;
     d.querySelector('.pd-sync').style.display = PUI.par.linked(b) ? 'none' : '';
-    const tl = document.querySelector(cur === 'a' ? '.a-chrome .mid span' : '.b-big h2 span');
+    if (cur !== 'b') { root.style.removeProperty('--par-w'); return; }
+    const tl = document.querySelector('.b-big h2 span');
     const w = el => { if (!el) return 0; const r = document.createRange(); r.selectNodeContents(el); return Math.ceil(r.getBoundingClientRect().width); };
     const need = Math.min(Math.max(w(tl), w(rs)) + 2, Math.round(innerWidth * .5));
     if (root.style.getPropertyValue('--par-w') !== need + 'px') root.style.setProperty('--par-w', need + 'px');
-    if (cur === 'a') { const tb = document.querySelector('.a-chrome .mid em'), nb = Math.min(Math.max(w(tb), w(bs)) + 21, Math.round(innerWidth * .3)); if (root.style.getPropertyValue('--par-bw') !== nb + 'px') root.style.setProperty('--par-bw', nb + 'px'); }
   }
   function refresh() { if (!cur) return; try { PUI.decorateAll(); } catch (e) { /* */ } try { strip(); } catch (e) { /* */ } const m = SK[cur].mod(); if (m && m.refresh) m.refresh(); }
 
@@ -118,5 +124,5 @@
   }
   function init() { wireDivider(); if (root.classList.contains('mobile')) picker(false); bars(); new MutationObserver(bars).observe(root, { attributes: true, attributeFilter: ['class'] }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  window.TimotheosSkins = { picker, apply, current: () => cur, parallel, secondBible, refresh };
+  window.TimotheosSkins = { place, bible, picker, apply, current: () => cur, parallel, secondBible, refresh };
 })();

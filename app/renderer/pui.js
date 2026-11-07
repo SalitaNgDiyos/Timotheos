@@ -609,7 +609,7 @@
       if (held) { held = false; e.preventDefault(); e.stopPropagation(); return; }
       const tg = e.target; if (!tg.closest || !tg.closest('.bv .bvtext')) return;
       if (tg.closest('sup.fn, sup.xref')) { e.preventDefault(); e.stopPropagation(); noteHtml(tg.closest('sup')).then(h => sheet(`<div class="pcards"><article class="pcard">${h || '<p class="phint">Nothing to show.</p>'}</article></div>`, { title: tg.closest('sup.fn') ? 'Footnote' : 'Cross-reference' })); return; }
-      if (tg.closest('.sk-ttl')) { if (H.tap) H.tap(null, null, e); return; }
+      if (tg.closest('.sk-ttl')) { if (H.title && H.title(tg.closest('.sk-ttl'), tg)) return; if (H.tap) H.tap(null, null, e); return; }
       if (tg.closest('a, button, input, .xrs, .unote, .noteicon')) return;     // links, cross-reference lists, notes: as before
       if (root.classList.contains('sk-selecting') || String(window.getSelection()).trim()) return;
       const x = verseOf(tg); if (!x) { if (H.tap) H.tap(null, null, e); return; }

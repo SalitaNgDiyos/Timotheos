@@ -15,9 +15,6 @@
   }
   function refresh() {
     const p = P(); const k = p.bookOf(state.ref.b); if (!k) return;
-    // the label at the top belongs to the top Bible (with two Bibles on screen the lower one has its own, in the strip)
-    const ti = p.par.top(); const t = document.querySelector('.a-chrome .mid span'); const lb = p.par.label(ti) || `${k.name} ${state.ref.c}`; if (t && t.textContent !== lb) t.textContent = lb;
-    const ab = document.querySelector('.a-chrome .mid em'); const an = p.par.abbr(ti); if (ab && ab.textContent !== an) ab.textContent = an;
     const tts = p.ttsInfo(); const caps = document.querySelector('.a-caps'); if (!caps) return;
     caps.classList.toggle('playing', !!tts.busy);
     const ref = caps.querySelector('.ref'); ref.textContent = tts.busy ? (tts.label || p.rn(state.ref)) : p.rn(state.ref).replace(/^(\S+(?: \S+)??) (\d+):(\d+)$/, (m) => m);
@@ -67,14 +64,13 @@
 
   function mount() {
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P();
-    el('a-chrome', ib('back', 'back', 'Back to the previous screen') + ib('fwd', 'fwd', 'Forward to the next screen') + `<button type="button" class="mid" data-a="go"><span></span><em data-a="bible">KJV</em></button>` + ib('search', 'search', 'Search') + ib('more', 'more', 'More'));
+    el('a-chrome', ib('back', 'back', 'Back to the previous screen') + ib('fwd', 'fwd', 'Forward to the next screen') + `<div class="mid">${ib('browse', 'toc', 'Go to a book or chapter')}</div>` + ib('search', 'search', 'Search') + ib('more', 'more', 'More'));
     el('a-fade', '');
     el('a-caps', `<button type="button" class="pib" data-a="prevc" data-r aria-label="Previous chapter">${p.ic('chevL', 22)}</button><button type="button" class="pib" data-a="prevv" data-p aria-label="Previous verse">${p.ic('prevv', 21)}</button><button type="button" class="pib gold" data-a="pause" data-p aria-label="Pause">${p.ic('pause', 22)}</button><button type="button" class="pib" data-a="nextv" data-p aria-label="Next verse">${p.ic('nextv', 21)}</button><span class="sep" data-p></span>`
       + `<button type="button" class="ref" data-a="go">John 3:16</button><button type="button" class="pib" data-a="nextc" data-r aria-label="Next chapter">${p.ic('chevR', 22)}</button><span class="sep" data-r></span><button type="button" class="pib gold" data-a="read" data-r aria-label="Read aloud">${p.ic('speaker', 22)}</button><button type="button" class="pib" data-a="stop" data-p aria-label="Stop">${p.ic('stop', 20)}</button><div class="prog"><i></i></div>`);
     document.addEventListener('click', e => {
       const b = e.target.closest('.skel [data-a]'); if (!b) return; const a = b.dataset.a; e.stopPropagation();
-      if (b.closest('.a-chrome')) p.par.focus(p.par.top());
-      if (a === 'bible') { showChrome(true); return p.chooseBible(); }
+      if (a === 'browse') { showChrome(false); return TimotheosSkins.place(p.par.top()); }
       if (b.closest('.a-chrome')) showChrome(true);
       if (a === 'back') { const g = document.getElementById('gBack'); if (g && !g.disabled) g.click(); }
       else if (a === 'fwd') { const g = document.getElementById('gFwd'); if (g && !g.disabled) g.click(); }
@@ -92,6 +88,8 @@
     document.addEventListener('scroll', e => { const t = e.target; if (!t.classList || !t.classList.contains('bvtext')) return; const y = t.scrollTop, y0 = lastY.get(t) || 0; lastY.set(t, y); if (y < 30) return; if (Math.abs(y - y0) > 12 && root.classList.contains('a-show')) showChrome(false); }, Object.assign({ capture: true, passive: true }, sig));
     window.addEventListener('tw-tts', refresh, sig);
     P().H.tap = onTap; P().H.hold = onHold;
+    // the big title and the translation label above it are the way to the Bible browser too
+    P().H.title = (tt, tg) => { const sec = tt.closest('.bv'), i = sec ? +sec.dataset.i || 0 : undefined; showChrome(false); if (tg.closest('small')) TimotheosSkins.bible(i); else TimotheosSkins.place(i); return true; };
     showChrome(true);
   }
   function unmount() { if (ac) ac.abort(); ac = null; els.forEach(e => e.remove()); els = []; root.classList.remove('a-show'); clearTimeout(hideT); }

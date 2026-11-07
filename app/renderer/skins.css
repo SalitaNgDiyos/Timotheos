@@ -48,27 +48,16 @@ html.psplitting .pdiv { display: flex; }
 html.sk-b .pdiv { padding: 4px 20px 0 24px; gap: 10px; }
 html.sk-b .pd-ref { font: 500 22px/1 Literata, Georgia, serif; letter-spacing: -.01em; text-align: left; }
 html.sk-b .pd-ref span, html.sk-b.psplitting .b-big h2 span { min-width: var(--par-w, 0px); }
-html.sk-a .pdiv { padding: 4px 14px 0; gap: 8px; justify-content: center; }
-html.sk-a .pd-ref { font: 600 16px var(--p-ui); }
-html.sk-a .pd-ref .ic { display: none; }
-html.sk-a .pd-ref span, html.sk-a.psplitting .a-chrome .mid span { min-width: var(--par-w, 0px); text-align: center; }
-html.sk-a .pdiv .pd-bib { font: 500 13px var(--p-ui); line-height: normal; height: auto; min-height: 0; color: var(--p-acc); padding: 3px 9px; border: 1px solid var(--p-accline); background: transparent; border-radius: 20px; gap: 0; box-sizing: border-box; }
-html.sk-a .pdiv .pd-bib, html.sk-a.psplitting .a-chrome .mid em { min-width: var(--par-bw, 0px); text-align: center; justify-content: center; box-sizing: border-box; }
-html.sk-a .pd-bib .ic { display: none; }
-html.sk-a .pdiv .pd-sync { margin-left: 0; }
 
 /* ===================== A · Quiet Reader ===================== */
 html.sk-a { --rd-top: calc(var(--safe-t) + 60px); --rd-bot: 170px; }
 html.sk-a .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) !important; padding-right: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) !important; }
-.a-chrome { position: fixed; left: 0; right: 0; top: 0; padding: var(--safe-t) 14px 22px; display: flex; align-items: center; gap: 4px; z-index: 60; background: linear-gradient(var(--p-bg) 72%, transparent); pointer-events: none; }
+.a-chrome { position: fixed; left: 0; right: 0; top: 0; padding: var(--safe-t) 14px 22px; display: flex; align-items: center; gap: 4px; z-index: 60; background: transparent; transition: background .25s; pointer-events: none; }
 /* the label (place and Bible) stays where it is while the text scrolls; the buttons around it come and go */
 .a-chrome .pib { opacity: 0; transform: translateY(-6px); transition: opacity .25s, transform .25s; pointer-events: none; }
 html.sk-a.a-show .a-chrome .pib { opacity: 1; transform: none; pointer-events: auto; }
 .a-chrome .mid { pointer-events: auto; }
 html.sk-a.pg-open .a-chrome, html.sk.sk-dlg .a-chrome { display: none; }
-.a-chrome .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; gap: 8px; font: 600 16px var(--p-ui); color: var(--p-ink); border: 0; background: transparent; }
-.a-chrome .mid span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.a-chrome .mid em { font-style: normal; font-weight: 500; color: var(--p-acc); font-size: 13px; padding: 3px 9px; border: 1px solid var(--p-accline); border-radius: 20px; flex: none; }
 .a-fade { position: fixed; left: 0; right: 0; bottom: 0; height: 130px; z-index: 22; pointer-events: none; background: linear-gradient(rgba(15,16,19,0), var(--p-bg) 64%); }
 .a-caps { position: fixed; left: 50%; bottom: calc(30px + var(--safe-b)); transform: translateX(-50%); height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-radius: 30px; z-index: 62; background: #1e2026; box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07) inset; color: var(--p-ink); white-space: nowrap; transition: opacity .2s; }
 .a-caps .ref { min-width: 128px; max-width: 52vw; height: 44px; border: 0; background: transparent; color: var(--p-ink); font: 600 16px var(--p-ui); border-radius: 20px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; }
@@ -117,7 +106,7 @@ html.sk-b .ppage .pgbar { height: 54px; }
 html.sk-c { --sk-top: calc(var(--safe-t) + 52px); --rd-top: 12px; --rd-bot: 140px; }
 html.sk-c .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 4px)) !important; padding-right: calc(var(--rd-mx, 26px) + var(--rd-ex, 4px)) !important; }
 .c-rail { position: fixed; left: 0; right: 0; top: 0; padding-top: var(--safe-t); height: calc(52px + var(--safe-t)); display: flex; align-items: center; gap: 8px; padding-left: 12px; padding-right: 12px; z-index: 60; background: linear-gradient(var(--p-bg) 78%, transparent); }
-.c-rail .ref { font: 600 17px var(--p-ui); color: var(--p-ink); display: flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0 4px; min-width: 0; }
+.c-rail .ref { font: 500 32px/1 Literata, Georgia, serif; letter-spacing: -.01em; color: var(--p-ink); display: flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0 4px; min-width: 0; }
 .c-rail .ref span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .c-rail .dotc { width: 6px; height: 6px; border-radius: 50%; background: var(--p-acc); flex: none; }
 .c-rail .bib { font: 600 12px var(--p-ui); letter-spacing: .08em; color: var(--p-acc2); padding: 5px 9px; border-radius: 8px; background: var(--p-on2); border: 0; flex: none; }
@@ -232,3 +221,12 @@ html.sk.sk-baroff .a-fade { opacity: 0; }
 /* Screen B: when the tab bar is away, the Bible text and the pages use the space it covered */
 html.sk-b.sk-baroff { --sk-bot: 0px; --pg-bot: 0px; }
 html.sk-b #workbench .dgroup, html.sk-b #pHost { transition: bottom .22s ease; }
+
+/* Quiet Reader: the place/Bible strip lines up with the label above it; the top bar is only a contents icon */
+html.sk-a .pdiv { padding: 4px calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) 0; gap: 10px; justify-content: space-between; }
+html.sk-a .pdiv .pd-bib { order: 0; border: 0; background: transparent; padding: 0; min-height: 0; height: auto; font: 600 11px var(--p-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); }
+html.sk-a .pdiv .pd-sync { order: 1; margin: 0; }
+html.sk-a .pdiv .pd-ref { order: 2; font: 600 11px var(--p-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc2); }
+html.sk-a .pd-ref .ic, html.sk-a .pd-bib .ic { display: none; }
+html.sk-a.a-show .a-chrome { background: linear-gradient(var(--p-bg) 72%, transparent); }
+.a-chrome .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; }

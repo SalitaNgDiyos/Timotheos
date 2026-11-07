@@ -423,6 +423,8 @@ function initViews() {
   const defZoom = state.settings.bibleZoom || 1;
   let vs = Array.isArray(state.settings.views) ? state.settings.views.filter(v => v && v.bible) : [];
   if (!vs.length) vs = (state.settings.openBibles || []).map(b => ({ bible: b, linked: true, zoom: defZoom !== 1 ? defZoom : undefined }));
+  // the three phone screens read at the same size: a text size left over from an older build is set back to 100% once
+  try { if (/Android/i.test(navigator.userAgent) && !localStorage.getItem('tw.zr1')) { localStorage.setItem('tw.zr1', '1'); vs.forEach(v => { delete v.zoom; }); state.settings.bibleZoom = 1; save({ bibleZoom: 1 }); } } catch (e) { /* kept as it is */ }
   state.settings.views = vs;
   state.active = Math.min(Math.max(0, state.settings.activeView || 0), Math.max(0, vs.length - 1));
   state.linkRef = state.settings.ref || state.ref;
