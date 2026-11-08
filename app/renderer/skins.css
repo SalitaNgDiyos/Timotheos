@@ -35,7 +35,7 @@ html.sk svg.ic { stroke-width: 1.6; }
 html.sk svg.ic .d { fill: currentColor; fill-opacity: .16; stroke: none; }
 
 /* split: a second pane in the lower part, with a divider to drag */
-html.sk-a.psplitting, html.sk-b.psplitting { --pd-half: 23px; }
+html.sk.psplitting { --pd-half: 23px; }
 html.sk.psplitting #workbench .dgroup.pbase { bottom: calc(var(--sk-bot) + (100% - var(--sk-top) - var(--sk-bot)) * (1 - var(--sk-sp, .5)) + var(--pd-half, 0px)) !important; }
 html.sk.psplitting #workbench .dgroup.psplit { top: calc(var(--sk-top) + (100% - var(--sk-top) - var(--sk-bot)) * var(--sk-sp, .5) + var(--sp-h2, 0px) + var(--pd-half, 0px)) !important; z-index: 2; }
 html.sk-c.c-deskon { --sp-h2: var(--sp-head, 0px); }   /* the desk's own head sits above the lower Bible only while the desk is open */
@@ -80,7 +80,7 @@ html.sk-a.pg-open .a-caps, html.sk-a.pg-open .a-fade { display: none; }
 /* ===================== B · Clear Tabs ===================== */
 html.sk-b { --sk-top: calc(var(--safe-t) + 112px); --sk-bot: calc(84px + var(--safe-b)); --pg-bot: calc(84px + var(--safe-b)); --rd-top: 4px; --rd-bot: 40px; }
 html.sk-b .bv .bvtext .sk-ttl, html.sk-c .bv .bvtext .sk-ttl { display: none; }
-html.sk-c.psplitting .bv .bvtext .sk-ttl { display: flex; }
+html.sk-c.psplitting .bv .bvtext .sk-ttl { display: none; }   /* the rail names the top Bible, the strip the lower one */
 /* Quiet Reader and Clear Tabs: the strip is the lower Bible's label, so that Bible has no second label row (and on Clear Tabs the top label is the big title) */
 html.sk-a.psplitting .dgroup.psplit .bv .bvtext .sk-ttl { display: none; }
 html.sk-b.psplitting .bv .bvtext .sk-ttl { display: none; }
@@ -115,7 +115,6 @@ html.sk-c .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 4px
 .c-rail { position: fixed; left: 0; right: 0; top: 0; padding-top: var(--safe-t); height: calc(52px + var(--safe-t)); display: flex; align-items: center; gap: 8px; padding-left: 12px; padding-right: 12px; z-index: 60; background: linear-gradient(var(--p-bg) 78%, transparent); }
 .c-rail .ref { font: 500 32px/1 Literata, Georgia, serif; letter-spacing: -.01em; color: var(--p-ink); display: flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0 4px; min-width: 0; }
 .c-rail .ref span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.c-rail .dotc { width: 6px; height: 6px; border-radius: 50%; background: var(--p-acc); flex: none; }
 .c-rail .bib { font: 600 12px var(--p-ui); letter-spacing: .08em; color: var(--p-acc2); padding: 5px 9px; border-radius: 8px; background: var(--p-on2); border: 0; flex: none; }
 .c-rail .sp { flex: 1; }
 .c-edge { position: fixed; width: 4px; height: 70px; border-radius: 2px; background: rgba(255,255,255,.16); top: 44%; z-index: 12; }
@@ -213,7 +212,6 @@ html.sk-c .ppage { z-index: 1; }
 .mp.b .tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 20px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(0,0,0,.12); } .mp.b .tabs em { width: 8px; height: 8px; border-radius: 4px; background: rgba(0,0,0,.25); } .mp.b .tabs em.on { background: #8a3a33; }
 .mp.c { background: #0f1b20; color: #e8efee; } .mp.c .bar { position: absolute; left: 8px; right: 8px; top: 8px; height: 8px; border-radius: 4px; background: rgba(255,255,255,.15); } .mp.c .dock { position: absolute; left: 14px; right: 14px; bottom: 9px; height: 14px; border-radius: 8px; background: #26404a; } .mp.c .dr { position: absolute; left: 0; top: 0; bottom: 0; width: 22px; background: #132329; box-shadow: 1px 0 0 rgba(255,255,255,.1); } .mp.c .dr::after { content: ''; position: absolute; left: 4px; right: 4px; top: 30px; height: 10px; border-radius: 3px; background: #e0a07a; }
 html.sk-c.c-deskon:not(.psplitting) #workbench .dgroup.pactive { bottom: calc((100% - var(--sk-top)) * (1 - var(--sk-sp, .5))) !important; }
-html.sk-c .pdiv { display: none !important; }
 html.sk-c.c-deskon .c-dock, html.sk-c.c-deskon .c-player { display: none; }
 .c-drawer .dtop { position: sticky; top: calc(-1 * (var(--safe-t) + 22px)); margin: calc(-1 * (var(--safe-t) + 22px)) -18px 0; padding: calc(var(--safe-t) + 22px) 18px 2px; background: var(--p-drawer); z-index: 3; }
 
@@ -258,12 +256,13 @@ html.sk.tw-edge { --safe-b: var(--nav-h, 0px); }
 html.sk.tw-edge .bv .bvtext { padding-bottom: calc(var(--rd-bot, 150px) + var(--nav-h, 0px)) !important; }
 
 /* text format (Aa) for each Bible when two are on screen: in each label row, in the strip, on the Study Desk rail and desk head */
-html.sk .bv .bvtext .sk-ttl .sk-aa, .pdiv .pd-aa, html.sk-c .c-rail [data-a="aa"], html.sk-c .c-desk .dcaa { display: none; }
-html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl .sk-aa, html.sk-c.psplitting:not(.c-deskbible) .bv .bvtext .sk-ttl .sk-aa { display: grid; }
+html.sk .bv .bvtext .sk-ttl .sk-aa, .pdiv .pd-aa, html.sk-c .c-rail [data-a="aa"] { display: none; }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl .sk-aa { display: grid; }
 html.sk .bv .bvtext .sk-ttl .sk-aa { place-items: center; width: 38px; height: 34px; margin: -8px 0 -8px auto; padding: 0; border: 0; border-radius: 17px; background: transparent; color: var(--p-ink2); box-shadow: 0 0 0 1px var(--p-line) inset; font: inherit; letter-spacing: 0; flex: none; order: 3; cursor: pointer; }
-html.sk-a .pdiv .pd-sync + .pd-aa, html.sk-b .pdiv .pd-sync + .pd-aa { margin-left: 0; }
-html.sk-a .pdiv .pd-sync[style*="none"] + .pd-aa, html.sk-b .pdiv .pd-sync[style*="none"] + .pd-aa { margin-left: auto; }
+html.sk .pdiv .pd-sync + .pd-aa { margin-left: 0; }
+html.sk .pdiv .pd-sync[style*="none"] + .pd-aa { margin-left: auto; }
 html.psplitting .pdiv .pd-aa { display: inline-flex; order: 3; width: 38px; height: 34px; padding: 0; align-items: center; justify-content: center; border-radius: 17px; flex: none; }
 html.sk-c.psplitting .c-rail [data-a="aa"] { display: inline-grid; }
-html.sk-c.c-deskbible .c-desk .dcaa { display: inline-flex; }
-html.sk-c .c-desk .hd [data-dc="par"] { order: -2; } html.sk-c .c-desk .hd .dcaa { order: -1; padding-left: 12px; padding-right: 12px; }   /* Aa right after Parallel, always in view */
+/* Study Desk with two Bibles: the strip between them names the lower Bible like the rail names the top one */
+html.sk-c .pdiv { padding: 4px 16px 0 30px; gap: 10px; }
+html.sk-c .pd-ref { font: 400 22px/1 Literata, Georgia, serif; letter-spacing: -.01em; text-align: left; }

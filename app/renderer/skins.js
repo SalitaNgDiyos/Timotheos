@@ -78,12 +78,13 @@
   // the strip shows the lower Bible's place and Bible; the top label and the strip share one width so the two Bible names line up
   function strip() {
     const d = document.querySelector('.pdiv'); if (!d) return;
-    if (!PUI.par.on() || (cur !== 'a' && cur !== 'b')) { root.style.removeProperty('--par-w'); root.style.removeProperty('--par-bw'); return; }
+    if (!PUI.par.on() || !cur) { root.style.removeProperty('--par-w'); root.style.removeProperty('--par-bw'); return; }
     const t = PUI.par.top(), b = PUI.par.bot(); if (b == null) return;
     const lab = PUI.par.label(b), ab = PUI.par.abbr(b);
     const rs = d.querySelector('.pd-ref span'); if (rs.textContent !== lab) rs.textContent = lab;
     const bs = d.querySelector('.pd-bib span'); if (bs.textContent !== ab) bs.textContent = ab;
     d.querySelector('.pd-sync').style.display = PUI.par.linked(b) ? 'none' : '';
+    if (cur === 'c') return;   // Study Desk: the strip reads on its own, under the rail
     const tl = document.querySelector(cur === 'b' ? '.b-big h2 span' : `#workbench .bv[data-i="${t}"] .bvtext .sk-ttl span`);
     const w = el => { if (!el) return 0; const r = document.createRange(); r.selectNodeContents(el); return Math.ceil(r.getBoundingClientRect().width); };
     const need = Math.min(Math.max(w(tl), w(rs)) + 2, Math.round(innerWidth * .5));

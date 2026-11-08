@@ -7,7 +7,7 @@
  * Hold a verse: a quick row. The dock becomes a player while reading. Pull down from the top: quick settings. */
 /* global PUI, state, views, go, step, setShow, zoomView, toggleLink, setVerseNumbers, runCommand, TimotheosSpeech, TimotheosStudy, TimotheosOptions, TimotheosTools, TimotheosPhone, api */
 (function () {
-  const P = () => window.PUI; let ac = null, els = [], q = null, drawerTool = 'commentary', lastWord = null, deskChip = 'par', followRef = '', navSeg = 'books', openBook = null;
+  const P = () => window.PUI; let ac = null, els = [], q = null, drawerTool = 'commentary', lastWord = null, deskChip = 'cmt', followRef = '', navSeg = 'books', openBook = null;
   const root = document.documentElement;
   function el(cls, html, tag) { const d = document.createElement(tag || 'div'); d.className = cls + ' skel'; d.innerHTML = html; document.body.appendChild(d); els.push(d); return d; }
   const ib = (a, i, t, cls = '') => `<button type="button" class="pib ${cls}" data-a="${a}" aria-label="${t}" title="${t}">${P().ic(i, 23)}</button>`;
@@ -81,24 +81,21 @@
     d.style.top = Math.round(top + (H - top) * sp) + 'px';
     root.style.setProperty('--sp-head', (d.querySelector('.dgrab').offsetHeight + d.querySelector('.hd').offsetHeight) + 'px');
   }
+  // two Bibles on Study Desk work as on the other screens: the lower Bible with its own strip, no desk around it
+  function par(on) { deskClose(); closeAll(); return window.TimotheosSkins.parallel(on == null ? !TimotheosPhone.splitId() : on); }
   async function desk(chip) {
+    if (chip === 'par') return par();
     closeAll(); const p = P(); const d = $('.c-desk'); deskChip = chip || deskChip;
     if (!d.classList.contains('on')) P().pushBack(() => deskClose(true), 'desk');
     d.classList.add('on'); root.classList.add('c-deskon'); layoutDesk();
-    d.querySelectorAll('[data-dc]').forEach(b => b.classList.toggle('on', b.dataset.dc === deskChip));
+    d.querySelectorAll('[data-dc]').forEach(b => b.classList.toggle('on', b.dataset.dc === deskChip || (b.dataset.dc === 'par' && !!TimotheosPhone.splitId())));
     const body = d.querySelector('.db'); body.innerHTML = '';
-    if (deskChip === 'par') {
-      const id = await window.TimotheosSkins.secondBible(); if (!id) { root.classList.remove('c-deskbible'); TimotheosPhone.split(null); body.innerHTML = '<p class="phint">Only one Bible is open. Import or open a second Bible to read two side by side.</p>'; return; }
-      root.classList.add('c-deskbible'); TimotheosPhone.split(id); window.TimotheosSkins.plain();
-    } else {
-      root.classList.remove('c-deskbible'); TimotheosPhone.split(null);
-      if (deskChip === 'cmt') p.commentaryCards(body, { ...state.ref });
-      else if (deskChip === 'lib') p.libraryInto(body);
-      else if (deskChip === 'search') p.searchInto(body, {});
-    }
+    if (deskChip === 'cmt') p.commentaryCards(body, { ...state.ref });
+    else if (deskChip === 'lib') p.libraryInto(body);
+    else if (deskChip === 'search') p.searchInto(body, {});
     followRef = `${state.ref.b}.${state.ref.c}.${state.ref.v}`;
   }
-  function deskClose(viaBack) { const d = $('.c-desk'); if (d && d.classList.contains('on') && viaBack !== true) P().dropBack('desk'); if (d) d.classList.remove('on'); root.classList.remove('c-deskon', 'c-deskbible'); TimotheosPhone.split(null); }
+  function deskClose(viaBack) { const d = $('.c-desk'); if (d && d.classList.contains('on') && viaBack !== true) P().dropBack('desk'); if (d) d.classList.remove('on'); root.classList.remove('c-deskon', 'c-deskbible'); }
 
   /* ---------------- command bar ---------------- */
   const CMDS = () => [
@@ -109,7 +106,7 @@
     ['Copy verses…', 'copy', 'View', () => TimotheosStudy.copyDialog()], ['Clipboard monitor', 'clipboard', 'View', () => runCommand('clipmon')], ['Daily readings', 'calendar', 'View', () => P().studySection('plans')],
     ['Devotionals today', 'book', 'View', () => P().devotionals()], ['My Study', 'study', 'View', () => P().studyPage()], ['My notes', 'note', 'View', () => P().studySection('notes')], ['Highlights', 'highlight', 'View', () => P().highlightsPage()],
     ['Bookmarks', 'bookmark', 'View', () => P().studySection('marks')], ['Verse lists', 'study', 'View', () => P().studySection('lists')], ['Library', 'library', 'View', () => P().library()], ['Commentary', 'commentary', 'View', () => studyDrawer('commentary')],
-    ['Reading view: size, what to show', 'text', 'View', () => P().readingSheet()], ['Choose the Bible', 'bible', 'View', () => P().chooseBible()], ['Parallel Bible (split desk)', 'compare', 'View', () => desk('par')],
+    ['Reading view: size, what to show', 'text', 'View', () => P().readingSheet()], ['Choose the Bible', 'bible', 'View', () => P().chooseBible()], ['Parallel Bible', 'compare', 'View', () => par()],
     ['Reset panel layout', 'layout', 'View', () => runCommand('resetLayout')], ['Quick settings', 'tune', 'View', () => quick()], ['User guide', 'guide', 'Help', () => runCommand('guide')], ['Keyboard shortcuts', 'keyboard', 'Help', () => runCommand('keys')],
     ['About Timotheos', 'info', 'Help', () => runCommand('about')], ['Change screen', 'grid', 'Help', () => window.TimotheosSkins.picker(true)]];
   let palT = 0, palSeq = 0;
@@ -210,15 +207,15 @@
         k.classList.toggle('on', on); return; }
       const l = e.target.closest('[data-l]'); if (!l) return; closeAll();
       ({ options: () => runCommand('options'), mods: () => p.modulesSheet(), voices: () => p.readAloudPage(), view: () => p.readingSheet(), help: () => p.helpSheet(),
-        layouts: () => { const s = p.sheet(`<div class="rows"><button type="button" class="prr" data-x="par">${p.ic('compare', 20)}<span>Parallel Bible below</span></button><button type="button" class="prr" data-x="reset">${p.ic('layout', 20)}<span>Reset panel layout</span></button><button type="button" class="prr" data-x="screen">${p.ic('grid', 20)}<span>Change screen</span></button></div>`, { title: 'Layouts' }); s.onclick = ev => { const x = ev.target.closest('[data-x]'); if (!x) return; p.closeSheet(); if (x.dataset.x === 'par') desk('par'); if (x.dataset.x === 'reset') runCommand('resetLayout'); if (x.dataset.x === 'screen') window.TimotheosSkins.picker(true); }; } }[l.dataset.l] || (() => {}))();
+        layouts: () => { const s = p.sheet(`<div class="rows"><button type="button" class="prr" data-x="par">${p.ic('compare', 20)}<span>Parallel Bible below</span></button><button type="button" class="prr" data-x="reset">${p.ic('layout', 20)}<span>Reset panel layout</span></button><button type="button" class="prr" data-x="screen">${p.ic('grid', 20)}<span>Change screen</span></button></div>`, { title: 'Layouts' }); s.onclick = ev => { const x = ev.target.closest('[data-x]'); if (!x) return; p.closeSheet(); if (x.dataset.x === 'par') par(); if (x.dataset.x === 'reset') runCommand('resetLayout'); if (x.dataset.x === 'screen') window.TimotheosSkins.picker(true); }; } }[l.dataset.l] || (() => {}))();
     };
     cc.oninput = e => { const z = e.target.closest('[data-zoom]'); if (!z) return; const cur = (views()[state.active] || {}).zoom || 1; const d = Math.round((+z.value - cur) * 10); if (d) zoomView(state.active, d); };
   }
 
   /* ---------------- the loop ---------------- */
   function refresh() {
-    const p = P(); const r = $('.c-rail .ref span:last-child'); if (r) { const lb = p.par.label(state.active) || p.rn(state.ref); if (r.textContent !== lb) r.textContent = lb; }
-    const bb = $('.c-rail .bib'); if (bb) bb.textContent = p.bibleAbbr() || 'Bible';
+    const p = P(); const r = $('.c-rail .ref span:last-child'); if (r) { const ti = p.par.on() ? p.par.top() : state.active; const lb = p.par.label(ti) || p.rn(state.ref); if (r.textContent !== lb) r.textContent = lb; }
+    const bb = $('.c-rail .bib'); if (bb) bb.textContent = (p.par.on() ? p.par.abbr(p.par.top()) : p.bibleAbbr()) || 'Bible';
     const gb = document.getElementById('gBack'), gf = document.getElementById('gFwd');
     const b = $('.c-rail [data-a="back"]'), f = $('.c-rail [data-a="fwd"]'); if (b) b.disabled = !gb || gb.disabled; if (f) f.disabled = !gf || gf.disabled;
     const t = p.ttsInfo(); root.classList.toggle('c-busy', !!t.busy);
@@ -232,12 +229,12 @@
   function mount() {
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P();
     try { root.classList.toggle('sk-light', localStorage.getItem('tw.c.light') === '1'); } catch (e) { /* */ } if (window.TimotheosSkins) TimotheosSkins.colors();
-    el('c-rail', `${ib('back', 'back', 'Back to the previous screen')}<button type="button" class="ref" data-a="nav"><span class="dotc"></span><span>John 3:16</span></button><button type="button" class="bib" data-a="bible">KJV</button><span class="sp"></span>${ib('aa', 'text', 'Text format for this Bible')}${ib('fwd', 'fwd', 'Forward to the next screen')}`);
+    el('c-rail', `${ib('back', 'back', 'Back to the previous screen')}<button type="button" class="ref" data-a="nav"><span>John 3:16</span></button><button type="button" class="bib" data-a="bible">KJV</button><span class="sp"></span>${ib('aa', 'text', 'Text format for this Bible')}${ib('fwd', 'fwd', 'Forward to the next screen')}`);
     el('c-edge', '').style.left = '2px'; el('c-edge', '').style.right = '2px';
     el('c-dock', `<span class="grabzone" data-a="desk"></span>${ib('nav', 'drawerL', 'Books & chapters')}${ib('cmd', 'cmd', 'Command bar')}${ib('speak', 'speaker', 'Read aloud')}<span class="sep"></span>${ib('tools', 'drawerR', 'Commentary, dictionary, cross-references')}`);
     el('c-scrim', '');
     el('c-drawer l', ''); el('c-drawer r', '');
-    el('c-desk', `<div class="dgrab"><i></i></div><div class="hd">${[['par', 'compare', 'Parallel'], ['cmt', 'commentary', 'Commentary'], ['lib', 'library', 'Library'], ['search', 'search', 'Search']].map(([k, i, l]) => `<button type="button" class="pchip" data-dc="${k}">${p.ic(i, 15)} ${l}</button>`).join('')}<button type="button" class="pchip dcaa" data-dc="aa" aria-label="Text format for the lower Bible">${p.ic('text', 15)}</button><button type="button" class="pchip" data-dc="close">${p.ic('close', 15)}</button></div><div class="db"></div>`);
+    el('c-desk', `<div class="dgrab"><i></i></div><div class="hd">${[['par', 'compare', 'Parallel'], ['cmt', 'commentary', 'Commentary'], ['lib', 'library', 'Library'], ['search', 'search', 'Search']].map(([k, i, l]) => `<button type="button" class="pchip" data-dc="${k}">${p.ic(i, 15)} ${l}</button>`).join('')}<button type="button" class="pchip" data-dc="close">${p.ic('close', 15)}</button></div><div class="db"></div>`);
     el('c-pal', ''); el('c-cc', '');
     el('c-player', `<div class="row1">${p.ic('speaker', 18)}<span class="lbl"></span><small class="sub"></small><span class="wave">${[8, 14, 20, 12, 18, 9, 16, 22, 11, 15].map((h, i) => `<i style="height:${h}px;animation-delay:${i * 0.09}s"></i>`).join('')}</span></div><div class="row2">${ib('prevv', 'prevv', 'Previous verse')}${ib('pause', 'pause', 'Pause', 'pl')}${ib('nextv', 'nextv', 'Next verse')}${ib('stop', 'stop', 'Stop')}<button type="button" class="pchip on" data-a="mode">Read on</button><button type="button" class="pchip" data-a="rate">1×</button></div>`);
     // a small handle under the rail: pull down (or tap) for quick settings
@@ -256,15 +253,15 @@
       if (t.closest('.c-drawer.l [data-notes]') || t.closest('.c-drawer.r [data-allnotes]')) { closeAll(); return p.studySection('notes'); }
       const tl = t.closest('.c-drawer.r [data-tool]'); if (tl) { e.stopPropagation(); drawerTool = tl.dataset.tool; return fillStudy(); }
       if (t.closest('.c-drawer.r [data-editnote]')) { closeAll(); return TimotheosStudy.editNote(`${state.ref.b}.${state.ref.c}.${state.ref.v}`); }
-      const dc = t.closest('.c-desk [data-dc]'); if (dc) { e.stopPropagation(); if (dc.dataset.dc === 'aa') return p.formatFor(p.par.bot()); return dc.dataset.dc === 'close' ? deskClose() : desk(dc.dataset.dc); }
+      const dc = t.closest('.c-desk [data-dc]'); if (dc) { e.stopPropagation(); return dc.dataset.dc === 'close' ? deskClose() : desk(dc.dataset.dc); }
       const b = t.closest('.skel [data-a]'); if (!b) return; e.stopPropagation(); const a = b.dataset.a;
       if (a !== 'mode') { const pp = $('.c-pop'); if (pp) pp.remove(); }
       if (a === 'back') { const x = document.getElementById('gBack'); if (x && !x.disabled) x.click(); }
       else if (a === 'fwd') { const x = document.getElementById('gFwd'); if (x && !x.disabled) x.click(); }
-      else if (a === 'nav') navDrawer(!$('.c-drawer.l.on'));
+      else if (a === 'nav') { if (p.par.on()) p.par.focus(p.par.top()); navDrawer(!$('.c-drawer.l.on')); }
       else if (a === 'tools') { if ($('.c-drawer.r.on')) closeAll(); else studyDrawer(); }
       else if (a === 'cmd') palette();
-      else if (a === 'bible') p.chooseBible();
+      else if (a === 'bible') { if (p.par.on()) window.TimotheosSkins.bible(p.par.top()); else p.chooseBible(); }
       else if (a === 'aa') p.formatFor(p.par.on() ? p.par.top() : null);
       else if (a === 'desk') { if (deskOpen()) deskClose(); else desk(); }
       else if (a === 'speak') { if (TimotheosSpeech.isSpeaking()) TimotheosSpeech.stop(); else TimotheosSpeech.speakView(state.active, null); }
@@ -302,5 +299,5 @@
     refresh();
   }
   function unmount() { if (ac) ac.abort(); ac = null; closeQ(); deskClose(); els.forEach(e => e.remove()); els = []; root.classList.remove('c-busy', 'sk-light', 'c-deskon', 'c-deskbible'); root.style.removeProperty('--sp-head'); }
-  window.SkinC = { mount, unmount, refresh, navDrawer, studyDrawer, desk, deskClose, palette, quick, closeAll };
+  window.SkinC = { par, mount, unmount, refresh, navDrawer, studyDrawer, desk, deskClose, palette, quick, closeAll };
 })();

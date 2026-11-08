@@ -187,20 +187,22 @@
  // ---------- parallel / split ----------
  await T('parallel',async()=>{
   await go({b:19,c:23,v:1}); await sl(600);
-  if(SK==='c'){ SkinC.desk('par'); await sl(1500); ok(R.classList.contains('psplitting')&&$('.c-desk').classList.contains('on'),'split desk: parallel Bible below'); for(const k of ['cmt','lib','search']){ click($(`.c-desk [data-dc="${k}"]`)); await sl(1300); ok($('.c-desk .db').children.length>0,'split desk: '+k); } click($('.c-desk [data-dc="close"]')); await sl(400); ok(!$('.c-desk').classList.contains('on'),'split desk closes'); return; }
-  if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true);
+  if(SK==='c'){ SkinC.desk('cmt'); await sl(1200); click($('.c-desk [data-dc="par"]')); await sl(1800); ok(R.classList.contains('psplitting')&&!$('.c-desk').classList.contains('on'),'Study Desk: Parallel puts the second Bible below, with no desk around it');
+   ok(!R.classList.contains('c-deskbible'),'no Commentary, Library or Search buttons over the lower Bible'); for(const k of ['cmt','lib','search']){ SkinC.desk(k); await sl(1300); ok($('.c-desk .db').children.length>0,'the desk still opens: '+k); } SkinC.deskClose(); await sl(400); ok(!$('.c-desk').classList.contains('on'),'the desk closes'); }
+  else if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true);
   await sl(1500); ok(R.classList.contains('psplitting'),'two Bibles, one above the other'); const g=$$('.dgroup.psplit .bv .sk-ttl')[0]; ok(!!g,'each has its label');
-  if(SK!=='c'){
-   const lab=$(SK==='a'?'.dgroup.pbase .sk-ttl span':'.b-big h2 span'), chip=$(SK==='a'?'.dgroup.pbase .sk-ttl small':'.b-big [data-a="bible"]'); const rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib'), bot=PUI.par.bot(), top=PUI.par.top();
+  {
+   const lab=$(SK==='a'?'.dgroup.pbase .sk-ttl span':SK==='b'?'.b-big h2 span':'.c-rail .ref span:last-child'), chip=$(SK==='a'?'.dgroup.pbase .sk-ttl small':SK==='b'?'.b-big [data-a="bible"]':'.c-rail .bib'); const rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib'), bot=PUI.par.bot(), top=PUI.par.top();
    ok(!!rs&&!!bc&&getComputedStyle($('.pdiv')).display!=='none','strip between the Bibles: a place selector and a Bible selector of its own');
    const vis=e=>!!e&&e.getClientRects().length>0&&getComputedStyle(e).display!=='none';
    ok(!vis($('.dgroup.psplit .bv .sk-ttl')),'one strip only: the lower Bible has no second label row');
    if(SK==='b') ok(!vis($('.dgroup.pbase .bv .sk-ttl')),'Clear Tabs: the top Bible has only the big title as its label');
    if(SK==='a') ok(vis($('.dgroup.pbase .bv .sk-ttl')),'Quiet Reader: the top Bible keeps its pinned label');
+   if(SK==='c') ok(!vis($('.dgroup.pbase .bv .sk-ttl'))&&lab.textContent.trim()===PUI.par.label(top),'Study Desk: the top bar names the top Bible, no extra label row');
    const sy0=$('.pdiv .pd-sync'); ok(!!sy0&&sy0.textContent.trim()===''&&!!sy0.querySelector('svg')&&/Sync/.test(sy0.getAttribute('aria-label')||''),'the Sync button is just its icon');
    ok(bot!=null&&top!=null&&bot!==top,'the two panes are two different views ('+top+' / '+bot+')');
-   const eg='left'; ok(Math.abs(rs.getBoundingClientRect()[eg]-lab.getBoundingClientRect()[eg])<=1.5,'strip: the lower place lines up with the top one ('+Math.round(rs.getBoundingClientRect()[eg])+' / '+Math.round(lab.getBoundingClientRect()[eg])+' px)');
-   ok(Math.abs(bc.getBoundingClientRect().left-chip.getBoundingClientRect().left)<=1.5,'strip: the lower Bible name lines up with the top one ('+Math.round(bc.getBoundingClientRect().left)+' / '+Math.round(chip.getBoundingClientRect().left)+' px)');
+   const eg='left'; if(SK!=='c') ok(Math.abs(rs.getBoundingClientRect()[eg]-lab.getBoundingClientRect()[eg])<=1.5,'strip: the lower place lines up with the top one ('+Math.round(rs.getBoundingClientRect()[eg])+' / '+Math.round(lab.getBoundingClientRect()[eg])+' px)');
+   if(SK!=='c') ok(Math.abs(bc.getBoundingClientRect().left-chip.getBoundingClientRect().left)<=1.5,'strip: the lower Bible name lines up with the top one ('+Math.round(bc.getBoundingClientRect().left)+' / '+Math.round(chip.getBoundingClientRect().left)+' px)');
    ok(rs.textContent.trim().length>0&&bc.textContent.trim().length>0&&rs.textContent.trim()===PUI.par.label(bot),'strip shows the lower pane\'s own place and Bible ('+rs.textContent+' · '+bc.textContent+')');
    const topLab=lab.textContent;
    click(bc.closest('button')); await sl(600); ok(state.active===bot,'strip: the Bible button works on the lower Bible'); document.body.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); await sl(200);
@@ -378,14 +380,13 @@
   ok(TimotheosPinch.target($('.pwpop .pwbar')||document.body)===null,'pinching the screen outside the text is ignored');
  });
  // ---------- no dots before the verses ----------
- await T('verse dots',async()=>{ await go({b:46,c:15,v:1}); await sl(900); const dots=$$('.bv td.vn .cm').filter(e=>e.getClientRects().length&&getComputedStyle(e).display!=='none'); ok(dots.length===0,'no dot before any verse ('+$$('.bv td.vn .cm').length+' hidden markers)'); });
+ await T('verse dots',async()=>{ if(SK==='c') ok(!$('.c-rail .dotc'),'Study Desk: no dot beside the book name'); await go({b:46,c:15,v:1}); await sl(900); const dots=$$('.bv td.vn .cm').filter(e=>e.getClientRects().length&&getComputedStyle(e).display!=='none'); ok(dots.length===0,'no dot before any verse ('+$$('.bv td.vn .cm').length+' hidden markers)'); });
  // ---------- two Bibles after the split desk of Study Desk ----------
  await T('split gap',async()=>{
   R.style.setProperty('--sp-head','57px'); if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='a') await TimotheosSkins.parallel(true); else { await TimotheosSkins.parallel(true); }
   await sl(1500); if(!R.classList.contains('psplitting')){ ok(false,'two Bibles'); return; }
   const g=$('.dgroup.psplit').getBoundingClientRect(); const d=$('.pdiv');
-  if(SK!=='c'){ const pr=d.getBoundingClientRect(); ok(Math.abs(g.top-pr.bottom)<=1.5,'the lower Bible starts right under the strip, no empty band ('+Math.round(pr.bottom)+' / '+Math.round(g.top)+')'); }
-  else { const b=$('.dgroup.pbase').getBoundingClientRect(); ok(g.top-b.bottom<=1.5,'Study Desk: no empty band between the two Bibles ('+Math.round(b.bottom)+' / '+Math.round(g.top)+')'); }
+  { const pr=d.getBoundingClientRect(); ok(Math.abs(g.top-pr.bottom)<=1.5,'the lower Bible starts right under the strip, no empty band ('+Math.round(pr.bottom)+' / '+Math.round(g.top)+')'); }
   if(SK==='a'){ const t=$('.dgroup.pbase .bv .sk-ttl'), ts=t.querySelector('span'), tb=t.querySelector('small'), rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib span');
    ok(ts.getBoundingClientRect().left<tb.getBoundingClientRect().left&&rs.getBoundingClientRect().left<bc.getBoundingClientRect().left,'top label and strip: the place first, then the Bible');
    ok(Math.abs(ts.getBoundingClientRect().left-rs.getBoundingClientRect().left)<=1.5&&Math.abs(tb.getBoundingClientRect().left-bc.getBoundingClientRect().left)<=1.5,'the two rows line up ('+Math.round(tb.getBoundingClientRect().left)+' / '+Math.round(bc.getBoundingClientRect().left)+')');
@@ -399,7 +400,7 @@
  await T('parallel format',async()=>{
   PUI.clearPages(); PUI.closeSheet(); if(TimotheosPhone.splitId()){ if(SK==='c'&&SkinC.closeAll) {} await TimotheosSkins.parallel(false); } await sl(500);
   const oth=views().findIndex((v,k)=>k!==state.active); if(oth>=0){ views()[oth].show=Object.assign({},views()[oth].show,{columns:true,strongs:true}); delete views()[oth].parPlain; }
-  if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='c') SkinC.desk('par'); else await TimotheosSkins.parallel(true);
+  if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='c') SkinC.par(true); else await TimotheosSkins.parallel(true);
   await sl(1800); if(!R.classList.contains('psplitting')){ ok(false,'two Bibles'); return; }
   const top=PUI.par.top(), bot=PUI.par.bot();
   ok(!effShow('columns',bot)&&effShow('strongs',bot)===effShow('strongs',top),'the lower Bible is plain text like the top one (no word-over-word display)');
@@ -407,13 +408,13 @@
   const openFor=async(btn,want,label)=>{ ok(vis(btn),label+': the Aa button shows'); if(!vis(btn)) return; click(btn); await sl(600); ok(!!sheet()&&/Text size/.test(sheet().textContent)&&state.active===want,label+': the text format sheet for '+(want===top?'the top':'the lower')+' Bible ('+state.active+')'); await closeSheet(); };
   if(SK==='a') await openFor($('.dgroup.pbase .bv .sk-ttl .sk-aa'),top,'top label');
   if(SK==='b') await openFor($('.b-abar [data-a="view"]')||$('[data-a="view"]'),top,'top bar');
-  if(SK!=='c') await openFor($('.pdiv .pd-aa'),bot,'strip');
-  if(SK==='c'){ await openFor($('.c-desk .dcaa'),bot,'desk head'); await openFor($('.c-rail [data-a="aa"]'),top,'rail'); }
+  await openFor($('.pdiv .pd-aa'),bot,'strip');
+  if(SK==='c') await openFor($('.c-rail [data-a="aa"]'),top,'rail');
   // the choice made for the lower Bible is kept
-  toggleViewShow(bot,'columns',true); setActiveView(top); await sl(500); if(SK==='c') { $('.c-desk [data-dc="close"]').click(); await sl(400); SkinC.desk('par'); } else { await TimotheosSkins.parallel(false); await sl(300); if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true); }
+  toggleViewShow(bot,'columns',true); setActiveView(top); await sl(500); { await TimotheosSkins.parallel(false); await sl(300); if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true); }
   await sl(1500); ok(effShow('columns',PUI.par.bot()),'a display chosen later for the lower Bible is kept');
   toggleViewShow(PUI.par.bot(),'columns',false); views()[PUI.par.bot()].show=Object.assign({},views()[PUI.par.bot()].show,{strongs:effShow('strongs',PUI.par.top())});
-  if(SK==='c') $('.c-desk [data-dc="close"]').click(); else await TimotheosSkins.parallel(false); await sl(600);
+  await TimotheosSkins.parallel(false); await sl(600);
  });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
