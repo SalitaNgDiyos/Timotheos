@@ -23,7 +23,6 @@
     library: '<path class="d" d="M4 4.5h3.5v15H4z"/><path d="M4 4.5h3.5v15H4zM9.5 4.5H13v15H9.5zM15.2 5.6l3.3-1 3 14.4-3.3 1z"/><path d="M4 8h3.5M9.5 8H13"/>',
     lookup: '<rect class="d" x="4" y="3.5" width="16" height="17" rx="2.5"/><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8 15.5 10.5 8l2.5 7.5M8.8 13.2h3.4M15 9.5c1.3 0 2 .8 2 2v4"/>',
     commentary: '<path class="d" d="M4 5.5h16v10.5H10l-4.5 3.5V16H4z"/><path d="M4 5.5h16v10.5H10l-4.5 3.5V16H4zM8 9.5h8M8 12.5h5"/>',
-    toc: '<circle class="d" cx="5" cy="6.5" r="1.5"/><circle cx="5" cy="6.5" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="5" cy="17.5" r="1.5"/><path d="M10 6.5h9.5M10 12h9.5M10 17.5h6"/>',
     search: '<circle class="d" cx="10.5" cy="10.5" r="6"/><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/>',
     study: '<path class="d" d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M6 3.5h9l3.5 3.5v13.5H6zM15 3.5V7h3.5M9 11h6.5M9 14h6.5M9 17h4"/>',
     eye: '<path class="d" d="M2.5 12s3.4-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.4 6.5-9.5 6.5S2.5 12 2.5 12z"/><path d="M2.5 12s3.4-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.4 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',

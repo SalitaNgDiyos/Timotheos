@@ -265,19 +265,32 @@
   click($('#pSheet [data-rd="m"] button[data-i="2"]')); await sl(100); await closeSheet(); PUI.readingSheet(); await sl(500); ok($('#pSheet [data-rd="m"] button[data-i="2"]').classList.contains('on'),'the choice is shown again when the sheet is reopened'); click($('#pSheet [data-rd="m"] button[data-i="1"]')); await sl(100); await closeSheet(); });
  await T('pinned label',async()=>{
   if(SK==='c') return;
-  await go({b:19,c:119,v:1}); await sl(900); if(SK==='a'){ SkinA.showChrome(false); await sl(400); }
-  const lab=()=>$(SK==='a'?'.bv .bvtext .sk-ttl':'.b-big h2'); if(SK==='b') await sl(100);
+  await go({b:19,c:119,v:1}); await sl(900);
+  if(SK==='a'){
+   SkinA.showChrome(false); await sl(400); const tx=$('.bv.active .bvtext')||$('.bvtext'); const sc=async y=>{ tx.scrollTop=y; tx.dispatchEvent(new Event('scroll')); await sl(450); };
+   const lab=()=>$('.a-chrome .lab'), op=e=>+getComputedStyle(e).opacity, ch=()=>$('.a-chrome');
+   await sc(0); const big=$('.bv .bvtext .sk-ttl');
+   ok(!R.classList.contains('a-compact')&&op(lab())<.1&&big.getBoundingClientRect().top>=0,'top of a chapter: the big title shows, the strip above it is empty');
+   ok(!$('.a-chrome [data-a="browse"]'),'no separate browser icon (the label in the strip opens Go to)');
+   await sc(400); ok(R.classList.contains('a-compact')&&op(lab())>.9,'scrolling: the title shrinks into one line in the top strip');
+   ok(lab().querySelector('span').textContent.trim()===PUI.par.label(PUI.par.top())&&lab().querySelector('em').textContent.trim()===PUI.par.abbr(PUI.par.top()),'the line shows the place and the Bible ('+lab().textContent.trim()+')');
+   const bg=getComputedStyle(ch()).backgroundColor; ok(bg!=='rgba(0, 0, 0, 0)'&&bg!=='transparent','the strip has a solid background ('+bg+')');
+   ok(/^rgb\(/.test(bg)&&+getComputedStyle(ch()).zIndex>6,'no text shows through the strip (opaque, above the text)');
+   const y0=Math.round(lab().getBoundingClientRect().top); await sc(1200); ok(Math.round(lab().getBoundingClientRect().top)===y0&&op(lab())>.9,'scrolling down: the line stays where it is'); await sc(300); ok(Math.round(lab().getBoundingClientRect().top)===y0&&op(lab())>.9,'scrolling up: the line stays where it is');
+   ok(op($('.a-chrome .pib'))<.2,'the buttons stay away until the page is tapped'); SkinA.showChrome(true); await sl(500);
+   ok(op($('.a-chrome .pib'))>.9&&op(lab())>.9,'tap: the buttons join the same strip, the line stays');
+   const lr=lab().getBoundingClientRect(), cr2=ch().getBoundingClientRect(); const over=[...$$('.a-chrome .pib')].some(b=>{const r=b.getBoundingClientRect(); return r.left<lr.right-1&&r.right>lr.left+1;});
+   ok(!over&&lr.top>=cr2.top&&lr.bottom<=cr2.bottom,'the line and the buttons do not overlap, and fit in one strip');
+   click(lab().querySelector('span')); await sl(600); ok(!!$('#pSheet'),'tapping the line opens Go to'); PUI.closeSheet(); await sl(400);
+   await sc(400); click(lab().querySelector('em')); await sl(600); ok(!!$('.biblemenu'),'tapping the Bible name opens the Bible chooser'); document.body.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); await sl(300);
+   SkinA.showChrome(false); await sc(0); ok(!R.classList.contains('a-compact'),'back at the top: the big title again, the strip empty'); return; }
+  const lab=()=>$('.b-big h2'); await sl(100);
   const tx=$('.bv.active .bvtext')||$('.bvtext'); tx.scrollTop=0; tx.dispatchEvent(new Event('scroll')); await sl(300); const y0=Math.round(lab().getBoundingClientRect().top), t0=lab().textContent.trim();
   const vis=()=>{const r=lab().getBoundingClientRect(), c=getComputedStyle(lab()); return r.top>=0&&r.bottom<=innerHeight*.3&&+c.opacity>.9&&c.visibility!=='hidden';};
-  ok(vis()&&/\d/.test(t0),'the chapter label shows the place ('+t0.replace(/\s+/g,' ')+') with the bar hidden');
+  ok(vis()&&/\d/.test(t0),'the top label shows the place ('+t0.replace(/\s+/g,' ')+') with the bar hidden');
   tx.scrollTop=400; tx.dispatchEvent(new Event('scroll')); await sl(400); tx.scrollTop=1200; tx.dispatchEvent(new Event('scroll')); await sl(500);
   ok(tx.scrollTop>300,'text really scrolled ('+tx.scrollTop+')'); ok(vis()&&Math.round(lab().getBoundingClientRect().top)===y0,'scrolling down: the label stays where it is');
   tx.scrollTop=300; tx.dispatchEvent(new Event('scroll')); await sl(500); ok(vis()&&Math.round(lab().getBoundingClientRect().top)===y0,'scrolling up: the label stays where it is');
-  if(SK==='a'){ ok(!$('.a-chrome .mid span')&&!$('.a-chrome .mid em'),'no duplicate book name or Bible chip at the top'); ok(!!$('.a-chrome .mid [data-a="browse"]'),'a Bible browser icon is there instead');
-   ok(+getComputedStyle($('.a-chrome .pib')).opacity<.2,'the buttons stay away until the page is tapped'); SkinA.showChrome(true); await sl(500); ok(+getComputedStyle($('.a-chrome .pib')).opacity>.9,'tap: the buttons show'); ok(lab().getBoundingClientRect().top>=$('.a-chrome').getBoundingClientRect().bottom-30,'with the buttons shown the pinned label sits below them');
-   click($('.a-chrome [data-a="browse"]')); await sl(600); ok(!!$('#pSheet'),'the browser icon opens Go to'); PUI.closeSheet(); await sl(300);
-   click(lab().querySelector('small')); await sl(600); ok(state.active===PUI.par.top()&&!!$('.biblemenu'),'tapping the translation label opens the Bible chooser for that Bible'); document.body.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); await sl(200); if($('#pSheet')) PUI.closeSheet(); await sl(300);
-   SkinA.showChrome(false); await sl(400); }
   tx.scrollTop=0; tx.dispatchEvent(new Event('scroll')); await sl(200); });
  await T('label size',async()=>{
   if(SK==='c'){ await go({b:46,c:12,v:3}); await sl(700); const r=$('.c-rail .ref'), cs=getComputedStyle(r), rr=r.getBoundingClientRect(), bib=$('.c-rail .bib').getBoundingClientRect(), fw=$('.c-rail [data-a="fwd"]').getBoundingClientRect(), bk=$('.c-rail [data-a="back"]').getBoundingClientRect();

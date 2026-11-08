@@ -52,7 +52,7 @@ html.sk-b .pd-ref span, html.sk-b.psplitting .b-big h2 span { min-width: var(--p
 /* ===================== A · Quiet Reader ===================== */
 html.sk-a { --rd-top: calc(var(--safe-t) + 60px); --rd-bot: 170px; }
 html.sk-a .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) !important; padding-right: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) !important; }
-.a-chrome { position: fixed; left: 0; right: 0; top: 0; padding: var(--safe-t) 14px 22px; display: flex; align-items: center; gap: 4px; z-index: 60; background: transparent; transition: background .25s; pointer-events: none; }
+.a-chrome { position: fixed; left: 0; right: 0; top: 0; padding: var(--safe-t) 10px 0; height: calc(52px + var(--safe-t)); box-sizing: border-box; display: flex; align-items: center; gap: 4px; z-index: 60; background: transparent; transition: background .25s; pointer-events: none; }
 /* the label (place and Bible) stays where it is while the text scrolls; the buttons around it come and go */
 .a-chrome .pib { opacity: 0; transform: translateY(-6px); transition: opacity .25s, transform .25s; pointer-events: none; }
 html.sk-a.a-show .a-chrome .pib { opacity: 1; transform: none; pointer-events: auto; }
@@ -228,5 +228,10 @@ html.sk-a .pdiv .pd-bib { order: 0; border: 0; background: transparent; padding:
 html.sk-a .pdiv .pd-sync { order: 1; margin: 0; }
 html.sk-a .pdiv .pd-ref { order: 2; font: 600 11px var(--p-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc2); }
 html.sk-a .pd-ref .ic, html.sk-a .pd-bib .ic { display: none; }
-html.sk-a.a-show .a-chrome { background: linear-gradient(var(--p-bg) 72%, transparent); }
+html.sk-a.a-show .a-chrome, html.sk-a.a-compact .a-chrome { background: var(--p-bg); box-shadow: 0 1px 0 var(--p-line); }
 .a-chrome .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; }
+.a-chrome .lab { display: flex; align-items: baseline; gap: 9px; min-width: 0; max-width: 100%; border: 0; background: transparent; padding: 6px 4px; color: var(--p-ink); font: 400 19px/1.2 Literata, Georgia, serif; letter-spacing: -.01em; opacity: 0; pointer-events: none; transition: opacity .2s, font-size .2s; }
+.a-chrome .lab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.a-chrome .lab em { font: 600 11px var(--p-ui); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); flex: none; }
+html.sk-a.a-compact .a-chrome .lab { opacity: 1; pointer-events: auto; }
+html.sk-a.a-compact.a-show .a-chrome .lab { font-size: 17px; }
