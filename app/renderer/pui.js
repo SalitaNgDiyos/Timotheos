@@ -675,7 +675,21 @@
     focus: i => { if (par.on() && i != null && i !== state.active && views()[i] && window.setActiveView) setActiveView(i); }
   };
 
-  window.PUI = { par, pushBack, dropBack, $, $$, ic, esc, flash, rn, bookOf, chapterTitle, bibleAbbr, activeBible, sheet, closeSheet, pushPage, popPage, clearPages, pageCount, borrow, decorate, decorateAll, verseOf, markVerse,
+  /* the place labels show the whole book name: a name too long for its space gets a smaller font (down to a floor), never cut */
+  const FIT = [['.a-chrome .lab span', 13], ['.b-big h2 span', 18], ['.c-rail .ref span:last-child', 18], ['.pdiv .pd-ref span', 13]];
+  function fitLabels() {
+    for (const [s, min] of FIT) document.querySelectorAll(s).forEach(e => {
+      e.style.fontSize = ''; if (!e.getClientRects().length) return;
+      const max = parseFloat(getComputedStyle(e).fontSize);
+      for (let k = 0; k < 3 && e.scrollWidth > e.clientWidth + 1; k++) {
+        const now = parseFloat(getComputedStyle(e).fontSize); const nx = Math.max(min, Math.floor(now * e.clientWidth / e.scrollWidth * 10) / 10 - .2);
+        if (nx >= now) break; e.style.fontSize = nx + 'px';
+      }
+      if (parseFloat(getComputedStyle(e).fontSize) >= max) e.style.fontSize = '';
+    });
+  }
+  window.addEventListener('resize', () => requestAnimationFrame(fitLabels));
+  window.PUI = { fitLabels, par, pushBack, dropBack, $, $$, ic, esc, flash, rn, bookOf, chapterTitle, bibleAbbr, activeBible, sheet, closeSheet, pushPage, popPage, clearPages, pageCount, borrow, decorate, decorateAll, verseOf, markVerse,
     act, HL, lastColor, setLastColor, verseSheet, commentaryCards, commentarySheet, dictCards, wordSheet, xrefList, xrefSheet, compareSheet, bookmarkSheet,
     goSheetGrid, goSheetList, chooseBible, viewAction, readingSheet, libraryInto, library, openModule, feedPage, searchInto, search, fullPanel, studyInto, studySection,
     highlightsPage, devotionals, studyPage, readAloudInto, readAloudPage, helpSheet, modulesSheet, ttsInfo, ttsProgress, H, wordOf, recents, counts, debounce, text };

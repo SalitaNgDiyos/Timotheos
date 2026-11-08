@@ -297,6 +297,15 @@
    ok(parseFloat(cs.fontSize)===32&&/Literata/.test(cs.fontFamily),'Study Desk: the place label is as big as Clear Tabs ('+cs.fontSize+')');
    ok(rr.left>=bk.right-1&&rr.right<=bib.left+1&&bib.right<=fw.left+1,'the label, Bible chip and buttons do not overlap ('+Math.round(rr.right)+' / '+Math.round(bib.left)+')'); ok(r.scrollWidth<=r.clientWidth+1,'the label is not cut off ('+r.textContent.trim()+')'); }
   if(SK==='b') ok(parseFloat(getComputedStyle($('.b-big h2')).fontSize)===32,'Clear Tabs label is 32px'); });
+ await T('full names',async()=>{
+  const sels=SK==='a'?['.a-chrome .lab span']:SK==='b'?['.b-big h2 span']:['.c-rail .ref span:last-child'];
+  for(const [b,c] of [[53,3],[22,8],[25,5],[46,14],[19,119]]){ await go({b,c,v:1}); await sl(900);
+   if(SK==='a'){ const t=$('.bv .bvtext'); t.scrollTop=600; t.dispatchEvent(new Event('scroll')); await sl(400); SkinA.showChrome(true,false); await sl(400); }
+   const want=PUI.par.label(SK==='c'?state.active:PUI.par.top());
+   for(const s of sels){ const e=$(s); ok(!!e&&e.textContent.trim()===want,'top label is the full book name and chapter: '+(e&&e.textContent)); ok(!!e&&e.scrollWidth<=e.clientWidth+1,'not cut off: '+want+' ('+(e&&getComputedStyle(e).fontSize)+')'); }
+   ok($$('.dgroup .bv .sk-ttl span').every(e=>!e.getClientRects().length||e.textContent.trim()===PUI.par.label(+e.closest('.bv').dataset.i)),'each Bible view\'s own label is the full name ('+want+')');
+   if(SK==='a'){ SkinA.showChrome(false); await sl(300); } }
+  await go({b:43,c:3,v:16}); await sl(600); });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
  api.copyText=origCopy;

@@ -230,7 +230,7 @@ html.sk-a .pdiv .pd-ref { order: 2; font: 600 11px var(--p-ui); letter-spacing: 
 html.sk-a .pd-ref .ic, html.sk-a .pd-bib .ic { display: none; }
 html.sk-a.a-show .a-chrome, html.sk-a.a-compact .a-chrome { background: var(--p-bg); box-shadow: 0 1px 0 var(--p-line); }
 .a-chrome .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; }
-.a-chrome .lab { display: flex; align-items: baseline; gap: 9px; min-width: 0; max-width: 100%; border: 0; background: transparent; padding: 6px 4px; color: var(--p-ink); font: 400 19px/1.2 Literata, Georgia, serif; letter-spacing: -.01em; opacity: 0; pointer-events: none; transition: opacity .2s, font-size .2s; }
+.a-chrome .lab { display: flex; align-items: baseline; gap: 9px; min-width: 0; max-width: 100%; border: 0; background: transparent; padding: 6px 4px; color: var(--p-ink); font: 400 19px/1.2 Literata, Georgia, serif; letter-spacing: -.01em; opacity: 0; pointer-events: none; transition: opacity .2s; }
 .a-chrome .lab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .a-chrome .lab em { font: 600 11px var(--p-ui); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); flex: none; }
 html.sk-a.a-compact .a-chrome .lab { opacity: 1; pointer-events: auto; }

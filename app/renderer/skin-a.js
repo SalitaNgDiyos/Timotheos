@@ -11,7 +11,8 @@
 
   function showChrome(on, auto = true) {
     root.classList.toggle('a-show', on); clearTimeout(hideT);
-    if (on && auto) hideT = setTimeout(() => root.classList.remove('a-show'), 5000);
+    if (on && auto) hideT = setTimeout(() => { root.classList.remove('a-show'); P().fitLabels(); }, 5000);
+    P().fitLabels();
   }
   // the big chapter title has scrolled under the strip: the strip shows the place in one line
   function compact() {
@@ -20,7 +21,7 @@
       const t = document.querySelector(`#workbench .bv[data-i="${P().par.top()}"] .bvtext .sk-ttl`) || document.querySelector('#workbench .bv .bvtext .sk-ttl'), ch = document.querySelector('.a-chrome');
       if (t && ch) { const r = t.getBoundingClientRect(); on = r.height > 0 && r.bottom < ch.getBoundingClientRect().bottom + 2; }
     }
-    root.classList.toggle('a-compact', on);
+    root.classList.toggle('a-compact', on); P().fitLabels();
   }
   function refresh() {
     const p = P(); const k = p.bookOf(state.ref.b); if (!k) return;

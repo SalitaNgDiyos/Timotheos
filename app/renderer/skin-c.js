@@ -214,7 +214,7 @@
 
   /* ---------------- the loop ---------------- */
   function refresh() {
-    const p = P(); const r = $('.c-rail .ref span:last-child'); if (r) r.textContent = p.rn(state.ref);
+    const p = P(); const r = $('.c-rail .ref span:last-child'); if (r) { const lb = p.par.label(state.active) || p.rn(state.ref); if (r.textContent !== lb) r.textContent = lb; }
     const bb = $('.c-rail .bib'); if (bb) bb.textContent = p.bibleAbbr() || 'Bible';
     const gb = document.getElementById('gBack'), gf = document.getElementById('gFwd');
     const b = $('.c-rail [data-a="back"]'), f = $('.c-rail [data-a="fwd"]'); if (b) b.disabled = !gb || gb.disabled; if (f) f.disabled = !gf || gf.disabled;
@@ -224,6 +224,7 @@
     // the study drawer and the desk follow the verse
     const k = `${state.ref.b}.${state.ref.c}.${state.ref.v}`;
     if (k !== followRef) { followRef = k; if ($('.c-drawer.r.on') && drawerTool !== 'library') fillStudy(); if (deskOpen() && deskChip === 'cmt') desk('cmt'); if ($('.c-drawer.l.on') && navSeg === 'books') { openBook = state.ref.b; fillNav(); } }
+    p.fitLabels();
   }
   function mount() {
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P();

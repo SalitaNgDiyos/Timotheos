@@ -83,11 +83,12 @@
     const t = p.ttsInfo(); const pl = document.querySelector('.b-player'); if (pl) { pl.classList.toggle('on', !!t.busy); pl.querySelector('.lbl').textContent = t.label || ''; pl.querySelector('[data-a="pause"]').innerHTML = p.ic(t.paused ? 'play' : 'pause', 21); }
     const sp = document.querySelector('.b-abar [data-a="speak"]'); if (sp) sp.classList.toggle('on', !!t.busy);
     if (!p.pageCount() && tab !== 'read') { tab = 'read'; document.querySelectorAll('.b-tabs [data-t]').forEach(x => x.classList.toggle('on', x.dataset.t === 'read')); }
+    p.fitLabels();
   }
   function mount() {
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P(); tab = 'read';
     el('b-top', `<div class="b-abar">${ib('back', 'back', 'Back to the previous screen')}${ib('fwd', 'fwd', 'Forward to the next screen')}<span class="grow"></span>${ib('view', 'text', 'Reading view: text size, what to show')}${ib('speak', 'speaker', 'Read aloud')}</div>
-      <div class="b-big"><h2 data-a="go"><span>John 3</span>${p.ic('chevD', 20)}</h2><button type="button" class="pchip" data-a="bible"><span>KJV</span>${p.ic('chevD', 14)}</button><span class="grow"></span><button type="button" class="pchip ghost" data-a="par">${p.ic('compare', 15)} Parallel</button></div>`);
+      <div class="b-big"><h2 data-a="go"><span>John 3</span>${p.ic('chevD', 20)}</h2><button type="button" class="pchip" data-a="bible"><span>KJV</span>${p.ic('chevD', 14)}</button><span class="grow"></span><button type="button" class="pchip ghost" data-a="par" aria-label="Parallel: two Bibles" title="Parallel: two Bibles">${p.ic('compare', 18)}</button></div>`);
     el('b-tabs', [['read', 'read', 'Read'], ['library', 'library', 'Library'], ['search', 'search', 'Search'], ['study', 'study', 'Study'], ['more', 'more', 'More']].map(([k, i, l]) => `<button type="button" data-t="${k}" class="${k === 'read' ? 'on' : ''}"><i>${p.ic(i, 22)}</i>${l}</button>`).join(''));
     el('b-player', `${ib('prevv', 'prevv', 'Previous verse')}${ib('pause', 'pause', 'Pause')}${ib('nextv', 'nextv', 'Next verse')}<span class="lbl"></span>${ib('stop', 'stop', 'Stop')}`);
     document.addEventListener('click', e => {
