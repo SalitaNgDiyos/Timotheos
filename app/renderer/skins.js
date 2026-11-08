@@ -35,7 +35,7 @@
   // (made again after the screen's icons are in, so the arrows show)
   function fillStrip() {
     const d = document.querySelector('.pdiv'); if (!d) return;
-    d.innerHTML = `<i></i><button type="button" class="pd-ref" data-pd="ref"><span></span>${PUI.ic('chevD', 20)}</button><button type="button" class="pchip pd-bib" data-pd="bible"><span></span>${PUI.ic('chevD', 14)}</button><button type="button" class="pchip ghost pd-sync" data-pd="sync">${PUI.ic('sync', 15)} Sync</button>`;
+    d.innerHTML = `<i></i><button type="button" class="pd-ref" data-pd="ref"><span></span>${PUI.ic('chevD', 20)}</button><button type="button" class="pchip pd-bib" data-pd="bible"><span></span>${PUI.ic('chevD', 14)}</button><button type="button" class="pchip ghost pd-sync" data-pd="sync" aria-label="Sync with the top Bible" title="Sync with the top Bible">${PUI.ic('sync', 18)}</button>`;
   }
   // choose a place / a Bible for one pane (the lower Bible, when it is the one asked, starts reading by itself)
   function place(i) {
@@ -89,7 +89,7 @@
     TimotheosPhone.split(null); TimotheosPhone.overlay(null); TimotheosPhone.show(bibleGroupId());
     cur = k; ['a', 'b', 'c'].forEach(x => root.classList.toggle('sk-' + x, x === k)); root.classList.add('sk');
     root.classList.remove('sk-selecting', 'pg-open', 'sk-baroff'); root.style.removeProperty('--sk-sp');
-    root.dataset.theme = SK[k].dark ? 'dark' : 'light'; root.dataset.ui = k;
+    root.dataset.ui = k; colors();
     if (window.TimotheosSkinIcons) TimotheosSkinIcons.install(); fillStrip();
     SK[k].mod().mount(); PUI.decorateAll();
     lsSet('tw.ui', k); try { sessionStorage.setItem('tw.ui', k); } catch (e) { /* */ }
@@ -97,7 +97,7 @@
     window.dispatchEvent(new Event('resize'));
   }
   // the Options' own skins set data-theme back: the screen's own stays
-  new MutationObserver(() => { if (cur && root.dataset.theme !== (SK[cur].dark ? 'dark' : 'light')) root.dataset.theme = SK[cur].dark ? 'dark' : 'light'; }).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  new MutationObserver(() => { if (!cur || !root.classList.contains('sk')) return; const w = effDark() ? 'dark' : 'light'; if (root.dataset.theme !== w) root.dataset.theme = w; }).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
   const MINI = {
     a: '<div class="mp a"><i class="t"></i><i class="t s"></i><i class="t"></i><i class="t s"></i><i class="t"></i><b class="cap"></b></div>',
     b: '<div class="mp b"><u class="bar"></u><i class="t"></i><i class="t s"></i><i class="t"></i><i class="t s"></i><span class="tabs"><em class="on"></em><em></em><em></em><em></em><em></em></span></div>',
@@ -122,7 +122,41 @@
       window.TwBars.set(c, lum > 0.6);
     } catch (e) { /* no bars to colour */ }
   }
-  function init() { wireDivider(); if (root.classList.contains('mobile')) picker(false); bars(); new MutationObserver(bars).observe(root, { attributes: true, attributeFilter: ['class'] }); }
+  /* the colour skins of Options (Narra, Sepia, Slate, ...) recolour every page of the three screens; the structure stays.
+     "Screen colours" (the default) keeps each screen's own palette. */
+  const hexRgb = h => { h = String(h).replace('#', ''); if (h.length === 3) h = h.split('').map(x => x + x).join(''); const n = parseInt(h, 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const rgba = (h, a) => `rgba(${hexRgb(h).join(',')},${a})`;
+  const lumOf = h => { const [r, g, b] = hexRgb(h); return (0.299 * r + 0.587 * g + 0.114 * b) / 255; };
+  function themeVars(s) {
+    const v = s.v, dk = !!s.dark;
+    return { '--p-bg': v.textbg, '--p-bg2': v.panel, '--p-ink': v.text, '--p-ink2': v.heading, '--p-muted': v.muted, '--p-acc': v.accent, '--p-acc2': v.accent,
+      '--p-onacc': lumOf(v.accent) > 0.55 ? '#15120d' : '#ffffff', '--p-accsoft': rgba(v.accent, .14), '--p-accline': rgba(v.accent, .4),
+      '--p-surf': v.panel, '--p-segon': v.card, '--p-segsh': dk ? 'none' : '0 1px 3px rgba(0,0,0,.08)', '--p-chip': v.panel, '--p-pill': v.panel, '--p-tile': v.panel, '--p-card': v.card, '--p-sheet': v.card,
+      '--p-line': v.line, '--p-grab': rgba(v.text, .2), '--p-selv': rgba(v.text, .04), '--p-markv': rgba(v.text, .07), '--p-speak': rgba(v.accent, .14), '--p-markw': rgba(v.accent, .3),
+      '--p-bar': rgba(v.accent, .25), '--p-on2': rgba(v.accent, .15), '--p-on2line': rgba(v.accent, .4), '--p-glass': rgba(v.card, .96), '--p-drawer': v.card,
+      '--p-float': v.card, '--p-tabs': rgba(v.textbg, .97), '--p-pop': dk ? v.card : v.heading, '--p-popink': dk ? v.text : v.textbg };
+  }
+  const PV = Object.keys(themeVars({ v: new Proxy({}, { get: () => '#000000' }) }));
+  function colorSkin() {
+    const O = window.TimotheosOptions; const a = O && O.appearance ? O.appearance() : null; const id = a && a.phoneSkin;
+    return root.classList.contains('sk') && id && id !== 'screen' && O.SKINS[id] ? O.SKINS[id] : null;
+  }
+  function effDark() { const s = colorSkin(); return s ? !!s.dark : (cur === 'a' || (cur === 'c' && !root.classList.contains('sk-light'))); }
+  function colors() {
+    if (!root.classList.contains('sk')) return;
+    const s = colorSkin(), vars = s ? themeVars(s) : null;
+    for (const k of PV) { if (vars) root.style.setProperty(k, vars[k]); else root.style.removeProperty(k); }
+    root.classList.toggle('sk-themed', !!s);
+    root.dataset.theme = effDark() ? 'dark' : 'light';
+    bars();
+  }
+  // Android: on the Bible view (nothing laid over it) the navigation bar is see-through and the text runs under it
+  let lastEdge = null;
+  function edge() {
+    const on = root.classList.contains('sk') && !/(^|\s)(sk-dlg|pg-open|c-deskon|sk-selecting)(\s|$)/.test(root.className) && !document.getElementById('skPick') && !(window.TimotheosPhone && TimotheosPhone.over());
+    if (window.TwBars && window.TwBars.edge) { root.classList.toggle('tw-edge', on); if (on !== lastEdge) { lastEdge = on; try { window.TwBars.edge(on); } catch (e) { /* */ } } }
+  }
+  function init() { wireDivider(); if (root.classList.contains('mobile')) picker(false); bars(); new MutationObserver(() => { bars(); edge(); }).observe(root, { attributes: true, attributeFilter: ['class'] }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  window.TimotheosSkins = { place, bible, picker, apply, current: () => cur, parallel, secondBible, refresh };
+  window.TimotheosSkins = { colors, screenColors: () => ({ a: ['#0f1013', '#ece6d8', '#d8b46f'], b: ['#faf7f0', '#1f1b16', '#8a3a33'], c: ['#0f1b20', '#e8efee', '#e0a07a'] })[cur], place, bible, picker, apply, current: () => cur, parallel, secondBible, refresh };
 })();

@@ -190,6 +190,11 @@
   if(SK!=='c'){
    const lab=$(SK==='a'?'.dgroup.pbase .sk-ttl span':'.b-big h2 span'), chip=$(SK==='a'?'.dgroup.pbase .sk-ttl small':'.b-big [data-a="bible"]'); const rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib'), bot=PUI.par.bot(), top=PUI.par.top();
    ok(!!rs&&!!bc&&getComputedStyle($('.pdiv')).display!=='none','strip between the Bibles: a place selector and a Bible selector of its own');
+   const vis=e=>!!e&&e.getClientRects().length>0&&getComputedStyle(e).display!=='none';
+   ok(!vis($('.dgroup.psplit .bv .sk-ttl')),'one strip only: the lower Bible has no second label row');
+   if(SK==='b') ok(!vis($('.dgroup.pbase .bv .sk-ttl')),'Clear Tabs: the top Bible has only the big title as its label');
+   if(SK==='a') ok(vis($('.dgroup.pbase .bv .sk-ttl')),'Quiet Reader: the top Bible keeps its pinned label');
+   const sy0=$('.pdiv .pd-sync'); ok(!!sy0&&sy0.textContent.trim()===''&&!!sy0.querySelector('svg')&&/Sync/.test(sy0.getAttribute('aria-label')||''),'the Sync button is just its icon');
    ok(bot!=null&&top!=null&&bot!==top,'the two panes are two different views ('+top+' / '+bot+')');
    const eg=SK==='a'?'right':'left'; ok(Math.abs(rs.getBoundingClientRect()[eg]-lab.getBoundingClientRect()[eg])<=1.5,'strip: the lower place lines up with the top one ('+Math.round(rs.getBoundingClientRect()[eg])+' / '+Math.round(lab.getBoundingClientRect()[eg])+' px)');
    ok(Math.abs(bc.getBoundingClientRect().left-chip.getBoundingClientRect().left)<=1.5,'strip: the lower Bible name lines up with the top one ('+Math.round(bc.getBoundingClientRect().left)+' / '+Math.round(chip.getBoundingClientRect().left)+' px)');
@@ -306,6 +311,33 @@
    ok($$('.dgroup .bv .sk-ttl span').every(e=>!e.getClientRects().length||e.textContent.trim()===PUI.par.label(+e.closest('.bv').dataset.i)),'each Bible view\'s own label is the full name ('+want+')');
    if(SK==='a'){ SkinA.showChrome(false); await sl(300); } }
   await go({b:43,c:3,v:16}); await sl(600); });
+ await T('colour skins',async()=>{
+  const O=TimotheosOptions, lum=e=>{ const m=getComputedStyle(e).backgroundColor.match(/[\d.]+/g); if(!m) return -1; return (0.299*m[0]+0.587*m[1]+0.114*m[2])/255; };
+  const surf=SK==='a'?['.a-caps','.bv .bvtext']:SK==='b'?['.b-top','.b-tabs','.bv .bvtext']:['.c-dock','.bv .bvtext'];
+  const pick=async id=>{ O.open('look'); await sl(500); const c=$('#skinGrid [data-skin="'+id+'"]'); if(c) click(c); await sl(500); return !!c; };
+  ok(await pick('slate'),'Options lists the colour skins'); ok(!!$('#skinGrid [data-skin="screen"]'),'and a "Screen colours" choice (each screen\'s own palette)');
+  ok(R.classList.contains('sk-themed')&&R.style.getPropertyValue('--p-bg').trim()===O.SKINS.slate.v.textbg&&R.dataset.theme==='dark','Slate: the screen takes the skin\'s colours');
+  ok(lum($('#optionsDlg .dlg, #optionsDlg > div')||$('#optionsDlg'))<.35||lum($('#optionsDlg'))<.35,'Slate: the Options page itself is dark');
+  $('#optionsDlg [data-close], #optionsDlg .x, #optClose')&&0; O.open&&document.getElementById('optionsDlg').classList.add('hidden'); await sl(300);
+  for(const q of surf){ const e=$(q); ok(!!e&&lum(e)<.35&&lum(e)>=0,'Slate: '+q+' is dark ('+(e&&getComputedStyle(e).backgroundColor)+')'); }
+  const pg=SK==='c'?null:1; if(pg){ TimotheosSkins.place(); await sl(600); const sh=$('#pSheet .psheet')||$('#pSheet'); ok(!!sh&&lum(sh)<.35,'Slate: the Go to sheet is dark'); PUI.closeSheet(); await sl(400); }
+  ok(await pick('narra'),'pick Narra'); document.getElementById('optionsDlg').classList.add('hidden'); await sl(300);
+  ok(R.style.getPropertyValue('--p-bg').trim()===O.SKINS.narra.v.textbg&&R.dataset.theme==='light','Narra: light colours');
+  for(const q of surf){ const e=$(q); ok(!!e&&lum(e)>.6,'Narra: '+q+' is light ('+(e&&getComputedStyle(e).backgroundColor)+')'); }
+  const t0=JSON.stringify([...$$('.bv')].map(e=>{const r=e.getBoundingClientRect(); return [Math.round(r.top),Math.round(r.height)];}));
+  ok(await pick('screen'),'pick Screen colours'); document.getElementById('optionsDlg').classList.add('hidden'); await sl(300);
+  ok(!R.classList.contains('sk-themed')&&!R.style.getPropertyValue('--p-bg'),'Screen colours: back to the screen\'s own palette');
+  const t1=JSON.stringify([...$$('.bv')].map(e=>{const r=e.getBoundingClientRect(); return [Math.round(r.top),Math.round(r.height)];}));
+  ok(t0===t1,'changing the colour skin does not move anything (only colours change)'); });
+ await T('nav bar',async()=>{
+  const calls=[]; window.TwBars={ set(){}, edge(on){ calls.push(on); } }; R.style.setProperty('--nav-h','48px'); R.classList.toggle('x-poke'); R.classList.toggle('x-poke'); await sl(300);
+  ok(R.classList.contains('tw-edge')&&calls[calls.length-1]===true,'Bible view: the phone\'s navigation bar is see-through');
+  const bot=SK==='a'?'.a-caps':SK==='b'?'.b-tabs button':'.c-dock', be=$(bot); const gap=innerHeight-be.getBoundingClientRect().bottom;
+  ok(gap>=48-1,'the bottom bar stays above the phone\'s buttons ('+Math.round(gap)+'px)');
+  const tx=$('.bv .bvtext'); ok(parseFloat(getComputedStyle(tx).paddingBottom)>=48,'the text can scroll clear of the phone\'s buttons');
+  TimotheosSkins.place(); await sl(700); ok(!R.classList.contains('tw-edge')&&calls[calls.length-1]===false,'a sheet over the text: the bar is solid again'); PUI.closeSheet(); await sl(600);
+  ok(R.classList.contains('tw-edge')&&calls[calls.length-1]===true,'back on the Bible view: see-through again');
+  delete window.TwBars; R.classList.remove('tw-edge'); R.style.removeProperty('--nav-h'); await sl(200); });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
  api.copyText=origCopy;

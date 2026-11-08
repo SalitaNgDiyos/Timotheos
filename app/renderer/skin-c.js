@@ -193,13 +193,13 @@
     closeAll(true); const p = P(); const cc = $('.c-cc'); const v = views()[state.active] || {}; const sh = Object.assign({}, state.settings.show, v.show || {});
     const ap = TimotheosOptions.appearance(); const vn = (v.vnPos || ap.vnPos) !== 'hidden'; const sync = views().every(x => x.linked); const clip = window.TimotheosTools && TimotheosTools.clipOn && TimotheosTools.clipOn();
     const t = (k, i, l, on) => `<button type="button" class="cct${on ? ' on' : ''}" data-cc="${k}">${p.ic(i, 22)}${l}</button>`;
-    cc.innerHTML = `<div class="dh" style="font-size:19px"><small>Quick settings</small>This desk</div><div class="ccg">${t('dark', 'palette', 'Dark', !root.classList.contains('sk-light'))}${t('sync', 'sync', 'Sync views', sync)}${t('strongs', 'lexicon', "Strong's", !!sh.strongs)}${t('columns', 'compare', 'Interlinear', !!sh.columns)}${t('vn', 'text', 'Verse no.', vn)}${t('clip', 'clipboard', 'Clipboard', !!clip)}${t('notes', 'note', 'Notes', !!sh.notes)}${t('highlights', 'highlight', 'Marks', !!sh.highlights)}</div>
+    cc.innerHTML = `<div class="dh" style="font-size:19px"><small>Quick settings</small>This desk</div><div class="ccg">${root.classList.contains('sk-themed') ? '' : t('dark', 'palette', 'Dark', !root.classList.contains('sk-light'))}${t('sync', 'sync', 'Sync views', sync)}${t('strongs', 'lexicon', "Strong's", !!sh.strongs)}${t('columns', 'compare', 'Interlinear', !!sh.columns)}${t('vn', 'text', 'Verse no.', vn)}${t('clip', 'clipboard', 'Clipboard', !!clip)}${t('notes', 'note', 'Notes', !!sh.notes)}${t('highlights', 'highlight', 'Marks', !!sh.highlights)}</div>
       <div class="slider">${p.ic('text', 20)}<input type="range" min="0.6" max="2.5" step="0.1" value="${v.zoom || 1}" data-zoom aria-label="Text size">A</div>
       <div class="links"><button type="button" class="pchip" data-l="options">${p.ic('tune', 16)} Options</button><button type="button" class="pchip" data-l="mods">${p.ic('import', 16)} Modules</button><button type="button" class="pchip" data-l="layouts">${p.ic('layers', 16)} Layouts</button><button type="button" class="pchip" data-l="voices">${p.ic('speaker', 16)} Voices</button><button type="button" class="pchip" data-l="view">${p.ic('eye', 16)} All view options</button><button type="button" class="pchip" data-l="help">${p.ic('guide', 16)} Help</button></div>`;
     cc.classList.add('on'); scrim(true); opened();
     cc.onclick = e => {
       const k = e.target.closest('[data-cc]'); if (k) { const a = k.dataset.cc; const on = !k.classList.contains('on');
-        if (a === 'dark') { root.classList.toggle('sk-light', !on); try { localStorage.setItem('tw.c.light', on ? '' : '1'); } catch (x) { /* */ } }
+        if (a === 'dark') { root.classList.toggle('sk-light', !on); try { localStorage.setItem('tw.c.light', on ? '' : '1'); } catch (x) { /* */ } TimotheosSkins.colors(); }
         else if (a === 'sync') { views().forEach((x, i) => { if (!!x.linked !== on) toggleLink(i); }); }
         else if (a === 'vn') setVerseNumbers(state.active, on);
         else if (a === 'clip') runCommand('clipmon');
@@ -228,7 +228,7 @@
   }
   function mount() {
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P();
-    try { root.classList.toggle('sk-light', localStorage.getItem('tw.c.light') === '1'); } catch (e) { /* */ }
+    try { root.classList.toggle('sk-light', localStorage.getItem('tw.c.light') === '1'); } catch (e) { /* */ } if (window.TimotheosSkins) TimotheosSkins.colors();
     el('c-rail', `${ib('back', 'back', 'Back to the previous screen')}<button type="button" class="ref" data-a="nav"><span class="dotc"></span><span>John 3:16</span></button><button type="button" class="bib" data-a="bible">KJV</button><span class="sp"></span>${ib('fwd', 'fwd', 'Forward to the next screen')}`);
     el('c-edge', '').style.left = '2px'; el('c-edge', '').style.right = '2px';
     el('c-dock', `<span class="grabzone" data-a="desk"></span>${ib('nav', 'drawerL', 'Books & chapters')}${ib('cmd', 'cmd', 'Command bar')}${ib('speak', 'speaker', 'Read aloud')}<span class="sep"></span>${ib('tools', 'drawerR', 'Commentary, dictionary, cross-references')}`);

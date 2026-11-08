@@ -20,8 +20,8 @@ html.sk-c.sk-light { --p-bg:#f3f6f5; --p-bg2:#e9efed; --p-ink:#13262b; --p-ink2:
 html.sk { --bg: var(--p-bg) !important; --panel: var(--p-bg2) !important; --card: var(--p-card) !important; --line: var(--p-line) !important; --text: var(--p-ink) !important; --muted: var(--p-muted) !important; --accent: var(--p-acc) !important; --accent-soft: var(--p-accsoft) !important;
   --heading: var(--p-ink) !important; --textbg: var(--p-bg) !important; --tool: var(--p-bg2) !important; --tooltext: var(--p-ink) !important; --captext: var(--p-ink) !important; --vnum: var(--p-acc) !important; --sel: var(--p-selv) !important;
   --cap-bible: var(--p-bg2) !important; --cap-lib: var(--p-bg2) !important; --cap-cmt: var(--p-bg2) !important; --cap-dict: var(--p-bg2) !important; --cap-search: var(--p-bg2) !important; --cap-study: var(--p-bg2) !important; --cap: var(--p-bg2) !important; }
-html.sk-a, html.sk-c:not(.sk-light) { --strong: #8ab8f0 !important; --fn: var(--p-acc2) !important; --woj: #ff9f8f !important; }
-html.sk-b, html.sk-c.sk-light { --strong: #3a6a8a !important; --fn: var(--p-acc) !important; --woj: #b3261e !important; }
+html.sk-a:not(.sk-themed), html.sk-c:not(.sk-light):not(.sk-themed) { --strong: #8ab8f0 !important; --fn: var(--p-acc2) !important; --woj: #ff9f8f !important; }
+html.sk-b:not(.sk-themed), html.sk-c.sk-light:not(.sk-themed) { --strong: #3a6a8a !important; --fn: var(--p-acc) !important; --woj: #b3261e !important; }
 
 /* the old bars give way */
 html.sk #titlebar, html.sk #toolbar, html.sk #phonebar, html.sk .statusbar, html.sk #center { display: none !important; }
@@ -58,8 +58,8 @@ html.sk-a .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px
 html.sk-a.a-show .a-chrome .pib { opacity: 1; transform: none; pointer-events: auto; }
 .a-chrome .mid { pointer-events: auto; }
 html.sk-a.pg-open .a-chrome, html.sk.sk-dlg .a-chrome { display: none; }
-.a-fade { position: fixed; left: 0; right: 0; bottom: 0; height: 130px; z-index: 22; pointer-events: none; background: linear-gradient(rgba(15,16,19,0), var(--p-bg) 64%); }
-.a-caps { position: fixed; left: 50%; bottom: calc(30px + var(--safe-b)); transform: translateX(-50%); height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-radius: 30px; z-index: 62; background: #1e2026; box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07) inset; color: var(--p-ink); white-space: nowrap; transition: opacity .2s; }
+.a-fade { position: fixed; left: 0; right: 0; bottom: 0; height: 130px; z-index: 22; pointer-events: none; background: linear-gradient(transparent, var(--p-bg) 64%); }
+.a-caps { position: fixed; left: 50%; bottom: calc(30px + var(--safe-b)); transform: translateX(-50%); height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-radius: 30px; z-index: 62; background: var(--p-float, #1e2026); box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07) inset; color: var(--p-ink); white-space: nowrap; transition: opacity .2s; }
 .a-caps .ref { min-width: 128px; max-width: 52vw; height: 44px; border: 0; background: transparent; color: var(--p-ink); font: 600 16px var(--p-ui); border-radius: 20px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; }
 .a-caps .sep { width: 1px; height: 24px; background: var(--p-line); margin: 0 4px; }
 .a-caps .gold { color: var(--p-acc); }
@@ -77,7 +77,11 @@ html.sk-a.pg-open .a-caps, html.sk-a.pg-open .a-fade { display: none; }
 /* ===================== B · Clear Tabs ===================== */
 html.sk-b { --sk-top: calc(var(--safe-t) + 112px); --sk-bot: calc(84px + var(--safe-b)); --pg-bot: calc(84px + var(--safe-b)); --rd-top: 4px; --rd-bot: 40px; }
 html.sk-b .bv .bvtext .sk-ttl, html.sk-c .bv .bvtext .sk-ttl { display: none; }
-html.sk-b.psplitting .bv .bvtext .sk-ttl, html.sk-c.psplitting .bv .bvtext .sk-ttl { display: flex; }
+html.sk-c.psplitting .bv .bvtext .sk-ttl { display: flex; }
+/* Quiet Reader and Clear Tabs: the strip is the lower Bible's label, so that Bible has no second label row (and on Clear Tabs the top label is the big title) */
+html.sk-a.psplitting .dgroup.psplit .bv .bvtext .sk-ttl { display: none; }
+html.sk-b.psplitting .bv .bvtext .sk-ttl { display: none; }
+.pdiv .pd-sync { width: 38px; height: 34px; padding: 0; justify-content: center; border-radius: 17px; }
 .b-top { position: fixed; left: 0; right: 0; top: 0; padding-top: var(--safe-t); z-index: 60; background: var(--p-bg); }
 .b-abar { height: 54px; display: flex; align-items: center; padding: 0 12px; gap: 2px; }
 .b-abar .grow { flex: 1; }
@@ -86,19 +90,19 @@ html.sk-b.psplitting .bv .bvtext .sk-ttl, html.sk-c.psplitting .bv .bvtext .sk-t
 .b-big h2 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .b-big h2 .ic { color: var(--p-muted); flex: none; }
 .b-big .grow { flex: 1; }
-.b-tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(84px + var(--safe-b)); display: flex; padding: 8px 10px calc(22px + var(--safe-b)); background: rgba(250,247,240,.97); box-shadow: 0 -1px 0 var(--p-line); z-index: 80; }
+.b-tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(84px + var(--safe-b)); display: flex; padding: 8px 10px calc(22px + var(--safe-b)); background: var(--p-tabs, rgba(250,247,240,.97)); box-shadow: 0 -1px 0 var(--p-line); z-index: 80; }
 .b-tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 11px var(--p-ui); color: var(--p-muted); border: 0; background: transparent; padding: 0; }
 .b-tabs button i { width: 58px; height: 32px; display: grid; place-items: center; border-radius: 16px; transition: background .2s; }
-.b-tabs button.on { color: var(--p-acc); } .b-tabs button.on i { background: rgba(138,58,51,.11); }
-.seltb { position: fixed; display: flex; align-items: center; gap: 2px; padding: 5px; background: #2a2420; color: #f7efe1; border-radius: 16px; box-shadow: 0 12px 30px rgba(40,25,10,.35); z-index: 66; }
-.seltb .pib { color: #f7efe1; width: 44px; height: 40px; border-radius: 12px; }
+.b-tabs button.on { color: var(--p-acc); } .b-tabs button.on i { background: var(--p-accsoft); }
+.seltb { position: fixed; display: flex; align-items: center; gap: 2px; padding: 5px; background: var(--p-pop, #2a2420); color: var(--p-popink, #f7efe1); border-radius: 16px; box-shadow: 0 12px 30px rgba(40,25,10,.35); z-index: 66; }
+.seltb .pib { color: var(--p-popink, #f7efe1); width: 44px; height: 40px; border-radius: 12px; }
 .seltb .pib:active { background: rgba(255,255,255,.12); }
 .seltb .sep { width: 1px; height: 22px; background: rgba(255,255,255,.18); margin: 0 3px; }
 .seltb .row2 { display: none; } .seltb.two .row1 { display: none; } .seltb.two .row2 { display: contents; } .seltb .row1 { display: contents; }
-.seltb .hlpick { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: #2a2420; border-radius: 14px; padding: 8px; gap: 8px; justify-content: space-around; }
-.seltb.picking .hlpick { display: flex; } .seltb .hlpick .pdot { box-shadow: 0 0 0 2px #2a2420, 0 0 0 3px rgba(255,255,255,.2); }
-.b-player { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + var(--safe-b)); z-index: 66; display: none; align-items: center; gap: 2px; padding: 4px 8px; border-radius: 26px; background: #2a2420; color: #f7efe1; box-shadow: 0 12px 30px rgba(40,25,10,.35); }
-.b-player.on { display: flex; } .b-player .pib { color: #f7efe1; width: 42px; height: 42px; } .b-player .lbl { font: 600 13.5px var(--p-ui); padding: 0 8px; white-space: nowrap; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
+.seltb .hlpick { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 6px); background: var(--p-pop, #2a2420); border-radius: 14px; padding: 8px; gap: 8px; justify-content: space-around; }
+.seltb.picking .hlpick { display: flex; } .seltb .hlpick .pdot { box-shadow: 0 0 0 2px var(--p-pop, #2a2420), 0 0 0 3px rgba(255,255,255,.2); }
+.b-player { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + var(--safe-b)); z-index: 66; display: none; align-items: center; gap: 2px; padding: 4px 8px; border-radius: 26px; background: var(--p-pop, #2a2420); color: var(--p-popink, #f7efe1); box-shadow: 0 12px 30px rgba(40,25,10,.35); }
+.b-player.on { display: flex; } .b-player .pib { color: var(--p-popink, #f7efe1); width: 42px; height: 42px; } .b-player .lbl { font: 600 13.5px var(--p-ui); padding: 0 8px; white-space: nowrap; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
 html.sk-b .ppage .pgbar { height: 54px; }
 
 
@@ -235,3 +239,7 @@ html.sk-a.a-show .a-chrome, html.sk-a.a-compact .a-chrome { background: var(--p-
 .a-chrome .lab em { font: 600 11px var(--p-ui); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); flex: none; }
 html.sk-a.a-compact .a-chrome .lab { opacity: 1; pointer-events: auto; }
 html.sk-a.a-compact.a-show .a-chrome .lab { font-size: 17px; }
+
+/* Android, Bible view: the navigation bar is see-through; bars and buttons at the bottom stay above it, the text runs under it */
+html.sk.tw-edge { --safe-b: var(--nav-h, 0px); }
+html.sk.tw-edge .bv .bvtext { padding-bottom: calc(var(--rd-bot, 150px) + var(--nav-h, 0px)) !important; }

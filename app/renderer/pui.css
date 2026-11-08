@@ -213,4 +213,4 @@ html.sk .bvtext mark.hl-ul { text-decoration-thickness: .09em; text-underline-of
 /* Quiet Reader: the big title scrolls with the text (the top strip then shows the place in one line); in parallel the panes' small labels stay pinned */
 html.sk-a .bv .bvtext .sk-ttl { cursor: pointer; }
 html.sk-a .bv .bvtext .sk-ttl small::after { content: ' ▾'; opacity: .6; }
-html.sk-a.psplitting .bv .bvtext .sk-ttl { position: sticky; top: 0; z-index: 6; margin: 0; padding: 4px 0 6px; background: var(--p-bg); }
+html.sk-a.psplitting .bv .bvtext .sk-ttl { position: sticky; top: 0; z-index: 6; margin: 0; padding: 4px 0 6px; background: var(--p-bg); box-shadow: 0 -60px 0 var(--p-bg); }

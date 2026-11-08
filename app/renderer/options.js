@@ -163,6 +163,7 @@
     if (window.applyZoom) window.applyZoom();
     if (window.applyLibSide) window.applyLibSide();
     if (window.TimotheosI18n) TimotheosI18n.apply(state.settings.lang || 'en');
+    if (window.TimotheosSkins && TimotheosSkins.colors) TimotheosSkins.colors();   // the phone screens take the skin's colours (or keep their own)
   }
 
   /** faces "TwGreek"/"TwHebrew" cover only Greek/Hebrew letters, so a Greek font can differ from the Latin one */
@@ -346,10 +347,14 @@
   }
 
   function fillSkinGrid() {
-    const a = A();
-    $('#skinGrid').innerHTML = Object.entries(SKINS).map(([id, s]) => {
+    const a = A(); const phone = document.documentElement.classList.contains('sk');
+    const onId = phone ? (a.phoneSkin || 'screen') : a.skin;
+    let own = '';
+    if (phone) { const [bg, ink, ac] = (window.TimotheosSkins && TimotheosSkins.screenColors()) || ['#0f1013', '#ece6d8', '#d8b46f'];
+      own = `<button class="skincard${onId === 'screen' ? ' on' : ''}" data-skin="screen" title="Screen colours"><span class="sk sk-own" style="background:${bg}"><span class="skm" style="background:${bg};color:${ink}"><b style="color:${ac}">16</b> For God so <i style="color:${ac}">loved</i></span></span><span class="skn">Screen colours · this screen's own</span></button>`; }
+    $('#skinGrid').innerHTML = own + Object.entries(SKINS).map(([id, s]) => {
       const v = s.v;
-      return `<button class="skincard${a.skin === id ? ' on' : ''}" data-skin="${id}" title="${s.name}">
+      return `<button class="skincard${onId === id ? ' on' : ''}" data-skin="${id}" title="${s.name}">
         <span class="sk" style="background:${v.bg}">
           <span class="skt" style="background:${v.tool}"></span>
           <span class="skl" style="background:${v.panel}"><i style="background:${v['cap-bible']}"></i><i style="background:${v['cap-lib']}"></i></span>
@@ -357,7 +362,11 @@
           <span class="skr" style="background:${v.panel}"><i style="background:${v['cap-cmt']}"></i><i style="background:${v['cap-dict']}"></i></span>
         </span><span class="skn">${s.name}${s.dark ? ' · dark' : ''}</span></button>`;
     }).join('');
-    $('#skinGrid').querySelectorAll('[data-skin]').forEach(b => b.onclick = () => { setSkin(b.dataset.skin); fillSkinGrid(); });
+    $('#skinGrid').querySelectorAll('[data-skin]').forEach(b => b.onclick = () => {
+      const id = b.dataset.skin;
+      if (phone) { A().phoneSkin = id; if (id === 'screen') { store(); apply(); } else setSkin(id); } else setSkin(id);
+      fillSkinGrid();
+    });
   }
 
   function syncForm() {
