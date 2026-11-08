@@ -256,3 +256,14 @@ html.sk-a.a-compact.a-show .a-chrome .lab { font-size: 17px; }
 /* Android, Bible view: the navigation bar is see-through; bars and buttons at the bottom stay above it, the text runs under it */
 html.sk.tw-edge { --safe-b: var(--nav-h, 0px); }
 html.sk.tw-edge .bv .bvtext { padding-bottom: calc(var(--rd-bot, 150px) + var(--nav-h, 0px)) !important; }
+
+/* text format (Aa) for each Bible when two are on screen: in each label row, in the strip, on the Study Desk rail and desk head */
+html.sk .bv .bvtext .sk-ttl .sk-aa, .pdiv .pd-aa, html.sk-c .c-rail [data-a="aa"], html.sk-c .c-desk .dcaa { display: none; }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl .sk-aa, html.sk-c.psplitting:not(.c-deskbible) .bv .bvtext .sk-ttl .sk-aa { display: grid; }
+html.sk .bv .bvtext .sk-ttl .sk-aa { place-items: center; width: 38px; height: 34px; margin: -8px 0 -8px auto; padding: 0; border: 0; border-radius: 17px; background: transparent; color: var(--p-ink2); box-shadow: 0 0 0 1px var(--p-line) inset; font: inherit; letter-spacing: 0; flex: none; order: 3; cursor: pointer; }
+html.sk-a .pdiv .pd-sync + .pd-aa, html.sk-b .pdiv .pd-sync + .pd-aa { margin-left: 0; }
+html.sk-a .pdiv .pd-sync[style*="none"] + .pd-aa, html.sk-b .pdiv .pd-sync[style*="none"] + .pd-aa { margin-left: auto; }
+html.psplitting .pdiv .pd-aa { display: inline-flex; order: 3; width: 38px; height: 34px; padding: 0; align-items: center; justify-content: center; border-radius: 17px; flex: none; }
+html.sk-c.psplitting .c-rail [data-a="aa"] { display: inline-grid; }
+html.sk-c.c-deskbible .c-desk .dcaa { display: inline-flex; }
+html.sk-c .c-desk .hd [data-dc="par"] { order: -2; } html.sk-c .c-desk .hd .dcaa { order: -1; padding-left: 12px; padding-right: 12px; }   /* Aa right after Parallel, always in view */

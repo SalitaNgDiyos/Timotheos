@@ -395,6 +395,26 @@
    const hit=document.elementFromPoint(gr.left+gr.width-40,tr.top+4); ok(!!hit&&(hit===t||t.contains(hit)||!hit.closest('tr[data-v]')),'the text does not show through the top row'); tx.scrollTop=0; }
   R.style.removeProperty('--sp-head'); if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(false); await sl(800);
  });
+ // ---------- two Bibles: plain text below, a text format button for each ----------
+ await T('parallel format',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); if(TimotheosPhone.splitId()){ if(SK==='c'&&SkinC.closeAll) {} await TimotheosSkins.parallel(false); } await sl(500);
+  const oth=views().findIndex((v,k)=>k!==state.active); if(oth>=0){ views()[oth].show=Object.assign({},views()[oth].show,{columns:true,strongs:true}); delete views()[oth].parPlain; }
+  if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='c') SkinC.desk('par'); else await TimotheosSkins.parallel(true);
+  await sl(1800); if(!R.classList.contains('psplitting')){ ok(false,'two Bibles'); return; }
+  const top=PUI.par.top(), bot=PUI.par.bot();
+  ok(!effShow('columns',bot)&&effShow('strongs',bot)===effShow('strongs',top),'the lower Bible is plain text like the top one (no word-over-word display)');
+  const vis=e=>!!e&&e.getClientRects().length>0&&getComputedStyle(e).display!=='none';
+  const openFor=async(btn,want,label)=>{ ok(vis(btn),label+': the Aa button shows'); if(!vis(btn)) return; click(btn); await sl(600); ok(!!sheet()&&/Text size/.test(sheet().textContent)&&state.active===want,label+': the text format sheet for '+(want===top?'the top':'the lower')+' Bible ('+state.active+')'); await closeSheet(); };
+  if(SK==='a') await openFor($('.dgroup.pbase .bv .sk-ttl .sk-aa'),top,'top label');
+  if(SK==='b') await openFor($('.b-abar [data-a="view"]')||$('[data-a="view"]'),top,'top bar');
+  if(SK!=='c') await openFor($('.pdiv .pd-aa'),bot,'strip');
+  if(SK==='c'){ await openFor($('.c-desk .dcaa'),bot,'desk head'); await openFor($('.c-rail [data-a="aa"]'),top,'rail'); }
+  // the choice made for the lower Bible is kept
+  toggleViewShow(bot,'columns',true); setActiveView(top); await sl(500); if(SK==='c') { $('.c-desk [data-dc="close"]').click(); await sl(400); SkinC.desk('par'); } else { await TimotheosSkins.parallel(false); await sl(300); if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true); }
+  await sl(1500); ok(effShow('columns',PUI.par.bot()),'a display chosen later for the lower Bible is kept');
+  toggleViewShow(PUI.par.bot(),'columns',false); views()[PUI.par.bot()].show=Object.assign({},views()[PUI.par.bot()].show,{strongs:effShow('strongs',PUI.par.top())});
+  if(SK==='c') $('.c-desk [data-dc="close"]').click(); else await TimotheosSkins.parallel(false); await sl(600);
+ });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
  api.copyText=origCopy;

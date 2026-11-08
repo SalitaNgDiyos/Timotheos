@@ -101,9 +101,9 @@
     const k = bookOf(b); if (!k) return;
     const kick = `${GRP[k.grp] || ''}${bibleAbbr(id) ? ' · ' + bibleAbbr(id) : ''}`;
     let t = tx.querySelector(':scope > .sk-ttl');
-    const html = `<small data-ab="${esc(bibleAbbr(id) || '')}">${esc(kick)}</small><span>${esc(k.name)} ${c}</span>`;
+    const html = `<small data-ab="${esc(bibleAbbr(id) || '')}">${esc(kick)}</small><span>${esc(k.name)} ${c}</span><button type="button" class="sk-aa" aria-label="Text format for this Bible">${ic('text', 18)}</button>`;
     if (!t) { t = document.createElement('div'); t.className = 'sk-ttl'; tx.insertBefore(t, tx.firstChild); }
-    if (t.innerHTML !== html) t.innerHTML = html;
+    if (t.dataset.skk !== html) { t.dataset.skk = html; t.innerHTML = html; }   // compared by key: the icon's markup reads back differently
   }
   function decorateAll() { $$('#workbench .bv').forEach(decorate); }
   const obs = new MutationObserver(ms => { if (!root.classList.contains('sk')) return; const secs = new Set(); for (const m of ms) { const s = m.target.closest && m.target.closest('.bv'); if (s) secs.add(s); } secs.forEach(decorate); });
@@ -356,6 +356,8 @@
   function rdApply() { const o = rdGet(); root.style.setProperty('--rd-mx', RD.m[o.m][1]); root.style.setProperty('--rd-ex', o.m === 0 ? '0px' : ''); root.style.setProperty('--rd-lh', RD.l[o.l][1]); }
   function rdSet(k, i) { const o = rdGet(); o[k] = i; try { localStorage.setItem('tw.rd', JSON.stringify(o)); } catch (e) { /* not kept */ } rdApply(); }
   rdApply();
+  /** the text format sheet for one Bible view (with two Bibles on screen, each has its own) */
+  function formatFor(i) { if (i != null) par.focus(i); readingSheet(); }
   function readingSheet() {
     const v = views()[state.active] || {}; const sh = Object.assign({}, state.settings.show, v.show || {});
     const tog = (k, l, i) => `<button type="button" class="tgl${sh[k] ? ' on' : ''}" data-show="${k}">${ic(i, 20)}<span>${l}</span></button>`;
@@ -653,6 +655,7 @@
       if (held) { held = false; e.preventDefault(); e.stopPropagation(); return; }
       const tg = e.target; if (!tg.closest || !tg.closest('.bv .bvtext')) return;
       if (tg.closest('sup.fn, sup.xref')) { e.preventDefault(); e.stopPropagation(); noteHtml(tg.closest('sup')).then(h => sheet(`<div class="pcards"><article class="pcard">${h || '<p class="phint">Nothing to show.</p>'}</article></div>`, { title: tg.closest('sup.fn') ? 'Footnote' : 'Cross-reference' })); return; }
+      if (tg.closest('.sk-aa')) { e.preventDefault(); e.stopPropagation(); formatFor(+tg.closest('.bv').dataset.i); return; }
       if (tg.closest('.sk-ttl')) { if (H.title && H.title(tg.closest('.sk-ttl'), tg)) return; if (H.tap) H.tap(null, null, e); return; }
       if (tg.closest('a, button, input, .xrs, .unote, .noteicon')) return;     // links, cross-reference lists, notes: as before
       if (root.classList.contains('sk-selecting') || String(window.getSelection()).trim()) return;
@@ -734,7 +737,7 @@
   }
   window.addEventListener('resize', () => requestAnimationFrame(fitLabels));
   window.PUI = { fitLabels, par, pushBack, dropBack, $, $$, ic, esc, flash, rn, bookOf, chapterTitle, bibleAbbr, activeBible, sheet, closeSheet, pushPage, popPage, clearPages, pageCount, borrow, decorate, decorateAll, verseOf, markVerse,
-    act, HL, lastColor, setLastColor, verseSheet, commentaryCards, commentarySheet, dictCards, wordSheet, wordPop, wordPopClose, xrefList, xrefSheet, compareSheet, bookmarkSheet,
+    act, HL, lastColor, setLastColor, verseSheet, formatFor, commentaryCards, commentarySheet, dictCards, wordSheet, wordPop, wordPopClose, xrefList, xrefSheet, compareSheet, bookmarkSheet,
     goSheetGrid, goSheetList, chooseBible, viewAction, readingSheet, libraryInto, library, openModule, feedPage, searchInto, search, fullPanel, studyInto, studySection,
     highlightsPage, devotionals, studyPage, readAloudInto, readAloudPage, helpSheet, modulesSheet, ttsInfo, ttsProgress, H, wordOf, recents, counts, debounce, text };
 })();

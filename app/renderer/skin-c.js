@@ -89,7 +89,7 @@
     const body = d.querySelector('.db'); body.innerHTML = '';
     if (deskChip === 'par') {
       const id = await window.TimotheosSkins.secondBible(); if (!id) { root.classList.remove('c-deskbible'); TimotheosPhone.split(null); body.innerHTML = '<p class="phint">Only one Bible is open. Import or open a second Bible to read two side by side.</p>'; return; }
-      root.classList.add('c-deskbible'); TimotheosPhone.split(id);
+      root.classList.add('c-deskbible'); TimotheosPhone.split(id); window.TimotheosSkins.plain();
     } else {
       root.classList.remove('c-deskbible'); TimotheosPhone.split(null);
       if (deskChip === 'cmt') p.commentaryCards(body, { ...state.ref });
@@ -232,12 +232,12 @@
   function mount() {
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P();
     try { root.classList.toggle('sk-light', localStorage.getItem('tw.c.light') === '1'); } catch (e) { /* */ } if (window.TimotheosSkins) TimotheosSkins.colors();
-    el('c-rail', `${ib('back', 'back', 'Back to the previous screen')}<button type="button" class="ref" data-a="nav"><span class="dotc"></span><span>John 3:16</span></button><button type="button" class="bib" data-a="bible">KJV</button><span class="sp"></span>${ib('fwd', 'fwd', 'Forward to the next screen')}`);
+    el('c-rail', `${ib('back', 'back', 'Back to the previous screen')}<button type="button" class="ref" data-a="nav"><span class="dotc"></span><span>John 3:16</span></button><button type="button" class="bib" data-a="bible">KJV</button><span class="sp"></span>${ib('aa', 'text', 'Text format for this Bible')}${ib('fwd', 'fwd', 'Forward to the next screen')}`);
     el('c-edge', '').style.left = '2px'; el('c-edge', '').style.right = '2px';
     el('c-dock', `<span class="grabzone" data-a="desk"></span>${ib('nav', 'drawerL', 'Books & chapters')}${ib('cmd', 'cmd', 'Command bar')}${ib('speak', 'speaker', 'Read aloud')}<span class="sep"></span>${ib('tools', 'drawerR', 'Commentary, dictionary, cross-references')}`);
     el('c-scrim', '');
     el('c-drawer l', ''); el('c-drawer r', '');
-    el('c-desk', `<div class="dgrab"><i></i></div><div class="hd">${[['par', 'compare', 'Parallel'], ['cmt', 'commentary', 'Commentary'], ['lib', 'library', 'Library'], ['search', 'search', 'Search']].map(([k, i, l]) => `<button type="button" class="pchip" data-dc="${k}">${p.ic(i, 15)} ${l}</button>`).join('')}<button type="button" class="pchip" data-dc="close">${p.ic('close', 15)}</button></div><div class="db"></div>`);
+    el('c-desk', `<div class="dgrab"><i></i></div><div class="hd">${[['par', 'compare', 'Parallel'], ['cmt', 'commentary', 'Commentary'], ['lib', 'library', 'Library'], ['search', 'search', 'Search']].map(([k, i, l]) => `<button type="button" class="pchip" data-dc="${k}">${p.ic(i, 15)} ${l}</button>`).join('')}<button type="button" class="pchip dcaa" data-dc="aa" aria-label="Text format for the lower Bible">${p.ic('text', 15)}</button><button type="button" class="pchip" data-dc="close">${p.ic('close', 15)}</button></div><div class="db"></div>`);
     el('c-pal', ''); el('c-cc', '');
     el('c-player', `<div class="row1">${p.ic('speaker', 18)}<span class="lbl"></span><small class="sub"></small><span class="wave">${[8, 14, 20, 12, 18, 9, 16, 22, 11, 15].map((h, i) => `<i style="height:${h}px;animation-delay:${i * 0.09}s"></i>`).join('')}</span></div><div class="row2">${ib('prevv', 'prevv', 'Previous verse')}${ib('pause', 'pause', 'Pause', 'pl')}${ib('nextv', 'nextv', 'Next verse')}${ib('stop', 'stop', 'Stop')}<button type="button" class="pchip on" data-a="mode">Read on</button><button type="button" class="pchip" data-a="rate">1×</button></div>`);
     // a small handle under the rail: pull down (or tap) for quick settings
@@ -256,7 +256,7 @@
       if (t.closest('.c-drawer.l [data-notes]') || t.closest('.c-drawer.r [data-allnotes]')) { closeAll(); return p.studySection('notes'); }
       const tl = t.closest('.c-drawer.r [data-tool]'); if (tl) { e.stopPropagation(); drawerTool = tl.dataset.tool; return fillStudy(); }
       if (t.closest('.c-drawer.r [data-editnote]')) { closeAll(); return TimotheosStudy.editNote(`${state.ref.b}.${state.ref.c}.${state.ref.v}`); }
-      const dc = t.closest('.c-desk [data-dc]'); if (dc) { e.stopPropagation(); return dc.dataset.dc === 'close' ? deskClose() : desk(dc.dataset.dc); }
+      const dc = t.closest('.c-desk [data-dc]'); if (dc) { e.stopPropagation(); if (dc.dataset.dc === 'aa') return p.formatFor(p.par.bot()); return dc.dataset.dc === 'close' ? deskClose() : desk(dc.dataset.dc); }
       const b = t.closest('.skel [data-a]'); if (!b) return; e.stopPropagation(); const a = b.dataset.a;
       if (a !== 'mode') { const pp = $('.c-pop'); if (pp) pp.remove(); }
       if (a === 'back') { const x = document.getElementById('gBack'); if (x && !x.disabled) x.click(); }
@@ -265,6 +265,7 @@
       else if (a === 'tools') { if ($('.c-drawer.r.on')) closeAll(); else studyDrawer(); }
       else if (a === 'cmd') palette();
       else if (a === 'bible') p.chooseBible();
+      else if (a === 'aa') p.formatFor(p.par.on() ? p.par.top() : null);
       else if (a === 'desk') { if (deskOpen()) deskClose(); else desk(); }
       else if (a === 'speak') { if (TimotheosSpeech.isSpeaking()) TimotheosSpeech.stop(); else TimotheosSpeech.speakView(state.active, null); }
       else if (a === 'pause' || a === 'stop') TimotheosSpeech.control(a);

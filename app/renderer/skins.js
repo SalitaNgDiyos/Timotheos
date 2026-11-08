@@ -32,12 +32,20 @@
     if (!want) { TimotheosPhone.split(null); return refresh(); }
     PUI.clearPages(); TimotheosPhone.show(bibleGroupId());
     const id = await secondBible(); if (!id) { PUI.flash('Only one Bible is installed. Import a second Bible to read two side by side.'); return; }
-    TimotheosPhone.split(id); refresh();
+    TimotheosPhone.split(id); plain(); refresh();
+  }
+  // the lower Bible starts as plain text like the top one: a view kept from the desktop layout may have had the
+  // word-over-word (interlinear) display or Strong's turned on; once reset, what is chosen for it later is kept
+  function plain() {
+    const t = PUI.par.top(), b = PUI.par.bot(); const v = views()[b]; if (t == null || b == null || !v || v.parPlain) return;
+    v.parPlain = true;
+    for (const k of ['columns', 'strongs', 'morph', 'lemma']) if (effShow(k, b) !== effShow(k, t) && typeof toggleViewShow === 'function') toggleViewShow(b, k, effShow(k, t));
+    if (typeof storeViews === 'function') storeViews();
   }
   // (made again after the screen's icons are in, so the arrows show)
   function fillStrip() {
     const d = document.querySelector('.pdiv'); if (!d) return;
-    d.innerHTML = `<i></i><button type="button" class="pd-ref" data-pd="ref"><span></span>${PUI.ic('chevD', 20)}</button><button type="button" class="pchip pd-bib" data-pd="bible"><span></span>${PUI.ic('chevD', 14)}</button><button type="button" class="pchip ghost pd-sync" data-pd="sync" aria-label="Sync with the top Bible" title="Sync with the top Bible">${PUI.ic('sync', 18)}</button>`;
+    d.innerHTML = `<i></i><button type="button" class="pd-ref" data-pd="ref"><span></span>${PUI.ic('chevD', 20)}</button><button type="button" class="pchip pd-bib" data-pd="bible"><span></span>${PUI.ic('chevD', 14)}</button><button type="button" class="pchip ghost pd-sync" data-pd="sync" aria-label="Sync with the top Bible" title="Sync with the top Bible">${PUI.ic('sync', 18)}</button><button type="button" class="pchip ghost pd-aa" data-pd="aa" aria-label="Text format for the lower Bible">${PUI.ic('text', 18)}</button>`;
   }
   // choose a place / a Bible for one pane (the lower Bible, when it is the one asked, starts reading by itself)
   function place(i) {
@@ -54,6 +62,7 @@
       const b = e.target.closest('[data-pd]'); if (!b) return; e.stopPropagation();
       const i = PUI.par.bot(); if (i == null) return;
       if (b.dataset.pd === 'bible') return bible(i);
+      if (b.dataset.pd === 'aa') return PUI.formatFor(i);
       if (b.dataset.pd === 'sync') { PUI.par.focus(i); if (typeof toggleLink === 'function' && !PUI.par.linked(i)) toggleLink(i); return refresh(); }
       place(i);
     });
@@ -159,5 +168,5 @@
   }
   function init() { wireDivider(); if (root.classList.contains('mobile')) picker(false); bars(); new MutationObserver(() => { bars(); edge(); }).observe(root, { attributes: true, attributeFilter: ['class'] }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  window.TimotheosSkins = { colors, screenColors: () => ({ a: ['#0f1013', '#ece6d8', '#d8b46f'], b: ['#faf7f0', '#1f1b16', '#8a3a33'], c: ['#0f1b20', '#e8efee', '#e0a07a'] })[cur], place, bible, picker, apply, current: () => cur, parallel, secondBible, refresh };
+  window.TimotheosSkins = { plain, colors, screenColors: () => ({ a: ['#0f1013', '#ece6d8', '#d8b46f'], b: ['#faf7f0', '#1f1b16', '#8a3a33'], c: ['#0f1b20', '#e8efee', '#e0a07a'] })[cur], place, bible, picker, apply, current: () => cur, parallel, secondBible, refresh };
 })();

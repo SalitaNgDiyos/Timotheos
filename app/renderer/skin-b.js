@@ -102,7 +102,7 @@
       else if (a === 'go') p.goSheetList();
       else if (a === 'bible') p.chooseBible();
       else if (a === 'par') window.TimotheosSkins.parallel();
-      else if (a === 'view') p.readingSheet();
+      else if (a === 'view') p.formatFor(p.par.on() ? p.par.top() : null);
       else if (a === 'speak') { if (TimotheosSpeech.isSpeaking()) TimotheosSpeech.stop(); else TimotheosSpeech.speakView(state.active, null); }
       else if (a === 'pause' || a === 'stop') TimotheosSpeech.control(a);
       else if (a === 'prevv') TimotheosSpeech.control('prev'); else if (a === 'nextv') TimotheosSpeech.control('next');
