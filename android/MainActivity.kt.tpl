@@ -45,6 +45,9 @@ class MainActivity : TauriActivity() {
 
   override fun onWebViewCreate(webView: WebView) {
     web = webView
+    webView.settings.setSupportZoom(false)          // the page never zooms; a pinch on module text changes its size (see app.js)
+    webView.settings.builtInZoomControls = false
+    webView.settings.displayZoomControls = false
     webView.addJavascriptInterface(Bars(), "TwBars")
   }
 

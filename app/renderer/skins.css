@@ -37,7 +37,8 @@ html.sk svg.ic .d { fill: currentColor; fill-opacity: .16; stroke: none; }
 /* split: a second pane in the lower part, with a divider to drag */
 html.sk-a.psplitting, html.sk-b.psplitting { --pd-half: 23px; }
 html.sk.psplitting #workbench .dgroup.pbase { bottom: calc(var(--sk-bot) + (100% - var(--sk-top) - var(--sk-bot)) * (1 - var(--sk-sp, .5)) + var(--pd-half, 0px)) !important; }
-html.sk.psplitting #workbench .dgroup.psplit { top: calc(var(--sk-top) + (100% - var(--sk-top) - var(--sk-bot)) * var(--sk-sp, .5) + var(--sp-head, 0px) + var(--pd-half, 0px)) !important; z-index: 2; }
+html.sk.psplitting #workbench .dgroup.psplit { top: calc(var(--sk-top) + (100% - var(--sk-top) - var(--sk-bot)) * var(--sk-sp, .5) + var(--sp-h2, 0px) + var(--pd-half, 0px)) !important; z-index: 2; }
+html.sk-c.c-deskon { --sp-h2: var(--sp-head, 0px); }   /* the desk's own head sits above the lower Bible only while the desk is open */
 /* the strip between the two Bibles: the lower Bible's own place and Bible, lined up with the ones at the top */
 .pdiv { position: fixed; left: 0; right: 0; height: 46px; display: none; align-items: center; z-index: 30; touch-action: none; background: var(--p-bg); border-top: 1px solid var(--p-line); border-bottom: 1px solid var(--p-line); top: calc(var(--sk-top) + (100% - var(--sk-top) - var(--sk-bot)) * var(--sk-sp, .5) - 23px); }
 .pdiv i { position: absolute; left: 50%; top: 3px; width: 40px; height: 4px; margin-left: -20px; border-radius: 3px; background: var(--p-acc); opacity: .5; }
@@ -229,11 +230,21 @@ html.sk-b.sk-baroff { --sk-bot: 0px; --pg-bot: 0px; }
 html.sk-b #workbench .dgroup, html.sk-b #pHost { transition: bottom .22s ease; }
 
 /* Quiet Reader: the place/Bible strip lines up with the label above it; the top bar is only a contents icon */
-html.sk-a .pdiv { padding: 4px calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) 0; gap: 10px; justify-content: space-between; }
-html.sk-a .pdiv .pd-bib { order: 0; border: 0; background: transparent; padding: 0; min-height: 0; height: auto; font: 600 11px var(--p-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); }
-html.sk-a .pdiv .pd-sync { order: 1; margin: 0; }
-html.sk-a .pdiv .pd-ref { order: 2; font: 600 11px var(--p-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc2); }
+/* Quiet Reader with two Bibles: the top label and the strip are the same row — the place, then the Bible, then (strip only) Sync */
+html.sk-a .pdiv { padding: 4px calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) 0; gap: 12px; justify-content: flex-start; }
+html.sk-a .pdiv .pd-ref { order: 0; display: inline-flex; align-items: baseline; border: 0; background: transparent; padding: 0; color: var(--p-ink); font: 400 18px/1.2 Literata, Georgia, serif; letter-spacing: -.01em; text-transform: none; }
+html.sk-a .pdiv .pd-bib { order: 1; border: 0; background: transparent; padding: 0; min-height: 0; height: auto; font: 600 11px var(--p-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); box-shadow: none; outline: 0; }
+html.sk-a .pdiv .pd-bib span::after { content: ' ▾'; opacity: .6; }
+html.sk-a .pdiv .pd-sync { order: 2; margin: 0 0 0 auto; }
 html.sk-a .pd-ref .ic, html.sk-a .pd-bib .ic { display: none; }
+html.sk-a .pd-ref span { min-width: var(--par-w, 0px); text-align: left; }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext { padding-top: 0 !important; scroll-padding-top: 60px; }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl { display: flex; flex-direction: row; justify-content: flex-start; align-items: baseline; gap: 12px; margin: 0 0 14px; padding: calc(var(--safe-t) + 14px) 0 10px; font: 400 18px/1.2 Literata, Georgia, serif; letter-spacing: -.01em; text-transform: none; color: var(--p-ink); background: var(--p-bg); box-shadow: 0 0 0 100vmax var(--p-bg); clip-path: inset(0 -100vmax); }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl::after { content: ''; position: absolute; left: -100vmax; right: -100vmax; bottom: 0; height: 1px; background: var(--p-line); }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl span { order: 0; min-width: var(--par-w, 0px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl small { order: 1; font-size: 0; letter-spacing: 0; white-space: nowrap; }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl small::before { content: attr(data-ab); font: 600 11px var(--p-ui); letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); }
+html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl small::after { font: 600 11px var(--p-ui); color: var(--p-acc); }
 html.sk-a.a-show .a-chrome, html.sk-a.a-compact .a-chrome { background: var(--p-bg); box-shadow: 0 1px 0 var(--p-line); }
 .a-chrome .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; }
 .a-chrome .lab { display: flex; align-items: baseline; gap: 9px; min-width: 0; max-width: 100%; border: 0; background: transparent; padding: 6px 4px; color: var(--p-ink); font: 400 19px/1.2 Literata, Georgia, serif; letter-spacing: -.01em; opacity: 0; pointer-events: none; transition: opacity .2s; }

@@ -18,7 +18,8 @@ html.sk .bvtext table.chapter:not(:has(td[data-col] ~ td[data-col])) tr { displa
 html.sk .bvtext table.chapter:not(:has(td[data-col] ~ td[data-col])) td { display: inline; padding: 0; border: 0; background: transparent; }
 html.sk .bvtext td.vn { width: auto !important; text-align: left; white-space: nowrap; }
 html.sk .bvtext td.vn .vno { font: 600 .56em var(--p-ui); color: var(--p-acc); vertical-align: .6em; margin-right: .35em; }
-html.sk .bvtext td.vn .cm { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--p-acc2); font-size: 0; vertical-align: .75em; margin-right: 4px; padding: 0; border: 0; }
+html.sk .bvtext td.vn .cm { display: none; }   /* no dot before a verse that has a commentary note; the note is under Verse tools */
+html.sk .pbody, html.sk #libBody, html.sk #libFeed, html.sk .sres .hit p { zoom: var(--mod-zoom, 1); }   /* pinch with two fingers */
 html.sk .bvtext .xrs { display: block; font: 500 .6em/1.55 var(--p-ui); color: var(--p-muted); margin: 3px 0 2px; }
 html.sk .bvtext .xrs a { color: var(--p-acc2); }
 html.sk .bvtext tr.sel, html.sk .bvtext .pv.sel { background: var(--p-selv) !important; }
@@ -216,3 +217,18 @@ html.sk .bvtext mark.hl-ul { text-decoration-thickness: .09em; text-underline-of
 html.sk-a .bv .bvtext .sk-ttl { cursor: pointer; }
 html.sk-a .bv .bvtext .sk-ttl small::after { content: ' ▾'; opacity: .6; }
 html.sk-a.psplitting .bv .bvtext .sk-ttl { position: sticky; top: 0; z-index: 6; margin: 0; padding: 4px 0 6px; background: var(--p-bg); box-shadow: 0 -60px 0 var(--p-bg); }
+
+/* the word pop-up (tap a word): floats over everything, drag it by its top bar */
+.pwpop { position: fixed; z-index: 110; max-height: min(60vh, 460px); display: flex; flex-direction: column; background: var(--p-sheet); color: var(--p-ink); border-radius: 20px; box-shadow: 0 18px 50px rgba(0,0,0,.45), 0 0 0 1px var(--p-line) inset; overflow: hidden; }
+.pwpop.moving { box-shadow: 0 24px 70px rgba(0,0,0,.55), 0 0 0 2px var(--p-acc) inset; }
+.pwpop .pwbar { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; border-bottom: 1px solid var(--p-line); font: 600 15px var(--p-ui); position: relative; }
+.pwpop.moving .pwbar { cursor: grabbing; }
+.pwpop .pwgrip { position: absolute; left: 50%; top: 4px; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--p-muted); opacity: .45; }
+.pwpop .pwbar b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pwpop .pwk { color: var(--p-acc); font-weight: 500; font-size: 13px; white-space: nowrap; }
+.pwpop .grow { flex: 1; }
+.pwpop .pwx { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--p-ink2); display: grid; place-items: center; flex: none; }
+.pwpop .pwbody { overflow-y: auto; overscroll-behavior: contain; padding: 12px 12px 0; flex: 1; min-height: 0; }
+.pwpop .pcard { padding: 12px 14px; }
+.pwpop .pwft { display: flex; gap: 8px; padding: 8px 12px 12px; flex-wrap: wrap; }
+.pwpop .pwft .pill { margin: 0; }

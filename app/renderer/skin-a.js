@@ -72,8 +72,9 @@
     const p = P();
     if (x && w && w.word && (w.strongs.length || /\p{L}{2,}/u.test(w.word))) {
       document.querySelectorAll('.pwordon').forEach(z => z.classList.remove('pwordon')); if (w.el) w.el.classList.add('pwordon');
-      showChrome(false); return p.wordSheet(w);
+      showChrome(false); return p.wordPop(w, { big: p.wordSheet });
     }
+    if (document.getElementById('pWordPop')) { p.wordPopClose(); return; }     // a tap beside the words closes the word pop-up first
     showChrome(!root.classList.contains('a-show'));
   }
   function onHold(x, w) { showChrome(false); P().verseSheet(x, w); }

@@ -184,12 +184,13 @@ function initDock() {
 const ZOOM_TARGETS = {
   tree: ['#bibleTree'], study: ['#studyBody'],
   cmt: ['#cmtBody'], lib: ['.libsplit', '#libFeed'],
-  search: ['#searchResults', '#searchBooks', '#searchStats'], bsearch: ['#bsResults']
+  search: ['#searchResults', '#searchBooks', '#searchStats'], bsearch: ['#bsResults'],
+  mod: []   // the three screens: book, dictionary and commentary text (and verse text in search results), see --mod-zoom
 };
 const ZOOM_NAMES = {
   tree: 'Bible tree', study: 'My Study',
   cmt: 'Commentary', lib: 'Library',
-  search: 'Bible search results', bsearch: 'Book search results'
+  search: 'Bible search results', bsearch: 'Book search results', mod: 'Module'
 };
 function zoomPanel(id, d) {
   if (id === 'bible') return zoomView(state.active, d);
@@ -204,6 +205,7 @@ function zoomPanel(id, d) {
 function applyZoom() {
   const z = TimotheosOptions.appearance().zoom || {};
   for (const [id, sels] of Object.entries(ZOOM_TARGETS)) for (const s of sels) { const el = $(s); if (el) el.style.zoom = z[id] || 1; }
+  document.documentElement.style.setProperty('--mod-zoom', z.mod || 1);
 }
 window.applyZoom = applyZoom;
 function wireZoom() {
@@ -222,7 +224,41 @@ function wireZoom() {
     acc += dy;
     if (Math.abs(acc) >= 100) { zoomPanel(p, acc < 0 ? 1 : -1); acc = 0; }
   }, { passive: false });
+  wirePinch();
 }
+/* Two-finger pinch: only text that comes from a module grows or shrinks (a Bible view, a book, dictionary or commentary
+   entry, the word popup, verse text in search results). A pinch anywhere else does nothing: the page itself never zooms. */
+function pinchTarget(el) {
+  if (!el || !el.closest) return null;
+  const tx = el.closest('.bvtext'); if (tx) { const bv = tx.closest('.bv'); return bv ? +bv.dataset.i : null; }
+  if (el.closest('#popup .pzbody')) return 'popup';
+  if (document.documentElement.classList.contains('sk')) return el.closest('.pbody, #libBody, #libFeed, .sres .hit p') ? 'mod' : null;
+  const pn = el.closest('.dpanel'); const id = pn && pn.dataset.panel;
+  if (id && ZOOM_TARGETS[id] && ZOOM_TARGETS[id].some(s => el.closest(s))) return id;
+  return null;
+}
+function wirePinch() {
+  let tgt = null, d0 = 0;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length !== 2) { if (e.touches.length > 2) tgt = null; return; }
+    const a = pinchTarget(e.touches[0].target), b = pinchTarget(e.touches[1].target);
+    tgt = a != null && a === b ? a : (a != null && b == null ? a : (b != null && a == null ? b : null));
+    d0 = dist(e.touches); e.preventDefault();
+  }, { passive: false, capture: true });
+  document.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    if (tgt == null || !d0) return;
+    const r = dist(e.touches) / d0;
+    if (r < 1.15 && r > 1 / 1.15) return;
+    const d = r > 1 ? 1 : -1; d0 = dist(e.touches);
+    if (tgt === 'popup') stepPopupZoom(d); else zoomPanel(tgt, d);
+  }, { passive: false, capture: true });
+  document.addEventListener('touchend', e => { if (e.touches.length < 2) { tgt = null; d0 = 0; } }, { capture: true });
+  ['gesturestart', 'gesturechange'].forEach(n => document.addEventListener(n, e => e.preventDefault(), { passive: false }));
+}
+window.TimotheosPinch = { target: pinchTarget };
 
 
 const TB_ITEM_MAP = {
@@ -1003,7 +1039,10 @@ async function versePreview(b, c, v1, v2, modSpec) {
 let hoverTimer = null, hoverEl = null;
 function popupTarget(el) { return el && el.closest('[data-strong],[data-morph],sup.fn,sup.xref'); }
 function wireHover() {
+  // a finger tap also sends a "mouse over": on the three screens the tap opens the word pop-up instead, so the old hover pop-up stays away
+  let touchAt = 0; document.addEventListener('touchstart', () => { touchAt = Date.now(); }, { passive: true, capture: true });
   document.addEventListener('mouseover', e => {
+    if (document.documentElement.classList.contains('sk') && Date.now() - touchAt < 1500) return;
     const t = popupTarget(e.target);
     if (t === hoverEl) return;
     hoverEl = t; clearTimeout(hoverTimer);

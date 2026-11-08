@@ -75,8 +75,7 @@
     const rs = d.querySelector('.pd-ref span'); if (rs.textContent !== lab) rs.textContent = lab;
     const bs = d.querySelector('.pd-bib span'); if (bs.textContent !== ab) bs.textContent = ab;
     d.querySelector('.pd-sync').style.display = PUI.par.linked(b) ? 'none' : '';
-    if (cur !== 'b') { root.style.removeProperty('--par-w'); return; }
-    const tl = document.querySelector('.b-big h2 span');
+    const tl = document.querySelector(cur === 'b' ? '.b-big h2 span' : `#workbench .bv[data-i="${t}"] .bvtext .sk-ttl span`);
     const w = el => { if (!el) return 0; const r = document.createRange(); r.selectNodeContents(el); return Math.ceil(r.getBoundingClientRect().width); };
     const need = Math.min(Math.max(w(tl), w(rs)) + 2, Math.round(innerWidth * .5));
     if (root.style.getPropertyValue('--par-w') !== need + 'px') root.style.setProperty('--par-w', need + 'px');

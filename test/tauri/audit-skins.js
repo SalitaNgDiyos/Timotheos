@@ -105,8 +105,9 @@
   row(1).scrollIntoView({block:'center'}); await sl(200); const w=row(1).querySelector('.word[data-strong]')||row(1).querySelector('.word');
   if(SK==='b'){ await openTools(1); click($('.seltb [data-v="more"]')); await sl(100); click($('.seltb [data-v="lookup"]')); await sl(1500); ok(!!sheet()&&/Strong|Dictionary/.test(sheet().textContent),'Dictionary from the verse toolbar'); await closeSheet(); return; }
   tapAt(w,.5,.5); await sl(1600);
-  if(SK==='a'){ ok(!!sheet()&&/Strong's|Dictionary/.test($('#pSheet .ph4').textContent),'tap a word: its dictionary sheet ('+$('#pSheet .ph4').textContent+')'); ok($$('#pSheet .pcard').length>0,'the entry is shown'); click($('#pSheet [data-find]')); await sl(1500); ok($$('.ppage .hit').length>0||!!$('.ppage .sq'),'Find opens the search with the word'); PUI.clearPages(); await sl(300); }
-  if(SK==='c'){ ok($('.c-drawer.r').classList.contains('on')&&/Dictionary/.test($('.c-drawer.r .dh').textContent),'tap a word: the study drawer shows its dictionary'); ok($$('.c-drawer.r .pchip').length>0,'the words of the verse with Strong\'s numbers'); for(const tl of ['commentary','xref','note','library']){ click($(`.c-drawer.r [data-tool="${tl}"]`)); await sl(1300); ok($('.c-drawer.r .pp').children.length>0,'study drawer: '+tl); } SkinC.closeAll(); await sl(300); }
+  if(SK!=='b'){ const pop=$('#pWordPop'); ok(!!pop&&!sheet()&&!($('.c-drawer.r')&&$('.c-drawer.r').classList.contains('on')),'tap a word: the small word pop-up, not the big panel'); for(let k=0;k<20&&!$$('#pWordPop .pcard').length;k++) await sl(200); ok($$('#pWordPop .pcard').length>0,'the pop-up shows the entry'); ok(+getComputedStyle(pop).zIndex>95,'the pop-up is above every sheet and drawer ('+getComputedStyle(pop).zIndex+')'); ok($('#popup').classList.contains('hidden'),'the old hover pop-up stays away'); click($('#pWordPop [data-big]')); await sl(1600); }
+  if(SK==='a'){ ok(!!sheet()&&/Strong's|Dictionary/.test($('#pSheet .ph4').textContent),'Dictionary in the pop-up: its dictionary sheet ('+$('#pSheet .ph4').textContent+')'); ok($$('#pSheet .pcard').length>0,'the entry is shown'); click($('#pSheet [data-find]')); await sl(1500); ok($$('.ppage .hit').length>0||!!$('.ppage .sq'),'Find opens the search with the word'); PUI.clearPages(); await sl(300); }
+  if(SK==='c'){ ok($('.c-drawer.r').classList.contains('on')&&/Dictionary/.test($('.c-drawer.r .dh').textContent),'Dictionary in the pop-up: the study drawer shows its dictionary'); ok($$('.c-drawer.r .pchip').length>0,'the words of the verse with Strong\'s numbers'); for(const tl of ['commentary','xref','note','library']){ click($(`.c-drawer.r [data-tool="${tl}"]`)); await sl(1300); ok($('.c-drawer.r .pp').children.length>0,'study drawer: '+tl); } SkinC.closeAll(); await sl(300); }
  });
 
  // ---------- Library ----------
@@ -173,7 +174,7 @@
  await T('reading view',async()=>{
   if(SK==='c'){ SkinC.quick(); await sl(400); ok($$('.c-cc .cct').length===8,'quick settings: 8 switches');
     const st=$('.c-cc [data-cc="strongs"]'); const was=!!(Object.assign({},state.settings.show,(views()[state.active]||{}).show).strongs); click(st); await sl(800); ok(!!(Object.assign({},state.settings.show,(views()[state.active]||{}).show).strongs)!==was,"Strong's switch"); click(st); await sl(600);
-    click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light'),'Dark off: light desk'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(!R.classList.contains('sk-light'),'Dark on');
+    const li0=R.classList.contains('sk-light'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light')!==li0,'Dark switch: '+(li0?'dark':'light')+' desk'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light')===li0,'Dark switch back');
     const z0=(views()[state.active]||{}).zoom||1; const sl2=$('.c-cc [data-zoom]'); sl2.value=String(Math.round((z0+.3)*10)/10); sl2.dispatchEvent(new Event('input',{bubbles:true})); await sl(400); ok(((views()[state.active]||{}).zoom||1)>z0,'text size slider'); sl2.value=String(z0); sl2.dispatchEvent(new Event('input',{bubbles:true})); await sl(300);
     SkinC.closeAll(); await sl(300); }
   PUI.readingSheet(); await sl(400); ok($$('#pSheet .tgl').length===12,'Reading view: 12 things to show or hide');
@@ -198,7 +199,7 @@
    if(SK==='a') ok(vis($('.dgroup.pbase .bv .sk-ttl')),'Quiet Reader: the top Bible keeps its pinned label');
    const sy0=$('.pdiv .pd-sync'); ok(!!sy0&&sy0.textContent.trim()===''&&!!sy0.querySelector('svg')&&/Sync/.test(sy0.getAttribute('aria-label')||''),'the Sync button is just its icon');
    ok(bot!=null&&top!=null&&bot!==top,'the two panes are two different views ('+top+' / '+bot+')');
-   const eg=SK==='a'?'right':'left'; ok(Math.abs(rs.getBoundingClientRect()[eg]-lab.getBoundingClientRect()[eg])<=1.5,'strip: the lower place lines up with the top one ('+Math.round(rs.getBoundingClientRect()[eg])+' / '+Math.round(lab.getBoundingClientRect()[eg])+' px)');
+   const eg='left'; ok(Math.abs(rs.getBoundingClientRect()[eg]-lab.getBoundingClientRect()[eg])<=1.5,'strip: the lower place lines up with the top one ('+Math.round(rs.getBoundingClientRect()[eg])+' / '+Math.round(lab.getBoundingClientRect()[eg])+' px)');
    ok(Math.abs(bc.getBoundingClientRect().left-chip.getBoundingClientRect().left)<=1.5,'strip: the lower Bible name lines up with the top one ('+Math.round(bc.getBoundingClientRect().left)+' / '+Math.round(chip.getBoundingClientRect().left)+' px)');
    ok(rs.textContent.trim().length>0&&bc.textContent.trim().length>0&&rs.textContent.trim()===PUI.par.label(bot),'strip shows the lower pane\'s own place and Bible ('+rs.textContent+' · '+bc.textContent+')');
    const topLab=lab.textContent;
@@ -340,6 +341,60 @@
   TimotheosSkins.place(); await sl(700); ok(!R.classList.contains('tw-edge')&&calls[calls.length-1]===false,'a sheet over the text: the bar is solid again'); PUI.closeSheet(); await sl(600);
   ok(R.classList.contains('tw-edge')&&calls[calls.length-1]===true,'back on the Bible view: see-through again');
   delete window.TwBars; R.classList.remove('tw-edge'); R.style.removeProperty('--nav-h'); await sl(200); });
+ // ---------- word pop-up: drag it anywhere ----------
+ await T('word popup',async()=>{
+  if(SK==='b'){ PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[],el:row(1)}); } else { row(1).scrollIntoView({block:'center'}); await sl(200); const w=row(1).querySelector('.word[data-strong]')||row(1).querySelector('.word'); tapAt(w,.5,.5); }
+  await sl(1200); const pop=$('#pWordPop'); ok(!!pop,'the word pop-up opens'); if(!pop) return;
+  const bar=pop.querySelector('.pwbar'), r0=pop.getBoundingClientRect(), b=bar.getBoundingClientRect();
+  const pe=(t,x,y)=>bar.dispatchEvent(new PointerEvent(t,{bubbles:true,cancelable:true,pointerId:7,clientX:x,clientY:y,isPrimary:true}));
+  const sx=b.left+30, sy=b.top+b.height/2; pe('pointerdown',sx,sy); pe('pointermove',sx-200,sy+300); pe('pointermove',sx-150,sy+260); pe('pointerup',sx-150,sy+260); await sl(200);
+  const r1=pop.getBoundingClientRect(); ok(Math.abs((r1.top-r0.top)-260)<=2||r1.bottom<=innerHeight,'drag the top bar: the pop-up moves ('+Math.round(r0.left)+','+Math.round(r0.top)+' → '+Math.round(r1.left)+','+Math.round(r1.top)+')');
+  ok(r1.top!==r0.top||r1.left!==r0.left,'it is somewhere else now');
+  pe('pointerdown',r1.left+30,r1.top+10); pe('pointermove',5000,5000); pe('pointerup',5000,5000); await sl(150); const r2=pop.getBoundingClientRect();
+  ok(r2.right<=innerWidth+1&&r2.top<innerHeight-60,'it stays on the screen when dragged past the edge ('+Math.round(r2.left)+','+Math.round(r2.top)+')');
+  pe('pointerdown',r2.left+30,r2.top+10); pe('pointermove',60,140); pe('pointerup',60,140); await sl(150); const kept=pop.getBoundingClientRect();
+  click(pop.querySelector('.pwx')); await sl(200); ok(!$('#pWordPop'),'× closes it');
+  PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[]}); await sl(500); const r3=$('#pWordPop').getBoundingClientRect(); ok(Math.abs(r3.left-kept.left)<=1&&Math.abs(r3.top-kept.top)<=1,'the next word opens where it was put');
+  history.back(); await sl(500); ok(!$('#pWordPop'),'Back closes it');
+ });
+ // ---------- pinch: only module text zooms ----------
+ await T('pinch',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); await sl(300);
+  ok(/user-scalable=no/.test(($('meta[name=viewport]')||{}).content||''),'the page itself cannot be zoomed');
+  const pinch=(el,from,to)=>{ const r=el.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+Math.min(r.height/2,120);
+   const T2=d=>[{identifier:1,target:el,clientX:cx-d/2,clientY:cy},{identifier:2,target:el,clientX:cx+d/2,clientY:cy}];
+   const ev=(n,t)=>{ const e=new Event(n,{bubbles:true,cancelable:true}); Object.defineProperty(e,'touches',{value:t}); el.dispatchEvent(e); return e; };
+   const s=ev('touchstart',T2(from)); let d=from; const st=(to-from)/12; for(let k=0;k<12;k++){ d+=st; ev('touchmove',T2(d)); } ev('touchend',[]); return s.defaultPrevented; };
+  const i=state.active, z0=views()[i].zoom||1, tx=$(`.bv[data-i="${i}"] .bvtext`); const cell=tx.querySelector('tr[data-v] td:not(.vn)')||tx;
+  ok(pinch(cell,100,260),'a pinch is caught (the system zoom does not run)'); await sl(300);
+  const z1=views()[i].zoom; ok(z1>z0,'spread two fingers on the Bible text: it grows ('+z0+' → '+z1+')');
+  pinch(cell,260,100); await sl(300); ok(views()[i].zoom<z1,'pinch: it shrinks again ('+views()[i].zoom+')'); views()[i].zoom=z0; TimotheosOptions&&0;
+  const ui=SK==='a'?$('.a-caps')||$('.a-chrome'):SK==='b'?$('.b-tabs'):$('.c-dock'); const zs=JSON.stringify(TimotheosOptions.appearance().zoom||{}), zv=views()[i].zoom, uz=getComputedStyle(document.body).zoom;
+  ok(pinch(ui,100,300),'a pinch on the buttons is caught too'); await sl(300);
+  ok(JSON.stringify(TimotheosOptions.appearance().zoom||{})===zs&&views()[i].zoom===zv&&getComputedStyle(document.body).zoom===uz,'…and nothing grows: buttons and bars keep their size');
+  PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[]}); for(let k=0;k<20&&!$('#pWordPop .pbody');k++) await sl(200);
+  const pb=$('#pWordPop .pbody'); const m0=+(TimotheosOptions.appearance().zoom||{}).mod||1; if(pb){ pinch(pb,100,260); await sl(300); const m1=+(TimotheosOptions.appearance().zoom||{}).mod||1; ok(m1>m0&&getComputedStyle(pb).zoom!=='1','dictionary text in the pop-up grows ('+m0+' → '+m1+')');
+   pinch(pb,260,100); pinch(pb,260,100); await sl(300); } PUI.wordPopClose(); await sl(200);
+  ok(TimotheosPinch.target($('.pwpop .pwbar')||document.body)===null,'pinching the screen outside the text is ignored');
+ });
+ // ---------- no dots before the verses ----------
+ await T('verse dots',async()=>{ await go({b:46,c:15,v:1}); await sl(900); const dots=$$('.bv td.vn .cm').filter(e=>e.getClientRects().length&&getComputedStyle(e).display!=='none'); ok(dots.length===0,'no dot before any verse ('+$$('.bv td.vn .cm').length+' hidden markers)'); });
+ // ---------- two Bibles after the split desk of Study Desk ----------
+ await T('split gap',async()=>{
+  R.style.setProperty('--sp-head','57px'); if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='a') await TimotheosSkins.parallel(true); else { await TimotheosSkins.parallel(true); }
+  await sl(1500); if(!R.classList.contains('psplitting')){ ok(false,'two Bibles'); return; }
+  const g=$('.dgroup.psplit').getBoundingClientRect(); const d=$('.pdiv');
+  if(SK!=='c'){ const pr=d.getBoundingClientRect(); ok(Math.abs(g.top-pr.bottom)<=1.5,'the lower Bible starts right under the strip, no empty band ('+Math.round(pr.bottom)+' / '+Math.round(g.top)+')'); }
+  else { const b=$('.dgroup.pbase').getBoundingClientRect(); ok(g.top-b.bottom<=1.5,'Study Desk: no empty band between the two Bibles ('+Math.round(b.bottom)+' / '+Math.round(g.top)+')'); }
+  if(SK==='a'){ const t=$('.dgroup.pbase .bv .sk-ttl'), ts=t.querySelector('span'), tb=t.querySelector('small'), rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib span');
+   ok(ts.getBoundingClientRect().left<tb.getBoundingClientRect().left&&rs.getBoundingClientRect().left<bc.getBoundingClientRect().left,'top label and strip: the place first, then the Bible');
+   ok(Math.abs(ts.getBoundingClientRect().left-rs.getBoundingClientRect().left)<=1.5&&Math.abs(tb.getBoundingClientRect().left-bc.getBoundingClientRect().left)<=1.5,'the two rows line up ('+Math.round(tb.getBoundingClientRect().left)+' / '+Math.round(bc.getBoundingClientRect().left)+')');
+   ok(getComputedStyle(tb,'::before').content.replace(/"/g,'')===PUI.par.abbr(PUI.par.top()),'the top row shows only the Bible\'s short name ('+getComputedStyle(tb,'::before').content+')');
+   const tx=$('.dgroup.pbase .bv .bvtext'); tx.scrollTop=800; await sl(400); const tr=t.getBoundingClientRect(), gr=$('.dgroup.pbase').getBoundingClientRect();
+   ok(Math.abs(tr.top-gr.top)<=1.5,'scrolled: the top row sits at the very top, no text above it ('+Math.round(tr.top)+' / '+Math.round(gr.top)+')');
+   const hit=document.elementFromPoint(gr.left+gr.width-40,tr.top+4); ok(!!hit&&(hit===t||t.contains(hit)||!hit.closest('tr[data-v]')),'the text does not show through the top row'); tx.scrollTop=0; }
+  R.style.removeProperty('--sp-head'); if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(false); await sl(800);
+ });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
  api.copyText=origCopy;

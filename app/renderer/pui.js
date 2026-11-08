@@ -101,7 +101,7 @@
     const k = bookOf(b); if (!k) return;
     const kick = `${GRP[k.grp] || ''}${bibleAbbr(id) ? ' · ' + bibleAbbr(id) : ''}`;
     let t = tx.querySelector(':scope > .sk-ttl');
-    const html = `<small>${esc(kick)}</small><span>${esc(k.name)} ${c}</span>`;
+    const html = `<small data-ab="${esc(bibleAbbr(id) || '')}">${esc(kick)}</small><span>${esc(k.name)} ${c}</span>`;
     if (!t) { t = document.createElement('div'); t.className = 'sk-ttl'; tx.insertBefore(t, tx.firstChild); }
     if (t.innerHTML !== html) t.innerHTML = html;
   }
@@ -229,6 +229,48 @@
     s.querySelector('[data-lib]').onclick = () => { const c = cards.find(x => x.id); closeSheet(); if (c) openModule(c.id, c.tid); else library(); };
     s.querySelector('[data-all]').onclick = () => { closeSheet(); const p = pushPage({ title: w.word || (w.strongs || [])[0] || 'Dictionaries' }); p.body.innerHTML = '<div class="pcards"></div>'; dictCards(p.body.querySelector('.pcards'), w, { limit: 24 }); };
     s.querySelector('[data-find]').onclick = () => { closeSheet(); search({ q: (w.strongs && w.strongs[0]) || w.word }); };
+  }
+
+  /* the small word pop-up: a floating card with the word's dictionary entries. Drag it anywhere by its top bar; it stays
+     where it was put for the next word. Tap the text elsewhere, × or Back to close it; "Dictionary" opens the big view. */
+  let wpPos = null;
+  function wordPopClose(fromBk) { const el = $('#pWordPop'); if (!el) return; el.remove(); $$('.pwordon').forEach(x => x.classList.remove('pwordon')); if (!fromBk) dropBack('wordpop'); }
+  function wordPop(w, o = {}) {
+    let el = $('#pWordPop'); const fresh = !el;
+    if (!el) { el = document.createElement('div'); el.id = 'pWordPop'; el.className = 'pwpop'; document.body.appendChild(el); pushBack(fb => wordPopClose(fb), 'wordpop'); }
+    const key = (w.strongs && w.strongs[0]) || w.word || '';
+    el.innerHTML = `<div class="pwbar" title="Drag to move"><span class="pwgrip"></span><b>${esc(w.word || key)}</b>${w.strongs && w.strongs[0] ? `<span class="pwk">${esc(w.strongs.join(' '))}</span>` : ''}<span class="grow"></span><button type="button" class="pwx" aria-label="Close">${ic('close', 18)}</button></div>
+      <div class="pwbody"><div class="pcards"></div></div>
+      <div class="pwft"><button type="button" class="pill" data-big>${ic('lexicon', 15)} Dictionary</button><button type="button" class="pill" data-find>${ic('search', 15)} Find ${esc(key)}</button></div>`;
+    const cards = el.querySelector('.pcards');
+    dictCards(cards, w, { limit: 3 });
+    el.querySelector('.pwx').onclick = () => wordPopClose();
+    el.querySelector('[data-big]').onclick = () => { wordPopClose(); setTimeout(() => (o.big || wordSheet)(w), 60); };
+    el.querySelector('[data-find]').onclick = () => { wordPopClose(); search({ q: key }); };
+    cards.addEventListener('click', e => { if (e.target.closest('[data-open], [data-find]')) wordPopClose(); });
+    // where: the place it was dragged to, else just under (or above) the word
+    const W = innerWidth, Hh = innerHeight, pw = Math.min(360, W - 24);
+    el.style.width = pw + 'px';
+    if (wpPos) place(el, wpPos.x, wpPos.y);
+    else if (fresh || !o.keep) { const r = w.el && w.el.getBoundingClientRect ? w.el.getBoundingClientRect() : { left: 12, bottom: Hh / 3, top: Hh / 3 };
+      const ph = Math.min(Hh * .5, 420); let y = r.bottom + 8; if (y + ph > Hh - 12) y = Math.max(12, r.top - ph - 8); place(el, r.left, y); }
+    drag(el, el.querySelector('.pwbar'));
+    return el;
+  }
+  function place(el, x, y) {
+    const W = innerWidth, Hh = innerHeight, w = el.offsetWidth || 300, h = Math.min(el.offsetHeight || 200, Hh - 24);
+    el.style.left = Math.round(Math.min(Math.max(8, x), W - w - 8)) + 'px'; el.style.top = Math.round(Math.min(Math.max(8, y), Hh - Math.min(h, 120) - 8)) + 'px';
+  }
+  function drag(el, bar) {
+    bar.addEventListener('pointerdown', e => {
+      if (e.target.closest('button')) return; e.preventDefault();
+      const r = el.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { bar.setPointerCapture(e.pointerId); } catch (x) { /* */ }
+      el.classList.add('moving');
+      const mv = ev => place(el, ev.clientX - dx, ev.clientY - dy);
+      const up = () => { bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up); el.classList.remove('moving');
+        wpPos = { x: parseFloat(el.style.left), y: parseFloat(el.style.top) }; };
+      bar.addEventListener('pointermove', mv); bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
+    });
   }
 
   async function xrefList(box, ref) {
@@ -692,7 +734,7 @@
   }
   window.addEventListener('resize', () => requestAnimationFrame(fitLabels));
   window.PUI = { fitLabels, par, pushBack, dropBack, $, $$, ic, esc, flash, rn, bookOf, chapterTitle, bibleAbbr, activeBible, sheet, closeSheet, pushPage, popPage, clearPages, pageCount, borrow, decorate, decorateAll, verseOf, markVerse,
-    act, HL, lastColor, setLastColor, verseSheet, commentaryCards, commentarySheet, dictCards, wordSheet, xrefList, xrefSheet, compareSheet, bookmarkSheet,
+    act, HL, lastColor, setLastColor, verseSheet, commentaryCards, commentarySheet, dictCards, wordSheet, wordPop, wordPopClose, xrefList, xrefSheet, compareSheet, bookmarkSheet,
     goSheetGrid, goSheetList, chooseBible, viewAction, readingSheet, libraryInto, library, openModule, feedPage, searchInto, search, fullPanel, studyInto, studySection,
     highlightsPage, devotionals, studyPage, readAloudInto, readAloudPage, helpSheet, modulesSheet, ttsInfo, ttsProgress, H, wordOf, recents, counts, debounce, text };
 })();

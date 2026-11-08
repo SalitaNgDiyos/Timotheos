@@ -178,8 +178,9 @@
   }
   function onHold(x, w) { quickRow(x, w); }
   function onTap(x, w) {
-    closeQ(); if (!x) return;
-    if (w && w.word && (w.strongs.length || /\p{L}{2,}/u.test(w.word))) { document.querySelectorAll('.pwordon').forEach(z => z.classList.remove('pwordon')); if (w.el) w.el.classList.add('pwordon'); studyDrawer('dictionary', w); }
+    closeQ(); const p = P();
+    if (x && w && w.word && (w.strongs.length || /\p{L}{2,}/u.test(w.word))) { document.querySelectorAll('.pwordon').forEach(z => z.classList.remove('pwordon')); if (w.el) w.el.classList.add('pwordon'); p.wordPop(w, { big: ww => studyDrawer('dictionary', ww) }); return; }
+    if (document.getElementById('pWordPop')) p.wordPopClose();
   }
 
   /* ---------------- player ---------------- */
@@ -299,6 +300,6 @@
     p.H.tap = onTap; p.H.hold = onHold;
     refresh();
   }
-  function unmount() { if (ac) ac.abort(); ac = null; closeQ(); deskClose(); els.forEach(e => e.remove()); els = []; root.classList.remove('c-busy', 'sk-light', 'c-deskon', 'c-deskbible'); }
+  function unmount() { if (ac) ac.abort(); ac = null; closeQ(); deskClose(); els.forEach(e => e.remove()); els = []; root.classList.remove('c-busy', 'sk-light', 'c-deskon', 'c-deskbible'); root.style.removeProperty('--sp-head'); }
   window.SkinC = { mount, unmount, refresh, navDrawer, studyDrawer, desk, deskClose, palette, quick, closeAll };
 })();
