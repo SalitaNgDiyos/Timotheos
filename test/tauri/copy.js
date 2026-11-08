@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // UI checks for the Copy Verses window (theWord-style Verse Copy Management)
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));

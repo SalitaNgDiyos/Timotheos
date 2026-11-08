@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // Builds dist/: the screens of Timotheos (app/renderer), the worker that runs the former Electron main process
 // (app/main.js + app/lib) with the shims in tauri-shim/, and the page-side host.
 import { build } from 'esbuild';
@@ -21,6 +23,9 @@ await build({
 });
 fs.cpSync(path.join(root, 'app', 'renderer'), dist, { recursive: true });
 fs.copyFileSync(shim('host.css'), path.join(dist, 'host.css'));
+// the licence texts travel with the program (AGPL-3.0-or-later; shown in About → Legal)
+fs.mkdirSync(path.join(dist, 'legal'), { recursive: true });
+for (const f of ['LICENSE', 'THIRD-PARTY-LICENSES.md', 'NOTICE']) fs.copyFileSync(path.join(root, f), path.join(dist, 'legal', f.replace(/\.md$/, '') + '.txt'));
 
 const inject = '<link rel="stylesheet" href="host.css"><script src="tauri-host.js"></script>\n';
 let html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');

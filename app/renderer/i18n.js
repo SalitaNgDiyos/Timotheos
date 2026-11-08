@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* [E1] UI Localization: English ('en') and Tagalog / Filipino ('fil').
  * Translates toolbar buttons, menus, panel captions, Options tabs, and common labels live without reload. */

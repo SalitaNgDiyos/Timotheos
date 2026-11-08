@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Edmund P. Valdez
 # run.sh <script.js> <out.png> [wait_ms]  — runs the built Timotheos (Tauri) under a virtual screen, runs the page script of
 # test/ui (same scripts as the Electron tests), takes a picture and prints the RESULT line.
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"

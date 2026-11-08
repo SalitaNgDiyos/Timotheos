@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // "Import modules…": checks each chosen file, copies usable modules into Timotheos's own module
 // folder (<userData>/modules/theWord, /e-Sword, /USFM, or /USFX) and reports what happened to every file.

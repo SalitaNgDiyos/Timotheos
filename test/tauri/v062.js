@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.6.2: grid of areas, Bible views as panels, trimmed top bar, click-to-select verse, Copy Verse on the view's icon bar,
 // popup zoom, panel menu/label colours + Default Colors, Greek lookup shows only the Library cards, topic list to the edge, font previews
 window.__errs = [];

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // The user's own study data, kept in one JSON file in Timotheos's data folder:
 //   bookmarks[10]  lists{name:[{b,c,v,v2,bible}]}  highlights{bibleId:{"b.c.v":[{s,e,style}]}}

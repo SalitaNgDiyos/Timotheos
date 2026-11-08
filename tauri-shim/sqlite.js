@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // node:sqlite's DatabaseSync, with the databases opened by Rust (rusqlite).
 const { Buffer } = require('buffer');

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Bible references in running text: "John 3:16", "1 Cor. 13:4-7", e-Sword's "Php_1:17", and follow-ons like
 // "; 5:30" or ", 8". Used to make them links in book entries and to find them in copied text (clipboard

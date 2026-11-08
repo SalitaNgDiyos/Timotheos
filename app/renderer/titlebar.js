@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Title bar drawn by Timotheos (so it follows the skin): app name, File / View / Help menus,
  * and the keyboard shortcuts those menus list. Supports [E1] Tagalog localization and

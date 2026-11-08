@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.4.8: pictures in entries and the picture viewer, references in entries as links, clipboard monitor,
 // your own marks in book topics, export of topics
 window.__errs = [];

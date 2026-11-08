@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* User Guide window: takes the colours of the skin chosen in Timotheos, builds the contents list, finds text. */
 /* global TimotheosOptions */

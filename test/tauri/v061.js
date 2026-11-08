@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.6.1: the 14 requests – per-view names and menus, synced centring, Intralinear, Lookup in the Library,
 // panel skins, one reference box, module management, popup Bibles, About, Bible search choice
 window.__errs = [];
@@ -124,7 +126,15 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
   TimotheosOptions.close ? TimotheosOptions.close() : $('#optClose').click(); await sleep(200);
   // 12/13. About
   runCommand('about'); await sleep(500);
-  const ab = $('#modalBody').textContent; ok(/About Timotheos/.test($('#modalTitle').textContent) && /MIT/.test(ab) && /github\.com\/SalitaNgDiyos\/Timotheos/.test(ab) && /Program folder/.test(ab), 'About Timotheos shows description, licence, GitHub, folder');
+  const ab = $('#modalBody').textContent; ok(/About Timotheos/.test($('#modalTitle').textContent) && /AGPL-3\.0-or-later/.test(ab) && !/MIT License/.test(ab) && /Edmund P\. Valdez/.test(ab) && /github\.com\/SalitaNgDiyos\/Timotheos/.test(ab) && /Program folder/.test(ab), 'About Timotheos shows description, licence, GitHub, folder');
+  ok(/Source code/.test(ab) && /free for anyone/.test(ab), 'About: the source code is offered to anyone with the program');
+  const lg = document.querySelector('[data-legal="LICENSE"]'); ok(!!lg && !!document.querySelector('[data-legal="THIRD-PARTY-LICENSES"]'), 'About: Legal buttons');
+  lg.click(); await sleep(900); const lt = document.querySelector('.legaltext'); ok(!!lt && /GNU AFFERO GENERAL PUBLIC LICENSE/.test(lt.textContent) && /13\. Remote Network Interaction/.test(lt.textContent), 'the licence text opens inside the program ('+(lt?lt.textContent.length:0)+' characters)');
+  [...document.querySelectorAll('#modalBtns button')].find(b => b.classList.contains('primary')).click(); await sleep(400);
+  runCommand('about'); await sleep(500);
+  document.querySelector('[data-legal="THIRD-PARTY-LICENSES"]').click(); await sleep(1200); const tl = document.querySelector('.legaltext'); ok(!!tl && /Rust crate/.test(tl.textContent) && /tauri/.test(tl.textContent), 'the third-party notices open inside the program');
+  [...document.querySelectorAll('#modalBtns button')].find(b => b.classList.contains('primary')).click(); await sleep(400);
+  runCommand('about'); await sleep(500);
   const q = $('#aboutVerse'); const t1 = q.textContent; ok(/Lahat ng Kasulatan/.test(t1) && /2 Timothy 3:16/.test(t1), 'verse starts in Filipino');
   q.click(); await sleep(200); ok(/All scripture is given by inspiration of God/.test($('#aboutVerse').textContent), 'click: English (KJV)');
   q.click(); await sleep(200); ok(/hiningahan ng Diyos/.test($('#aboutVerse').textContent), 'click again: Filipino (AMB)');

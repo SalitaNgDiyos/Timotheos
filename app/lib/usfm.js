@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // USFM (Unified Standard Format Markers 2.x / 3.0: .usfm, .sfm, .ptx, folders, and .zip archives)
 // and USFX (Unified Scripture Format XML: .usfx, .usfx.xml, .xml with <usfx> root, and .zip archives)

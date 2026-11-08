@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Bible search engine. The query language follows the behaviour described in theWord's user manual
 // (Boolean searches, Regex searches, Detailed/Options tabs); the code is Timotheos's own.

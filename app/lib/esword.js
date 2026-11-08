@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // e-Sword Bible modules: .bblx (e-Sword 9/10, RTF text) and .bbli (e-Sword 11+, HTML text).
 // Supports Protestant 66-book Bibles as well as e-Sword Bibles with Apocrypha / Deuterocanonical OT

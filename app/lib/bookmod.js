@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Non-Bible modules of theWord (.twm: dictionaries, commentaries, books, maps, devotionals, reading plans)
 // and e-Sword (.cmtx/.cmti commentaries, .dctx/.dcti/.lexx/.lexi dictionaries, .topx/.topi/.refx/.refi

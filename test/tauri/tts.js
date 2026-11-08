@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // Read aloud: options page, voice/volume/pitch/tempo, the three reading modes (with a pretend speech engine)
 (async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms)); await sl(2500);
  const out=[]; const ok=(c,m)=>out.push((c?'✓ ':'✗ ')+m);

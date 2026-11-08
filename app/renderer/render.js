@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // theWord verse markup -> HTML.  Works in the browser (window.TWRender) and in Node (module.exports).
 // Supports verse.rule (toggle=, ot_only=1, nt_only=1, onsearch=1, regex_off=1) and tag.rule.

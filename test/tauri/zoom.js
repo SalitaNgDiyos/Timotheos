@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // text size per panel: A−/A+ buttons and Ctrl + mouse wheel
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));

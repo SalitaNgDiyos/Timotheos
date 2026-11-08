@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Screen B · Clear Tabs: Read · Library · Search · Study · More at the bottom. The title is the verse browser; a Parallel chip opens a
  * second Bible below with a divider to drag; a tap on a verse shows its toolbar; Library shelves; one Search for the Bible and the

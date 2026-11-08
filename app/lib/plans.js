@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Bible reading plans: split chosen books into reading sessions and spread them over calendar days.
 // Modelled on the options theWord's manual describes (read every n days of the week, finish by a date /

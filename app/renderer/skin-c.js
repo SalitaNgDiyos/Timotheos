@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Screen C · Study Desk: the text in the middle, a slim reference rail and one dock. Left edge: the Navigator (books & chapters,
  * history, bookmarks). Right edge: the study drawer (commentary, dictionary, cross-references, note, library) that follows the verse.

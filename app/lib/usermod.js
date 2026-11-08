@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // User module creation and authoring (0.4.9):
 //   [A1] User Commentaries (.cmt.twm, user=1)

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Minimal ZIP reader (stored and deflate entries) for module archives such as theWord .twzip
 // downloads. No encryption, no ZIP64. Enough for the archives module sites publish.

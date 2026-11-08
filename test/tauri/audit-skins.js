@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // Audit of one phone screen (__SK__ = a | b | c): every function is used and its result checked.
 // Run: sed s/__SK__/a/ test/tauri/audit-skins.js > /tmp/a.js; EXTRA=',"windowBounds":{"width":418,"height":900}' bash test/tauri/run.sh /tmp/a.js out.png 4000
 (async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms)); const out=[]; const ok=(c,m)=>out.push((c?'✓ ':'✗ ')+m);

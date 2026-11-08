@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* global api, state, $, esc, go, selectVerse, step, stepBook, historyGo, refName, save, activeText,
    TimotheosIcons, TimotheosStudy, TimotheosDock, TWRender, EMPTY_MOD */

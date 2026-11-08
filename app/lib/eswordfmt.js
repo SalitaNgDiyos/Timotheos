@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // e-Sword text conventions and Apocrypha / Deuterocanonical OT book-mapping schemes
 // shared by the Bible (.bblx / .bbli) and book-module (.cmtx / .cmti / .notx …) readers.

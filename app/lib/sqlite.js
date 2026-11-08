@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Read-only (and optional writable for user modules) access to module databases straight from disk
 // (Node's built-in SQLite, Electron 37+ / Node 22.5+).

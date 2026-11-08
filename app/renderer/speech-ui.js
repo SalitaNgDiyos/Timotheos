@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Reading aloud: a Bible view (verse by verse, the verse being read is marked, on into the next chapter) and
  * the open Library topic. The voices are the ones the system offers (Windows, Android) through the web engine.

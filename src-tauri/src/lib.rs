@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Edmund P. Valdez
 //! Timotheos for Tauri 2.
 //! The Bible code of Timotheos (the former Electron "main process" and its module readers) runs unchanged in a
 //! Web Worker of the page. A worker cannot call Tauri commands, so it reaches the files through the custom

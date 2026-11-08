@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // RichView (RVF) entries, as stored by theWord in dictionary, commentary, and book modules (content.type=rvf).
 // Written from TRichView's public RVF specification (trichview.com/help/rvf_specification.html) and the

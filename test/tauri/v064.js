@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.6.4: Bible view header bar, no Nav switch, corner resize, panel menus
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));

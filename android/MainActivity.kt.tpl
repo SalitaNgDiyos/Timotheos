@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Edmund P. Valdez
 package __PKG__
 
 import android.graphics.Color

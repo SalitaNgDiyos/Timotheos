@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu, session, nativeTheme, clipboard, screen } = require('electron');
 const path = require('path');

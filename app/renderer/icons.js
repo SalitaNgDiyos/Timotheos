@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Line icons drawn for Timotheos (24×24, stroke = currentColor). Original artwork, no third-party icon set. */
 const ICONS = {

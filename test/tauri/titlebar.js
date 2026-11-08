@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.4.3: skinned title bar + menus, User Guide window, word popup (morph first, resizable)
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));

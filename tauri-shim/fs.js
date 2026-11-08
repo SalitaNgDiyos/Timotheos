@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // The part of Node's fs that Timotheos uses, done by the Rust side.
 const { Buffer } = require('buffer');

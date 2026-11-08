@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Synchronous calls to the Rust side (custom protocol "tfs") from the worker. GET requests only.
 const { Buffer } = require('buffer');

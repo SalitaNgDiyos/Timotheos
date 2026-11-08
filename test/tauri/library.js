@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.4.4: Library panel (topics on the left, resizable, prev/next), module Properties window, compress
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));

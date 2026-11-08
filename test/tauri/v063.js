@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.6.3: independent dividers, no blank space above verse 1, topic list width reset, About verse size, panel colour rows
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));

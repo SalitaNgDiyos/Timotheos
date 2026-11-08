@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 /* The three phone screens (skins.js, skin-a.js, skin-b.js, skin-c.js; shared pieces in pui.css). Nothing changes without html.sk. */
 html.sk { --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); --sk-top: var(--safe-t); --sk-bot: 0px; --pg-bot: 0px; }
 /* ---- colours: A Quiet Reader (ink + gold) ---- */

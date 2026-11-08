@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // What main.js asks of Electron, answered inside the worker. Everything that needs the window, dialogs or the
 // clipboard is passed on to the page (host.js), which has the Tauri API.

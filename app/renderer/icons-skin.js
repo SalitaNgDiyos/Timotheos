@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* A finer icon set for the phone skins: thin 1.5 px lines with a soft second tone (the shapes marked class="d" are filled with the
  * line colour at low strength). Original artwork. It replaces the entries of TimotheosIcons.ICONS and redraws the icons already

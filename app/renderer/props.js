@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Module properties window: shows a module's information as a readable page and lets you edit it;
  * "File & size" compacts or compresses the module file. Works for Bibles and library modules. */

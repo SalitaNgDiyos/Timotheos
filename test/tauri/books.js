@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.4.6: RichView book modules, Book search (apart from the Bible search), module sets
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));

@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Edmund P. Valdez
 # all.sh — every UI suite against the Tauri build; prints how many checks passed and lists the failed ones
 cd "$(dirname "$(readlink -f "$0")")/../.."
 for t in ${TESTS:-features dock copy zoom titlebar views books text tools library v049 v061 v062 v063 v064}; do
@@ -11,3 +13,4 @@ for t in ${TESTS:-features dock copy zoom titlebar views books text tools librar
   n=$(echo "$r" | grep -o '✓' | wc -l)
   echo "== $t: $n ok $(echo "$r" | tr '|' '\n' | grep -E '✗|NO RESULT|ERROR' | cut -c1-200)"
 done
+echo "== licence: $(node scripts/check-licence.mjs | tail -3 | tr '\n' ' ')"

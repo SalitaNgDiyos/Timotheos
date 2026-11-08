@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Module properties (read and edit) and compacting/compressing module files.
 //   theWord Bibles (.ont/.ot/.nt): "key=value" lines after the verse lines

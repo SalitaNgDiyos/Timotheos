@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // Android-only bigger controls in the panel strips: run with EXTRA=',"windowBounds":{"width":390,"height":800}'
 (async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms)); await sl(2500);
  const out=[]; const ok=(c,m)=>out.push((c?'✓ ':'✗ ')+m);

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function setupStudy() {
   const ud = TimotheosStudy.study.ud;

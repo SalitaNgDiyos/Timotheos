@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Tools (0.4.8+): picture viewer, clipboard monitor, export of topics (with Word styles.xml),
  * your own marks in books, printing a topic. */

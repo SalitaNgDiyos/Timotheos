@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Phone layout (window narrower than 700 px, or the Android app): the panels are not shown side by side but one at a time,
  * each full width, and a bar at the bottom switches between them. The panel layout itself (Panels menu, saved layout) is

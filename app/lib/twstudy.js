@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Import and export of theWord Verse Lists (.vsls.twm), Reading Plans (.rdp.twm),
 // and Bible Highlight sets (.bhls.twm).

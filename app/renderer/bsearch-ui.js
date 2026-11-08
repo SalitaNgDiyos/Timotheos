@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Book search panel: words in commentaries, dictionaries, books, devotionals and maps – apart from the
  * Bible search, as in theWord. Supports Boolean (AND, OR, NOT, XOR), NEARw (@n), wildcards, and regex. */

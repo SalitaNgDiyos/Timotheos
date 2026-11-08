@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Book list, KJV versification and reference parsing.
 // Books 1-66 follow the Protestant canon (theWord order).

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // External headings (.hdgs.twm) and paragraph break overlay sets (.prgs.twm) in theWord's format.
 // Applied onto Bible modules that do not carry built-in <TS> headings or <CM>/<CI> paragraph marks.

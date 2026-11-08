@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* global api, state, $, esc, go, openTab, save, TimotheosModules, TimotheosStudy */
 // Search panel: theWord-style Boolean / regex search across Bibles (engine: src/lib/search.js).

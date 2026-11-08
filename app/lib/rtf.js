@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // RTF -> HTML converter for theWord dictionary/commentary/book entries and e-Sword modules.
 // Handles: groups, font/colour tables, paragraph formatting (\pard, \li, \lin, \fi, \ri, \rin,

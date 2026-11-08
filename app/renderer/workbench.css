@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 /* ---- 0.4: docked workbench, icon toolbar, skins, options ---- */
 :root { --ui-size: 13px; --pane-size: 14px; --lh: 1.65; --textw: none; --vn-size: .75; --vnum: var(--accent);
   --textbg: var(--card); --tool: var(--panel); --tooltext: var(--text); --captext: #fff;

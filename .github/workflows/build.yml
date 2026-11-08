@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Edmund P. Valdez
 # Builds Timotheos (Tauri 2) on GitHub's machines: Linux (.deb, .AppImage), Windows (installer) and Android (APK).
 # Start it by hand (Actions → Build Timotheos → Run workflow) or by pushing. The files are under Artifacts of the run.
 # Publishing a release on GitHub (tag like v0.6.5) builds again and attaches the files to that release.
@@ -100,6 +102,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { path: dl }
       - name: Keep the files in a draft release
@@ -109,6 +112,8 @@ jobs:
           mkdir out
           find dl -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.exe' \) -exec cp {} out/ \;
           n=0; for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Timotheos_android-test-${n}.apk"; done
+          # AGPL: the complete source of exactly this build travels with its files
+          git archive --format=zip --prefix="timotheos-${GITHUB_SHA::7}/" -o "out/timotheos-source-${GITHUB_SHA::7}.zip" "$GITHUB_SHA"
           ls -la out
           TAG="build-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
           gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Build $TAG" --notes "Files of the build of ${GITHUB_SHA::7}" out/*
@@ -120,6 +125,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { path: dl }
       - name: Attach the files to the release
@@ -131,6 +137,7 @@ jobs:
           find dl -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.exe' \) -exec cp {} out/ \;
           V="${TAG#v}"; n=0
           for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Timotheos_${V}_android-test$([ $n -gt 1 ] && echo -$n).apk"; done
+          git archive --format=zip --prefix="timotheos-${V}/" -o "out/timotheos-${V}-source.zip" "$GITHUB_SHA"
           ls -la out
           gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --title "Timotheos $V" --notes "Timotheos $V" --prerelease
           gh release upload "$TAG" out/* -R "$GITHUB_REPOSITORY" --clobber

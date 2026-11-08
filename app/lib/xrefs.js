@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Cross-reference sets in theWord's open .xrefs.twm format:
 //   xrefs(id, vi1, vi2) where vi = book<<24 | chapter<<16 | verse<<8 | span (extra verses).

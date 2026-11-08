@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* global api, TWRender, TimotheosOptions, TimotheosDock, TimotheosModules, TimotheosStudy, TimotheosSearch, TimotheosBookSearch, TimotheosCompare, TimotheosTools, TimotheosSpeech, TimotheosTitlebar, TimotheosProps, TimotheosIcons, TimotheosI18n */
 const $ = s => document.querySelector(s);
@@ -1110,8 +1112,9 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <p><b>Timotheos ${esc(s.version || '0.6.5')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
-    <table class="imp aboutt"><tr><th>License</th><td>MIT License – free to use, copy, change and share, with the copyright notice kept.</td></tr>
-    <tr><th>GitHub</th><td><a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a></td></tr>
+    <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
+    <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
+    <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
     <tr><th>Program folder</th><td><code class="sel">${esc(s.appDir || '')}</code></td></tr>
     <tr><th>Your data folder</th><td><code class="sel">${esc(s.userDataDir || '')}</code>${s.portable ? ' (portable mode)' : ''}</td></tr>
     <tr><th>Module folders</th><td>${(s.moduleFolders || []).map(esc).join('<br>') || 'none'}</td></tr></table>
@@ -1121,6 +1124,11 @@ function about() {
   const abox = document.querySelector('#modal .box'); abox.classList.add('aboutbox');
   p.then(() => { abox.classList.remove('aboutbox'); abox.style.width = ''; abox.style.height = ''; });
   setTimeout(() => {
+    document.querySelectorAll('[data-legal]').forEach(b => b.onclick = async () => {
+      const k = b.dataset.legal, file = k === 'fonts' ? 'fonts/LICENSES.txt' : 'legal/' + k + '.txt';
+      let body; try { const r = await fetch(file); body = r.ok ? await r.text() : 'This text is not in this build. It is in the source code: ' + file; } catch (e) { body = 'This text could not be read here. It is in the source code: ' + file; }
+      TimotheosModules.modal({ LICENSE: 'Licence – AGPL-3.0-or-later', 'THIRD-PARTY-LICENSES': 'Third-party notices', NOTICE: 'Notice', fonts: 'Font licences' }[k], `<pre class="legaltext">${esc(body)}</pre>`, [{ label: 'OK', value: true, primary: true }], true);
+    });
     const q = $('#aboutVerse'); if (!q) return;
     const flip = () => { const l = q.dataset.l === 'fil' ? 'en' : 'fil'; q.dataset.l = l; q.innerHTML = verse(l); save({ aboutVerse: l }); };
     q.onclick = flip; q.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } };

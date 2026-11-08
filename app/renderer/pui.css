@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 /* Phone screens: shared pieces (see pui.js). Colours come from the screen (skins.css): --p-* tokens. */
 html.sk { --p-ui: Inter, Roboto, 'Segoe UI', system-ui, sans-serif; --p-serif: 'TwGreek', 'TwHebrew', Literata, 'Gentium Plus', Georgia, serif; }
 html.sk body { font-family: var(--p-ui); -webkit-font-smoothing: antialiased; }

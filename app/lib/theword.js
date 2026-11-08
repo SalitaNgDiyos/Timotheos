@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Reader for theWord Bible modules (.ont / .ot / .nt, unencrypted, UTF-8 or ANSI).
 // Supports verse.rule (with toggle=, ot_only=1, nt_only=1, onsearch=1, regex_off=1, ignorecase)

@@ -1,0 +1,30 @@
+Timotheos
+Copyright (C) 2026 Edmund P. Valdez
+
+Timotheos is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License (the file
+LICENSE) for more details.
+
+Source code: https://github.com/SalitaNgDiyos/Timotheos
+
+Name, logo and branding
+The licence above covers the software. It does not give anyone unrestricted rights to the name "Timotheos", its icon
+or other branding, which may have separate terms. You may say truthfully that your version is based on Timotheos, but
+please give a changed version a name and icon of its own so that it is not mistaken for the original.
+
+Your data
+Timotheos works offline and does not collect or send any data. Your notes, highlights, bookmarks and settings stay on
+your device. If a service ever handles user data, it will be governed by its own privacy policy, separate from this
+licence.
+
+Hosting and support
+Anyone, including the author, may offer hosting, installation, training or support for Timotheos for a fee. Selling
+services does not make the software proprietary: the source code and the freedoms in the AGPL stay with everyone.
+
+Third-party components
+Timotheos includes third-party components under their own licences. They are listed, with their licence texts, in
+THIRD-PARTY-LICENSES.md (and in the font folder, app/renderer/fonts/LICENSES.txt). Timotheos does not claim ownership of
+any of them. Bible and other modules that you open in Timotheos (theWord, e-Sword) are your own files and stay under
+the licences of their publishers.

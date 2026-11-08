@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // Android speech shim, run with: node test/tauri/tts-shim.mjs (from the project folder)
 import { build } from 'esbuild'; import fs from 'fs';
 const stub = { name:'stub', setup(b){ b.onResolve({filter:/^@tauri-apps\/api\/(core|event)$/},a=>({path:a.path,namespace:'stub'})); b.onLoad({filter:/.*/,namespace:'stub'},a=>({contents:a.path.endsWith('core')?'export const invoke=(...a)=>globalThis.__invoke(...a);':'export const listen=(n,f)=>{(globalThis.__ev[n]=globalThis.__ev[n]||[]).push(f);return Promise.resolve(()=>{});};',loader:'js'})); } };

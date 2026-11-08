@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Transliteration of Greek and Hebrew words into Latin letters (SBL-like), for intralinear view and popups.
 // (Shared with the Tauri edition's src/translit.ts.)

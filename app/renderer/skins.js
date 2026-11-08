@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* The three phone screens, chosen at start-up on Android: A Quiet Reader (skin-a.js), B Clear Tabs (skin-b.js), C Study Desk (skin-c.js),
  * built from the pieces in pui.js. The picker shows at each start ("for this session"); More → Change screen opens it again. */

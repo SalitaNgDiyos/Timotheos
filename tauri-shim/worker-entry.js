@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Runs main.js (the former Electron main process) in a Web Worker.
 let started = false, electron = null;

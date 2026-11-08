@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // The page side of Timotheos for Tauri: provides `window.api` (what preload.js gave in Electron), starts the worker
 // that runs main.js, and does the things only the page can: dialogs, clipboard, window, drag and drop.

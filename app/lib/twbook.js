@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // theWord *book* modules (.gbk.twm) that hold Bible text chapter by chapter – e.g. the
 // "King James Version Apocrypha" module (id DeuteroKJV). Topics are named "<Book> <chapter>"

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 .winctl { display: flex; margin-left: auto; align-self: stretch; -webkit-app-region: no-drag; }
 .winctl button { width: 46px; border: 0; background: transparent; color: inherit; display: grid; place-items: center; cursor: default; }
 .winctl button:hover { background: rgba(127,127,127,.25); }

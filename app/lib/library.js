@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Scans module folders, keeps loaded modules, answers chapter/search/lookup requests.
 //   Bibles:        theWord .ont/.ot/.nt, theWord book modules holding Bible text (.gbk.twm),

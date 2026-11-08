@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Screen A · Quiet Reader: only the text and one floating capsule. A tap shows Back · Forward · Search · More; a swipe turns the
  * chapter; the capsule opens Book → Chapter → Verse; hold a verse for its tools; tap a word for its dictionary entry;

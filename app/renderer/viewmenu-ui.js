@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* The settings of one Bible view: the ☰ menu (what the view shows), the name of the view (click to choose a Bible,
  * double-click to rename), colour pickers for the text and the active verse, the highlighter and the underline pen.

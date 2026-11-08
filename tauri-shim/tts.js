@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // Android: the web view has no speech engine (no window.speechSynthesis), so the page gets one that talks to
 // Android's own text-to-speech through tauri-plugin-tts. It offers just what speech-ui.js uses:
 // speechSynthesis.getVoices / speak / cancel / addEventListener('voiceschanged') and SpeechSynthesisUtterance.

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Docking workbench on a grid of 4 columns x 3 rows (12 areas). Every kind of panel, Bible views included
  * ("bv0", "bv1", …), can sit in any area, be tabbed together with others, float as its own window,

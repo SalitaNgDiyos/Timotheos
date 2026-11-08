@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Every panel has its own look: font, text colour, link colour (verse references, Strong's numbers) and background.
  * Page Background Color is the background of the main text only. Colours: text, tab name (in the caption), headings & titles, notes / hints / field labels, verse numbers, verse links, page background.

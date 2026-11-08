@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // 0.4.9 UI test: user modules (.cmt.twm, .dct.twm, .gbk.twm), Tagalog UI localization,
 // customizable keyboard shortcuts, Lookup panel Back/Forward history, and bookmark footnote popups.
 window.__errs = [];

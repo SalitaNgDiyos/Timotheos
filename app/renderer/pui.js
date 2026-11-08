@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 /* Phone screens: the pieces the three screens (Quiet Reader, Clear Tabs, Study Desk) are built from.
  * Everything here works on the app's own data and functions (api.*, state, TimotheosStudy, TimotheosModules …):

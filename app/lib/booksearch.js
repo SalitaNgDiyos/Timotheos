@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // Book search: words in commentaries, dictionaries, books, devotionals and maps (theWord and e-Sword).
 // Supports [D2]: AND (&), OR (|), NOT (~), XOR (^), NEARw[n] (@n), parentheses ( ), "exact phrases",

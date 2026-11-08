@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // Android extras: chapter swipe, Tab name colour in a Bible view, copy to the clipboard. EXTRA=',"windowBounds":{"width":390,"height":800}'
 (async()=>{const sl=ms=>new Promise(r=>setTimeout(r,ms)); await sl(2500);
  const out=[]; const ok=(c,m)=>out.push((c?'✓ ':'✗ ')+m);

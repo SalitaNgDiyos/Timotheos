@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Edmund P. Valdez */
 // UI checks for 0.4: docking panels, skins, Options window, verse-number display
 window.__errs = [];
 window.addEventListener('error', e => window.__errs.push(e.message));
