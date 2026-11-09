@@ -449,3 +449,18 @@ html.phone #ttsbar { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
 .legaltext { white-space: pre-wrap; word-break: break-word; font: 12px/1.45 ui-monospace, Consolas, monospace; user-select: text; max-height: 60vh; overflow: auto; margin: 0; }
 .aboutt button[data-legal] { margin: 0 6px 6px 0; padding: 4px 12px; border: 1px solid var(--line, #bbb); border-radius: 14px; background: var(--card, #fff); color: var(--accent, inherit); cursor: pointer; font: inherit; }
 .aboutt button[data-legal]:hover { background: var(--accent-soft, #eee); }
+
+/* verses always flow as paragraphs: cross-references, commentary marks and my notes sit in the line */
+.pv .xrs { display: inline; margin: 0 .2em 0 .35em; font-size: .62em; line-height: 1; vertical-align: .15em; }
+.pv sup.cm { display: inline-block; margin: 0 .25em 0 .1em; padding: 0 .3em; border-radius: 3px; background: var(--accent-soft); color: var(--accent); font: 700 .55em/1.5 var(--font-ui); vertical-align: .55em; cursor: pointer; }
+.unote.inl { display: inline; padding: 1px 6px; margin: 0 .2em 0 .25em; font-size: .7em; border-left-width: 2px; }
+
+/* headings of one view, as chosen under "Headings of this view" (Heading font) */
+.bvtext[data-hfam] .heading { font-family: var(--h-font) !important; }
+.bvtext[data-hsz] .heading { font-size: calc(var(--h-scale) * 1em) !important; }
+.bvtext[data-hcol] .heading { color: var(--h-color) !important; }
+.bvtext[data-hb="1"] .heading { font-weight: 700 !important; }
+.bvtext[data-hi="1"] .heading { font-style: italic !important; }
+.hfopts { display: grid; gap: 8px; padding: 6px 10px 10px; min-width: 240px; }
+.hfopts label { display: flex; align-items: center; gap: 8px; }
+.hfopts select { flex: 1; min-width: 0; }

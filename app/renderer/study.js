@@ -18,7 +18,7 @@ const orderOf = b => { const i = state.nav.findIndex(x => x.id === b); return i 
 async function init() {
   study.ud = await api.userData();
   const show = state.settings.show;
-  for (const [k, d] of [['highlights', true], ['notes', true], ['paragraph', false]]) if (show[k] === undefined) show[k] = d;
+  for (const [k, d] of [['highlights', true], ['notes', true]]) if (show[k] === undefined) show[k] = d;
   document.querySelectorAll('[data-show]').forEach(cb => { cb.checked = !!show[cb.dataset.show]; });
   wireViewMenu(); wireKeys(); wireContextMenu(); wireStudyTab();
 }
@@ -40,7 +40,7 @@ function wireViewMenu() {
 function setLayout(l) {
   save({ layout: l }); document.querySelectorAll('input[name="layout"]').forEach(r => { r.checked = r.value === l; });
   if (window.TimotheosDock) TimotheosDock.arrangeBible(l);
-  if (state.settings.show.paragraph) setShow('paragraph', false); else renderChapter();
+  renderChapter();
 }
 
 /* ======================================================================= [E2] keyboard shortcuts */
@@ -48,7 +48,7 @@ const TOGGLE_MAP = [
   ['toggleStrongs', 'strongs'], ['toggleMorph', 'morph'], ['toggleLemma', 'lemma'],
   ['toggleFootnotes', 'footnotes'], ['toggleHeadings', 'headings'], ['toggleWoj', 'woj'],
   ['toggleAdded', 'added'], ['toggleXrefs', 'xrefs'], ['toggleCmtLinks', 'cmtLinks'],
-  ['toggleHighlights', 'highlights'], ['toggleNotes', 'notes'], ['toggleParagraph', 'paragraph'],
+  ['toggleHighlights', 'highlights'], ['toggleNotes', 'notes'],
 ];
 function typing(e) { const t = e.target; return t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || (t.classList && t.classList.contains('rec'))); }
 function comboOf(e) {
@@ -202,11 +202,11 @@ function lcsMarks(a, b) {
   return { ia, ib, common: L[0][0] };
 }
 function markDifferences() {
-  const secs = [...panes()].filter(s => s.dataset.linked === '1' && s.dataset.layout !== 'para');
+  const secs = [...panes()].filter(s => s.dataset.linked === '1');
   if (secs.length < 2) return;
   const layout = state.settings.layout === 'rows' ? 'rows' : 'cols';
-  for (const tr of secs[0].querySelectorAll('tr[data-v]')) {
-    const cells = secs.map(s => s.querySelector(`tr[data-v="${tr.dataset.v}"] td[data-col]`)).filter(Boolean);
+  for (const pv of secs[0].querySelectorAll('.pv[data-v]')) {
+    const cells = secs.map(s => s.querySelector(`.pv[data-v="${pv.dataset.v}"]`)).filter(Boolean);
     if (cells.length < 2) continue;
     const texts = cells.map(el => coreNodes(el).map(n => n.textContent).join('').replace(/\s+/g, ' ').trim());
     const base = words(texts[0]);
@@ -221,9 +221,9 @@ function markDifferences() {
     rebuild(cells[0], base, null, null, baseMarks);
   }
   function rebuild(el, ws, keep, pct, marks) {
-    const abbr = el.querySelector('.rabbr');
+    const abbr = el.querySelector('.rabbr'); const num = el.querySelector('sup.vnum, .dropcap');
     const html = ws.map((x, k) => ((keep && !keep.has(k)) || (marks && marks.has(k))) ? `<mark class="dif">${esc(x.w)}</mark>` : esc(x.w)).join(' ');
-    el.innerHTML = (abbr ? abbr.outerHTML + ' ' : '') + html + (pct != null ? ` <span class="diffpct" title="share of words that differ from ${esc((state.infos.get(state.settings.openBibles[0]) || {}).abbr || 'the first Bible')}">${pct}%</span>` : '');
+    el.innerHTML = (num ? num.outerHTML : '') + (abbr ? abbr.outerHTML + ' ' : '') + html + (pct != null ? ` <span class="diffpct" title="share of words that differ from ${esc((state.infos.get(state.settings.openBibles[0]) || {}).abbr || 'the first Bible')}">${pct}%</span>` : '');
     el.title = 'Differences are shown on plain text (Strong\'s numbers and formatting are hidden while “Mark differences” is on)';
   }
 }
@@ -234,14 +234,10 @@ function showNotes(p) {
   for (const k in notes) {
     const r = parseKey(k); if (r.b !== b || r.c !== c) continue;
     const plain = notes[k].html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    if (layout === 'para') {
-      const pv = root.querySelector(`.pv[data-v="${r.v}"]`);
-      if (pv) pv.insertAdjacentHTML('beforeend', `<span class="noteicon" data-note="${k}" title="${esc(plain)}">✎</span>`);
-      continue;
-    }
-    const tr = root.querySelector(`tr[data-v="${r.v}"]`); if (!tr) continue;
-    tr.querySelector('td.vn').insertAdjacentHTML('beforeend', `<span class="noteicon" data-note="${k}" title="My note: ${esc(plain.slice(0, 200))}">✎</span>`);
-    if (state.settings.show.notes) tr.insertAdjacentHTML('afterend', `<tr class="noterow"><td class="vn"></td><td><div class="unote" data-note="${k}" title="Click to edit">${notes[k].html}</div></td></tr>`);
+    const pv = root.querySelector(`.pv[data-v="${r.v}"]`); if (!pv) continue;
+    // in the flowing text a note is a mark, and (while My notes is on) a short line of it that opens the note
+    const inl = notes[k].html.replace(/<\/?(p|div|br|h\d|ul|ol|li|blockquote)\b[^>]*>/gi, ' ').replace(/\s+/g, ' ').trim();
+    verseEnd(pv, `<span class="noteicon" data-note="${k}" title="My note: ${esc(plain.slice(0, 200))}">✎</span>${state.settings.show.notes && inl ? `<span class="unote inl" data-note="${k}" title="Click to edit">${inl}</span>` : ''}`);
   }
 }
 async function editNote(k) {
@@ -815,7 +811,7 @@ function showKeys() {
   const rows = [['←  →', 'Previous / next chapter'], ['Ctrl+← →', 'Previous / next book'], ['↑  ↓', 'Previous / next verse'], ['Alt+← →, Backspace', 'Back / forward in history'],
     ['type a number', 'Go to that verse (Shift+number: chapter)'], [sc.goto || 'Ctrl+G', 'Go to a reference'], [sc.search || 'Ctrl+F', 'Bible search'], [sc.bookSearch || 'Ctrl+Shift+F', 'Book search'], [sc.guide || 'F1', 'User Guide'], ['Alt+F / Alt+V / Alt+H', 'Open the File, View or Help menu'], [sc.import || 'Ctrl+I', 'Import modules'], [sc.addFolder || 'Ctrl+O', 'Add a module folder'], ['Ctrl+Shift+1…0 / Ctrl+1…0', 'Set / go to bookmark'],
     ['Ctrl+C', 'Copy the current verse (or the selection)'], [sc.copyVerses || 'F5', 'Copy Verses dialog'], [sc.addVerseList || 'Ctrl+L', 'Add the current verse to the verse list'], [`${sc.layoutCols || 'Ctrl+H'} / ${sc.layoutRows || 'Ctrl+J'}`, 'Bibles side by side / one under another'],
-    [`${sc.toggleStrongs || 'S'} ${sc.toggleMorph || 'M'} ${sc.toggleFootnotes || 'F'} ${sc.toggleHeadings || 'H'} ${sc.toggleWoj || 'J'} ${sc.toggleAdded || 'I'} ${sc.toggleXrefs || 'X'} ${sc.toggleCmtLinks || 'C'}`, "Strong's, morphology, footnotes, headings, red letters, italics, cross-references, commentary marks"], [`${sc.toggleHighlights || 'U'} ${sc.toggleNotes || 'N'} ${sc.toggleParagraph || 'P'}`, 'My highlighting, my notes, paragraph mode'],
+    [`${sc.toggleStrongs || 'S'} ${sc.toggleMorph || 'M'} ${sc.toggleFootnotes || 'F'} ${sc.toggleHeadings || 'H'} ${sc.toggleWoj || 'J'} ${sc.toggleAdded || 'I'} ${sc.toggleXrefs || 'X'} ${sc.toggleCmtLinks || 'C'}`, "Strong's, morphology, footnotes, headings, red letters, italics, cross-references, commentary marks"], [`${sc.toggleHighlights || 'U'} ${sc.toggleNotes || 'N'}`, 'My highlighting, my notes'],
     ['Ctrl + / Ctrl −', 'Bible text size'], ['Ctrl + mouse wheel', 'Text size of the Bible, Commentary, Lookup, Library or Search panel under the mouse'], ['Ctrl+P', 'Print'], [sc.options || 'Ctrl+,', 'Options (fonts, skins, verse numbers, shortcuts…)'], ['drag a panel caption', 'Move, tab, stack or float a panel'], ['Esc', 'Close menus and popups'], ['right-click a verse', 'Copy, bookmark, highlight, note, cross-references, find']];
   TimotheosModules.messageBox('Keyboard shortcuts', `<table class="imp">${rows.map(([k, d]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(d)}</td></tr>`).join('')}</table><div class="row"><button id="editKeysFromHelp" class="primary">Customize shortcuts in Options…</button></div>`);
   setTimeout(() => { const b = $('#editKeysFromHelp'); if (b) b.onclick = () => { $('#modal').classList.add('hidden'); TimotheosOptions.open('keys'); }; }, 30);

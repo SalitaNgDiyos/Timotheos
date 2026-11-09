@@ -35,16 +35,14 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
   ok(first && first.dataset.a === 'menu', 'the ☰ button is the first thing under the Bible name');
   first.click(); await sleep(300);
   const labels = [...document.querySelectorAll('.bvmenu.mainmenu label')].map(l => l.textContent.replace(/\s+/g, ' ').trim());
-  ok(['Strong\'s and Morph', 'Paragraph Mode', 'Words of Jesus', 'Translator\'s Notes', 'Headings', 'Verse numbers'].every(t => labels.some(l => l.startsWith(t))) && /Options/.test(document.querySelector('.bvmenu.mainmenu').textContent), 'menu lists the seven items: ' + labels.slice(0, 6).join(' | '));
+  ok(['Strong\'s and Morph', 'Words of Jesus', 'Translator\'s Notes', 'Headings', 'Verse numbers'].every(t => labels.some(l => l.startsWith(t))) && /Options/.test(document.querySelector('.bvmenu.mainmenu').textContent), 'menu lists its items, without Paragraph Mode: ' + labels.slice(0, 6).join(' | '));
   const cbs = [...document.querySelectorAll('.bvmenu.mainmenu input[data-t]')];
   const sm = cbs.find(c => c.dataset.t === 'sm'); sm.checked = !sm.checked; sm.dispatchEvent(new Event('change', { bubbles: true })); await sleep(700);
   ok(effShow('strongs', 0) === sm.checked && effShow('morph', 0) === sm.checked && effShow('strongs', 1) !== sm.checked, 'Strong\'s and Morph switch together, in this view only');
-  const par = [...document.querySelectorAll('.bvmenu.mainmenu input[data-t]')].find(c => c.dataset.t === 'paragraph'); par.checked = true; par.dispatchEvent(new Event('change', { bubbles: true })); await sleep(700);
-  ok(secs()[0].dataset.layout === 'para' && secs()[1].dataset.layout !== 'para', 'Paragraph Mode in the first view only');
+  ok(!labels.some(l => /Paragraph/.test(l)) && secs().every(s => s.dataset.layout === 'para'), 'no Paragraph Mode switch: every view reads as paragraphs');
   const vn = [...document.querySelectorAll('.bvmenu.mainmenu input[data-t]')].find(c => c.dataset.t === 'vnum'); vn.checked = false; vn.dispatchEvent(new Event('change', { bubbles: true })); await sleep(500);
   ok(views()[0].vnPos === 'hidden', 'verse numbers hidden for this view');
   vn.checked = true; vn.dispatchEvent(new Event('change', { bubbles: true })); await sleep(300);
-  par.checked = false; par.dispatchEvent(new Event('change', { bubbles: true })); await sleep(500);
   document.querySelector('.bvmenu.mainmenu button[data-t="opts"]').click(); await sleep(300);
   ok(/Footnote marks/.test(document.querySelector('.bvmenu').textContent), 'Options… opens the view options');
   document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); await sleep(100);

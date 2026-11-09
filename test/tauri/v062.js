@@ -30,7 +30,7 @@ const secs = () => [...document.querySelectorAll('section.bv')];
   ok(!!document.querySelector('#panelsMenu [data-act="newbv"]') && !/Compare/.test(document.getElementById('panelsMenu').textContent), 'Panels menu has "Bible View" and no Compare');
   document.querySelector('#panelsMenu [data-act="newbv"]').click(); await sleep(1500);
   ok(secs().length === 3 && secs()[2].closest('.dgroup') && state.active === 2, 'Panels → Bible View shows a Bible panel directly (' + viewName(2) + ')');
-  ok(!document.querySelector('.bvdrawer') && secs()[2].querySelectorAll('tr[data-v]').length > 20, 'the new view is already loaded with text');
+  ok(!document.querySelector('.bvdrawer') && secs()[2].querySelectorAll('.pv[data-v]').length > 20, 'the new view is already loaded with text');
   document.querySelector('.dtab[data-id="bv2"]').closest('.dgroup').querySelector('[data-act="close"]').click(); await sleep(800);
   // preloading all the Bibles
   ok(state.infos.size >= state.modules.bibles.length, 'all Bibles are preloaded: ' + state.infos.size + ' of ' + state.modules.bibles.length);
@@ -40,12 +40,12 @@ const secs = () => [...document.querySelectorAll('section.bv')];
   document.querySelectorAll('.bvmenu').forEach(m => m.remove());
   // click anywhere in a verse
   const t0 = secs()[0].querySelector('.bvtext');
-  const row = t0.querySelector('tr[data-v="5"]'); const cell = row.querySelector('td:last-child');
+  const row = t0.querySelector('.pv[data-v="5"]'); const cell = row;
     cell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); // the blank cell itself, not a word
   cell.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   await sleep(500);
   ok(state.ref.v === 5 && row.classList.contains('sel'), 'a click on the blank part of a verse selects it (v' + state.ref.v + ')');
-  const w = t0.querySelector('tr[data-v="9"] .word, tr[data-v="9"] [data-strong]') || t0.querySelector('tr[data-v="9"] td:last-child');
+  const w = t0.querySelector('.pv[data-v="9"] .word, .pv[data-v="9"] [data-strong]') || t0.querySelector('.pv[data-v="9"]');
   w.dispatchEvent(new MouseEvent('click', { bubbles: true })); await sleep(900);
   ok(state.ref.v === 9, 'a click on a word selects its verse (v' + state.ref.v + ')');
   // Greek-word lookup: only the matching hits in the Library
@@ -107,7 +107,7 @@ const secs = () => [...document.querySelectorAll('section.bv')];
   // wrapping: no sideways scrolling, no broken words in a narrow view
   TimotheosDock.applyPreset('classic'); await sleep(300);
   const t1 = secs()[0].querySelector('.bvtext');
-  ok(t1.scrollWidth <= t1.clientWidth + 1 && getComputedStyle(t1.querySelector('table.chapter td:last-child')).overflowWrap === 'break-word', 'text wraps at spaces inside the view (no sideways scroll)');
+  ok(t1.scrollWidth <= t1.clientWidth + 1 && getComputedStyle(t1.querySelector('.paraview .pcol')).overflowWrap === 'break-word', 'text wraps at spaces inside the view (no sideways scroll)');
   ok(!window.__errs.length, 'no errors ' + window.__errs.join('; '));
   console.log('RESULT ' + out.join(' | '));
 })();

@@ -70,7 +70,6 @@
     toggleCmtLinks: 'C',
     toggleHighlights: 'U',
     toggleNotes: 'N',
-    toggleParagraph: 'P',
   };
 
   const SHORTCUT_LABELS = [
@@ -98,13 +97,12 @@
     ['toggleCmtLinks', 'Toggle commentary marks'],
     ['toggleHighlights', 'Toggle my highlighting'],
     ['toggleNotes', 'Toggle my notes under verses'],
-    ['toggleParagraph', 'Toggle paragraph mode'],
   ];
 
   const DEFAULTS = {
     skin: 'parchment', bgMode: 'skin', bgColor: '#fffdf8', texture: 'none', colors: {}, capColor: true,
     fontText: 'Gentium Plus', fontGreek: 'Gentium Plus', fontHebrew: 'Noto Serif Hebrew', fontUi: 'system', uiSize: 13, paneSize: 14,
-    lineH: 1.65, textWidth: 0, useModFont: true, vnPos: 'margin', vnStyle: 'normal', vnSize: 0.75, chapNum: 'none',
+    lineH: 1.65, textWidth: 0, useModFont: true, vnPos: 'inline', vnStyle: 'normal', vnSize: 0.75, chapNum: 'none',
     tbMode: 'both', density: 'comfy', showStatus: true
   };
   const BUNDLED = ['Gentium Plus', 'Literata', 'Source Serif 4', 'Inter', 'Noto Serif Hebrew'];
@@ -385,7 +383,7 @@
     $('#useModFont').checked = a.useModFont;
     $('#uiSize').value = a.uiSize; $('#uiSizeV').textContent = a.uiSize + ' px';
     $('#paneSize').value = a.paneSize; $('#paneSizeV').textContent = a.paneSize + ' px';
-    document.querySelectorAll('input[name="vnPos"]').forEach(r => { r.checked = r.value === a.vnPos; });
+    document.querySelectorAll('input[name="vnPos"]').forEach(r => { r.checked = r.value === (a.vnPos === 'hidden' ? 'hidden' : 'inline'); });   // the verses flow as paragraphs: no number column
     $('#vnStyle').value = a.vnStyle; $('#vnSize').value = a.vnSize; $('#vnSizeV').textContent = Math.round(a.vnSize * 100) + '%';
     $('#chapNum').value = a.chapNum;
     document.querySelectorAll('input[name="tbMode"]').forEach(r => { r.checked = r.value === a.tbMode; });

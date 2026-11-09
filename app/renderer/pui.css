@@ -18,9 +18,9 @@ html.sk .bvtext table.chapter:not(:has(td[data-col] ~ td[data-col])) tr { displa
 html.sk .bvtext table.chapter:not(:has(td[data-col] ~ td[data-col])) td { display: inline; padding: 0; border: 0; background: transparent; }
 html.sk .bvtext td.vn { width: auto !important; text-align: left; white-space: nowrap; }
 html.sk .bvtext td.vn .vno { font: 600 .56em var(--p-ui); color: var(--p-acc); vertical-align: .6em; margin-right: .35em; }
-html.sk .bvtext td.vn .cm { display: none; }   /* no dot before a verse that has a commentary note; the note is under Verse tools */
+html.sk .bvtext .pv sup.cm { display: none; }   /* no dot before a verse that has a commentary note; the note is under Verse tools */
 html.sk .pbody, html.sk #libBody, html.sk #libFeed, html.sk .sres .hit p { zoom: var(--mod-zoom, 1); }   /* pinch with two fingers */
-html.sk .bvtext .xrs { display: block; font: 500 .6em/1.55 var(--p-ui); color: var(--p-muted); margin: 3px 0 2px; }
+html.sk .bvtext .xrs { display: inline; font: 500 .6em/1.3 var(--p-ui); color: var(--p-muted); margin: 0 .2em 0 .35em; }
 html.sk .bvtext .xrs a { color: var(--p-acc2); }
 html.sk .bvtext tr.sel, html.sk .bvtext .pv.sel { background: var(--p-selv) !important; }
 html.sk .bvtext .pvmark, html.sk .bvtext tr.pvmark { background: var(--p-markv) !important; }
@@ -199,8 +199,9 @@ html.sk #flash, html.sk .flash { z-index: 120; }
 .rng { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); } .rng .pfield { min-width: 0; } .rng .pfield input { width: 100%; min-width: 0; }
 .pgbody { overflow-x: hidden; }
 html.sk .bvtext td.vn .noteicon { display: inline; font-size: .62em; vertical-align: .6em; margin-right: 4px; color: var(--p-acc); }
-html.sk .bvtext .unote { display: block; font-family: var(--p-ui); margin: 6px 0 2px; background: var(--p-accsoft); border-left-color: var(--p-acc); border-radius: 10px; }
+html.sk .bvtext .unote { display: inline; font-family: var(--p-ui); margin: 0 .2em 0 .25em; background: var(--p-accsoft); border-left-color: var(--p-acc); border-radius: 10px; }
 html.sk .bvtext table.chapter, html.sk .bvtext .paraview { font: inherit; line-height: inherit; font-family: var(--p-serif); }
+html.sk .bvtext .paraview { padding: 0 0 40px; gap: 0; }   /* the side margins come from Margins, as before */
 html.sk .bvtext td.vn .vno { font-size: 11px; vertical-align: .55em; }
 html.sk .bvtext::-webkit-scrollbar, html.sk .pgbody::-webkit-scrollbar, html.sk .psheet::-webkit-scrollbar, html.sk .c-drawer::-webkit-scrollbar { width: 0; height: 0; }
 

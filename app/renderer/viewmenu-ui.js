@@ -97,7 +97,6 @@
     const row = (id, label, on, kbd) => `<label><input type="checkbox" data-t="${id}"${on ? ' checked' : ''}> ${label}${kbd ? ` <kbd>${kbd}</kbd>` : ''}</label>`;
     paneMenu(btn, `<div class="mh">Shown in ${esc(viewName(i))}</div>
       ${row('sm', "Strong's and Morph", sh.strongs || sh.morph, 'S')}
-      ${row('paragraph', 'Paragraph Mode', sh.paragraph, 'P')}
       ${row('woj', 'Words of Jesus', sh.woj, 'J')}
       ${row('footnotes', "Translator's Notes", sh.footnotes, 'F')}
       ${row('headings', 'Headings', sh.headings, 'H')}

@@ -213,8 +213,10 @@
         if (tg && !toggleOn(tg, show)) { let depth = 0; k++; while (k < toks.length && !(toks[k] === close && depth === 0)) { if (toks[k].startsWith(t.slice(0, 3))) depth++; else if (toks[k] === close) depth--; k++; } }
         continue;
       }
-      if ((m = /^<PI(\d?)>$/.exec(t)) || t === '<Pi>') { const lvl = t === '<Pi>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (cur.html.replace(/<[^>]*>/g, '').trim()) newPara('pi'); cur.pi = lvl ? 20 + 20 * lvl : 0; continue; }
-      if ((m = /^<PF(\d?)>$/.exec(t)) || t === '<Pf>') { const lvl = t === '<Pf>' ? 0 : (m[1] === '' ? 1 : +m[1]); cur.pf = 20 * lvl; continue; }
+      // <PI>/<PF> set the indentation of the paragraph they are in; they never start a new line by themselves (only <CM>, <CL>
+      // and <CI> do). Met after the paragraph's text has begun, the indent cannot apply any more and is left out.
+      if ((m = /^<PI(\d?)>$/.exec(t)) || t === '<Pi>') { const lvl = t === '<Pi>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (!cur.html.replace(/<[^>]*>/g, '').trim()) cur.pi = lvl ? 20 + 20 * lvl : 0; continue; }
+      if ((m = /^<PF(\d?)>$/.exec(t)) || t === '<Pf>') { const lvl = t === '<Pf>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (!cur.html.replace(/<[^>]*>/g, '').trim()) cur.pf = 20 * lvl; continue; }
       if (/^<a\s/i.test(t)) {
         const href = attr(t, 'href') || '';
         const { meta, nolink, target } = hrefMeta(href);
@@ -265,7 +267,8 @@
       if (p.pi) st.push(`margin-left:${p.pi}px`);
       if (p.pf) st.push(`text-indent:${p.pf}px`);
       const block = p !== paras[0] || p.pi || p.pf;
-      out += block ? `<span class="para ${p.cls}"${st.length ? ` style="${st.join(';')}"` : ''}>${p.html}</span>` : p.html;
+      // the verse's first part carries an indent only where it starts a paragraph: the Bible view keeps it inline otherwise (see .pind)
+      out += block ? `<span class="para ${p.cls}${p === paras[0] ? ' pind' : ''}"${st.length ? ` style="${st.join(';')}"` : ''}>${p.html}</span>` : p.html;
     }
     if (owners.length) out = out.replace(/data-owner="(\d+)"/g, (m, i) => {
       const o = owners[+i]; const a = [];

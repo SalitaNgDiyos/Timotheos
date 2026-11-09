@@ -795,17 +795,16 @@ async function decorateChapter(b, c, root, show) {
   ]);
   const sec = root.closest('.bv'); if (sec && sec.dataset.ref !== `${b}.${c}`) return;
   if (state.ref.b === b && state.ref.c === c) { lib.xr = xr; lib.marks = marks; }
-  for (const tr of root.querySelectorAll('tr[data-v]')) {
-    const v = +tr.dataset.v;
+  // the verses flow as paragraphs: the cross-references follow the verse's own words, and the commentary mark sits by its number
+  for (const pv of root.querySelectorAll('.pv[data-v]')) {
+    const v = +pv.dataset.v;
     const refs = xr[v] || [];
-    const cells = tr.querySelectorAll('td:not(.vn)');
-    const last = cells[cells.length - 1];
-    if (refs.length && last) {
+    if (refs.length) {
       const shown = refs.slice(0, 8).map(r => `<a class="xr${r.back ? ' back' : ''}${r.user ? ' mine' : ''}" data-xr="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' : ''}${esc(abbrRef(r.b, r.c, r.v, r.span))}${r.back ? ']' : ''}</a>`).join('; ');
-      last.insertAdjacentHTML('beforeend', `<div class="xrs" data-v="${v}">${shown}${refs.length > 8 ? ` <a class="xrmore" data-v="${v}">+${refs.length - 8} more</a>` : ''}</div>`);
+      verseEnd(pv, `<span class="xrs" data-v="${v}">${shown}${refs.length > 8 ? ` <a class="xrmore" data-v="${v}">+${refs.length - 8} more</a>` : ''}</span>`);
     }
     const cm = Object.entries(marks).filter(([, m]) => m.verses.includes(v));
-    if (cm.length) tr.querySelector('td.vn').insertAdjacentHTML('beforeend', `<span class="cm" title="Commentary: ${esc(cm.map(([, m]) => m.abbr).join(', '))}">c</span>`);
+    if (cm.length) { const at = pv.querySelector('sup.vnum, .dropcap'); const h = `<sup class="cm" title="Commentary: ${esc(cm.map(([, m]) => m.abbr).join(', '))}">c</sup>`; if (at) at.insertAdjacentHTML('afterend', h); else pv.insertAdjacentHTML('afterbegin', h); }
   }
   function abbrRef(bb, cc, vv, span) { const k = state.nav.find(x => x.id === bb); return `${k ? k.abbr : (window.BOOK_ABBR && window.BOOK_ABBR[bb]) || bb} ${cc}:${vv}${span ? '–' + (vv + span) : ''}`; }
 }
@@ -970,11 +969,11 @@ function wireModules() {
     if (rmx) { e.stopPropagation(); const [b, c, v] = rmx.dataset.from.split('.').map(Number); const [tb, tc, tv] = rmx.dataset.to.split('.').map(Number); await api.xrefsRemove({ b, c, v }, { b: tb, c: tc, v: tv }); await window.renderChapter(false); return showAllXrefs(v); }
     const addx = e.target.closest('button.addx'); if (addx) { e.stopPropagation(); return addXref(+addx.dataset.v); }
     const bl = e.target.closest('a[data-book]'); if (bl) { e.stopPropagation(); return openBookModule(bl.dataset.book, isNaN(+bl.dataset.tid) ? bl.dataset.tid : +bl.dataset.tid); }
-    const cm = e.target.closest('td.vn span.cm'); if (cm) setTimeout(() => openTab('cmt'), 0);
+    const cm = e.target.closest('.pv sup.cm'); if (cm) setTimeout(() => openTab('cmt'), 0);
   }, true);
   $('#libSpeak').onclick = () => TimotheosSpeech.speakTopic($('#libSpeak'));
   $('#workbench').addEventListener('click', e => {
-    if (e.target.closest('a, sup, td.vn, [data-strong], [data-morph], .xrs')) return;
+    if (e.target.closest('a, sup, [data-strong], [data-morph], .xrs')) return;
     if (!e.target.closest('.bv td') || String(window.getSelection())) return;
     const w = wordAt(e); if (w) lookupWord(w);
   });

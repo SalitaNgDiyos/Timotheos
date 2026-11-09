@@ -94,14 +94,14 @@ async function drag(id, to, via) {
   ok(document.documentElement.dataset.theme === 'dark', 'Midnight is a dark skin');
   const fsel = document.getElementById('fontText'); ok([...fsel.options].some(o => o.value === 'Literata'), 'font list has bundled fonts (' + fsel.options.length + ' fonts)');
   fsel.value = 'Literata'; fsel.dispatchEvent(new Event('change')); await sleep(150);
-  ok(getComputedStyle(document.querySelector('table.chapter')).fontFamily.includes('Literata'), 'Bible font → Literata');
+  ok(getComputedStyle(document.querySelector('.paraview')).fontFamily.includes('Literata'), 'Bible font → Literata');
   await document.fonts.ready; ok(document.fonts.check('16px Literata'), 'Literata loads offline');
   const gsel = document.getElementById('fontGreek'); gsel.value = 'Source Serif 4'; gsel.dispatchEvent(new Event('change')); await sleep(100);
   ok(/TwGreek[^}]*source-serif-4-greek/.test(document.getElementById('dynFonts').textContent), 'Greek-only font face built from Source Serif 4');
   document.querySelector('input[name="vnPos"][value="inline"]').click(); await sleep(600);
-  ok(document.querySelector('.bv td[data-col="0"] > sup.vnum') && getComputedStyle(document.querySelector('.bv td.vn .vno')).display === 'none', 'verse numbers in the text');
+  ok(document.querySelector('.bv .pv sup.vnum') && !document.querySelector('input[name="vnPos"][value="margin"]'), 'verse numbers in the text (no number column choice: the verses flow as paragraphs)');
   document.getElementById('chapNum').value = 'drop'; document.getElementById('chapNum').dispatchEvent(new Event('change')); await sleep(600);
-  ok(document.querySelector('.bv tr[data-v="1"] .dropcap'), 'large chapter number at verse 1');
+  ok(document.querySelector('.bv .pv[data-v="1"] .dropcap'), 'large chapter number at verse 1');
   document.getElementById('vnStyle').value = 'circle'; document.getElementById('vnStyle').dispatchEvent(new Event('change')); await sleep(100);
   document.getElementById('bgTexture').value = 'paper'; document.getElementById('bgTexture').dispatchEvent(new Event('change')); await sleep(100);
   ok(getComputedStyle(document.querySelector('.bv .bvtext')).backgroundImage.startsWith('url'), 'paper texture behind the text');

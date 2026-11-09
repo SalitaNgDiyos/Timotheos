@@ -37,7 +37,7 @@ async function dragGut(g, dx, dy) { g.setPointerCapture = () => {}; const [x, y]
   ok(near(A('bv0').x0, 1) && A('bv0').x1 >= 2 && near(A('tree').y1, 3), 'a 0.6.2 layout is converted: ' + JSON.stringify([A('bv0').x0, A('bv0').x1, A('tree').y1]));
   // no blank space above verse 1
   go({ b: 43, c: 3, v: 1 }); await sleep(1200);
-  const t = document.querySelector('section.bv .bvtext'); const tb = t.querySelector('table.chapter');
+  const t = document.querySelector('section.bv .bvtext'); const tb = t.querySelector('.paraview');
   ok(tb && tb.getBoundingClientRect().top - t.getBoundingClientRect().top < 60, 'chapter starts at the top of the view (' + Math.round(tb.getBoundingClientRect().top - t.getBoundingClientRect().top) + 'px from the edge)');
   // topic list toggle resets the width
   const ap = () => state.settings.appearance || {};

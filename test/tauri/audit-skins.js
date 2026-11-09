@@ -15,7 +15,7 @@
  const mock={getVoices:()=>[{name:'Mock EN',lang:'en-US',voiceURI:'mock-en',localService:true},{name:'Mock FIL',lang:'fil-PH',voiceURI:'mock-fil',localService:true}],
   speak(u){cur=u; spoken.push(u.text); tm=setTimeout(()=>{cur=null;u.onend&&u.onend();},250);}, cancel(){ if(tm){clearTimeout(tm);tm=null;} if(cur){const u=cur;cur=null;setTimeout(()=>u.onend&&u.onend(),1);} }, addEventListener(){}, pause(){}, resume(){}};
  Object.defineProperty(window,'speechSynthesis',{value:mock,configurable:true}); if(typeof SpeechSynthesisUtterance==='undefined') window.SpeechSynthesisUtterance=function(t){this.text=t;};
- const row=v=>$(`.bv.active tr[data-v="${v}"]`)||$(`.bv tr[data-v="${v}"]`);
+ const row=v=>$(`.bv.active .pv[data-v="${v}"]`)||$(`.bv .pv[data-v="${v}"]`);
  const click=el=>{ if(!el) throw new Error('missing element'); el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})); };
  const tapAt=(el,fx=.5,fy=.5)=>{const r=el.getBoundingClientRect(); const x=r.left+r.width*fx,y=r.top+r.height*fy; const t=document.elementFromPoint(x,y)||el; t.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,clientX:x,clientY:y})); return t;};
  const hold=(el,fx=.4,fy=.3)=>{const r=el.getBoundingClientRect(); const x=r.left+r.width*fx,y=r.top+r.height*fy; const t=document.elementFromPoint(x,y)||el; t.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:x,clientY:y}));};
@@ -44,7 +44,7 @@
  await T('reading surface',async()=>{
   const t=$('.bv.active .sk-ttl'); ok(!!t&&/Psalms 23/.test(t.textContent),'the chapter has its title in the text');
   const vn=row(3).querySelector('.vno'); ok(vn&&getComputedStyle(vn).verticalAlign!=='baseline'||true,'verse numbers sit in the line');
-  ok(getComputedStyle(row(3)).display==='block','verses flow as paragraphs (not the old table)');
+  ok(getComputedStyle(row(3)).display==='inline'&&!$('.bv table.chapter'),'verses flow as paragraphs (not the old table)');
  });
 
  // ---------- moving around ----------
@@ -177,7 +177,7 @@
     const li0=R.classList.contains('sk-light'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light')!==li0,'Dark switch: '+(li0?'dark':'light')+' desk'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light')===li0,'Dark switch back');
     const z0=(views()[state.active]||{}).zoom||1; const sl2=$('.c-cc [data-zoom]'); sl2.value=String(Math.round((z0+.3)*10)/10); sl2.dispatchEvent(new Event('input',{bubbles:true})); await sl(400); ok(((views()[state.active]||{}).zoom||1)>z0,'text size slider'); sl2.value=String(z0); sl2.dispatchEvent(new Event('input',{bubbles:true})); await sl(300);
     SkinC.closeAll(); await sl(300); }
-  PUI.readingSheet(); await sl(400); ok($$('#pSheet .tgl').length===12,'Reading view: 12 things to show or hide');
+  PUI.readingSheet(); await sl(400); ok($$('#pSheet .tgl').length===11&&!$('#pSheet [data-show="paragraph"]'),'Reading view: 11 things to show or hide (no Paragraphs switch)');
   const h=$('#pSheet .tgl[data-show="headings"]'); const was=h.classList.contains('on'); click(h); await sl(800); const now=!!Object.assign({},state.settings.show,(views()[state.active]||{}).show).headings; ok(now!==was,'Headings switch works'); click($('#pSheet .tgl[data-show="headings"]')); await sl(600);
   const z0=(views()[state.active]||{}).zoom||1; click($('#pSheet [data-z="1"]')); await sl(300); ok(((views()[state.active]||{}).zoom||1)>z0,'A+ makes the text larger'); click($('#pSheet [data-z="-1"]')); await sl(300);
   for(const a of ['font','fcolor','selbg','pen','ul','menu']){ PUI.readingSheet(); await sl(300); click($(`#pSheet [data-x="${a}"]`)); await sl(500); ok(menuOpen(),'view: '+a+' menu opens as a sheet'); await closeMenus(); }
@@ -247,7 +247,7 @@
   const db=$('#optDone'), dr=db&&db.getBoundingClientRect(), dh=dr&&document.elementFromPoint(dr.left+dr.width/2,dr.top+dr.height/2); ok(!!dh&&db.contains(dh)&&dr.bottom<=innerHeight,'Options: its Done button is on screen and can be tapped');
   await closeOptions(); await sl(200); ok(vis(),'Options closed: the main bar is back'); });
  await T('bottom bar',async()=>{ const bar={a:'.a-caps',b:'.b-tabs',c:'.c-dock'}[SK]; const shown=()=>{const e=$(bar); return !!e&&getComputedStyle(e).display!=='none'&&!R.classList.contains('sk-baroff');};
-  const tx=$('.bv.active .bvtext')||$('.bvtext'); tx.scrollTop=0; await sl(100); ok(shown(),'bottom bar shows before scrolling');
+  await go({b:19,c:119,v:1}); await sl(1200); const tx=$('.bv.active .bvtext')||$('.bvtext'); tx.scrollTop=0; await sl(100); ok(shown(),'bottom bar shows before scrolling');
   tx.scrollTop=300; tx.dispatchEvent(new Event('scroll')); await sl(80); tx.scrollTop=600; tx.dispatchEvent(new Event('scroll')); await sl(350);
   ok(!shown()&&getComputedStyle($(bar)).opacity<0.5,'scrolling the text hides the bottom bar'+(shown()?'':''));
   const r=tx.getBoundingClientRect(), x=r.left+r.width/2, y=r.top+r.height/2; const pe=(ty,dx=0,dy=0)=>tx.dispatchEvent(new PointerEvent(ty,{bubbles:true,clientX:x+dx,clientY:y+dy,pointerId:1}));
@@ -258,7 +258,7 @@
   if(SK==='b'){ const g=$('#workbench .dgroup.pactive'); ok(g&&g.getBoundingClientRect().bottom<=innerHeight-60,'Bar back: the text stops above the bar'); }
   ok(shown(),'tap again: it is back');
   PUI.readingSheet(); await sl(500); ok(!shown(),'Reading settings open: no bottom bar'); await closeSheet(); await sl(300); ok(shown(),'Reading settings closed: the bar is back');
-  if(SK==='b'){ const rw=$('.bv.active tr[data-v="6"]')||$('.bv tr[data-v="6"]'); if(rw){ SkinB.closeTb(); tapAt(rw,.5,.25); await sl(300); ok(!!$('.seltb'),'verse toolbar opens'); tx.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:200})); const y1=tx.scrollTop; tx.scrollTop=y1>60?0:y1+200; const y2=tx.scrollTop; tx.dispatchEvent(new Event('scroll')); await sl(1000); ok(!$('.seltb'),'scrolling the text closes the verse toolbar (y '+y1+' > '+y2+', '+$$('.bvtext').length+' texts, same='+(tx===$('.bv.active .bvtext'))+')'); } }
+  if(SK==='b'){ await go({b:19,c:119,v:6}); await sl(1200); const rw=$('.bv.active .pv[data-v="6"]')||$('.bv .pv[data-v="6"]'); if(rw){ SkinB.closeTb(); tapAt(rw,.5,.25); await sl(300); ok(!!$('.seltb'),'verse toolbar opens'); tx.dispatchEvent(new WheelEvent('wheel',{bubbles:true,deltaY:200})); const y1=tx.scrollTop; tx.scrollTop=y1>60?0:y1+200; const y2=tx.scrollTop; tx.dispatchEvent(new Event('scroll')); await sl(1000); ok(!$('.seltb'),'scrolling the text closes the verse toolbar (y '+y1+' > '+y2+', '+$$('.bvtext').length+' texts, same='+(tx===$('.bv.active .bvtext'))+')'); } }
   if(SK==='c'&&SkinC.quick){ SkinC.quick(true); await sl(400); ok(!shown(),'Quick settings open: no dock'); history.back(); await sl(500); } await closeSheet(); PUI.clearPages&&PUI.clearPages(); await sl(200); });
  await T('margins and line height',async()=>{ const tx=$('.bv.active .bvtext')||$('.bvtext'); const mx=()=>parseFloat(getComputedStyle(tx).paddingLeft), lh=()=>parseFloat(getComputedStyle(tx).lineHeight)/parseFloat(getComputedStyle(tx).fontSize);
   PUI.readingSheet(); await sl(500); ok($$('#pSheet [data-rd="m"] button').length===3&&$$('#pSheet [data-rd="l"] button').length===3,'Reading view offers 3 margin levels and 3 line heights');
@@ -367,7 +367,7 @@
    const T2=d=>[{identifier:1,target:el,clientX:cx-d/2,clientY:cy},{identifier:2,target:el,clientX:cx+d/2,clientY:cy}];
    const ev=(n,t)=>{ const e=new Event(n,{bubbles:true,cancelable:true}); Object.defineProperty(e,'touches',{value:t}); el.dispatchEvent(e); return e; };
    const s=ev('touchstart',T2(from)); let d=from; const st=(to-from)/12; for(let k=0;k<12;k++){ d+=st; ev('touchmove',T2(d)); } ev('touchend',[]); return s.defaultPrevented; };
-  const i=state.active, z0=views()[i].zoom||1, tx=$(`.bv[data-i="${i}"] .bvtext`); const cell=tx.querySelector('tr[data-v] td:not(.vn)')||tx;
+  const i=state.active, z0=views()[i].zoom||1, tx=$(`.bv[data-i="${i}"] .bvtext`); const cell=tx.querySelector('.pv[data-v]')||tx;
   ok(pinch(cell,100,260),'a pinch is caught (the system zoom does not run)'); await sl(300);
   const z1=views()[i].zoom; ok(z1>z0,'spread two fingers on the Bible text: it grows ('+z0+' → '+z1+')');
   pinch(cell,260,100); await sl(300); ok(views()[i].zoom<z1,'pinch: it shrinks again ('+views()[i].zoom+')'); views()[i].zoom=z0; TimotheosOptions&&0;
@@ -380,7 +380,34 @@
   ok(TimotheosPinch.target($('.pwpop .pwbar')||document.body)===null,'pinching the screen outside the text is ignored');
  });
  // ---------- no dots before the verses ----------
- await T('verse dots',async()=>{ if(SK==='c') ok(!$('.c-rail .dotc'),'Study Desk: no dot beside the book name'); await go({b:46,c:15,v:1}); await sl(900); const dots=$$('.bv td.vn .cm').filter(e=>e.getClientRects().length&&getComputedStyle(e).display!=='none'); ok(dots.length===0,'no dot before any verse ('+$$('.bv td.vn .cm').length+' hidden markers)'); });
+ await T('verse dots',async()=>{ if(SK==='c') ok(!$('.c-rail .dotc'),'Study Desk: no dot beside the book name'); await go({b:46,c:15,v:1}); await sl(900); const dots=$$('.bv .pv sup.cm').filter(e=>e.getClientRects().length&&getComputedStyle(e).display!=='none'); ok(dots.length===0,'no dot before any verse ('+$$('.bv .pv sup.cm').length+' hidden markers)'); });
+ // ---------- paragraphs only; lines break only at <CM>, <CL>, <CI>; heading font ----------
+ await T('paragraphs',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); await sl(300); await go({b:43,c:3,v:1}); await sl(1000);
+  ok(!!$('.bv .paraview')&&!$('.bv table.chapter'),'the Bible reads as paragraphs');
+  PUI.readingSheet(); await sl(500); ok(!!sheet()&&!$('#pSheet [data-show="paragraph"]'),'the text format sheet has no Paragraphs switch');
+  const R0=s=>TWRender.render(s,{rules:[]},{headings:true,footnotes:true,woj:true,added:true},{fn:{n:0}});
+  const blocks=h=>{ const d=document.createElement('div'); d.innerHTML=h; return [...d.querySelectorAll('.para')].filter(e=>!e.classList.contains('pind')).length; };
+  ok(blocks(R0('He said, <PI1>"Come."'))===0&&!/class="para/.test(R0('He said, <PI1>"Come."')),'<PI> inside a verse does not start a new line');
+  ok(blocks(R0('one <PF1>two'))===0,'<PF> inside a verse does not start a new line');
+  ok(/<br>/.test(R0('one<CL>two')),'<CL> breaks the line');
+  ok(blocks(R0('one<CM>two'))===1,'<CM> starts a new paragraph');
+  ok(blocks(R0('one<CI>two'))===1,'<CI> starts a new line');
+  const pi=R0('<PI1>Psalm line'); ok(/class="para first pind" style="margin-left:40px"/.test(pi),'<PI> at the start of a verse keeps its indent ('+pi.slice(0,60)+')');
+  // a verse that goes on in the same paragraph keeps its indent inline (no line break)
+  const pvs=$$('.bv.active .pv[data-v]'); ok(pvs.every(p=>!p.querySelector(':scope > .para.pind')||p.previousElementSibling==null||p.previousElementSibling.querySelector('.para.trail')),'an indented verse breaks the line only where a paragraph starts');
+  // heading font for this view
+  click($(`#pSheet [data-x="hfont"]`)); await sl(700);
+  const m=$('.bvmenu .hfopts'); ok(!!m,'Heading font: the headings options of this view open');
+  if(m){ const fs=m.querySelector('[data-h="font"]'), sz=m.querySelector('[data-h="size"]'); const f=[...fs.options].map(o=>o.value).find(v=>/Literata/.test(v))||fs.options[1].value; fs.value=f; fs.dispatchEvent(new Event('change',{bubbles:true})); await sl(500);
+   sz.value='1.45'; sz.dispatchEvent(new Event('change',{bubbles:true})); await sl(400); const bold=$('.bvmenu [data-h="italic"]'); if(bold){ bold.checked=true; bold.dispatchEvent(new Event('change',{bubbles:true})); } await sl(600);
+   await go({b:19,c:23,v:1}); await sl(1000); const h=$('.bv.active .heading')||$(`.bv[data-i="${state.active}"] .heading`); const t=$(`.bv[data-i="${state.active}"] .bvtext`);
+   ok(!!t&&t.dataset.hfam==='1'&&t.dataset.hsz==='1'&&t.dataset.hi==='1','the view keeps the heading font, size and style');
+   if(h){ const cs=getComputedStyle(h); ok(cs.fontFamily.includes(f.split(',')[0])&&cs.fontStyle==='italic','headings use the chosen font, in italics ('+cs.fontFamily.slice(0,40)+')'); ok(Math.abs(parseFloat(cs.fontSize)-1.45*parseFloat(getComputedStyle(h.parentElement).fontSize))<1.5,'headings use the chosen size ('+cs.fontSize+')'); }
+   else ok(true,'(this chapter has no headings in the test Bible)');
+   delete views()[state.active].head; storeViews(); ensurePanes(); await sl(400); ok(!t.dataset.hfam,'headings as the screen sets them again'); }
+  document.querySelectorAll('.bvmenu').forEach(x=>x.remove()); PUI.closeSheet(); await sl(300);
+ });
  // ---------- two Bibles after the split desk of Study Desk ----------
  await T('split gap',async()=>{
   R.style.setProperty('--sp-head','57px'); if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='a') await TimotheosSkins.parallel(true); else { await TimotheosSkins.parallel(true); }
@@ -393,7 +420,7 @@
    ok(getComputedStyle(tb,'::before').content.replace(/"/g,'')===PUI.par.abbr(PUI.par.top()),'the top row shows only the Bible\'s short name ('+getComputedStyle(tb,'::before').content+')');
    const tx=$('.dgroup.pbase .bv .bvtext'); tx.scrollTop=800; await sl(400); const tr=t.getBoundingClientRect(), gr=$('.dgroup.pbase').getBoundingClientRect();
    ok(Math.abs(tr.top-gr.top)<=1.5,'scrolled: the top row sits at the very top, no text above it ('+Math.round(tr.top)+' / '+Math.round(gr.top)+')');
-   const hit=document.elementFromPoint(gr.left+gr.width-40,tr.top+4); ok(!!hit&&(hit===t||t.contains(hit)||!hit.closest('tr[data-v]')),'the text does not show through the top row'); tx.scrollTop=0; }
+   const hit=document.elementFromPoint(gr.left+gr.width-40,tr.top+4); ok(!!hit&&(hit===t||t.contains(hit)||!hit.closest('.pv[data-v]')),'the text does not show through the top row'); tx.scrollTop=0; }
   R.style.removeProperty('--sp-head'); if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(false); await sl(800);
  });
  // ---------- two Bibles: plain text below, a text format button for each ----------

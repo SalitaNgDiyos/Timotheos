@@ -453,9 +453,9 @@ async function addFolder() { const l = await api.addFolder(); if (l) { state.set
 async function rescan() { const l = await api.rescan(); state.infos.clear(); await refreshModules(l); flashMsg(`Modules rescanned: ${(state.modules.bibles || []).length} Bibles, ${(state.modules.books || []).length} other modules`); }
 
 /* ---------------- Bible views ---------------- */
-const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs', 'paragraph'];
+const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs'];
 const SIDE = [['strongs', 'S', "Strong's numbers (S)"], ['morph', 'M', 'Morphology codes (M)'], ['lemma', 'L', 'Lemmas (L)'], ['columns', '⫼', 'Intralinear View: each word over its original word (Alt+I)'], ['footnotes', 'F', 'Footnotes (F)'], ['headings', 'H', 'Headings (H)'],
-  ['woj', 'J', 'Words of Jesus in red (J)'], ['added', 'I', 'Added words in italics (I)'], ['xrefs', 'X', 'Cross-references (X)'], ['paragraph', '¶', 'Paragraph mode (P)']];
+  ['woj', 'J', 'Words of Jesus in red (J)'], ['added', 'I', 'Added words in italics (I)'], ['xrefs', 'X', 'Cross-references (X)']];
 const views = () => state.settings.views || [];
 function initViews() {
   const defZoom = state.settings.bibleZoom || 1;
@@ -484,7 +484,15 @@ function commitRef() {
     api.syncOut({ ref: state.ref, bookName: bk ? bk.name : '' }).catch(() => {});
   }
 }
-function viewShow(i) { const s = Object.assign({}, state.settings.show); const v = views()[i]; if (v && v.show) Object.assign(s, v.show); return s; }
+/** add html at the end of a verse's words in a paragraph view: inside its last paragraph, before a break that ends the verse */
+function verseEnd(pv, html) {
+  const last = pv.lastElementChild;
+  if (last && last.classList.contains('para') && last.classList.contains('trail')) last.insertAdjacentHTML('beforebegin', html);
+  else if (last && last.classList.contains('para')) last.insertAdjacentHTML('beforeend', html);
+  else pv.insertAdjacentHTML('beforeend', html);
+}
+window.verseEnd = verseEnd;
+function viewShow(i) { const s = Object.assign({}, state.settings.show); const v = views()[i]; if (v && v.show) Object.assign(s, v.show); s.paragraph = true; return s; }   // Bibles always read as paragraphs
 function effShow(key, i = state.active) { return !!viewShow(i)[key]; }
 window.effShow = effShow;
 function sameMove(i, j) { const vs = views(); return i === j || (vs[i] && vs[j] && vs[i].linked && vs[j].linked); }
@@ -552,6 +560,10 @@ function applyPaneLook(sec, i) {
   if (v.font) t.style.setProperty('--font-text', `'TwGreek', 'TwHebrew', '${String(v.font).replace(/['\\]/g, '')}', 'Gentium Plus', Georgia, serif`); else t.style.removeProperty('--font-text');
   t.dataset.vnpos = v.vnPos || ap.vnPos; t.dataset.vnstyle = ap.vnStyle;
   if (v.color) t.style.color = v.color; else t.style.removeProperty('color');
+  // headings (the module's <TS> titles): their own font, size, colour and style for this view
+  const h = v.head || {}; const hd = (k, val, prop, css) => { if (val != null && val !== '') { t.dataset[k] = typeof val === 'boolean' ? (val ? '1' : '0') : '1'; if (prop) t.style.setProperty(prop, css); } else { delete t.dataset[k]; if (prop) t.style.removeProperty(prop); } };
+  hd('hfam', h.font, '--h-font', h.font ? `'${String(h.font).replace(/['\\]/g, '')}', var(--font-text)` : '');
+  hd('hsz', h.size, '--h-scale', String(h.size || 1)); hd('hcol', h.color, '--h-color', h.color || ''); hd('hb', h.bold, null); hd('hi', h.italic, null);
   if (v.selBg) t.style.setProperty('--sel', v.selBg); else t.style.removeProperty('--sel');
   const bar = (q, c) => { const b = sec.querySelector(q + ' .bar'); if (b) b.style.background = c || 'transparent'; };
   bar('.bvfcolor', v.color); bar('.bvselbg', v.selBg); bar('.bvpen', state.pen && state.pen.color);
@@ -571,6 +583,7 @@ function paneHtml() {
         <button data-a="zout" title="Font down (Ctrl + mouse wheel down)">${TimotheosIcons.icon('textDown', 15)}</button>
         <button data-a="fcolor" class="bvfcolor" title="Font colour">${TimotheosIcons.icon('fontColor', 15)}<i class="bar"></i></button>
         <button data-a="font" title="Font of this view">${TimotheosIcons.icon('type', 15)}</button>
+        <button data-a="hfont" title="Headings of this view: font, size, colour">${TimotheosIcons.icon('outline', 15)}</button>
         <button data-a="selbg" class="bvselbg" title="Background of the active verse">${TimotheosIcons.icon('verseBg', 15)}<i class="bar"></i></button>
         <button data-a="pen" class="bvpen" title="Highlighter: choose a colour, then select text">${TimotheosIcons.icon('highlighter', 15)}<i class="bar"></i></button>
         <button data-a="ul" class="bvul" title="Underline: choose a style and colour, then select text">${TimotheosIcons.icon('underline', 15)}</button>
@@ -650,16 +663,31 @@ function wireViews() {
     if (act === 'copyv') return TimotheosStudy.copyDialog();
     if (act === 'link') return toggleLink(i);
     if (act === 'vnum') {
-      const order = ['margin', 'inline', 'hidden']; const ap = TimotheosOptions.appearance();
-      v.vnPos = order[(order.indexOf(v.vnPos || ap.vnPos) + 1) % 3]; if (v.vnPos === ap.vnPos) delete v.vnPos;
+      const ap = TimotheosOptions.appearance(); const now = (v.vnPos || ap.vnPos) === 'hidden' ? 'hidden' : 'inline';   // verses flow as paragraphs: in the text, or hidden
+      v.vnPos = now === 'hidden' ? 'inline' : 'hidden'; if (v.vnPos === ap.vnPos) delete v.vnPos;
       storeViews(); renderChapter(false);
-      return flashMsg('Verse numbers: ' + { margin: 'in a column', inline: 'in the text', hidden: 'hidden' }[v.vnPos || ap.vnPos]);
+      return flashMsg('Verse numbers: ' + ((v.vnPos || ap.vnPos) === 'hidden' ? 'hidden' : 'in the text'));
     }
     if (act === 'font') {
       const fonts = TimotheosOptions.fonts();
       return paneMenu(a, `<div class="mh">Font of this view</div><select class="bvfont" size="12"><option value="">As in Options</option>${fonts.map(f => `<option value="${esc(f)}" style="font-family:'${esc(String(f).replace(/['\\]/g, ''))}'"${f === v.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>`, m => {
         const s = m.querySelector('select'); if (!v.font) s.value = '';
         s.onchange = () => { v.font = s.value || undefined; if (!v.font) delete v.font; storeViews(); ensurePanes(); };
+      });
+    }
+    if (act === 'hfont') {
+      const fonts = TimotheosOptions.fonts(); const hh = v.head || {};
+      const SZ = [['', 'Automatic'], ['0.8', 'Small'], ['1', 'As the text'], ['1.2', 'Large'], ['1.45', 'Larger'], ['1.75', 'Largest']];
+      return paneMenu(a, `<div class="mh">Headings of this view</div><div class="hfopts">
+        <label>Font <select data-h="font"><option value="">As the screen sets it</option>${fonts.map(f => `<option value="${esc(f)}" style="font-family:'${esc(String(f).replace(/['\\]/g, ''))}'"${f === hh.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select></label>
+        <label>Size <select data-h="size">${SZ.map(([k, l]) => `<option value="${k}"${String(hh.size || '') === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label><input type="checkbox" data-h="bold"${hh.bold ? ' checked' : ''}> Bold</label><label><input type="checkbox" data-h="italic"${hh.italic ? ' checked' : ''}> Italic</label>
+        <label>Colour <input type="color" data-h="color" value="${esc(hh.color || '#888888')}"> <button type="button" data-h="nocolor">Default colour</button></label>
+        <button type="button" data-h="reset">Headings as the screen sets them</button></div>`, m => {
+        const put = (k, val) => { const o = Object.assign({}, v.head || {}); if (val == null || val === '' || val === false) delete o[k]; else o[k] = val; if (Object.keys(o).length) v.head = o; else delete v.head; storeViews(); ensurePanes(); };
+        m.addEventListener('change', e => { const k = e.target.dataset.h; if (!k) return; if (k === 'bold' || k === 'italic') put(k, e.target.checked); else if (k === 'size') put(k, e.target.value ? +e.target.value : null); else put(k, e.target.value || null); });
+        m.addEventListener('input', e => { if (e.target.dataset.h === 'color') put('color', e.target.value); });
+        m.addEventListener('click', e => { const b = e.target.closest('button[data-h]'); if (!b) return; if (b.dataset.h === 'nocolor') put('color', null); else { delete v.head; storeViews(); ensurePanes(); m.remove(); } });
       });
     }
     if (act === 'speak') return window.TimotheosSpeech && TimotheosSpeech.speakView(i, a);
@@ -734,7 +762,7 @@ window.toggleOwnSwitch = n => { setCustom(n, !customOn(n)); flashMsg(`${n}: ${cu
 function viewOptions(i, btn) {
   const v = views()[i]; const sh = viewShow(i); const sw = ownSwitches(v.bible);
   const vnNow = v.vnPos || '';
-  const html = `<div class="mh">Verse numbers</div>${[['', 'As in Options'], ['margin', 'In a column'], ['inline', 'In the text'], ['hidden', 'Hidden']].map(([k, l]) => `<label><input type="radio" name="vvn" value="${k}"${vnNow === k ? ' checked' : ''}> ${l}</label>`).join('')}
+  const html = `<div class="mh">Verse numbers</div>${[['', 'As in Options'], ['inline', 'In the text'], ['hidden', 'Hidden']].map(([k, l]) => `<label><input type="radio" name="vvn" value="${k}"${vnNow === k ? ' checked' : ''}> ${l}</label>`).join('')}
     <div class="mh">Footnote marks</div>${[['num', '1 2 3'], ['letter', 'a b c'], ['star', '*']].map(([k, l]) => `<label><input type="radio" name="vfs" value="${k}"${(v.fnStyle || 'num') === k ? ' checked' : ''}> ${l}</label>`).join('')}
     <label><input type="checkbox" class="vfl"${v.fnList ? ' checked' : ''}> List the footnotes under the chapter</label>
     ${sh.columns ? `<div class="mh">Intralinear lines</div>${COL_LINES.map(([k, l]) => `<label><input type="checkbox" class="vcl" value="${k}"${colOn(i, k) ? ' checked' : ''}> ${l}</label>`).join('')}` : ''}
@@ -910,24 +938,27 @@ async function renderPane(i, scroll, seq) {
   if (seq !== paneSeq[i]) return;
   const show = viewShow(i);
   const inf = state.infos.get(id);
-  const layout = show.paragraph ? 'para' : 'cols';
+  const layout = 'para';   // verses flow as paragraphs; lines break only where the module says (<CM>, <CL>, <CI>)
   const ctx = { fn: { n: 0 }, b };
   const ap = TimotheosOptions.appearance();
   const vnPos = v.vnPos || ap.vnPos;
   const fontOf = ap.useModFont && !v.font && inf && inf.font ? ` style="font-family:'TwGreek', 'TwHebrew', '${esc(inf.font.split(',')[0])}', var(--font-text)"` : '';
   const cell = raw => TWRender.render(raw, inf || EMPTY_MOD, show, ctx);
   const drop = n => ap.chapNum === 'drop' && n === 1 ? `<span class="dropcap">${c}</span>` : '';
-  const lead = n => drop(n) || (vnPos === 'inline' ? `<sup class="vnum">${n === 0 ? '¶' : n}</sup>` : '');
   const rows = data.rows.filter(r => r.cells[0] != null);
   sec.querySelector('.bvref').textContent = v.linked ? '' : `${data.book.name} ${c}`;
   sec.dataset.ref = `${b}.${c}`; sec.dataset.layout = layout;
   let html = '';
   if (!rows.length) html = `<p class="hint bvnone">${esc(data.book.name)} ${c} is not in ${esc(inf ? inf.abbr : 'this Bible')}.</p>`;
-  else if (layout === 'para') {
+  else {
     html = `<div class="paraview"><div class="pcol${inf && inf.rtl ? ' rtl' : ''}" data-colwrap="${i}"${fontOf}>`;
+    let paraOpen = true;   // the next verse begins a paragraph (chapter start, or the verse before ended with <CM>/<CI>)
     for (const row of rows) {
       const vnum = drop(row.v) || (vnPos === 'hidden' ? '' : `<sup class="vnum">${row.v === 0 ? '¶' : row.v}</sup>`);
       let cHtml = cell(row.cells[0]);
+      // an indent (<PI>/<PF>) on a verse that goes on in the same paragraph would break the line: it stays inline
+      if (!paraOpen && !/^<span class="heading/.test(cHtml)) cHtml = cHtml.replace(/^<span class="para first pind"[^>]*>/, '<span class="pind-off">');
+      paraOpen = /<span class="para (cm|ci) trail"><\/span>$/.test(cHtml);
       if (vnum) {
         const mLead = /^((?:<span class="heading[^"]*">[\s\S]*?<\/span>)*)(<span class="para\b[^>]*>)?([\s\S]*)$/.exec(cHtml);
         cHtml = mLead ? `${mLead[1] || ''}${mLead[2] || ''}${vnum}${mLead[3] || ''}` : `${vnum}${cHtml}`;
@@ -935,10 +966,6 @@ async function renderPane(i, scroll, seq) {
       html += `<span class="pv${row.v === vv ? ' sel' : ''}" data-v="${row.v}" data-col="${i}">${cHtml}</span> `;
     }
     html += '</div></div>';
-  } else {
-    html = '<table class="chapter"><colgroup><col class="vn"><col></colgroup><tbody>';
-    for (const row of rows) html += `<tr data-v="${row.v}"${row.v === vv ? ' class="sel"' : ''}><td class="vn"${row.v === 0 ? ' title="Prologue / superscription"' : ''}><span class="vno">${row.v === 0 ? '¶' : row.v}</span></td><td class="${inf && inf.rtl ? 'rtl' : ''}"${fontOf} data-col="${i}">${lead(row.v)}${cell(row.cells[0])}</td></tr>`;
-    html += '</tbody></table>';
   }
   const t = sec.querySelector('.bvtext'); const keep = t.scrollTop;
   t.innerHTML = html; t.dataset.layout = layout;
@@ -948,7 +975,7 @@ async function renderPane(i, scroll, seq) {
   if (show.columns) columnWords(i, t); else if (show.lemma) showLemmas(t);
   const first = views().findIndex((_, k) => sameMove(k, i)) === i;
   TimotheosStudy.afterRender({ root: t, col: i, id, b, c, layout, notes: first });
-  if (layout !== 'para') TimotheosModules.decorateChapter(b, c, t, show);
+  TimotheosModules.decorateChapter(b, c, t, show);
   if (i === state.active && window.TimotheosNav) TimotheosNav.syncAll(rows);
   if (scroll) {
     const el = t.querySelector(`[data-v="${vv}"]`);

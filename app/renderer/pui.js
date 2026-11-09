@@ -116,6 +116,18 @@
     const cell = row.querySelector('[data-col]') || (row.matches('[data-col]') ? row : null);
     const v = +row.dataset.v; return { v, row, cell, col: cell ? +cell.dataset.col : 0, ref: { b, c, v }, sec, i: +sec.dataset.i || 0 };
   }
+  /** a tap between the lines of a paragraph (on the paragraph itself, not a verse): the verse nearest to that point */
+  function verseAt(x, y, el) {
+    if (!el || !el.closest || !el.closest('.bv .bvtext .pcol, .bv .bvtext .paraview')) return null;
+    const cr = document.caretRangeFromPoint ? document.caretRangeFromPoint(x, y) : null;
+    const n = cr && cr.startContainer; const hit = n && (n.nodeType === 1 ? n : n.parentElement); const r = hit && verseOf(hit); if (r) return r;
+    let best = null, bd = Infinity;
+    for (const pv of el.closest('.bvtext').querySelectorAll('.pv[data-v]')) for (const q of pv.getClientRects()) {
+      const dx = x < q.left ? q.left - x : x > q.right ? x - q.right : 0, dy = y < q.top ? q.top - y : y > q.bottom ? y - q.bottom : 0, d = dx * dx + dy * dy * 4;
+      if (d < bd) { bd = d; best = pv; }
+    }
+    return best ? verseOf(best) : null;
+  }
   function markVerse(row, on) { $$('.pvmark').forEach(x => x.classList.remove('pvmark')); if (row && on) row.classList.add('pvmark'); }
 
   /* ================================================================ verse actions (the same functions for every screen) */
@@ -365,8 +377,8 @@
       <div class="prow"><span>Text size</span><span class="stepper"><button type="button" class="pib" data-z="-1">${ic('textDown', 20)}</button><b>${Math.round((v.zoom || 1) * 100)}%</b><button type="button" class="pib" data-z="1">${ic('textUp', 20)}</button></span></div>
       <div class="prow pr3"><span>Margins</span><div class="pseg" data-rd="m">${RD.m.map((x, i) => `<button type="button" data-i="${i}" class="${rdGet().m === i ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>
       <div class="prow pr3"><span>Line height</span><div class="pseg" data-rd="l">${RD.l.map((x, i) => `<button type="button" data-i="${i}" class="${rdGet().l === i ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>
-      <h4 class="sec">Show in the text</h4><div class="tgls">${tog('strongs', "Strong's", 'lexicon')}${tog('morph', 'Morphology', 'hash')}${tog('columns', 'Interlinear', 'compare')}${tog('footnotes', 'Footnotes', 'note')}${tog('headings', 'Headings', 'outline')}${tog('woj', 'Words of Jesus', 'fontColor')}${tog('added', 'Added words', 'type')}${tog('xrefs', 'Cross-refs', 'xref')}${tog('cmtLinks', 'Commentary marks', 'commentary')}${tog('highlights', 'My highlights', 'highlight')}${tog('notes', 'My notes', 'note')}${tog('paragraph', 'Paragraphs', 'menu')}</div>
-      <h4 class="sec">This view</h4><div class="pills"><button type="button" class="pill" data-x="font">${ic('type', 16)} Font</button><button type="button" class="pill" data-x="fcolor">${ic('fontColor', 16)} Text colour</button><button type="button" class="pill" data-x="selbg">${ic('verseBg', 16)} Active verse colour</button><button type="button" class="pill" data-x="pen">${ic('highlighter', 16)} Highlighter pen</button><button type="button" class="pill" data-x="ul">${ic('underline', 16)} Underline pen</button><button type="button" class="pill${v.linked ? ' on' : ''}" data-x="link">${ic('link', 16)} Move with other views</button><button type="button" class="pill" data-x="vn">${ic('hash', 16)} Verse numbers</button><button type="button" class="pill" data-x="menu">${ic('menu', 16)} All view options</button><button type="button" class="pill" data-x="info">${ic('info', 16)} About this Bible</button></div>`, { title: 'Reading view' });
+      <h4 class="sec">Show in the text</h4><div class="tgls">${tog('strongs', "Strong's", 'lexicon')}${tog('morph', 'Morphology', 'hash')}${tog('columns', 'Interlinear', 'compare')}${tog('footnotes', 'Footnotes', 'note')}${tog('headings', 'Headings', 'outline')}${tog('woj', 'Words of Jesus', 'fontColor')}${tog('added', 'Added words', 'type')}${tog('xrefs', 'Cross-refs', 'xref')}${tog('cmtLinks', 'Commentary marks', 'commentary')}${tog('highlights', 'My highlights', 'highlight')}${tog('notes', 'My notes', 'note')}</div>
+      <h4 class="sec">This view</h4><div class="pills"><button type="button" class="pill" data-x="font">${ic('type', 16)} Font</button><button type="button" class="pill" data-x="hfont">${ic('outline', 16)} Heading font</button><button type="button" class="pill" data-x="fcolor">${ic('fontColor', 16)} Text colour</button><button type="button" class="pill" data-x="selbg">${ic('verseBg', 16)} Active verse colour</button><button type="button" class="pill" data-x="pen">${ic('highlighter', 16)} Highlighter pen</button><button type="button" class="pill" data-x="ul">${ic('underline', 16)} Underline pen</button><button type="button" class="pill${v.linked ? ' on' : ''}" data-x="link">${ic('link', 16)} Move with other views</button><button type="button" class="pill" data-x="vn">${ic('hash', 16)} Verse numbers</button><button type="button" class="pill" data-x="menu">${ic('menu', 16)} All view options</button><button type="button" class="pill" data-x="info">${ic('info', 16)} About this Bible</button></div>`, { title: 'Reading view' });
     s.addEventListener('click', e => {
       const z = e.target.closest('[data-z]'); if (z) { zoomView(state.active, +z.dataset.z); const vv = views()[state.active] || {}; z.parentNode.querySelector('b').textContent = Math.round((vv.zoom || 1) * 100) + '%'; return; }
       const rb = e.target.closest('[data-rd] > button'); if (rb) { rdSet(rb.parentNode.dataset.rd, +rb.dataset.i); rb.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === rb)); return; }
@@ -640,7 +652,7 @@
       if (!root.classList.contains('sk') || e.touches.length !== 1 || root.classList.contains('sk-selecting')) return; held = false;
       const t = e.touches[0]; sx = t.clientX; sy = t.clientY; const tg = e.target;
       if (!inText(tg)) return; clearTimeout(lp);
-      lp = setTimeout(() => { const x = verseOf(tg); if (!x || !H.hold) return; held = true; const ev = { target: tg, clientX: sx, clientY: sy }; H.hold(x, wordOf(ev), { x: sx, y: sy }); }, 500);
+      lp = setTimeout(() => { const x = verseOf(tg) || verseAt(sx, sy, tg); if (!x || !H.hold) return; held = true; const ev = { target: tg, clientX: sx, clientY: sy }; H.hold(x, wordOf(ev), { x: sx, y: sy }); }, 500);
     }, { passive: true });
     wb.addEventListener('touchmove', e => { const t = e.touches[0]; if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) clearTimeout(lp); }, { passive: true });
     wb.addEventListener('touchend', e => { clearTimeout(lp); if (held) { e.preventDefault(); } }, { passive: false });
@@ -648,7 +660,7 @@
     wb.addEventListener('contextmenu', e => {
       if (!root.classList.contains('sk')) return; if (!inText(e.target) && !e.target.closest('.bv [data-v]')) return;
       e.preventDefault(); e.stopPropagation(); clearTimeout(lp); if (held) return; held = !!e.isTrusted && 'ontouchstart' in window;
-      const x = verseOf(e.target); if (x && H.hold) H.hold(x, wordOf(e), { x: e.clientX, y: e.clientY });
+      const x = verseOf(e.target) || verseAt(e.clientX, e.clientY, e.target); if (x && H.hold) H.hold(x, wordOf(e), { x: e.clientX, y: e.clientY });
     }, true);
     document.addEventListener('click', e => {
       if (!root.classList.contains('sk')) return;
@@ -659,7 +671,7 @@
       if (tg.closest('.sk-ttl')) { if (H.title && H.title(tg.closest('.sk-ttl'), tg)) return; if (H.tap) H.tap(null, null, e); return; }
       if (tg.closest('a, button, input, .xrs, .unote, .noteicon')) return;     // links, cross-reference lists, notes: as before
       if (root.classList.contains('sk-selecting') || String(window.getSelection()).trim()) return;
-      const x = verseOf(tg); if (!x) { if (H.tap) H.tap(null, null, e); return; }
+      const x = verseOf(tg) || verseAt(e.clientX, e.clientY, tg); if (!x) { if (H.tap) H.tap(null, null, e); return; }
       e.stopPropagation(); selectVerse(x.v, false);        // the old click would open the Library for a word: the screen decides instead
       if (H.tap) H.tap(x, wordOf(e), e);
     }, true);

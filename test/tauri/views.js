@@ -11,25 +11,24 @@ const secs = () => [...document.querySelectorAll('section.bv')];
 (async () => {
   await sleep(2500);
   ok(secs().length === 2 && /KJV/.test(secs()[0].querySelector('.bvbible').textContent) && /Wycliffe/i.test(secs()[1].querySelector('.bvbible').textContent), 'two ticked Bibles → two Bible views: ' + secs().map(s => s.querySelector('.bvbible').textContent).join(', '));
-  ok(secs()[0].querySelectorAll('tr[data-v]').length > 30 && secs()[1].querySelectorAll('tr[data-v]').length > 30, 'each view shows John 3 by itself');
+  ok(secs()[0].querySelectorAll('.pv[data-v]').length > 30 && secs()[1].querySelectorAll('.pv[data-v]').length > 30, 'each view shows John 3 by itself');
   // side bar: Strong's only in the view where it is switched on
   await mm(1, 'sm');
   ok(state.active === 1 && effShow('strongs', 1) && !effShow('strongs', 0), "☰ Strong's and Morph: on in the second view only");
   ok(document.querySelector('[data-show="strongs"]').checked, 'the View menu shows the active view\'s settings');
   // paragraph mode in one view
-  await mm(0, 'paragraph');
-  ok(secs()[0].querySelector('.paraview') && secs()[1].querySelector('table.chapter'), '¶ in the first view: paragraphs there, verses in the second');
-  await mm(0, 'paragraph');
+  ok(secs()[0].querySelector('.paraview') && secs()[1].querySelector('.paraview') && !document.querySelector('.bvmenu [data-t="paragraph"]'), 'both views read as paragraphs; there is no verse-by-verse switch');
   // verse numbers in the text, for one view
   secs()[0].querySelector('[data-a="menu"]').click(); await sleep(250); document.querySelector('.bvmenu.mainmenu button[data-t="opts"]').click(); await sleep(250);
-  const vr = document.querySelector('.bvmenu input[name="vvn"][value="inline"]'); vr.checked = true; vr.dispatchEvent(new Event('change')); await sleep(600);
-  ok(secs()[0].querySelector('.bvtext').dataset.vnpos === 'inline' && secs()[0].querySelector('sup.vnum') && secs()[1].querySelector('.bvtext').dataset.vnpos === 'margin', 'Options: verse numbers in the text in this view only');
+  ok(!document.querySelector('.bvmenu input[name="vvn"][value="margin"]'), 'no number column choice: the verses flow as paragraphs');
+  const vr = document.querySelector('.bvmenu input[name="vvn"][value="hidden"]'); vr.checked = true; vr.dispatchEvent(new Event('change')); await sleep(600);
+  ok(secs()[0].querySelector('.bvtext').dataset.vnpos === 'hidden' && !secs()[0].querySelector('sup.vnum') && secs()[1].querySelector('sup.vnum'), 'Options: verse numbers hidden in this view only');
   const vr2 = document.querySelector('.bvmenu input[name="vvn"][value=""]'); vr2.checked = true; vr2.dispatchEvent(new Event('change')); await sleep(500);
   document.querySelector('.bvmenu')?.remove();
   // font of one view
   secs()[0].querySelector('[data-a="font"]').click(); await sleep(300);
   const fs = document.querySelector('.bvmenu select'); fs.value = 'Literata'; fs.dispatchEvent(new Event('change')); await sleep(400);
-  ok(/Literata/.test(getComputedStyle(secs()[0].querySelector('td[data-col="0"]')).fontFamily) && !/Literata/.test(getComputedStyle(secs()[1].querySelector('td[data-col="1"]')).fontFamily), 'Aa: Literata in the first view only');
+  ok(/Literata/.test(getComputedStyle(secs()[0].querySelector('.pv[data-col="0"]')).fontFamily) && !/Literata/.test(getComputedStyle(secs()[1].querySelector('.pv[data-col="1"]')).fontFamily), 'Aa: Literata in the first view only');
   document.querySelector('.bvmenu')?.remove();
   // moving together
   go({ b: 45, c: 5, v: 8 }); await sleep(800);

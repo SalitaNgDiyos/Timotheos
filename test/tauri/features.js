@@ -26,10 +26,10 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   // quick keys
   key('s'); await sleep(500); ok(effShow('strongs') === true && document.querySelector('.bv.active sup.strong:not(.hide)'), 'S shows Strong\'s in the active view (side bar S lit)');
   key('s'); await sleep(400);
-  key('p'); await sleep(600); ok(document.querySelector('.paraview'), 'P → paragraph mode');
-  key('p'); await sleep(600); ok(document.querySelector('table.chapter'), 'P again → back to verses');
+  ok(document.querySelector('.paraview') && !document.querySelector('table.chapter'), 'the Bible reads as paragraphs');
+  key('p'); await sleep(600); ok(document.querySelector('.paraview') && !document.querySelector('table.chapter'), 'P no longer switches to verse-by-verse');
   // highlight via context menu with a selection
-  const td = document.querySelector('.bv tr[data-v="16"] td[data-col="0"]');
+  const td = document.querySelector('.bv .pv[data-v="16"]');
   const w = document.createTreeWalker(td, NodeFilter.SHOW_TEXT); let n, node, off; while ((n = w.nextNode())) { const i = n.textContent.indexOf('loved'); if (i >= 0) { node = n; off = i; break; } }
   const r = document.createRange(); r.setStart(node, off); r.setEnd(node, off + 5); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
   const rect = r.getBoundingClientRect();
@@ -37,12 +37,13 @@ const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   await sleep(200);
   ok(!document.getElementById('ctxMenu').classList.contains('hidden'), 'right-click menu opens');
   document.querySelector('#ctxMenu button[data-a="hl"][data-s="yellow"]').click(); await sleep(700);
-  const mk = document.querySelector('.bv tr[data-v="16"] mark.hl-yellow'); ok(mk && mk.textContent === 'loved', 'highlight "loved" (' + (mk && mk.textContent) + ')');
+  const mk = document.querySelector('.bv .pv[data-v="16"] mark.hl-yellow'); ok(mk && mk.textContent === 'loved', 'highlight "loved" (' + (mk && mk.textContent) + ')');
   // note
   TimotheosStudy.editNote('43.3.16'); await sleep(300);
   document.getElementById('noteEd').innerHTML = 'God\'s love: compare Rom 5:8 and 1 John 4:9.';
   [...document.querySelectorAll('#modalBtns button')].find(b => b.textContent === 'Save').click(); await sleep(800);
-  const un = document.querySelector('.unote'); ok(un && un.querySelectorAll('a.link').length === 2, 'note saved under the verse with 2 reference links');
+  const un = document.querySelector('.unote'); ok(un && un.querySelectorAll('a.link').length === 2, 'note saved with its verse, with 2 reference links');
+  ok(un && un.classList.contains('inl') && getComputedStyle(un).display === 'inline' && un.closest('.pv[data-v="16"]'), 'the note sits in the line of verse 16, the paragraph is not broken');
   // verse list
   key('l', { ctrlKey: true }); await sleep(300); ok((TimotheosStudy.study.ud.lists['My verses'] || []).length === 1, 'Ctrl+L adds to verse list');
   // search

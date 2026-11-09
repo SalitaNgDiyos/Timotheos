@@ -62,7 +62,7 @@
       box.innerHTML = `${n ? `<article class="pcard"><div class="psrc"><span>${p.esc(p.rn(ref))}</span></div><div class="pbody entry">${n.html}</div></article>` : `<p class="phint">No note on ${p.esc(p.rn(ref))} yet.</p>`}<div class="pills"><button type="button" class="pill gold" data-editnote>${p.ic('edit', 16)} ${n ? 'Edit the note' : 'Write a note'}</button><button type="button" class="pill" data-allnotes>${p.ic('note', 16)} All my notes</button></div>`;
     } else {
       // the words of this verse that carry Strong's numbers (or the tapped word)
-      const row = document.querySelector(`.bv.active tr[data-v="${ref.v}"], .bv tr[data-v="${ref.v}"]`);
+      const row = document.querySelector(`.bv.active .pv[data-v="${ref.v}"], .bv .pv[data-v="${ref.v}"]`);
       const ws = row ? [...row.querySelectorAll('[data-strong]')].filter(x => !x.matches('sup')).map(x => ({ word: x.textContent.trim().replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ''), strongs: (x.dataset.strong || '').split(/\s+/).filter(Boolean), morphs: (x.dataset.morph || '').split(/\s+/).filter(Boolean), lemma: x.dataset.lemma })) : [];
       const uniq = []; const seen = new Set(); for (const w of ws) { const k = w.strongs.join(' '); if (!k || seen.has(k)) continue; seen.add(k); uniq.push(w); }
       const cur = lastWord && (lastWord.strongs.length || lastWord.word) ? lastWord : uniq[0] || null;
