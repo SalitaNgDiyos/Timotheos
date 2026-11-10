@@ -828,3 +828,6 @@ html[data-fx] #toolbar { color: var(--fx-ttext) !important; box-shadow: inset 0 
 html[data-fx] .titlebar button, html[data-fx] .titlebar .tbmenus > *, html[data-fx] #toolbar .tb { color: inherit; }
 html[data-fx] #toolbar .tb:hover, html[data-fx] .titlebar .tbmenus > *:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
 .swatch.fxsw { background-size: cover; }
+
+/* toolbar menus (Skin, Panels) scroll when their list is longer than the window */
+#toolbar .menu { overflow-y: auto; overscroll-behavior: contain; }

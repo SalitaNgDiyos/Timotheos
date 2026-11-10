@@ -334,6 +334,9 @@
     const m = $(id); const was = !m.classList.contains('hidden');
     closeMenus(); if (was) return;
     if (fill) fill(); m.classList.remove('hidden');
+    // a long list (many skins) scrolls inside the menu instead of running off the bottom of the window
+    m.style.maxHeight = Math.max(160, innerHeight - m.getBoundingClientRect().top - 12) + 'px';
+    const on = m.querySelector('button.on'); if (on && on.offsetTop > m.clientHeight - 40) m.scrollTop = on.offsetTop - m.clientHeight / 3;
   }
 
   /* ------------------------------------------------------------ [E2] Keyboard Shortcuts Editor */

@@ -34,7 +34,9 @@ const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   ok(mine.length === 2, 'the two installed themes are copied, not the tool or Firefox\'s built-in theme (' + mine.join(', ') + ')');
   const msg = $('#modal'); ok(msg && /2 themes copied/.test(msg.textContent) && /Crimson Test/.test(msg.textContent) && /Light Birds Test/.test(msg.textContent), 'a message says what was copied (names from the add-on list or the theme\'s own language file)');
   document.querySelectorAll('#modal .box button').forEach(x => { if (/OK/.test(x.textContent)) x.click(); }); await sleep(300);
-  $('#skinBtn').click(); await sleep(300); ok(/My Firefox themes/.test($('#skinMenu').textContent) && $$('#skinMenu [data-skin^="fxu-"] .fxsw').length === 2, 'they are under Skin › My Firefox themes, with their pictures');
+  if (!$('#skinMenu').classList.contains('hidden')) { $('#skinBtn').click(); await sleep(200); }
+  $('#skinBtn').click(); await sleep(300); { const sm = $('#skinMenu'); for (let k = 0; k < 40; k++) sm.insertAdjacentHTML('beforeend', '<button class="pad">x</button>'); const r = sm.getBoundingClientRect(); ok(r.bottom <= innerHeight + 1 && sm.scrollHeight > sm.clientHeight && getComputedStyle(sm).overflowY === 'auto', 'a long Skin list scrolls inside the menu and stays in the window'); sm.querySelectorAll('.pad').forEach(x => x.remove()); }
+  ok(/My Firefox themes/.test($('#skinMenu').textContent) && $$('#skinMenu [data-skin^="fxu-"] .fxsw').length === 2, 'they are under Skin › My Firefox themes, with their pictures');
   const mb = $('#skinMenu [data-skin="fxu-crimson_test"]') || $('#skinMenu [data-skin^="fxu-crimson"]'); if (mb) { mb.click(); await sleep(1200); }
   ok(R.dataset.fx === '1' && /^url\("data:image\/png;base64,/.test(getComputedStyle(tb).backgroundImage) && /^url\("data:image\/png;base64,/.test(getComputedStyle(ttl).backgroundImage), 'an imported theme\'s picture runs across the title bar and the toolbar');
   const css = v => getComputedStyle(R).getPropertyValue(v).trim();
