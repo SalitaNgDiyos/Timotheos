@@ -63,6 +63,33 @@ const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   for (const [k, want] of [['center', 'center'], ['right', 'right']]) { setTextAlign(0, k); await sleep(200); ok(getComputedStyle(t0.querySelector('.pcol')).textAlign === want, 'align ' + k); }
   setTextAlign(0, 'left'); await sleep(200); ok(!t0.dataset.align && !views()[0].align, 'left again: as before (nothing stored)');
   document.querySelectorAll('.bvmenu').forEach(m => m.remove());
+  // ---- line spacing of one view, from the ☰ menu
+  { const lhOf = t => { const pv = t.querySelector('.pv'); const cs = getComputedStyle(pv.closest('.paraview') || pv); return parseFloat(cs.lineHeight) / parseFloat(cs.fontSize); };
+    const before = lhOf(t0), other = t1 && lhOf(t1);
+    if (menu) { menu.click(); await sleep(400); }
+    const row = $('.bvmenu.mainmenu .lhrow'); ok(!!row && /Line spacing/.test(row.textContent) && !!row.querySelector('[data-lh="1"]') && !!row.querySelector('[data-lh="-1"]') && !!row.querySelector('[data-lh="0"]'), '☰ has Line spacing: −, +, Default');
+    const shown0 = row && +row.querySelector('.lhv').textContent;
+    for (let k = 0; k < 4; k++) { row.querySelector('[data-lh="1"]').click(); await sleep(120); }
+    const after = lhOf(t0); ok(Math.abs(views()[0].lh - (shown0 + 0.2)) < 0.001 && +row.querySelector('.lhv').textContent === +(shown0 + 0.2).toFixed(2), '+ four times: 0.20 more (' + shown0 + ' → ' + views()[0].lh + ')');
+    ok(after > before + 0.15, 'the lines of this view are further apart (' + before.toFixed(2) + ' → ' + after.toFixed(2) + ')');
+    ok(!t1 || Math.abs(lhOf(t1) - other) < 0.01, 'the other view is not changed');
+    row.querySelector('[data-lh="-1"]').click(); await sleep(150); ok(Math.abs(views()[0].lh - (shown0 + 0.15)) < 0.001, '− takes 0.05 off');
+    ok(!row.querySelector('.lhdef').classList.contains('on'), 'Default is not marked while the view has its own spacing');
+    row.querySelector('[data-lh="0"]').click(); await sleep(200); ok(!views()[0].lh && Math.abs(lhOf(t0) - before) < 0.01 && row.querySelector('.lhdef').classList.contains('on'), 'Default: back to the spacing of Options › Fonts');
+    setLineSpacing(0, 9); ok(views()[0].lh === 3, 'it stays between 1 and 3'); setLineSpacing(0, null);
+    document.querySelectorAll('.bvmenu').forEach(m => m.remove()); }
+  // ---- the computer's guide: its own text (no phone screens), a contents list that can be hidden and made wider
+  { const fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;left:0;top:0;width:900px;height:600px;z-index:99999'; fr.src = 'guide.html?desktop=1'; document.body.appendChild(fr); await sleep(1500);
+    const d = fr.contentDocument; ok(!!d.getElementById('guide') && !d.getElementById('guideP'), 'the computer gets the computer guide only');
+    ok(!/Quiet Reader|Study Desk|Clear Tabs|Pinch/.test(d.body.textContent), 'nothing about the phone screens in it');
+    ok(!/Paragraph mode|paragraph mode|margin column/.test(d.body.textContent) && /Line spacing/.test(d.body.textContent), 'it no longer mentions the removed paragraph switch or verse-number column, and explains line spacing');
+    const nav = d.getElementById('toc'); const w0 = nav.getBoundingClientRect().width; ok(w0 > 150, 'contents shown (' + Math.round(w0) + 'px)');
+    d.getElementById('tocBtn').click(); await sleep(250); ok(nav.getBoundingClientRect().width < 2 && d.body.classList.contains('notoc'), 'the Contents button hides it');
+    d.getElementById('tocBtn').click(); await sleep(250); ok(nav.getBoundingClientRect().width > 150, 'and shows it again');
+    const g = d.getElementById('tocGrip'), gr = g.getBoundingClientRect(); const pe = (t, x) => { let e; try { e = new fr.contentWindow.PointerEvent(t, { bubbles: true, clientX: x, clientY: 200, pointerId: 5 }); } catch (z) { e = new fr.contentWindow.MouseEvent(t, { bubbles: true, clientX: x, clientY: 200 }); } g.dispatchEvent(e); };
+    pe('pointerdown', gr.left + 2); pe('pointermove', gr.left + 120); pe('pointerup', gr.left + 120); await sleep(250); ok(nav.getBoundingClientRect().width > w0 + 80, 'dragging its edge makes it wider (' + Math.round(nav.getBoundingClientRect().width) + 'px)');
+    g.dispatchEvent(new fr.contentWindow.MouseEvent('dblclick', { bubbles: true })); await sleep(200); ok(Math.abs(nav.getBoundingClientRect().width - w0) < 2, 'double-click: back to its width');
+    fr.remove(); }
   ok(!window.__errs.length, 'no errors ' + window.__errs.join('; '));
   console.log('RESULT ' + out.join(' | '));
 })();

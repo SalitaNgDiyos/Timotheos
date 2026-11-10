@@ -5,7 +5,7 @@
  * double-click to rename), colour pickers for the text and the active verse, the highlighter and the underline pen.
  * Everything here belongs to one view, so several views keep their own looks side by side. */
 /* global state, views, viewName, storeViews, ensurePanes, renderChapter, paneMenu, viewShow, effShow, toggleViewShow,
-   setViewShowMany, setVerseNumbers, viewOptions, setViews, addView, ensureInfo, flashMsg, esc, TimotheosOptions,
+   setViewShowMany, setLineSpacing, setVerseNumbers, viewOptions, setViews, addView, ensureInfo, flashMsg, esc, TimotheosOptions,
    TimotheosStudy, TimotheosSpeech, TimotheosIcons */
 (function () {
   const $ = s => document.querySelector(s);
@@ -94,6 +94,9 @@
   function alignIcon(k, s = 16) { return `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="${AL[k][1]}"/></svg>`; }
   function alignRow(cur) { return `<div class="alignrow" role="group" aria-label="Text alignment"><span>Align text</span>${Object.keys(AL).map(k => `<button type="button" data-al="${k}" class="${cur === k ? 'on' : ''}" title="${AL[k][0]}" aria-label="${AL[k][0]}">${alignIcon(k)}</button>`).join('')}</div>`; }
   window.TimotheosAlign = { row: alignRow, icon: alignIcon, names: AL };
+  /* line spacing of a view: − and + in steps of 0.05, and Default (the spacing set in Options › Fonts) */
+  const lhNow = v => +(v.lh || TimotheosOptions.appearance().lineH || 1.65);
+  function lhRow(v) { return `<div class="alignrow lhrow" role="group" aria-label="Line spacing"><span>Line spacing</span><button type="button" data-lh="-1" title="Less space between lines" aria-label="Less line spacing">−</button><b class="lhv">${lhNow(v).toFixed(2)}</b><button type="button" data-lh="1" title="More space between lines" aria-label="More line spacing">+</button><button type="button" data-lh="0" class="lhdef${v.lh ? '' : ' on'}" title="The line spacing set in Options › Fonts">Default</button></div>`; }
 
   /* ---------------- ☰ : what this view shows ---------------- */
   function mainMenu(btn, i) {
@@ -108,6 +111,7 @@
       ${row('headings', 'Headings', sh.headings, 'H')}
       ${row('vnum', 'Verse numbers', vnOn, '')}
       ${alignRow(v.align || 'left')}
+      ${lhRow(v)}
       <div class="msep"></div>
       <button type="button" data-t="opts">${TimotheosIcons.icon('gear', 14)} Options…</button>
       <div class="mh">More</div>
@@ -128,6 +132,7 @@
         else toggleViewShow(i, t, on);
       });
       m.addEventListener('click', e => {
+        const lb = e.target.closest('button[data-lh]'); if (lb) { const d = +lb.dataset.lh; setLineSpacing(i, d ? lhNow(views()[i]) + d * 0.05 : null); const vv = views()[i]; m.querySelector('.lhv').textContent = lhNow(vv).toFixed(2); m.querySelector('.lhdef').classList.toggle('on', !vv.lh); return; }
         const al = e.target.closest('button[data-al]'); if (al) { setTextAlign(i, al.dataset.al); m.querySelectorAll('[data-al]').forEach(x => x.classList.toggle('on', x === al)); return; }
         const b = e.target.closest('button[data-t]'); if (!b) return;
         m.remove();

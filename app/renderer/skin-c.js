@@ -107,7 +107,7 @@
     ['Devotionals today', 'book', 'View', () => P().devotionals()], ['My Study', 'study', 'View', () => P().studyPage()], ['My notes', 'note', 'View', () => P().studySection('notes')], ['Highlights', 'highlight', 'View', () => P().highlightsPage()],
     ['Bookmarks', 'bookmark', 'View', () => P().studySection('marks')], ['Verse lists', 'study', 'View', () => P().studySection('lists')], ['Library', 'library', 'View', () => P().library()], ['Commentary', 'commentary', 'View', () => studyDrawer('commentary')],
     ['Reading view: size, what to show', 'text', 'View', () => P().readingSheet()], ['Choose the Bible', 'bible', 'View', () => P().chooseBible()], ['Parallel Bible', 'compare', 'View', () => par()],
-    ['Reset panel layout', 'layout', 'View', () => runCommand('resetLayout')], ['Quick settings', 'tune', 'View', () => quick()], ['User guide', 'guide', 'Help', () => runCommand('guide')], ['Keyboard shortcuts', 'keyboard', 'Help', () => runCommand('keys')],
+    ['Reset panel layout', 'layout', 'View', () => runCommand('resetLayout')], ['Quick settings', 'tune', 'View', () => quick()], ['User guide', 'guide', 'Help', () => runCommand('guide')],
     ['About Timotheos', 'info', 'Help', () => runCommand('about')], ['Change screen', 'grid', 'Help', () => window.TimotheosSkins.picker(true)]];
   let palT = 0, palSeq = 0;
   function palette() {
@@ -291,7 +291,9 @@
       else if (z === 'top' && dy > 70 && Math.abs(dx) < 80) quick();
     }, Object.assign({ passive: true }, sig));
     // swipe a drawer away
-    for (const s of ['.c-drawer.l', '.c-drawer.r']) { const d = $(s); let x0 = null; d.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, Object.assign({ passive: true }, sig)); d.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; x0 = null; if ((s.endsWith('l') && dx < -70) || (s.endsWith('r') && dx > 70)) closeAll(); }, Object.assign({ passive: true }, sig)); }
+    // the drawers follow the finger back to their edge; quick settings and the command bar go back up under the rail
+    P().swipeAway($('.c-drawer.l'), 'left', () => closeAll()); P().swipeAway($('.c-drawer.r'), 'right', () => closeAll());
+    P().swipeAway($('.c-cc'), 'up', () => closeAll()); P().swipeAway($('.c-pal'), 'up', () => closeAll());
     // mouse drag of the desk grab (for a mouse or a test)
     $('.c-desk .dgrab').addEventListener('pointerdown', e => { const g = e.currentTarget; g.setPointerCapture(e.pointerId); const top = parseFloat(getComputedStyle($('.c-rail')).height) || 52; const mv = ev => setSp((ev.clientY - top) / (innerHeight - top)); const up = () => { g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); }; g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); }, sig);
     window.addEventListener('tw-tts', refresh, sig); window.addEventListener('resize', layoutDesk, sig);

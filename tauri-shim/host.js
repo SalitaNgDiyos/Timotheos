@@ -112,13 +112,18 @@ async function hostOp(op, a) {
 
 let guideBox = null;
 async function openGuide(skin) {
-  const url = 'guide.html' + (skin ? '?skin=' + encodeURIComponent(skin) : '');
-  if (isMobile) {   // no second window on a phone: the guide lies over the page
+  const phone = isMobile || document.documentElement.classList.contains('sk');
+  const url = 'guide.html?' + (skin ? 'skin=' + encodeURIComponent(skin) + '&' : '') + (phone ? 'phone=1' : 'desktop=1');
+  if (phone) {   // no second window on a phone: the guide lies over the page (the phone's own guide, not the computer's)
     if (guideBox) return;
     guideBox = document.createElement('div'); guideBox.className = 'guidebox';
     guideBox.innerHTML = `<button type="button" aria-label="Close">✕</button><iframe src="${url}"></iframe>`;
-    guideBox.querySelector('button').onclick = () => { guideBox.remove(); guideBox = null; };
-    document.body.appendChild(guideBox); return;
+    // Back closes it, and so does dragging its title bar down (the guide page does the dragging: window.guideClose)
+    const P = window.PUI;
+    const close = viaBack => { if (!guideBox) return; guideBox.remove(); guideBox = null; if (P && viaBack !== true) P.dropBack('guide'); };
+    guideBox.querySelector('button').onclick = () => close();
+    window.guideClose = close;
+    document.body.appendChild(guideBox); if (P) P.pushBack(close, 'guide'); return;
   }
   const ex = await WebviewWindow.getByLabel('guide');
   if (ex) { try { await ex.setFocus(); return; } catch (e) { /* closed */ } }

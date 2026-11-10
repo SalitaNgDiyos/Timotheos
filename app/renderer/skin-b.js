@@ -29,7 +29,7 @@
     const r = (k, i, l, sm) => `<button type="button" class="prr" data-k="${k}">${p.ic(i, 20)}<span>${l}</span><small>${sm || ''} ${p.ic('chevR', 16)}</small></button>`;
     box.innerHTML = `<div class="glist">${r('ra', 'speaker', 'Read aloud', esc(S.NAMES[c.lang] || 'Automatic'))}${r('look', 'palette', 'Appearance', 'Skin, fonts')}${r('layout', 'layers', 'Layout &amp; panels', '')}${r('vnum', 'text', 'Verse numbers', 'Margin')}${r('view', 'eye', 'Reading view', 'Show, size, colours')}</div>
       <div class="glist">${r('mods', 'import', 'Modules', 'Import, uninstall')}${r('copy', 'copy', 'Copy verses', '')}<button type="button" class="prr" data-k="clip">${p.ic('clipboard', 20)}<span>Clipboard monitor</span><small class="clipv">${clip ? 'On' : 'Off'}</small></button>${r('daily', 'calendar', 'Daily readings', '')}${r('print', 'print', 'Print the chapter', '')}</div>
-      <div class="glist">${r('fonts', 'type', 'Fonts', 'Bible, Greek, Hebrew')}${r('keys', 'keyboard', 'Keyboard shortcuts', '')}${r('all', 'gear', 'All options', '')}</div>
+      <div class="glist">${r('fonts', 'type', 'Fonts', 'Bible, Greek, Hebrew')}${r('all', 'gear', 'All options', '')}</div>
       <div class="glist">${r('guide', 'guide', 'User guide', '')}${r('about', 'info', 'About Timotheos', '0.6.5')}${r('screen', 'grid', 'Change screen', 'Clear Tabs')}</div>`;
     box.onclick = e => {
       const b = e.target.closest('[data-k]'); if (!b) return; const k = b.dataset.k;

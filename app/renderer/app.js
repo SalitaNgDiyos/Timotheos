@@ -491,6 +491,13 @@ function setTextAlign(i, a) {
   storeViews(); const sec = panes()[i]; if (sec) applyPaneLook(sec, i);
 }
 window.setTextAlign = setTextAlign;
+/** line spacing of one view (null: the one in Options › Fonts) */
+function setLineSpacing(i, lh) {
+  const v = views()[i]; if (!v) return;
+  if (lh == null) delete v.lh; else v.lh = Math.round(Math.min(3, Math.max(1, +lh)) * 100) / 100;
+  storeViews(); const sec = panes()[i]; if (sec) applyPaneLook(sec, i);
+}
+window.setLineSpacing = setLineSpacing;
 /** developer view: the verse exactly as stored in the module, each tag shown and coloured */
 function rawTags(raw) {
   return String(raw == null ? '' : raw).split(/(<[^>]*>)/).map(p => !p ? '' : p[0] === '<' && p.endsWith('>')
@@ -572,6 +579,7 @@ function applyPaneLook(sec, i) {
   t.dataset.vnpos = v.vnPos || ap.vnPos; t.dataset.vnstyle = ap.vnStyle;
   if (v.color) t.style.color = v.color; else t.style.removeProperty('color');
   if (v.align) t.dataset.align = v.align; else delete t.dataset.align;
+  if (v.lh) { t.style.setProperty('--lh', v.lh); t.dataset.lh = v.lh; } else { t.style.removeProperty('--lh'); delete t.dataset.lh; }
   // headings (the module's <TS> titles): their own font, size, colour and style for this view
   const h = v.head || {}; const hd = (k, val, prop, css) => { if (val != null && val !== '') { t.dataset[k] = typeof val === 'boolean' ? (val ? '1' : '0') : '1'; if (prop) t.style.setProperty(prop, css); } else { delete t.dataset[k]; if (prop) t.style.removeProperty(prop); } };
   hd('hfam', h.font, '--h-font', h.font ? `'${String(h.font).replace(/['\\]/g, '')}', var(--font-text)` : '');

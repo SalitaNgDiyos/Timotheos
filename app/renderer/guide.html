@@ -44,13 +44,38 @@
   mark { background: #ffe58a; color: inherit; border-radius: 2px; }
   :root[data-theme="dark"] mark { background: #6a5a16; }
   .none { color: var(--muted); padding: 20px 0; }
+  /* the contents list: hide it with the button; on a computer drag its edge, on a phone it is a drawer */
+  #tocBtn { -webkit-app-region: no-drag; border: 0; background: transparent; color: inherit; padding: 4px 6px; border-radius: 6px; display: grid; place-items: center; cursor: pointer; }
+  #tocBtn:hover { background: var(--accent-soft); }
+  .wrap { grid-template-columns: var(--tocw, 230px) 6px 1fr; position: relative; }
+  nav { border-right: 0; }
+  #tocGrip { cursor: col-resize; background: var(--panel); border-right: 1px solid var(--line); }
+  #tocGrip:hover, #tocGrip.on { background: var(--accent-soft); }
+  body.notoc .wrap { grid-template-columns: 0 0 1fr; } body.notoc nav { padding: 0; overflow: hidden; }
+  #tocScrim { display: none; }
+  html.phone .titlebar { height: 48px; padding-right: 0; font-size: 15px; touch-action: none; }
+  html.phone .titlebar .logo { display: none; }
+  html.phone .titlebar .ttl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html.phone .titlebar input { width: 40vw; font-size: 16px; }
+  html.phone #tocBtn { padding: 10px; }
+  html.phone .wrap { grid-template-columns: 1fr; }
+  html.phone #tocGrip { display: none; }
+  html.phone nav { position: absolute; left: 0; top: 0; bottom: 0; width: min(290px, 84vw); z-index: 5; transform: translateX(-104%); transition: transform .22s cubic-bezier(.2,.8,.2,1); box-shadow: 0 0 40px rgba(0,0,0,.35); border-radius: 0 18px 18px 0; padding-top: 12px; }
+  html.phone nav a { padding: 9px 12px; font-size: 15px; }
+  html.phone body.tocon nav { transform: none; }
+  html.phone #tocScrim { display: block; position: absolute; inset: 0; z-index: 4; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  html.phone body.tocon #tocScrim { opacity: 1; pointer-events: auto; }
+  html.phone nav.drag { transition: none; }
+  html.phone main { padding: 16px 18px 60px; }
+  html.phone h1 { font-size: 26px; }
+  html.phone table { font-size: 13px; } html.phone td code { white-space: normal; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
-<div class="titlebar"><span class="logo">T</span>Timotheos – User Guide<input id="find" type="search" placeholder="Find in the guide…" spellcheck="false" aria-label="Find in the guide"></div>
+<div class="titlebar"><button type="button" id="tocBtn" aria-label="Contents" title="Show or hide the contents"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span class="logo">T</span><span class="ttl">Timotheos – User Guide</span><input id="find" type="search" placeholder="Find in the guide…" spellcheck="false" aria-label="Find in the guide"></div>
 <div class="wrap">
-<nav id="toc"></nav>
-<main id="main"><div class="inner" id="guide">
+<nav id="toc"></nav><div id="tocGrip" title="Drag to make the contents wider or narrower" aria-hidden="true"></div><div id="tocScrim"></div>
+<main id="main"><div class="inner guidetext" id="guide" data-for="desktop">
 
 <h1>Timotheos</h1>
 <p class="lead">An offline Bible study program for Windows that reads theWord and e-Sword modules. This guide explains every part of the program. Press <kbd>F1</kbd> in Timotheos to open it again.</p>
@@ -140,7 +165,7 @@
   <li>Click the Bible's name in a view's caption to choose another Bible for that view.</li>
   <li>The <b>link</b> button: views normally move together. Switch it off and that view reads on by itself (its caption then shows its own book and chapter); switch it on again and it rejoins the others.</li>
   <li><b>A− / A+</b> in a view's caption make only that view's text smaller or larger (also <kbd>Ctrl</kbd> + mouse wheel over the view).</li>
-  <li>The <b>side bar</b> of a view switches things for that view only: <b>S</b> Strong's numbers, <b>M</b> morphology, <b>F</b> footnotes, <b>H</b> headings, <b>J</b> words of Jesus in red, <b>I</b> added words in italics, <b>X</b> cross-references, <b>¶</b> paragraph mode, <b>L</b> lemmas, <b>⫼</b> intralinear view, <b>#</b> verse numbers (column, in the text, hidden), <b>Aa</b> the font of the view, 🔊 read aloud and <b>⚙</b> more options.</li>
+  <li>The <b>side bar</b> of a view switches things for that view only: <b>S</b> Strong's numbers, <b>M</b> morphology, <b>F</b> footnotes, <b>H</b> headings, <b>J</b> words of Jesus in red, <b>I</b> added words in italics, <b>X</b> cross-references, <b>L</b> lemmas, <b>⫼</b> intralinear view, <b>#</b> verse numbers (in the text or hidden), <b>Aa</b> the font of the view, 🔊 read aloud and <b>⚙</b> more options.</li>
   <li><b>⚙</b> in the side bar: footnote marks as 1 2 3, a b c or *, the footnotes listed under the chapter, which lines the intralinear view shows, and the Bible's <b>own switches</b> (some theWord Bibles define switches of their own, e.g. <b>V</b> for variant readings; a one-letter switch also works as a key).</li>
   <li><b>Intralinear View</b> (<kbd>Alt+I</kbd>) puts each tagged word over its original Greek or Hebrew word, a transliteration, the Strong's number, the morphology and the lemma. Where the Bible gives no lemma, the original word comes from your Strong's dictionary.</li>
   <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
@@ -197,8 +222,13 @@
 <tr><td><kbd>F</kbd></td><td>Footnotes</td></tr><tr><td><kbd>H</kbd></td><td>Headings</td></tr>
 <tr><td><kbd>J</kbd></td><td>Words of Jesus in red</td></tr><tr><td><kbd>I</kbd></td><td>Added words in italics</td></tr>
 <tr><td><kbd>X</kbd></td><td>Cross-references under the verses</td></tr><tr><td><kbd>C</kbd></td><td>Commentary marks ("c" beside verses that have a comment)</td></tr>
-<tr><td><kbd>U</kbd></td><td>Your highlighting</td></tr><tr><td><kbd>N</kbd></td><td>Your notes under the verses</td></tr>
-<tr><td><kbd>P</kbd></td><td>Paragraph mode (flowing text instead of one verse per row)</td></tr></table>
+<tr><td><kbd>U</kbd></td><td>Your highlighting</td></tr><tr><td><kbd>N</kbd></td><td>Your notes under the verses</td></tr></table>
+<p>The Bible text always flows in paragraphs. A new line or paragraph starts only where the Bible module puts one.</p>
+<h3>Line spacing and alignment of one view</h3>
+<ul>
+  <li><b>☰</b> under a view's name → <i>Line spacing</i>: <b>−</b> and <b>+</b> change the space between the lines of that view only; <b>Default</b> goes back to the spacing set in <i>Options → Fonts</i> (which is for all views).</li>
+  <li><b>☰</b> → <i>Align text</i>: left, centre, justified or right, for that view only.</li>
+</ul>
 <h3>The Apocrypha</h3>
 <p>By default the Apocrypha sits between Malachi and Matthew, in the order and with the titles of the 1611 King James Bible:</p>
 <ul>
@@ -360,7 +390,7 @@
   <li><b>A− / A+</b> in the caption of each Bible view (only that view's text) and of the Commentary, Lookup, Library and search panels.</li>
   <li><kbd>Ctrl</kbd> + <b>mouse wheel</b> over any of those panels: one notch makes its text one step bigger or smaller. Each panel keeps its own size.</li>
   <li><kbd>Ctrl +</kbd> / <kbd>Ctrl −</kbd> change the text size of the active Bible view.</li>
-  <li><i>Options → Fonts</i> sets the fonts, line spacing, text width, and the size of menus and panel text.</li>
+  <li><i>Options → Fonts</i> sets the fonts, line spacing, text width, and the size of menus and panel text. One view can have its own line spacing: <b>☰</b> → <i>Line spacing</i>.</li>
 </ul>
 </section>
 
@@ -385,7 +415,7 @@
     Five fonts come with Timotheos and work on any computer: Gentium Plus, Literata, Source Serif 4, Inter and Noto Serif Hebrew. The fonts installed on your computer are listed too.</li>
   <li><b>Verse numbers</b>:
     <ul>
-      <li>Where: in a margin column, in the text, or hidden.</li>
+      <li>Where: in the text, or hidden.</li>
       <li>Style: normal, raised, bold or in a circle.</li>
       <li>Their size.</li>
       <li>A large chapter number at verse 1.</li>
@@ -445,7 +475,7 @@
 <tr><td><kbd>Ctrl+C</kbd> / <kbd>F5</kbd></td><td>Copy the current verse / Copy verses window</td></tr>
 <tr><td><kbd>Ctrl+L</kbd></td><td>Add the current verse to the verse list</td></tr>
 <tr><td><kbd>Ctrl+Shift+1</kbd>…<kbd>0</kbd> / <kbd>Ctrl+1</kbd>…<kbd>0</kbd></td><td>Set / go to a bookmark</td></tr>
-<tr><td><kbd>S M F H J I X C U N P</kbd></td><td>Show or hide Strong's, morphology, footnotes, headings, red letters, italics, cross-references, commentary marks, highlighting, notes, paragraph mode</td></tr>
+<tr><td><kbd>S M F H J I X C U N</kbd></td><td>Show or hide Strong's, morphology, footnotes, headings, red letters, italics, cross-references, commentary marks, highlighting, notes</td></tr>
 <tr><td><kbd>Ctrl+H</kbd> / <kbd>Ctrl+J</kbd></td><td>Bible views side by side / one under another</td></tr><tr><td><kbd>Ctrl+Shift+F</kbd></td><td>Book search</td></tr><tr><td><kbd>L</kbd> / <kbd>Alt+I</kbd></td><td>lemmas / intralinear view in the active view</td></tr>
 <tr><td><kbd>Ctrl +</kbd> <kbd>Ctrl −</kbd>, <kbd>Ctrl</kbd>+wheel</td><td>Text size</td></tr>
 <tr><td><kbd>F11</kbd></td><td>Reading focus</td></tr>
@@ -485,7 +515,113 @@
 <p>The bundled fonts are under the SIL Open Font License.</p>
 </section>
 
-</div><div id="nores" class="none hidden">Nothing in the guide matches.</div></main>
+</div>
+<div class="inner guidetext" id="guideP" data-for="phone">
+
+<h1>Timotheos</h1>
+<p class="lead">An offline Bible study app for your phone that reads theWord and e-Sword modules. This guide is about the phone app. Open it again from <i>Help → User guide</i>.</p>
+
+<section id="p-start"><h2>Getting started</h2>
+<ol>
+  <li>The first time, choose one of three screens. You can change it later with <i>Change screen</i> (in <i>More</i>, in <i>Help</i> or in the command bar):
+    <ul>
+      <li><b>Quiet Reader</b>: only the text and one floating capsule.</li>
+      <li><b>Clear Tabs</b>: tabs at the bottom for Read, Library, Search, Study and More.</li>
+      <li><b>Study Desk</b>: the text with drawers on the left and right and a dock at the bottom.</li>
+    </ul></li>
+  <li>Bring in your modules with <i>Modules → Import</i>: choose theWord or e-Sword files on your phone. Timotheos checks each file, keeps a copy of the ones it can use, and tells you why any file was not imported. <code>.zip</code> and <code>.twzip</code> files are unpacked.</li>
+  <li>Tap the Bible's short name (for example <b>KJV</b>) to choose another Bible.</li>
+</ol>
+</section>
+
+<section id="p-touch"><h2>Touch</h2>
+<ul>
+  <li><b>Swipe</b> the text left or right: next or previous chapter.</li>
+  <li><b>Tap a word</b>: a small pop-up with its dictionary entries. Drag it by its top bar to move it. Timotheos remembers where you put it. Throw it off the screen to close it. <i>Dictionary</i> opens the full entry, and <i>Find</i> searches for the word.</li>
+  <li><b>Hold a verse</b>: its tools (copy, highlight, underline, read aloud, compare, cross-references, commentary, note, bookmark, add to a list and more).</li>
+  <li><b>Pinch</b> with two fingers: the Bible or book text gets larger or smaller. The buttons and menus keep their size.</li>
+  <li><b>Popups go back the way they came.</b> Drag a sheet from the bottom back down, a list that dropped from the top bar back up, a page from the right back to the right, and a drawer back to its side. You don't need the ✕. A list inside a popup scrolls first; drag again once it is at its end.</li>
+  <li><b>Swipe up from the bottom edge</b>: the bottom bar (tab bar, capsule or dock) comes back after it hid while you read. A tap on the text brings it back too. The phone's own home gesture uses the lowest strip of the screen, so start just above it.</li>
+  <li>The phone's <b>Back</b> button or gesture closes the topmost popup, page or drawer first.</li>
+</ul>
+</section>
+
+<section id="p-a"><h2>Quiet Reader</h2>
+<ul>
+  <li>Tap the page to show the top strip: Back, Forward, the place, Search and More. It hides again by itself.</li>
+  <li>Tap the place (for example <i>John 3</i>) to go to a book and chapter. Tap the Bible's short name beside it: the list of your Bibles drops down from under the strip, next to the name.</li>
+  <li>The big title at the top of the chapter works the same way. Its <b>Aa</b> button opens the reading view settings.</li>
+  <li>The <b>capsule</b> at the bottom: previous and next chapter, the reference (tap it for Book → Chapter → Verse) and read aloud. While a chapter is read aloud, it becomes a player.</li>
+  <li><b>More</b>: a search box for verses, books and commands, then Library, Bible search, Book search, Commentary, My Study, Parallel views, Copy verses, Daily readings, Read aloud, Modules, Options and Help.</li>
+</ul>
+</section>
+
+<section id="p-b"><h2>Clear Tabs</h2>
+<ul>
+  <li>The top bar: Back, Forward, <b>Aa</b> (reading view) and read aloud.</li>
+  <li>Under it: the place (tap it for the list of books and chapters), the Bible chip (tap it for the list of your Bibles) and the <b>Parallel</b> button.</li>
+  <li><b>Tap a verse</b>: a small toolbar to copy, highlight, underline or write a note. <i>More</i> adds read aloud, compare, cross-references, commentary, dictionary and bookmark. Hold a verse for all its tools.</li>
+  <li>The tabs: <b>Read</b>, <b>Library</b>, <b>Search</b>, <b>Study</b> and <b>More</b>. More holds read aloud, appearance, layout, verse numbers, reading view, modules, copy verses, clipboard monitor, daily readings, fonts, all options, the guide and About.</li>
+</ul>
+</section>
+
+<section id="p-c"><h2>Study Desk</h2>
+<ul>
+  <li>The rail at the top: Back, the reference (it opens the Navigator), the Bible's short name (the list of your Bibles drops from under the rail), <b>Aa</b> and Forward.</li>
+  <li><b>From the left edge</b>: the Navigator, with books and chapters, history and bookmarks. <b>From the right edge</b>: the study drawer, with commentary, dictionary, cross-references, note and library, following the verse. Drag a drawer back to its edge to close it.</li>
+  <li><b>Pull down</b> from the top, or tap the small handle under the rail: quick settings. Push them back up to close them.</li>
+  <li>The <b>dock</b>: Books &amp; chapters, the command bar, read aloud and the study drawer. <b>Pull up</b> from the dock: the split desk with Parallel, Commentary, Library and Search.</li>
+  <li><b>Command bar</b>: type a reference, a book, a word or a command.</li>
+  <li><b>Hold a verse</b>: a quick row (copy, underline, note, read aloud, three highlight colours, more).</li>
+</ul>
+</section>
+
+<section id="p-read"><h2>Reading</h2>
+<ul>
+  <li><b>Two Bibles</b> (Parallel): one above the other, with a divider you can drag. Each one has its own bar with its name, its place and its own <b>Aa</b>.</li>
+  <li><b>Reading view</b> (<b>Aa</b>): the Bible, text size, margins, line height and text alignment (left, centre, justified, right).
+    <ul>
+      <li><i>Show in the text</i>: Strong's numbers, morphology, interlinear, footnotes, headings, words of Jesus, added words, cross-references, commentary marks, your highlights and notes, and the module's own tags (for checking a module).</li>
+      <li><i>This view</i>: font, heading font, text colour, active verse colour, the highlighter and underline pens, moving with the other view, verse numbers and About this Bible.</li>
+    </ul></li>
+  <li>The text flows in paragraphs. A new line or paragraph starts only where the Bible module puts one.</li>
+  <li><b>Read aloud</b> reads from the selected verse and goes on into the next chapter. Its settings choose a voice for each language, the speed, and whether to repeat a chapter or a range of verses. The voices are the ones your phone has.</li>
+  <li>The Apocrypha sits between Malachi and Matthew, as in the 1611 King James Bible. <i>Options → Modules → Place the Apocrypha</i> moves it after Revelation.</li>
+</ul>
+</section>
+
+<section id="p-study"><h2>Library, search and study</h2>
+<ul>
+  <li><b>Library</b>: your commentaries, dictionaries, books, devotionals and maps. Devotionals open at today's reading.</li>
+  <li><b>Search</b>: the Bibles, or every library book. Some examples:
+    <ul>
+      <li><code>faith hope</code>: both words.</li>
+      <li><code>"in the beginning"</code>: the exact phrase.</li>
+      <li><code>love*</code>: words that start with <i>love</i>.</li>
+      <li><code>G26</code> or <code>H430</code>: a Strong's number.</li>
+    </ul></li>
+  <li><b>Study</b>: your notes, highlights, bookmarks, verse lists and reading plans.</li>
+  <li><b>Copy verses</b>: pick the range and the format. Ranges can run across chapters and books.</li>
+  <li><b>Your own marks in books</b>: select words in a commentary or book and choose a colour, bold or underline. The module itself is not changed.</li>
+</ul>
+</section>
+
+<section id="p-modules"><h2>Modules</h2>
+<table><tr><th>Program</th><th>Kind</th><th>Files</th></tr>
+<tr><td>theWord</td><td>Bibles</td><td><code>.ont</code> <code>.ot</code> <code>.nt</code></td></tr>
+<tr><td>theWord</td><td>Commentaries, dictionaries, books, maps, devotionals</td><td><code>.cmt.twm</code> <code>.dct.twm</code> <code>.gbk.twm</code> <code>.map.twm</code> <code>.dev.twm</code></td></tr>
+<tr><td>e-Sword</td><td>Bibles</td><td><code>.bblx</code> <code>.bbli</code></td></tr>
+<tr><td>e-Sword</td><td>Commentaries, dictionaries, lexicons, topics, books, devotionals</td><td><code>.cmtx</code> <code>.dctx</code> <code>.lexx</code> <code>.topx</code> <code>.refx</code> <code>.devx</code> (and the <code>…i</code> forms)</td></tr></table>
+<p><b>Encrypted or locked modules are not opened.</b> Their licences forbid getting around that protection.</p>
+</section>
+
+<section id="p-about"><h2>About</h2>
+<p>Timotheos is an independent program. It is not made by, or affiliated with, the authors of theWord or e-Sword, and it contains none of their program files or modules. It reads module files that you already have.</p>
+<p>The bundled fonts are under the SIL Open Font License.</p>
+</section>
+
+</div>
+<div id="nores" class="none hidden">Nothing in the guide matches.</div></main>
 </div>
 <script src="options.js"></script>
 <script src="guide.js"></script>

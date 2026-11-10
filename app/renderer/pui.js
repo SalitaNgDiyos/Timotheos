@@ -42,6 +42,49 @@
   });
   const fromBack = tag => { const b = backs.find(x => x.tag === tag); return !b; };
 
+  /* ================================================================ drag a popup back to the edge it came from
+   * swipeAway(el, dir, close): dir is the way it goes out ('down' for a sheet from the bottom, 'up' for one dropped from the top bar,
+   * 'right' / 'left' for a page or drawer from that side). The popup follows the finger; let go far enough (or flick) and it closes,
+   * otherwise it springs back. A list inside that can still scroll that way scrolls first; sliders and text boxes are left alone. */
+  const SKIP = 'input[type="range"], textarea, select, input:not([type]), input[type="text"], input[type="search"], input[type="number"], [contenteditable="true"], .nodrag';
+  function canScroll(from, stop, dir) {
+    for (let n = from; n && n !== stop.parentNode; n = n.parentElement) {
+      if (n.nodeType !== 1) continue; const cs = getComputedStyle(n);
+      if (dir === 'down' || dir === 'up') { if (!/(auto|scroll)/.test(cs.overflowY) || n.scrollHeight <= n.clientHeight + 1) continue; if (dir === 'down' ? n.scrollTop > 0 : n.scrollTop + n.clientHeight < n.scrollHeight - 1) return true; }
+      else { if (!/(auto|scroll)/.test(cs.overflowX) || n.scrollWidth <= n.clientWidth + 1) continue; if (dir === 'right' ? n.scrollLeft > 0 : n.scrollLeft + n.clientWidth < n.scrollWidth - 1) return true; }
+      if (n === stop) break;
+    }
+    return false;
+  }
+  function swipeAway(el, dir, close, o = {}) {
+    if (!el || el._swipe) return; el._swipe = 1;
+    const vert = dir === 'down' || dir === 'up', sign = dir === 'down' || dir === 'right' ? 1 : -1;
+    let x0 = 0, y0 = 0, t0 = 0, live = false, dead = false, d = 0;
+    const set = (v, anim) => { el.style.transition = anim ? 'transform .2s ease, opacity .2s ease' : 'none'; el.style.transform = v == null ? '' : (o.base ? o.base + ' ' : '') + (vert ? `translateY(${v}px)` : `translateX(${v}px)`); };
+    el.addEventListener('touchstart', e => {
+      live = false; dead = e.touches.length !== 1 || !!(e.target.closest && e.target.closest(SKIP)) || (o.handle && !e.target.closest(o.handle));
+      if (o.edge && !dead) { const t = e.touches[0]; const r = el.getBoundingClientRect(); const near = dir === 'right' ? t.clientX - r.left : dir === 'left' ? r.right - t.clientX : dir === 'down' ? t.clientY - r.top : r.bottom - t.clientY; if (near > o.edge) dead = true; }
+      if (dead) return; const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = performance.now(); d = 0;
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (dead) return; const t = e.touches[0]; const dx = t.clientX - x0, dy = t.clientY - y0;
+      if (!live) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        const along = (vert ? dy : dx) * sign, across = Math.abs(vert ? dx : dy);
+        if (along <= 0 || across > along || canScroll(e.target, el, dir)) { dead = true; return; }
+        live = true; x0 = t.clientX; y0 = t.clientY; el.classList.add('pswiping');
+      }
+      d = Math.max(0, ((vert ? t.clientY - y0 : t.clientX - x0)) * sign); set(d * sign, false); if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+    const end = () => {
+      if (!live) return; live = false; el.classList.remove('pswiping');
+      const r = el.getBoundingClientRect(), size = vert ? r.height : r.width, v = d / Math.max(1, performance.now() - t0);
+      if (d > Math.min(110, size * 0.3) || (v > 0.55 && d > 30)) { set((size + 60) * sign, true); el.style.opacity = '0'; setTimeout(() => { close(); if (o.reset !== false) { el.style.transition = 'none'; el.style.transform = ''; el.style.opacity = ''; requestAnimationFrame(() => { el.style.transition = ''; }); } }, 190); }
+      else { set(null, true); setTimeout(() => { el.style.transition = ''; }, 220); }
+    };
+    el.addEventListener('touchend', end, { passive: true }); el.addEventListener('touchcancel', end, { passive: true });
+  }
+
   /* ================================================================ sheets */
   let sheetClose = null;
   function closeSheet(viaBack) {
@@ -55,11 +98,8 @@
     w.innerHTML = `<div class="pscrim"></div><div class="psheet"${o.height ? ` style="max-height:${o.height}"` : ''}><div class="pgrab"></div>${o.title ? `<h4 class="ph4">${o.title}<button type="button" class="pclose" aria-label="Close">${ic('close', 18)}</button></h4>` : ''}<div class="psbody">${html}</div></div>`;
     document.body.appendChild(w); sheetClose = o.onClose || null;
     w.querySelector('.pscrim').onclick = closeSheet; const x = w.querySelector('.pclose'); if (x) x.onclick = closeSheet;
-    // drag the grab bar down to close
-    const sh = w.querySelector('.psheet'); let y0 = null;
-    sh.addEventListener('touchstart', e => { if (sh.scrollTop <= 0 && e.target.closest('.pgrab, .ph4')) y0 = e.touches[0].clientY; }, { passive: true });
-    sh.addEventListener('touchmove', e => { if (y0 == null) return; const d = Math.max(0, e.touches[0].clientY - y0); sh.style.transform = `translateY(${d}px)`; }, { passive: true });
-    sh.addEventListener('touchend', e => { if (y0 == null) return; const d = e.changedTouches[0].clientY - y0; y0 = null; sh.style.transform = ''; if (d > 90) closeSheet(); }, { passive: true });
+    // drag it down to close (from the grab bar, the title, or anywhere once its list is at the top)
+    swipeAway(w.querySelector('.psheet'), 'down', () => { if (w.id === 'pSheet') closeSheet(); }, { reset: false });
     requestAnimationFrame(() => w.classList.add('in'));
     return w.querySelector('.psbody');
   }
@@ -73,6 +113,8 @@
     el.innerHTML = `<header class="pgbar">${o.back === false ? '' : `<button type="button" class="pib pgback" aria-label="Back">${ic('chevL', 24)}</button>`}<span class="pgtitle">${o.big ? '' : esc(o.title || '')}</span><span class="grow"></span>${o.actions || ''}</header><div class="pgbody">${o.big ? `<h2 class="pgbig">${esc(o.title || '')}</h2>` : ''}</div>`;
     host().appendChild(el); stack.push({ el, o }); root.classList.add('pg-open'); pushBack(() => popPage(true), 'page');
     const b = el.querySelector('.pgback'); if (b) b.onclick = () => popPage();
+    // a page came in from the right: drag it back to the right to close it (screen tabs, which are not stacked pages, stay)
+    if (o.back !== false) swipeAway(el, 'right', () => { if (stack.length && stack[stack.length - 1].el === el) popPage(); }, { reset: false });
     requestAnimationFrame(() => el.classList.add('in'));
     return { el, body: el.querySelector('.pgbody'), bar: el.querySelector('.pgbar') };
   }
@@ -278,9 +320,11 @@
       if (e.target.closest('button')) return; e.preventDefault();
       const r = el.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { bar.setPointerCapture(e.pointerId); } catch (x) { /* */ }
       el.classList.add('moving');
-      const mv = ev => place(el, ev.clientX - dx, ev.clientY - dy);
-      const up = () => { bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up); el.classList.remove('moving');
-        wpPos = { x: parseFloat(el.style.left), y: parseFloat(el.style.top) }; };
+      // it follows the finger freely (also off the screen); let go with more than half of it outside and it closes
+      const mv = ev => { el.style.left = Math.round(ev.clientX - dx) + 'px'; el.style.top = Math.round(ev.clientY - dy) + 'px'; el.classList.toggle('leaving', window.PUI_wpOff(el)); };
+      const up = () => { bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up); el.classList.remove('moving', 'leaving');
+        if (window.PUI_wpOff(el)) { wordPopClose(); return; }
+        place(el, parseFloat(el.style.left), parseFloat(el.style.top)); wpPos = { x: parseFloat(el.style.left), y: parseFloat(el.style.top) }; };
       bar.addEventListener('pointermove', mv); bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
     });
   }
@@ -627,7 +671,7 @@
 
   /* ================================================================ help, modules, options */
   function helpSheet() {
-    const s = sheet(`<div class="rows"><button type="button" class="prr" data-c="guide">${ic('book', 20)}<span>User guide</span></button><button type="button" class="prr" data-c="keys">${ic('keyboard', 20)}<span>Keyboard shortcuts</span></button><button type="button" class="prr" data-c="about">${ic('info', 20)}<span>About Timotheos</span></button></div>`, { title: 'Help' });
+    const s = sheet(`<div class="rows"><button type="button" class="prr" data-c="guide">${ic('book', 20)}<span>User guide</span></button><button type="button" class="prr" data-c="about">${ic('info', 20)}<span>About Timotheos</span></button></div>`, { title: 'Help' });
     s.onclick = e => { const b = e.target.closest('[data-c]'); if (b) { closeSheet(); runCommand(b.dataset.c); } };
   }
   function modulesSheet() {
@@ -709,6 +753,57 @@
     new MutationObserver(later).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     window.addEventListener('load', () => new MutationObserver(later).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }));
   })();
+  /* ---- popups that the old screens open (view menus, the Bible list, dialogs, Study Desk's panels) can be dragged back too ---- */
+  let lastTap = null;
+  document.addEventListener('pointerdown', e => { lastTap = e.target; }, { capture: true, passive: true });
+  // the bar a label sits in: the first fixed or sticky box around it (or the title over the text)
+  function barOf(el) {
+    for (let n = el; n && n !== document.body; n = n.parentElement) {
+      if (n.matches && n.matches('.sk-ttl, .pdiv, .pgbar')) return n;
+      const cs = getComputedStyle(n); if ((cs.position === 'fixed' || cs.position === 'sticky') && n.getBoundingClientRect().height < innerHeight * 0.3) return n;
+    }
+    return null;
+  }
+  /* the Bible list opened from a Bible label at the top: it drops from the lower edge of that bar, next to the label */
+  function dropFromBar(m, anchor) {
+    if (!anchor || !anchor.isConnected || anchor.closest('.bvmenu, #pSheet, .ppage .pgbody')) return false;
+    const ar = anchor.getBoundingClientRect(); if (!ar.width || ar.top > innerHeight * 0.6) return false;
+    const bar = barOf(anchor); const top = Math.round(bar ? Math.min(bar.getBoundingClientRect().bottom, ar.bottom + 14) : ar.bottom + 6);
+    if (innerHeight - top < 240) return false;
+    const w = Math.min(innerWidth - 16, 380), cx = ar.left + ar.width / 2;
+    m.classList.add('pdrop'); m.style.setProperty('--drop-top', top + 'px'); m.style.setProperty('--drop-left', Math.round(Math.max(8, Math.min(cx - w / 2, innerWidth - w - 8))) + 'px'); m.style.setProperty('--drop-w', w + 'px');
+    m.style.setProperty('--drop-x', Math.round(Math.max(18, Math.min(w - 18, cx - Math.max(8, Math.min(cx - w / 2, innerWidth - w - 8))))) + 'px');
+    return true;
+  }
+  function wireMenu(m) {
+    if (m._pw) return; m._pw = 1;
+    const up = m.classList.contains('biblemenu') && dropFromBar(m, lastTap);
+    if (!m.querySelector(':scope > .pgrab')) m.insertAdjacentHTML(up ? 'beforeend' : 'afterbegin', '<div class="pgrab"></div>');
+    const close = () => { m.remove(); };
+    swipeAway(m, up ? 'up' : 'down', close, { reset: false });
+    pushBack(() => { if (m.isConnected) m.remove(); }, 'menu');
+    const gone = new MutationObserver(() => { if (!m.isConnected) { gone.disconnect(); dropBack('menu'); } }); gone.observe(document.body, { childList: true });
+  }
+  window.addEventListener('load', () => {
+    new MutationObserver(ms => { if (!root.classList.contains('sk')) return; for (const mu of ms) for (const n of mu.addedNodes) if (n.nodeType === 1 && n.classList.contains('bvmenu')) wireMenu(n); }).observe(document.body, { childList: true });
+    const dlgBox = id => document.querySelector(`#${id} > .box, #${id} > div, #${id} > section`);
+    const shut = id => { const el = document.getElementById(id); if (!el || el.classList.contains('hidden')) return;
+      const b = id === 'modal' ? [...el.querySelectorAll('#modalButtons button, .btns button, button')].reverse().find(x => /cancel|close|no\b/i.test(x.textContent)) : el.querySelector(id === 'optionsDlg' ? '#optClose, .optclose, [data-close]' : '#ppClose, [data-close]');
+      if (b) b.click(); else el.classList.add('hidden'); };
+    // a dialog in the middle (a question, Copy verses…) and the full-screen ones (Options, module properties): drag down to close
+    const armDlg = id => { const el = document.getElementById(id); if (!el) return; const go = () => { if (!root.classList.contains('sk') || el.classList.contains('hidden')) return; const b = dlgBox(id); if (b) swipeAway(b, 'down', () => shut(id)); };
+      new MutationObserver(go).observe(el, { attributes: true, attributeFilter: ['class'], childList: true }); go(); };
+    ['modal', 'optionsDlg', 'propsDlg'].forEach(armDlg);
+  });
+  // the word pop-up has no edge: throw it off the screen (more than half of it outside) to close it
+  window.PUI_wpOff = el => { const r = el.getBoundingClientRect(); const vis = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0)); return vis < r.width * r.height * 0.5; };
+  // swiping up from the bottom edge brings the hidden bottom bar (tab bar, capsule, dock) back
+  (() => {
+    let y0 = null, x0 = 0;
+    document.addEventListener('touchstart', e => { y0 = null; if (!root.classList.contains('sk') || e.touches.length !== 1) return; const t = e.touches[0]; const safe = parseFloat(getComputedStyle(root).getPropertyValue('--safe-b')) || 0; if (t.clientY >= innerHeight - safe - 64) { y0 = t.clientY; x0 = t.clientX; } }, { capture: true, passive: true });
+    document.addEventListener('touchmove', e => { if (y0 == null) return; const t = e.touches[0]; if (y0 - t.clientY > 26 && Math.abs(t.clientX - x0) < y0 - t.clientY) { y0 = null; if (window.PUI_bars) window.PUI_bars(false); } }, { capture: true, passive: true });
+    document.addEventListener('touchend', () => { y0 = null; }, { capture: true, passive: true });
+  })();
   // the old dialogs (Options, a question, module properties) close with Back too
   window.addEventListener('load', () => {
     // while one of them is open, the screen's own bars (tab bar, capsule, dock, players) are hidden: the dialog has the whole screen
@@ -753,5 +848,5 @@
   window.PUI = { fitLabels, par, pushBack, dropBack, $, $$, ic, esc, flash, rn, bookOf, chapterTitle, bibleAbbr, activeBible, sheet, closeSheet, pushPage, popPage, clearPages, pageCount, borrow, decorate, decorateAll, verseOf, markVerse,
     act, HL, lastColor, setLastColor, verseSheet, formatFor, commentaryCards, commentarySheet, dictCards, wordSheet, wordPop, wordPopClose, xrefList, xrefSheet, compareSheet, bookmarkSheet,
     goSheetGrid, goSheetList, chooseBible, viewAction, readingSheet, libraryInto, library, openModule, feedPage, searchInto, search, fullPanel, studyInto, studySection,
-    highlightsPage, devotionals, studyPage, readAloudInto, readAloudPage, helpSheet, modulesSheet, ttsInfo, ttsProgress, H, wordOf, recents, counts, debounce, text };
+    highlightsPage, devotionals, studyPage, readAloudInto, readAloudPage, helpSheet, modulesSheet, ttsInfo, ttsProgress, H, wordOf, recents, counts, debounce, text, swipeAway };
 })();

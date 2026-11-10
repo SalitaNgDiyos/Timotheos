@@ -9,7 +9,7 @@
  const SK='__SK__';
  // stand-ins for what would leave the app (system dialogs, printer, clipboard, speech engine)
  const copied=[]; const origCopy=api.copyText; api.copyText=async(t,h)=>{copied.push(t);};
- const calls=[]; for(const k of ['importDialog','addFolder','exportSave','appCmd','openExternal','print','exportVsls','exportRdp']) if(api[k]){const f=api[k]; api[k]=async(...a)=>{calls.push(k+':'+(a[0]||''));return null;};}
+ const calls=[]; for(const k of ['importDialog','addFolder','exportSave','appCmd','openExternal','print','exportVsls','exportRdp']) if(api[k]){const f=api[k]; (window.__orig=window.__orig||{})[k]=f; api[k]=async(...a)=>{calls.push(k+':'+(a[0]||''));return null;};}
  window.print=()=>calls.push('window.print');
  const spoken=[]; let cur=null,tm=null;
  const mock={getVoices:()=>[{name:'Mock EN',lang:'en-US',voiceURI:'mock-en',localService:true},{name:'Mock FIL',lang:'fil-PH',voiceURI:'mock-fil',localService:true}],
@@ -346,14 +346,18 @@
  // ---------- word pop-up: drag it anywhere ----------
  await T('word popup',async()=>{
   if(SK==='b'){ PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[],el:row(1)}); } else { row(1).scrollIntoView({block:'center'}); await sl(200); const w=row(1).querySelector('.word[data-strong]')||row(1).querySelector('.word'); tapAt(w,.5,.5); }
-  await sl(1200); const pop=$('#pWordPop'); ok(!!pop,'the word pop-up opens'); if(!pop) return;
-  const bar=pop.querySelector('.pwbar'), r0=pop.getBoundingClientRect(), b=bar.getBoundingClientRect();
+  await sl(1200); let pop=$('#pWordPop'); ok(!!pop,'the word pop-up opens'); if(!pop) return;
+  let bar=pop.querySelector('.pwbar'); const r0=pop.getBoundingClientRect(), b=bar.getBoundingClientRect();
   const pe=(t,x,y)=>bar.dispatchEvent(new PointerEvent(t,{bubbles:true,cancelable:true,pointerId:7,clientX:x,clientY:y,isPrimary:true}));
   const sx=b.left+30, sy=b.top+b.height/2; pe('pointerdown',sx,sy); pe('pointermove',sx-200,sy+300); pe('pointermove',sx-150,sy+260); pe('pointerup',sx-150,sy+260); await sl(200);
   const r1=pop.getBoundingClientRect(); ok(Math.abs((r1.top-r0.top)-260)<=2||r1.bottom<=innerHeight,'drag the top bar: the pop-up moves ('+Math.round(r0.left)+','+Math.round(r0.top)+' → '+Math.round(r1.left)+','+Math.round(r1.top)+')');
   ok(r1.top!==r0.top||r1.left!==r0.left,'it is somewhere else now');
-  pe('pointerdown',r1.left+30,r1.top+10); pe('pointermove',5000,5000); pe('pointerup',5000,5000); await sl(150); const r2=pop.getBoundingClientRect();
-  ok(r2.right<=innerWidth+1&&r2.top<innerHeight-60,'it stays on the screen when dragged past the edge ('+Math.round(r2.left)+','+Math.round(r2.top)+')');
+  // dragged mostly past the edge it is thrown away (0.6.5: popups go back off the screen); a little over the edge, it is put back inside
+  pe('pointerdown',r1.left+30,r1.top+10); pe('pointermove',5000,5000); pe('pointerup',5000,5000); await sl(150);
+  ok(!$('#pWordPop'),'dragged off the screen, it closes');
+  PUI.wordPop({word:'love',strongs:['G26'],morphs:[]}); await sl(500); pop=$('#pWordPop'); bar=pop.querySelector('.pwbar'); const r1b=pop.getBoundingClientRect();
+  pe('pointerdown',r1b.left+30,r1b.top+10); pe('pointermove',r1b.left+30+innerWidth-r1b.right+30,r1b.top+10); pe('pointerup',r1b.left+30+innerWidth-r1b.right+30,r1b.top+10); await sl(150); const r2=pop.getBoundingClientRect();
+  ok(!!$('#pWordPop')&&r2.right<=innerWidth+1&&r2.top<innerHeight-60,'a little past the edge, it is put back on the screen ('+Math.round(r2.left)+','+Math.round(r2.top)+')');
   pe('pointerdown',r2.left+30,r2.top+10); pe('pointermove',60,140); pe('pointerup',60,140); await sl(150); const kept=pop.getBoundingClientRect();
   click(pop.querySelector('.pwx')); await sl(200); ok(!$('#pWordPop'),'× closes it');
   PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[]}); await sl(500); const r3=$('#pWordPop').getBoundingClientRect(); ok(Math.abs(r3.left-kept.left)<=1&&Math.abs(r3.top-kept.top)<=1,'the next word opens where it was put');
@@ -453,6 +457,68 @@
   await sl(1500); ok(effShow('columns',PUI.par.bot()),'a display chosen later for the lower Bible is kept');
   toggleViewShow(PUI.par.bot(),'columns',false); views()[PUI.par.bot()].show=Object.assign({},views()[PUI.par.bot()].show,{strongs:effShow('strongs',PUI.par.top())});
   await TimotheosSkins.parallel(false); await sl(600);
+ });
+ // ---- touch helpers: a finger put down on an element, moved, lifted
+ const fing=(el,type,x,y)=>{const e=new Event(type,{bubbles:true,cancelable:true}); const pt={clientX:x,clientY:y,identifier:7,target:el}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; el.dispatchEvent(e);};
+ const drag=async(el,dx,dy,o={})=>{const r=el.getBoundingClientRect(); const x=o.x!=null?o.x:r.left+r.width/2, y=o.y!=null?o.y:r.top+Math.min(r.height/2,60); const tg=o.on||el; fing(tg,'touchstart',x,y); for(let k=1;k<=6;k++){fing(tg,'touchmove',x+dx*k/6,y+dy*k/6); await sl(16);} fing(tg,'touchend',x+dx,y+dy); await sl(400);};
+ const pdown=el=>{let e; try{e=new PointerEvent('pointerdown',{bubbles:true});}catch(x){e=new Event('pointerdown',{bubbles:true});} el.dispatchEvent(e);};
+ await T('bible drop',async()=>{
+  await go({b:43,c:3,v:16}); await sl(500); await closeMenus();
+  let lab; if(SK==='a'){ SkinA.showChrome(true,false); await sl(250); lab=$('.a-chrome .lab em'); } else if(SK==='b') lab=$('.b-big [data-a="bible"]'); else lab=$('.c-rail [data-a="bible"]');
+  ok(!!lab&&lab.getBoundingClientRect().width>0,'the Bible label is on the top bar');
+  pdown(lab); click(lab); await sl(600);
+  const m=$('.bvmenu.biblemenu'); const lr=lab.getBoundingClientRect(); const mr=m&&m.getBoundingClientRect();
+  ok(m&&m.classList.contains('pdrop'),'tapping it drops the Bible list from the top bar');
+  ok(mr&&mr.top>=lr.bottom-2&&mr.top<=lr.bottom+40&&mr.top<innerHeight/3,'the list starts at the lower edge of the bar ('+(mr&&Math.round(mr.top))+' under '+Math.round(lr.bottom)+')');
+  ok(mr&&mr.left<=lr.right&&mr.right>=lr.left&&mr.bottom<=innerHeight,'it is beside the label and stays on the screen');
+  ok(m&&m.querySelectorAll('[data-b]').length>=2,'it lists the Bibles');
+  if(m){ await drag(m,0,-160,{y:mr.top+40}); ok(!m.isConnected,'dragged back up, it closes'); }
+  pdown(lab); click(lab); await sl(500); const m2=$('.bvmenu.biblemenu'); if(m2){ await drag(m2,0,-30,{y:m2.getBoundingClientRect().top+40}); ok(m2.isConnected,'a short drag lets it spring back'); }
+  await closeMenus(); if(SK==='a') SkinA.showChrome(false);
+ });
+ await T('swipe back',async()=>{
+  PUI.readingSheet(); await sl(400); let sh=$('#pSheet .psheet'); ok(!!sh,'a sheet is open');
+  await drag(sh,0,40); ok(!!$('#pSheet'),'a short drag down: the sheet springs back');
+  sh=$('#pSheet .psheet'); await drag(sh,0,260); await sl(200); ok(!$('#pSheet'),'dragged down from its middle: the sheet closes');
+  const n0=PUI.pageCount(); PUI.library(); await sl(500); const pg=[...$$('.ppage')].pop(); ok(PUI.pageCount()===n0+1,'a page is open');
+  await drag(pg,240,8,{x:60}); await sl(300); ok(PUI.pageCount()===n0,'dragged back to the right: the page closes');
+  PUI.wordPop({word:'love',strongs:[],morphs:[]}); await sl(500); const wp=$('#pWordPop'), bar=wp&&wp.querySelector('.pwbar');
+  if(bar){ const r=bar.getBoundingClientRect(); const pe=(t,x,y)=>{let e; try{e=new PointerEvent(t,{bubbles:true,clientX:x,clientY:y,pointerId:3});}catch(z){e=new MouseEvent(t,{bubbles:true,clientX:x,clientY:y});} bar.dispatchEvent(e);};
+   pe('pointerdown',r.left+20,r.top+10); pe('pointermove',r.left+60,r.top+40); pe('pointerup',r.left+60,r.top+40); await sl(200); ok(!!$('#pWordPop'),'the word pop-up moved a little stays open');
+   const r2=bar.getBoundingClientRect(); pe('pointerdown',r2.left+20,r2.top+10); pe('pointermove',r2.left+20+innerWidth*0.8,r2.top+10); pe('pointerup',r2.left+20+innerWidth*0.8,r2.top+10); await sl(200); ok(!$('#pWordPop'),'thrown off the screen, the word pop-up closes'); }
+  about(); await sl(500); const box=$('#modal .box'); ok(modalOpen(),'a dialog is open'); await drag(box,0,240,{y:box.getBoundingClientRect().top+30}); await sl(300); ok(!modalOpen(),'dragged down, the dialog closes');
+  if(SK==='c'){ SkinC.navDrawer(true); await sl(400); const d=$('.c-drawer.l'); await drag(d,-220,4,{y:300}); ok(!d.classList.contains('on'),'the Navigator dragged back to the left closes');
+   SkinC.quick(); await sl(400); const cc=$('.c-cc'); await drag(cc,0,-200,{y:cc.getBoundingClientRect().top+30}); ok(!cc.classList.contains('on'),'quick settings pushed back up close'); }
+ });
+ await T('bottom edge',async()=>{
+  PUI_bars(true); await sl(300); ok(R.classList.contains('sk-baroff'),'the bottom bar hides while reading');
+  const t=document.elementFromPoint(innerWidth/2,innerHeight-12)||document.body; fing(t,'touchstart',innerWidth/2,innerHeight-12); fing(t,'touchmove',innerWidth/2,innerHeight-60); fing(t,'touchend',innerWidth/2,innerHeight-60); await sl(400);
+  ok(!R.classList.contains('sk-baroff'),'a swipe up from the bottom edge brings it back');
+ });
+ await T('phone guide',async()=>{
+  if(!window.__orig||!window.__orig.appCmd){ok(false,'no appCmd');return;}
+  await window.__orig.appCmd('guide',TimotheosOptions.appearance().skin); await sl(1800);
+  const gb=$('.guidebox'); const fr=gb&&gb.querySelector('iframe'); ok(!!fr&&/phone=1/.test(fr.src),'Help › User guide opens the phone guide over the page');
+  const d=fr&&fr.contentDocument; ok(!!d&&!!d.getElementById('guideP')&&!d.getElementById('guide'),'only the phone guide is in it');
+  const txt=d?d.body.textContent:''; ok(d&&!d.querySelector('#guideP kbd')&&!/Ctrl\+|Alt\+|F11|F5|right-click|mouse/i.test(d.getElementById('guideP').textContent),'no keys, mouse or right-click in the phone guide');
+  ok(d&&/Quiet Reader/.test(txt)&&/Study Desk/.test(txt)&&/drag/i.test(txt),'it explains the phone screens and dragging popups back');
+  const nav=d.getElementById('toc'), W=fr.contentWindow; ok(W.getComputedStyle(nav).position==='absolute'&&nav.getBoundingClientRect().right<=2,'its contents list is a hidden drawer');
+  d.getElementById('tocBtn').click(); await sl(350); ok(nav.getBoundingClientRect().left>=-1&&d.body.classList.contains('tocon'),'the Contents button pulls it out');
+  const wr=d.querySelector('.wrap'); const f2=(type,x,y)=>{const e=new W.Event(type,{bubbles:true,cancelable:true}); const pt={clientX:x,clientY:y,identifier:1,target:nav}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; nav.dispatchEvent(e);};
+  f2('touchstart',200,300); for(let k=1;k<=5;k++){f2('touchmove',200-k*40,302);await sl(16);} f2('touchend',0,302); await sl(350); ok(!d.body.classList.contains('tocon'),'dragged back to the left, it hides');
+  const f3=(type,x,y)=>{const e=new W.Event(type,{bubbles:true,cancelable:true}); const pt={clientX:x,clientY:y,identifier:1,target:wr}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; wr.dispatchEvent(e);};
+  f3('touchstart',8,300); for(let k=1;k<=5;k++){f3('touchmove',8+k*40,302);await sl(16);} f3('touchend',208,302); await sl(350); ok(d.body.classList.contains('tocon'),'pulled out from the left edge, it shows');
+  d.getElementById('tocScrim').click(); await sl(300);
+  const tb=d.querySelector('.titlebar .ttl'); const f4=(type,y)=>{const e=new W.Event(type,{bubbles:true,cancelable:true}); const pt={clientX:120,clientY:y,identifier:1,target:tb}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; tb.dispatchEvent(e);};
+  f4('touchstart',20); for(let k=1;k<=5;k++){f4('touchmove',20+k*40);await sl(16);} f4('touchend',220); await sl(500); ok(!$('.guidebox'),'dragging its title bar down closes the guide');
+  await window.__orig.appCmd('guide',''); await sl(1200); ok(!!$('.guidebox'),'opened again'); history.back(); await sl(600); ok(!$('.guidebox'),'Back closes it');
+ });
+ await T('no shortcuts',async()=>{
+  PUI.helpSheet(); await sl(300); ok(!/shortcut/i.test($('#pSheet').textContent),'Help: no keyboard shortcuts'); await closeSheet();
+  if(SK==='a'){ SkinA.more(); await sl(400); ok(!/shortcut/i.test($('#pSheet').textContent),'More: no keyboard shortcuts'); await closeSheet(); }
+  if(SK==='b'){ SkinB.setTab('more'); await sl(400); ok(!/shortcut/i.test($('.ppage.root').textContent),'More tab: no keyboard shortcuts'); SkinB.setTab('read'); await sl(300); }
+  if(SK==='c'){ SkinC.palette(); await sl(400); ok(!/shortcut/i.test($('.c-pal').textContent),'Command bar: no keyboard shortcuts'); SkinC.closeAll(); await sl(200); }
+  runCommand('options'); await sl(500); const kb=$('#optionsDlg [data-o="keys"]'); ok(!kb||getComputedStyle(kb).display==='none','Options: no Shortcuts page'); await closeOptions();
  });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));
