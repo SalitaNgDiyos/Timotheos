@@ -580,7 +580,7 @@
       for (let i = 0; i < vEls.length; i++) {
         const vEl = vEls[i];
         const v = +vEl.dataset.v;
-        const hasPara = v === 1 || i % 5 === 0 || !!vEl.querySelector('.para');
+        const hasPara = v === 1 || i % 5 === 0 || !!vEl.querySelector('.pbr');
         if (!hasPara) continue;
         const clone = vEl.cloneNode(true);
         clone.querySelectorAll('sup, .vn, .vnum, .xrs, .unote, .noteicon').forEach(n => n.remove());

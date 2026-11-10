@@ -464,3 +464,16 @@ html.phone #ttsbar { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
 .hfopts { display: grid; gap: 8px; padding: 6px 10px 10px; min-width: 240px; }
 .hfopts label { display: flex; align-items: center; gap: 8px; }
 .hfopts select { flex: 1; min-width: 0; }
+
+/* paragraph breaks and indents from the module's tags; the text itself stays inline across verses */
+.pbr { display: block; height: 0; }
+.pbr.cm { margin-top: .55em; }
+.pind { display: inline-block; height: 1px; vertical-align: baseline; }
+
+/* developer: the module's own text with its tags, one verse per line */
+.bvtext[data-tags] .pv { display: block; margin: 0 0 .5em; font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace; font-size: .8em; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bvtext[data-tags] .rawtag { color: #8a6d3b; background: rgba(138,109,59,.12); border-radius: 3px; padding: 0 2px; }
+.bvtext[data-tags] .rawtag.brk { color: #b3443a; background: rgba(179,68,58,.14); font-weight: 700; }
+.bvtext[data-tags] .rawtag.word { color: #3f6f9c; background: rgba(63,111,156,.12); }
+/* the active verse keeps its background on every line, also across a paragraph break (<CM>/<CI>) inside it */
+.pv.sel, .pv.pvmark, .pv mark { -webkit-box-decoration-break: clone; box-decoration-break: clone; }

@@ -198,7 +198,7 @@
         case '<FO>': pushInline('<span class="otq">', '</span>'); continue;
         case '<FU>': pushInline('<span class="u">', '</span>'); continue;
         case '<Fi>': case '<Fr>': case '<Fo>': case '<Fu>': popInline(); continue;
-        case '<CL>': emit('<br>'); continue;
+        case '<CL>': emit('<br>' + (cur.pi ? `<span class="pind" style="width:${cur.pi}px"></span>` : '')); continue;   // a new line keeps its paragraph's left indent
         case '<CM>': newPara('cm'); continue;
         case '<CI>': newPara('ci'); continue;
         case '<v>': pushInline('<span class="variant">', '</span>'); continue;
@@ -213,10 +213,12 @@
         if (tg && !toggleOn(tg, show)) { let depth = 0; k++; while (k < toks.length && !(toks[k] === close && depth === 0)) { if (toks[k].startsWith(t.slice(0, 3))) depth++; else if (toks[k] === close) depth--; k++; } }
         continue;
       }
-      // <PI>/<PF> set the indentation of the paragraph they are in; they never start a new line by themselves (only <CM>, <CL>
-      // and <CI> do). Met after the paragraph's text has begun, the indent cannot apply any more and is left out.
-      if ((m = /^<PI(\d?)>$/.exec(t)) || t === '<Pi>') { const lvl = t === '<Pi>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (!cur.html.replace(/<[^>]*>/g, '').trim()) cur.pi = lvl ? 20 + 20 * lvl : 0; continue; }
-      if ((m = /^<PF(\d?)>$/.exec(t)) || t === '<Pf>') { const lvl = t === '<Pf>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (!cur.html.replace(/<[^>]*>/g, '').trim()) cur.pf = 20 * lvl; continue; }
+      // <PI>/<PF> (theWord guide): a left indent / first-line indent for the paragraph, written at the verse start or right
+      // after <CL>/<CM>/<CI>. They never start a new line by themselves; met anywhere else they are left out.
+      const lineStart = () => !cur.html.replace(/<[^>]*>/g, '').trim() || /<br>(<span class="pind"[^>]*><\/span>)?$/.test(cur.html);
+      const indentLine = () => { if (cur.html.replace(/<[^>]*>/g, '').trim()) cur.html = cur.html.replace(/(<br>)(<span class="pind"[^>]*><\/span>)?$/, (x, br) => br + ((cur.pi || 0) + (cur.lpf || 0) ? `<span class="pind" style="width:${(cur.pi || 0) + (cur.lpf || 0)}px"></span>` : '')); };
+      if ((m = /^<PI(\d?)>$/.exec(t)) || t === '<Pi>') { const lvl = t === '<Pi>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (lineStart()) { cur.pi = lvl ? 20 + 20 * lvl : 0; cur.lpf = 0; if (cur.html.replace(/<[^>]*>/g, '').trim()) indentLine(); else cur.spi = cur.pi; } continue; }
+      if ((m = /^<PF(\d?)>$/.exec(t)) || t === '<Pf>') { const lvl = t === '<Pf>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (lineStart()) { if (cur.html.replace(/<[^>]*>/g, '').trim()) { cur.lpf = 20 * lvl; indentLine(); } else cur.pf = 20 * lvl; } continue; }
       if (/^<a\s/i.test(t)) {
         const href = attr(t, 'href') || '';
         const { meta, nolink, target } = hrefMeta(href);
@@ -254,21 +256,19 @@
     for (let i = inline.length - 1; i >= 0; i--) emit(inline[i].close);
 
     let out = '';
+    // the text stays inline: a paragraph tag leaves an empty break mark (.pbr) and an indent leaves a spacer (.pind), so a
+    // paragraph begun inside one verse goes on through the next verses until the module's next <CM>/<CI> (or <CL>, a <br>)
     for (let idx = 0; idx < paras.length; idx++) {
       const p = paras[idx];
       const isEmpty = !p.html.replace(/<[^>]*>/g, '').trim() && !/class="(fn|xref|heading)/.test(p.html);
       if (isEmpty) {
-        if (idx === paras.length - 1 && idx > 0 && (p.cls === 'cm' || p.cls === 'ci')) {
-          out += `<span class="para ${p.cls} trail"></span>`;
-        }
+        if (idx === paras.length - 1 && idx > 0 && (p.cls === 'cm' || p.cls === 'ci')) out += `<span class="pbr ${p.cls} trail"></span>`;
         continue;
       }
-      const st = [];
-      if (p.pi) st.push(`margin-left:${p.pi}px`);
-      if (p.pf) st.push(`text-indent:${p.pf}px`);
-      const block = p !== paras[0] || p.pi || p.pf;
-      // the verse's first part carries an indent only where it starts a paragraph: the Bible view keeps it inline otherwise (see .pind)
-      out += block ? `<span class="para ${p.cls}${p === paras[0] ? ' pind' : ''}"${st.length ? ` style="${st.join(';')}"` : ''}>${p.html}</span>` : p.html;
+      if (p !== paras[0] && !/^<span class="heading/.test(p.html) && !/<span class="heading[^"]*">[^<]*<\/span>$/.test(out)) out += `<span class="pbr ${p.cls}"></span>`;
+      const ind = (p.spi || 0) + (p.pf || 0);
+      if (ind) out += `<span class="pind${p === paras[0] ? ' first' : ''}" style="width:${ind}px"></span>`;
+      out += p.html;
     }
     if (owners.length) out = out.replace(/data-owner="(\d+)"/g, (m, i) => {
       const o = owners[+i]; const a = [];

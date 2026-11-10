@@ -108,6 +108,9 @@
       ${row('columns', 'Intralinear View', sh.columns, 'Alt+I')}
       ${row('added', 'Added words in italics', sh.added, 'I')}
       ${row('xrefs', 'Cross-references', sh.xrefs, 'X')}
+      ${row('cmtLinks', 'Commentary links', sh.cmtLinks, 'C')}
+      <div class="mh">Developer</div>
+      ${row('tags', 'Show the module\'s tags', sh.tags, '')}
       <button type="button" data-t="speak">${TimotheosIcons.icon('speaker', 14)} Read this chapter aloud</button>`, m => {
       m.classList.add('mainmenu');
       m.addEventListener('change', e => {

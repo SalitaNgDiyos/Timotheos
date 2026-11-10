@@ -453,7 +453,7 @@ async function addFolder() { const l = await api.addFolder(); if (l) { state.set
 async function rescan() { const l = await api.rescan(); state.infos.clear(); await refreshModules(l); flashMsg(`Modules rescanned: ${(state.modules.bibles || []).length} Bibles, ${(state.modules.books || []).length} other modules`); }
 
 /* ---------------- Bible views ---------------- */
-const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs'];
+const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs', 'cmtLinks', 'tags'];
 const SIDE = [['strongs', 'S', "Strong's numbers (S)"], ['morph', 'M', 'Morphology codes (M)'], ['lemma', 'L', 'Lemmas (L)'], ['columns', '⫼', 'Intralinear View: each word over its original word (Alt+I)'], ['footnotes', 'F', 'Footnotes (F)'], ['headings', 'H', 'Headings (H)'],
   ['woj', 'J', 'Words of Jesus in red (J)'], ['added', 'I', 'Added words in italics (I)'], ['xrefs', 'X', 'Cross-references (X)']];
 const views = () => state.settings.views || [];
@@ -484,11 +484,15 @@ function commitRef() {
     api.syncOut({ ref: state.ref, bookName: bk ? bk.name : '' }).catch(() => {});
   }
 }
+/** developer view: the verse exactly as stored in the module, each tag shown and coloured */
+function rawTags(raw) {
+  return String(raw == null ? '' : raw).split(/(<[^>]*>)/).map(p => !p ? '' : p[0] === '<' && p.endsWith('>')
+    ? `<span class="rawtag${/^<(CM|CL|CI|PI|Pi|PF|Pf)/.test(p) ? ' brk' : /^<(W[GHT]|wt)/.test(p) ? ' word' : ''}">${esc(p)}</span>` : esc(p)).join('');
+}
 /** add html at the end of a verse's words in a paragraph view: inside its last paragraph, before a break that ends the verse */
 function verseEnd(pv, html) {
   const last = pv.lastElementChild;
-  if (last && last.classList.contains('para') && last.classList.contains('trail')) last.insertAdjacentHTML('beforebegin', html);
-  else if (last && last.classList.contains('para')) last.insertAdjacentHTML('beforeend', html);
+  if (last && last.classList.contains('pbr') && last.classList.contains('trail')) last.insertAdjacentHTML('beforebegin', html);
   else pv.insertAdjacentHTML('beforeend', html);
 }
 window.verseEnd = verseEnd;
@@ -955,12 +959,12 @@ async function renderPane(i, scroll, seq) {
     let paraOpen = true;   // the next verse begins a paragraph (chapter start, or the verse before ended with <CM>/<CI>)
     for (const row of rows) {
       const vnum = drop(row.v) || (vnPos === 'hidden' ? '' : `<sup class="vnum">${row.v === 0 ? '¶' : row.v}</sup>`);
-      let cHtml = cell(row.cells[0]);
+      let cHtml = show.tags ? rawTags(row.cells[0]) : cell(row.cells[0]);
       // an indent (<PI>/<PF>) on a verse that goes on in the same paragraph would break the line: it stays inline
-      if (!paraOpen && !/^<span class="heading/.test(cHtml)) cHtml = cHtml.replace(/^<span class="para first pind"[^>]*>/, '<span class="pind-off">');
-      paraOpen = /<span class="para (cm|ci) trail"><\/span>$/.test(cHtml);
+      if (!paraOpen && !/^<span class="heading/.test(cHtml)) cHtml = cHtml.replace(/^<span class="pind first"[^>]*><\/span>/, '');
+      paraOpen = /<span class="pbr (cm|ci) trail"><\/span>$/.test(cHtml);
       if (vnum) {
-        const mLead = /^((?:<span class="heading[^"]*">[\s\S]*?<\/span>)*)(<span class="para\b[^>]*>)?([\s\S]*)$/.exec(cHtml);
+        const mLead = /^((?:<span class="heading[^"]*">[\s\S]*?<\/span>)*)((?:<span class="pind[^"]*"[^>]*><\/span>)?)([\s\S]*)$/.exec(cHtml);
         cHtml = mLead ? `${mLead[1] || ''}${mLead[2] || ''}${vnum}${mLead[3] || ''}` : `${vnum}${cHtml}`;
       }
       html += `<span class="pv${row.v === vv ? ' sel' : ''}" data-v="${row.v}" data-col="${i}">${cHtml}</span> `;
@@ -969,13 +973,13 @@ async function renderPane(i, scroll, seq) {
   }
   const t = sec.querySelector('.bvtext'); const keep = t.scrollTop;
   t.innerHTML = html; t.dataset.layout = layout;
+  if (show.tags) t.dataset.tags = '1'; else delete t.dataset.tags;
   applyPaneLook(sec, i);
   t.classList.toggle('colmode', !!show.columns);
-  decorateFootnotes(t, v, show);
-  if (show.columns) columnWords(i, t); else if (show.lemma) showLemmas(t);
+  if (!show.tags) { decorateFootnotes(t, v, show); if (show.columns) columnWords(i, t); else if (show.lemma) showLemmas(t); }
   const first = views().findIndex((_, k) => sameMove(k, i)) === i;
   TimotheosStudy.afterRender({ root: t, col: i, id, b, c, layout, notes: first });
-  TimotheosModules.decorateChapter(b, c, t, show);
+  if (!show.tags) TimotheosModules.decorateChapter(b, c, t, show);
   if (i === state.active && window.TimotheosNav) TimotheosNav.syncAll(rows);
   if (scroll) {
     const el = t.querySelector(`[data-v="${vv}"]`);

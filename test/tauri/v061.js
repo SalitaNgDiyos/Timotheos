@@ -40,6 +40,13 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
   const sm = cbs.find(c => c.dataset.t === 'sm'); sm.checked = !sm.checked; sm.dispatchEvent(new Event('change', { bubbles: true })); await sleep(700);
   ok(effShow('strongs', 0) === sm.checked && effShow('morph', 0) === sm.checked && effShow('strongs', 1) !== sm.checked, 'Strong\'s and Morph switch together, in this view only');
   ok(!labels.some(l => /Paragraph/.test(l)) && secs().every(s => s.dataset.layout === 'para'), 'no Paragraph Mode switch: every view reads as paragraphs');
+  ok(labels.some(l => l.startsWith('Commentary links')) && labels.some(l => l.startsWith("Show the module's tags")), 'menu has Commentary links and the developer switch');
+  { const cl = [...document.querySelectorAll('.bvmenu.mainmenu input[data-t]')].find(c => c.dataset.t === 'cmtLinks'); const was = effShow('cmtLinks', 0); cl.checked = !was; cl.dispatchEvent(new Event('change', { bubbles: true })); await sleep(700);
+    ok(effShow('cmtLinks', 0) === !was && effShow('cmtLinks', 1) === was, 'Commentary links: switched for this view only'); if (!effShow('cmtLinks', 0)) ok(!secs()[0].querySelector('sup.cm'), 'no commentary links in this view');
+    toggleViewShow(0, 'cmtLinks', was); await sleep(500);
+    toggleViewShow(0, 'tags', true); await sleep(800);
+    ok(secs()[0].querySelector('.rawtag') && !secs()[1].querySelector('.rawtag'), 'the developer switch shows the module tags in this view only');
+    toggleViewShow(0, 'tags', false); await sleep(600); }
   const vn = [...document.querySelectorAll('.bvmenu.mainmenu input[data-t]')].find(c => c.dataset.t === 'vnum'); vn.checked = false; vn.dispatchEvent(new Event('change', { bubbles: true })); await sleep(500);
   ok(views()[0].vnPos === 'hidden', 'verse numbers hidden for this view');
   vn.checked = true; vn.dispatchEvent(new Event('change', { bubbles: true })); await sleep(300);

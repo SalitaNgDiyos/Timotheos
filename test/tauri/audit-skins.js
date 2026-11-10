@@ -177,7 +177,7 @@
     const li0=R.classList.contains('sk-light'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light')!==li0,'Dark switch: '+(li0?'dark':'light')+' desk'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light')===li0,'Dark switch back');
     const z0=(views()[state.active]||{}).zoom||1; const sl2=$('.c-cc [data-zoom]'); sl2.value=String(Math.round((z0+.3)*10)/10); sl2.dispatchEvent(new Event('input',{bubbles:true})); await sl(400); ok(((views()[state.active]||{}).zoom||1)>z0,'text size slider'); sl2.value=String(z0); sl2.dispatchEvent(new Event('input',{bubbles:true})); await sl(300);
     SkinC.closeAll(); await sl(300); }
-  PUI.readingSheet(); await sl(400); ok($$('#pSheet .tgl').length===11&&!$('#pSheet [data-show="paragraph"]'),'Reading view: 11 things to show or hide (no Paragraphs switch)');
+  PUI.readingSheet(); await sl(400); ok($$('#pSheet .tgl').length===12&&!$('#pSheet [data-show="paragraph"]')&&!!$('#pSheet [data-show="tags"]'),'Reading view: 12 things to show or hide (no Paragraphs switch; Module tags for developers)');
   const h=$('#pSheet .tgl[data-show="headings"]'); const was=h.classList.contains('on'); click(h); await sl(800); const now=!!Object.assign({},state.settings.show,(views()[state.active]||{}).show).headings; ok(now!==was,'Headings switch works'); click($('#pSheet .tgl[data-show="headings"]')); await sl(600);
   const z0=(views()[state.active]||{}).zoom||1; click($('#pSheet [data-z="1"]')); await sl(300); ok(((views()[state.active]||{}).zoom||1)>z0,'A+ makes the text larger'); click($('#pSheet [data-z="-1"]')); await sl(300);
   for(const a of ['font','fcolor','selbg','pen','ul','menu']){ PUI.readingSheet(); await sl(300); click($(`#pSheet [data-x="${a}"]`)); await sl(500); ok(menuOpen(),'view: '+a+' menu opens as a sheet'); await closeMenus(); }
@@ -387,15 +387,23 @@
   ok(!!$('.bv .paraview')&&!$('.bv table.chapter'),'the Bible reads as paragraphs');
   PUI.readingSheet(); await sl(500); ok(!!sheet()&&!$('#pSheet [data-show="paragraph"]'),'the text format sheet has no Paragraphs switch');
   const R0=s=>TWRender.render(s,{rules:[]},{headings:true,footnotes:true,woj:true,added:true},{fn:{n:0}});
-  const blocks=h=>{ const d=document.createElement('div'); d.innerHTML=h; return [...d.querySelectorAll('.para')].filter(e=>!e.classList.contains('pind')).length; };
-  ok(blocks(R0('He said, <PI1>"Come."'))===0&&!/class="para/.test(R0('He said, <PI1>"Come."')),'<PI> inside a verse does not start a new line');
+  const blocks=h=>{ const d=document.createElement('div'); d.innerHTML=h; return d.querySelectorAll('.pbr').length+d.querySelectorAll('.para').length; };
+  ok(blocks(R0('He said, <PI1>"Come."'))===0&&!/pind/.test(R0('He said, <PI1>"Come."')),'<PI> inside a verse does not start a new line');
   ok(blocks(R0('one <PF1>two'))===0,'<PF> inside a verse does not start a new line');
   ok(/<br>/.test(R0('one<CL>two')),'<CL> breaks the line');
   ok(blocks(R0('one<CM>two'))===1,'<CM> starts a new paragraph');
   ok(blocks(R0('one<CI>two'))===1,'<CI> starts a new line');
-  const pi=R0('<PI1>Psalm line'); ok(/class="para first pind" style="margin-left:40px"/.test(pi),'<PI> at the start of a verse keeps its indent ('+pi.slice(0,60)+')');
+  const pi=R0('<PI1>Psalm line'); ok(/class="pind first" style="width:40px"/.test(pi),'<PI> at the start of a verse keeps its indent ('+pi.slice(0,60)+')');
+  ok(/<br><span class="pind" style="width:60px"><\/span>two/.test(R0('one<CL><PI2>two'))&&blocks(R0('one<CL><PI2>two'))===0,'<PI> right after <CL> indents the new line, no extra break');
+  ok(!/<span class="para/.test(R0('one<CM>two'))&&/one<span class="pbr cm"><\/span>two/.test(R0('one<CM>two')),'a paragraph begun inside a verse is not closed at the verse end (the next verse goes on in it)');
   // a verse that goes on in the same paragraph keeps its indent inline (no line break)
-  const pvs=$$('.bv.active .pv[data-v]'); ok(pvs.every(p=>!p.querySelector(':scope > .para.pind')||p.previousElementSibling==null||p.previousElementSibling.querySelector('.para.trail')),'an indented verse breaks the line only where a paragraph starts');
+  const pvs=$$('.bv.active .pv[data-v]'); ok(pvs.every(p=>!p.querySelector('.pind.first')||p.previousElementSibling==null||p.previousElementSibling.querySelector('.pbr.trail')),'an indented verse is indented only where a paragraph starts');
+  ok(!$$('.bv .pv .para').length,'no verse closes its paragraph by itself');
+  { const t0=$(`.bv[data-i="${state.active}"] .pcol`); const sp=document.createElement('span'); sp.className='pv sel'; sp.dataset.v='999'; sp.innerHTML=R0('Before the break,<CM><PF>"after the break and on to the end of the verse."'); t0.appendChild(sp); await sl(50);
+   const bg=getComputedStyle(sp).backgroundColor, inner=[...sp.querySelectorAll('*')].filter(e=>getComputedStyle(e).display==='block'&&e.textContent.trim()); ok(bg!=='rgba(0, 0, 0, 0)'&&inner.length===0&&sp.getClientRects().length>=2,'the active verse background goes on after a <CM> inside the verse ('+sp.getClientRects().length+' line pieces)'); sp.remove(); }
+  // developer: the module's tags
+  setShow('tags',true); await sl(900); const tt=$(`.bv[data-i="${state.active}"] .bvtext`); ok(tt.dataset.tags==='1'&&$$(`.bv[data-i="${state.active}"] .rawtag`).length>0&&getComputedStyle($(`.bv[data-i="${state.active}"] .pv`)).display==='block','Module tags on: each verse as stored, with its tags shown');
+  setShow('tags',false); await sl(900); ok(!tt.dataset.tags&&!$$(`.bv[data-i="${state.active}"] .rawtag`).length,'Module tags off: the normal text again');
   // heading font for this view
   click($(`#pSheet [data-x="hfont"]`)); await sl(700);
   const m=$('.bvmenu .hfopts'); ok(!!m,'Heading font: the headings options of this view open');
