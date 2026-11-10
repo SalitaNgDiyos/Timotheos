@@ -1,0 +1,416 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later
+     Copyright (C) 2026 Edmund P. Valdez -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; script-src 'self'">
+<title>Timotheos</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="workbench.css">
+<link rel="stylesheet" href="pui.css">
+<link rel="stylesheet" href="skins.css">
+</head>
+<body>
+<div id="titlebar" class="titlebar">
+  <div class="brand" title="Timotheos"><span class="logo" data-icon="bible" data-icon-size="15"></span><span class="tbname">Timotheos</span></div>
+  <nav id="tbMenus" class="tbmenus" aria-label="Menu"></nav>
+  <div class="tbdrag"></div>
+</div>
+<header class="toolbar" id="toolbar">
+  <form id="refForm" class="ref">
+    <span data-icon="search" data-icon-size="15" class="refic"></span>
+    <input id="refInput" type="text" list="refBooks" placeholder="Go to… (e.g. Exodus 1:13, Jn 3:16, Tob 1)" spellcheck="false" autocomplete="off" aria-label="Reference: book, chapter and verse" title="The place you are reading. Click, type another (Exodus 1:13, Jn 3:16, Tob 1) and press Enter (Ctrl+G)">
+    <datalist id="refBooks"></datalist>
+  </form>
+  <button id="prevBtn" class="tb" data-icon="prev" title="Previous chapter (←)" aria-label="Previous chapter"></button>
+  <button id="nextBtn" class="tb" data-icon="next" title="Next chapter (→)" aria-label="Next chapter"></button>
+  <span class="tsep"></span>
+  <span class="grow"></span>
+  <button id="importBtn2" class="tb" data-icon="import" title="Import theWord or e-Sword modules (Ctrl+I)"><span class="lbl">Import</span></button>
+  <div class="menuwrap">
+    <button id="panelsBtn" class="tb" data-icon="layout" title="Show or hide panels, choose a layout"><span class="lbl">Panels</span></button>
+    <div id="panelsMenu" class="menu right hidden"></div>
+  </div>
+  <div class="menuwrap">
+    <button id="skinBtn" class="tb" data-icon="palette" title="Skin"><span class="lbl">Skin</span></button>
+    <div id="skinMenu" class="menu right hidden"></div>
+  </div>
+  <button id="optionsBtn" class="tb" data-icon="gear" title="Options: fonts, colours, verse numbers, skins, shortcuts (Ctrl+,)"><span class="lbl">Options</span></button>
+</header>
+
+<div id="tbLegacy" hidden>
+  <button id="backBtn" class="tb" data-icon="back" title="Back (Alt+←)" aria-label="Back" disabled></button>
+  <button id="fwdBtn" class="tb" data-icon="forward" title="Forward (Alt+→)" aria-label="Forward" disabled></button>
+  <div class="menuwrap">
+    <button id="viewBtn" class="tb" data-icon="eye" title="What to show in the Bible text"><span class="lbl">View</span></button>
+    <div id="viewMenu" class="menu hidden">
+      <div class="mh">Bible text (active view)</div>
+      <label><input type="checkbox" data-show="strongs"> Strong's numbers <kbd>S</kbd></label>
+      <label><input type="checkbox" data-show="morph"> Morphology codes <kbd>M</kbd></label>
+      <label><input type="checkbox" data-show="lemma"> Lemmas <kbd>L</kbd></label>
+      <label><input type="checkbox" data-show="columns"> Intralinear View <kbd>Alt+I</kbd></label>
+      <label><input type="checkbox" data-show="footnotes"> Footnotes <kbd>F</kbd></label>
+      <label><input type="checkbox" data-show="headings"> Headings <kbd>H</kbd></label>
+      <label><input type="checkbox" data-show="woj"> Words of Jesus in red <kbd>J</kbd></label>
+      <label><input type="checkbox" data-show="added"> Added words in italics <kbd>I</kbd></label>
+      <label><input type="checkbox" data-show="xrefs"> Cross-references <kbd>X</kbd></label>
+      <label><input type="checkbox" data-show="cmtLinks"> Commentary marks <kbd>C</kbd></label>
+      <label><input type="checkbox" data-show="highlights"> My highlighting <kbd>U</kbd></label>
+      <label><input type="checkbox" data-show="notes"> My notes under verses <kbd>N</kbd></label>
+      <div class="mh">Text size (active view)</div>
+      <div class="row tight"><button id="fontDown">A−</button><button id="fontUp">A+</button></div>
+      <div class="mh">Toolbar items</div>
+      <label><input type="checkbox" data-tbshow="tbBackFwd" checked> Back / Forward (← →)</label>
+      <label><input type="checkbox" data-tbshow="tbGoto" checked> Go-to reference box</label>
+      <label><input type="checkbox" data-tbshow="tbPrevNext" checked> Previous / Next chapter (&lt; &gt;)</label>
+      <label><input type="checkbox" data-tbshow="tbSearch" checked> Search button</label>
+      <label><input type="checkbox" data-tbshow="tbCopy" checked> Copy button</label>
+      <label><input type="checkbox" data-tbshow="tbPrint" checked> Print button</label>
+    </div>
+  </div>
+  <button id="searchBtn" class="tb" data-icon="search" title="Search (Ctrl+F)"><span class="lbl">Search</span></button>
+  <button id="copyBtn" class="tb" data-icon="copy" title="Copy verses (F5)"><span class="lbl">Copy</span></button>
+  <button id="printBtn" class="tb" data-icon="print" title="Print the chapter (Ctrl+P)"><span class="lbl">Print</span></button>
+</div>
+<main id="center">
+      <header class="ccap">
+        <span class="ccapic" data-icon="bible" data-icon-size="16"></span>
+        <div id="chapterHead" class="chapter-head"></div>
+      </header>
+      <div id="navStripBar" class="navstrip">
+        <div class="nsrow1">
+          <span class="nslbl" title="Chapters in the active book (click any number to jump)">Ch</span>
+          <div id="stripChaps" class="nschaps" aria-label="Chapters in this book"></div>
+          <span class="nsep"></span>
+          <button id="navHeadingsBtn" class="nsbtn" title="Jump to a section heading / pericope in this chapter"><span data-icon="outline" data-icon-size="13"></span><span id="navHeadingsLbl">Headings</span> ▾</button>
+          <button id="toggleVerseStripBtn" class="nsbtn on" title="Show or hide the Verse Minimap bar"><span data-icon="pin" data-icon-size="12"></span><span>Verses</span></button>
+          <div id="stripBookmarks" class="nsbms" title="Quick Bookmarks 1–0 (Click: go to or set · Right-click or Ctrl+click: set to current verse)"></div>
+        </div>
+        <div id="stripVersesRow" class="nsrow2">
+          <span class="nslbl" title="Verses in this chapter (● = personal note, ◆ = highlight)">Vs</span>
+          <div id="stripVerses" class="nsverses" aria-label="Verses in this chapter"></div>
+        </div>
+      </div>
+      <div id="navPop" class="navpop hidden" role="dialog" aria-label="Choose Book, Chapter and Verse"></div>
+</main>
+<div id="workbench">
+  <div id="grid"></div>
+  <div id="empty" class="empty hidden">
+    <h2>No Bible modules yet</h2>
+    <p>Click <b>Import</b> (or drop module files onto this window) to bring in theWord or e-Sword modules, or open <b>Options → Modules</b> to read them from a folder where they already are.</p>
+  </div>
+</div>
+<footer id="statusbar" class="statusbar"><span id="stRef"></span><span class="grow"></span><span id="stMods"></span></footer>
+
+<!-- the panels; the dock moves them into place -->
+<div id="panelStore" hidden>
+  <div class="tab pane" id="pane-tree">
+    <div id="treeToolbar" class="treetb">
+      <input id="treeFilter" type="search" placeholder="Find book or ref (e.g. Gen, Tob, Jn 3:16)…" spellcheck="false" autocomplete="off">
+      <div class="treemodes" title="Switch between expandable Canon Tree and compact Book Tile Matrix">
+        <button id="treeModeList" class="on" data-tmode="tree" title="List Tree with Canon Division Icons &amp; Inline Chapter/Verse Grids">☰ Tree</button>
+        <button id="treeModeGrid" data-tmode="tiles" title="Compact 66/88-Book Tile Matrix with Pinned Chapter &amp; Verse Grids">⊞ Tiles</button>
+      </div>
+    </div>
+    <div id="bibleTree" class="tree"></div>
+  </div>
+  <div class="tab pane" id="pane-library">
+    <ul id="libList" class="kindlist"></ul>
+    <div class="row">
+      <button id="importBtn" class="primary" title="Import theWord or e-Sword module files (Ctrl+I). You can also drop files onto the window.">Import modules…</button>
+      <button id="newUserModBtn" title="Create your own commentary, dictionary or book module">New user module…</button>
+    </div>
+  </div>
+  <div class="tab cmttab" id="tab-cmt">
+    <div id="cmtBar" class="cmtbar">
+      <span id="cmtHead" class="cmthead"></span>
+      <button id="cmtDropBtn" class="cdrop" type="button" title="Choose commentary (click to open list · mouse wheel steps through commentaries with notes)">
+        <span class="cdrop-ic" data-icon="book" data-icon-size="13"></span>
+        <span id="cmtDropLbl" class="cdrop-lbl">—</span>
+        <span id="cmtDropMeta" class="cdrop-meta"></span>
+        <span class="cdrop-caret">▾</span>
+      </button>
+      <div class="csteps" title="Previous / next commentary with a note on this verse">
+        <button id="cmtPrevBtn" class="lbtn cstep" type="button" data-icon="prev" data-icon-size="14" title="Previous commentary with a note" aria-label="Previous commentary"></button>
+        <button id="cmtNextBtn" class="lbtn cstep" type="button" data-icon="next" data-icon-size="14" title="Next commentary with a note" aria-label="Next commentary"></button>
+      </div>
+      <span class="grow"></span>
+      <div id="cmtViewSw" class="cviewsw" title="Switch between reading a single commentary or all matching commentaries stacked on one page">
+        <button id="cmtModeSingle" type="button" data-cmode="single" class="on" title="Single Commentary View">Single</button>
+        <button id="cmtModeAll" type="button" data-cmode="all" title="All Hits Feed: stack all commentaries that have a note on this verse">All Hits</button>
+      </div>
+    </div>
+    <div id="cmtTabs" class="chips hidden"></div>
+    <div id="cmtBody" class="lookup cmtbody"></div>
+  </div>
+  <div class="tab libtab" id="tab-lib">
+    <div class="libbar">
+      <button id="libSideBtn" class="lbtn on" data-icon="sidebar" data-icon-size="16" title="Show or hide the list of topics" aria-label="Topic list"></button>
+      <select id="libMod" title="Module"></select>
+      <span class="lsep"></span>
+      <button id="libBack" class="lbtn" data-icon="back" data-icon-size="16" title="Back to the topic you read before" aria-label="Back"></button>
+      <button id="libPrev" class="lbtn" data-icon="prev" data-icon-size="16" title="Previous topic in the list (Alt+←)" aria-label="Previous topic"></button>
+      <button id="libNext" class="lbtn" data-icon="next" data-icon-size="16" title="Next topic in the list (Alt+→)" aria-label="Next topic"></button>
+      <button id="libToday" class="lbtn hidden" data-icon="study" data-icon-size="16" title="Today's reading"></button>
+      <span id="libUserBar" class="libuser hidden">
+        <span class="lsep"></span>
+        <button id="libAddTopic" class="lbtn" data-icon="plus" data-icon-size="15" title="New topic"></button>
+        <button id="libAddSub" class="lbtn" title="New child sub-topic" style="font-size:11px;width:auto;padding:0 5px">+Sub</button>
+        <button id="libEditTopic" class="lbtn" data-icon="edit" data-icon-size="15" title="Edit this topic"></button>
+        <button id="libRenameTopic" class="lbtn" data-icon="type" data-icon-size="15" title="Rename this topic"></button>
+        <button id="libMoveUp" class="lbtn" title="Move topic up">↑</button>
+        <button id="libMoveDown" class="lbtn" title="Move topic down">↓</button>
+        <button id="libDelTopic" class="lbtn" data-icon="close" data-icon-size="14" title="Delete this topic"></button>
+      </span>
+      <span class="grow"></span>
+      <button id="libSpeak" class="lbtn" data-icon="speaker" data-icon-size="16" title="Read this topic aloud (again: stop)" aria-label="Read aloud"></button>
+      <button id="libPrint" class="lbtn" data-icon="print" data-icon-size="16" title="Print this topic" aria-label="Print"></button>
+      <button id="libExport" class="lbtn" data-icon="import" data-icon-size="16" title="Export topics (.docx, .rtf, .html, .txt)" aria-label="Export"></button>
+      <button id="libInfo" class="lbtn" data-icon="info" data-icon-size="16" title="Properties of this module (view and edit)" aria-label="Properties"></button>
+      <button id="libCompress" class="lbtn" data-icon="compress" data-icon-size="16" title="Make this module file smaller" aria-label="Compress"></button>
+    </div>
+    <div class="libfeedwrap" id="libFeedWrap">
+      <div class="lkpbar">
+        <button id="lkpBack" class="lbtn" data-icon="back" data-icon-size="15" title="Previous lookup" aria-label="Previous lookup" disabled></button>
+        <button id="lkpFwd" class="lbtn" data-icon="forward" data-icon-size="15" title="Next lookup" aria-label="Next lookup" disabled></button>
+        <span id="lkpTitle" class="lkptitle"></span>
+        <span class="grow"></span>
+        <button id="lkpClose" class="nplink" type="button" title="Back to the module you were reading">Back to the library</button>
+      </div>
+      <div id="libFeed" class="lookup cmtbody" aria-live="polite"></div>
+    </div>
+    <div class="libsplit" id="libSplit">
+      <div class="libside" id="libSide">
+        <input id="libFilter" type="search" placeholder="Find a topic…" spellcheck="false">
+        <ul id="libTopics" class="topics" tabindex="0" aria-label="Topics"></ul>
+        <div class="libcount small" id="libCount"></div>
+      </div>
+      <div class="lsplitter" id="libSplitter" title="Drag to make the topic list wider or narrower"></div>
+      <div id="libBody" class="lookup"><p class="hint">Choose a commentary, dictionary or book above.</p></div>
+    </div>
+  </div>
+  <div class="tab searchtab" id="tab-search">
+    <div class="searchcols">
+    <form id="searchForm" class="search">
+      <div class="row tight"><input id="searchInput" type="search" placeholder="e.g. faith hope · &quot;a phrase&quot; · G26 · love* · m/ V-AAI*" spellcheck="false" autocomplete="off"><button type="submit" class="primary">Find</button><button type="button" id="searchHistBtn" class="icon" title="Earlier searches">⟲</button></div>
+      <div id="searchExplain" class="explain"></div>
+      <div class="row tight"><select id="searchBibles" title="Which Bibles to search"><option value="open">Bibles open in the view</option><option value="first">First Bible only</option><option value="all">All Bibles</option><option value="chosen">The Bibles I tick below</option></select></div>
+      <details class="opts bpick" id="searchPick"><summary>Choose the Bibles to search <span id="searchPickCount" class="small"></span></summary>
+        <div class="row tight"><input id="searchPickFind" type="search" placeholder="Find a Bible…" spellcheck="false"><button type="button" id="spAll" class="icon" title="Tick every Bible">All</button><button type="button" id="spNone" class="icon" title="Untick every Bible">None</button><button type="button" id="spOpen" class="icon" title="Tick the Bibles open in the views">Open</button></div>
+        <div id="searchBibleList" class="bpicklist"></div>
+      </details>
+      <div class="row tight"><select id="searchScope" title="Search range"></select><button type="button" id="rangeBtn" class="icon" title="Define a custom range">…</button></div>
+      <details class="opts"><summary>Options</summary>
+        <label title="Words separated by a space must all occur (AND) or any may occur (OR)">Space between words means <select id="optDefault"><option value="and">AND</option><option value="or">OR</option></select></label>
+        <label><input type="checkbox" id="optWhole"> Whole words only</label>
+        <label><input type="checkbox" id="optCase"> Match case</label>
+        <label><input type="checkbox" id="optDiac"> Match accents and diacritics</label>
+        <label><input type="checkbox" id="optRegex"> Regular expression</label>
+        <label>NEAR means within <input id="optNearW" type="number" min="1" max="200" value="30" class="num"> words / <input id="optNearV" type="number" min="1" max="50" value="3" class="num"> verses</label>
+        <label><input type="checkbox" id="optNearAcross"> Allow NEARv across chapter boundaries</label>
+        <p class="small">Operators: AND (&amp;) · OR (|) · NOT (~) · XOR (^) · NXT (+) · NEARw (@n) · NEARv (#n) · TR (&gt;) · m/ · ( ) · "phrase" · {words in a row} · * and ? wildcards · G/H Strong's numbers.</p>
+      </details>
+    </form>
+    <div class="searchout">
+      <div id="searchStatus" class="status"></div>
+      <div id="searchTabs" class="seg hidden"><button data-st="res" class="active">Verses</button><button data-st="books">By book</button><button data-st="stats">Statistics</button><span class="grow"></span><button id="searchToList" title="Add all found verses to the current verse list">+ List</button><button id="searchCopy" title="Copy all found verses">Copy</button></div>
+      <ol id="searchResults" class="results"></ol>
+      <div id="searchBooks" class="hidden"></div>
+      <div id="searchStats" class="hidden"></div>
+    </div>
+    </div>
+  </div>
+  <div class="tab searchtab" id="tab-bsearch">
+    <form id="bsForm" class="search bsform">
+      <div class="row tight"><input id="bsInput" type="search" placeholder='Words, "phrases", OR |, NOT ~, @5, creat*…' spellcheck="false" autocomplete="off"><button type="submit" id="bsFind" class="primary">Find</button></div>
+      <div class="row tight"><select id="bsScope" title="Which modules to search"></select><button type="button" id="bsSets" class="icon" title="Module sets: choose modules and save them under a name">Sets…</button></div>
+      <div class="row tight bsopts"><label><input type="checkbox" id="bsWhole"> Whole words</label><label><input type="checkbox" id="bsAccents"> Match accents</label><label><input type="checkbox" id="bsRegex"> Regex</label></div>
+    </form>
+    <div id="bsStatus" class="status"></div>
+    <ol id="bsResults" class="bsresults"></ol>
+  </div>
+  <div class="tab" id="tab-study">
+    <div class="seg" id="studySeg"><button data-s="lists" class="active">Verse lists</button><button data-s="notes">Notes</button><button data-s="marks">Bookmarks</button><button data-s="plans">Reading</button></div>
+    <div id="studyBody"></div>
+  </div>
+</div>
+
+<!-- Options window -->
+<div id="optionsDlg" class="modal hidden" role="dialog" aria-labelledby="optTitle">
+  <div class="box optbox">
+    <header class="opthead"><span data-icon="gear"></span><h3 id="optTitle">Options</h3><span class="grow"></span><button id="optClose" class="tb" data-icon="close" aria-label="Close"></button></header>
+    <div class="optmain">
+      <nav class="optnav" id="optNav">
+        <button data-o="look" class="on" data-icon="palette">Skin &amp; colours</button>
+        <button data-o="fonts" data-icon="type">Fonts</button>
+        <button data-o="vnum" data-icon="hash">Verse numbers</button>
+        <button data-o="layout" data-icon="layout">Layout &amp; toolbar</button>
+        <button data-o="speech" data-icon="speaker">Read aloud</button>
+        <button data-o="mods" data-icon="puzzle">Modules</button>
+        <button data-o="keys" data-icon="keyboard">Shortcuts</button>
+      </nav>
+      <div class="optpages">
+        <section class="optpage" data-o="look">
+          <h4>Language / Wika</h4>
+          <div class="orow">
+            <span class="olbl">Interface language</span>
+            <select id="uiLang">
+              <option value="en">English</option>
+              <option value="fil">Tagalog / Filipino</option>
+            </select>
+          </div>
+          <h4>Skin</h4>
+          <div id="skinGrid" class="skingrid"></div>
+          <div class="orow fxrow"><button type="button" id="fxImportBtn" class="btn">Import themes from my Firefox…</button><span class="small">Copies the themes installed in your Firefox on this computer.</span></div>
+          <h4>Bible text background</h4>
+          <div class="orow"><label><input type="radio" name="bgMode" value="skin"> Skin colour</label><label><input type="radio" name="bgMode" value="color"> My colour <input type="color" id="bgColor"></label></div>
+          <div class="orow"><span class="olbl">Texture</span><select id="bgTexture"><option value="none">None</option><option value="paper">Paper</option><option value="linen">Linen</option><option value="vignette">Soft edges</option></select></div>
+          <h4>Colours in the text</h4>
+          <div class="ogrid">
+            <label>Words of Jesus <span><input type="color" id="colWoj"> <button class="link0" data-reset="woj">skin</button></span></label>
+            <label>Verse numbers <span><input type="color" id="colVnum"> <button class="link0" data-reset="vnum">skin</button></span></label>
+            <label>Strong's numbers <span><input type="color" id="colStrong"> <button class="link0" data-reset="strong">skin</button></span></label>
+            <label>Selected verse <span><input type="color" id="colSel"> <button class="link0" data-reset="sel">skin</button></span></label>
+          </div>
+          <div class="orow"><label><input type="checkbox" id="optCapColor"> Coloured panel captions</label></div>
+          <div class="orow"><span class="olbl">Panels have their own fonts and colours (palette button in each panel's caption)</span><button id="resetPanelSkins">Reset all panels</button></div>
+        </section>
+        <section class="optpage hidden" data-o="fonts">
+          <h4>Bible text</h4>
+          <div class="ogrid">
+            <label>Font <select id="fontText"></select></label>
+            <label>Size <span><input type="range" id="fontSize" min="11" max="34" step="1"> <b id="fontSizeV"></b></span></label>
+            <label>Line spacing <span><input type="range" id="lineH" min="1.2" max="2.4" step="0.05"> <b id="lineHV"></b></span></label>
+            <label>Text width <select id="textWidth"><option value="0">Fill the panel</option><option value="680">Narrow (about 70 letters)</option><option value="860">Medium</option><option value="1100">Wide</option></select></label>
+          </div>
+          <div class="orow"><label><input type="checkbox" id="useModFont"> Use a Bible module's own font when it names one</label></div>
+          <h4>Greek and Hebrew</h4>
+          <div class="ogrid">
+            <label>Greek font <select id="fontGreek"></select></label>
+            <label>Hebrew font <select id="fontHebrew"></select></label>
+          </div>
+          <h4>Menus and panels</h4>
+          <div class="ogrid">
+            <label>Font <select id="fontUi"></select></label>
+            <label>Size <span><input type="range" id="uiSize" min="11" max="22" step="0.5"> <b id="uiSizeV"></b></span></label>
+            <label>Study panels text size <span><input type="range" id="paneSize" min="11" max="24" step="0.5"> <b id="paneSizeV"></b></span></label>
+          </div>
+          <p class="small" id="fontNote"></p>
+        </section>
+        <section class="optpage hidden" data-o="vnum">
+          <h4>Verse numbers</h4>
+          <div class="ocol">
+            <label><input type="radio" name="vnPos" value="inline"> In the text, before each verse</label>
+            <label><input type="radio" name="vnPos" value="hidden"> Hidden (click the margin to select a verse)</label>
+          </div>
+          <div class="ogrid">
+            <label>Style <select id="vnStyle"><option value="normal">Normal</option><option value="sup">Raised (superscript)</option><option value="bold">Bold</option><option value="circle">In a circle</option></select></label>
+            <label>Size <span><input type="range" id="vnSize" min="0.5" max="1.2" step="0.05"> <b id="vnSizeV"></b></span></label>
+            <label>Chapter number <select id="chapNum"><option value="none">Only in the caption</option><option value="drop">Large at verse 1</option></select></label>
+          </div>
+        </section>
+        <section class="optpage hidden" data-o="layout">
+          <h4>Panel layout</h4>
+          <p class="small">Drag a panel by its caption or tab. Drop it on the arrows that appear to dock it left, right, below, or as a tab; drop it anywhere else to float it as a window. Double-click a caption to float it or dock it again.</p>
+          <div id="layoutPresets" class="ocol"></div>
+          <div class="orow"><button id="saveLayoutBtn">Save current layout as…</button></div>
+          <ul id="savedLayouts" class="savedl"></ul>
+          <h4>Toolbar</h4>
+          <div class="ocol">
+            <label><input type="radio" name="tbMode" value="both"> Icons and words</label>
+            <label><input type="radio" name="tbMode" value="icons"> Icons only</label>
+          </div>
+          <div class="orow"><span class="olbl">Spacing</span><select id="density"><option value="comfy">Comfortable</option><option value="compact">Compact</option></select></div>
+          <div class="orow"><label><input type="checkbox" id="showStatus"> Show the status bar</label></div>
+          <div class="orow"><label title="The active verse is lit and kept in the vertical middle of every Bible view that moves together; scrolling a view makes the verse in its middle the active verse"><input type="checkbox" id="centerActive"> Keep the active verse in the middle of the Bible views</label></div>
+        </section>
+        <section class="optpage hidden" data-o="mods">
+          <h4>Apocrypha and the order of the books</h4>
+          <label class="field">Place the Apocrypha
+            <select id="apPlacement">
+              <option value="1611" title="Between Malachi and Matthew, in the order of the 1611 King James Bible">With the OT (1611 KJV order)</option>
+              <option value="catholic" title="Roman Catholic / Western Deuterocanonical 46-book Old Testament order">Deuterocanonical OT (Catholic 46-book OT order)</option>
+              <option value="nets">Septuagint order (NETS): all books in one Old Testament</option>
+              <option value="orthodox">Greek Orthodox Old Testament order</option>
+              <option value="end">After Revelation</option>
+            </select>
+          </label>
+          <h4>Dictionaries</h4>
+          <label class="field">Greek Strong's <select id="greekDict"></select></label>
+          <label class="field">Hebrew Strong's <select id="hebrewDict"></select></label>
+          <label class="field">Morphology <select id="morphDict"></select></label>
+          <h4>Verse links (popups and previews)</h4>
+          <label class="field">Old Testament verses are shown in <select id="popupOT"></select></label>
+          <label class="field">New Testament verses are shown in <select id="popupNT"></select></label>
+          <h4>Installed modules <span class="small" id="modMgrCount"></span></h4>
+          <p class="small">Every module Timotheos found. Untick one to take it out of all lists (Bibles, commentaries, dictionaries, lookups, searches) – the file stays. <span class="d-desk"><b>Delete file…</b> moves the file to the Recycle Bin.</span><span class="d-mob"><b>Uninstall</b> deletes the module file from this device.</span></p>
+          <input id="modFilter" type="search" placeholder="Find a module…" style="width:100%;margin:2px 0 6px" spellcheck="false">
+          <div id="modMgr" class="modmgr"></div>
+          <h4>Module folders</h4>
+          <p class="small">Timotheos also reads modules where they already are, e.g. theWord's or e-Sword's own folder.</p>
+          <ul id="folderList" class="folders"></ul>
+          <div class="row"><button id="addFolderBtn" data-icon="folder" data-icon-size="15" title="Read modules where they are (e.g. theWord's or e-Sword's own folder)">Add folder…</button><button id="rescanBtn" data-icon="refresh" data-icon-size="15">Rescan</button></div>
+        </section>
+        <section class="optpage hidden" data-o="speech"><div id="ttsOpt"></div></section>
+        <section class="optpage hidden" data-o="keys">
+          <h4>Keyboard shortcuts</h4>
+          <p class="small">Click any shortcut button below and press the new key or key combination. Press <kbd>Backspace</kbd> to clear a shortcut or <kbd>Esc</kbd> to cancel.</p>
+          <div class="orow"><button id="resetShortcutsBtn">Reset all shortcuts to default</button></div>
+          <div id="optKeysList"></div>
+        </section>
+      </div>
+    </div>
+    <footer class="optfoot"><button id="optReset" title="Put every appearance setting back to how Timotheos starts">Reset appearance</button><span class="grow"></span><span class="small">Changes apply at once and are saved.</span><button id="optDone" class="primary">Done</button></footer>
+  </div>
+</div>
+
+<div id="propsDlg" class="modal hidden" role="dialog" aria-labelledby="ppTitle">
+  <div class="box optbox ppbox">
+    <header class="opthead"><span data-icon="info"></span><h3 id="ppTitle">Module properties</h3><span class="grow"></span><button id="ppClose" class="tb" data-icon="close" aria-label="Close"></button></header>
+    <div class="optmain">
+      <nav class="optnav" id="ppNav">
+        <div class="ppcard" id="ppCard"></div>
+        <button data-p="about" class="on" data-icon="book">About</button>
+        <button data-p="details" data-icon="type">Details</button>
+        <button data-p="all" data-icon="menu">All settings</button>
+        <button data-p="file" data-icon="compress">File &amp; size</button>
+      </nav>
+      <div class="optpages" id="ppPages"></div>
+    </div>
+    <footer class="optfoot"><span id="ppNote" class="small"></span><span class="grow"></span><button id="ppCancel">Close</button><button id="ppSave" class="primary" disabled>Save changes</button></footer>
+  </div>
+</div>
+<div id="popup" class="popup hidden"></div>
+<div id="ctxMenu" class="menu ctx hidden"></div>
+<div id="modal" class="modal hidden"><div class="box"><h3 id="modalTitle"></h3><div id="modalBody"></div><div id="modalBtns" class="row end"></div></div></div>
+<div id="dropzone" class="dropzone hidden"><div>Drop theWord or e-Sword modules to import them</div></div>
+<script src="icons.js"></script>
+<script src="i18n.js"></script>
+<script src="dock.js"></script>
+<script src="render.js"></script>
+<script src="translit.js"></script>
+<script src="modules.js"></script>
+<script src="study.js"></script>
+<script src="search-ui.js"></script>
+<script src="bsearch-ui.js"></script>
+<script src="speech-ui.js"></script>
+<script src="tools-ui.js"></script>
+<script src="options.js"></script>
+<script src="titlebar.js"></script>
+<script src="props.js"></script>
+<script src="nav-ui.js"></script>
+<script src="viewmenu-ui.js"></script>
+<script src="panelskin-ui.js"></script>
+<script src="phone.js"></script>
+<script src="icons-skin.js"></script>
+<script src="pui.js"></script>
+<script src="skin-a.js"></script>
+<script src="skin-b.js"></script>
+<script src="skin-c.js"></script>
+<script src="skins.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

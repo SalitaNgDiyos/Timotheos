@@ -1,0 +1,33 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the windows of Timotheos may do",
+  "windows": ["main", "guide"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-is-maximized",
+    "core:window:allow-set-size",
+    "core:window:allow-inner-size",
+    "core:window:allow-scale-factor",
+    "core:window:allow-set-title",
+    "core:window:allow-unminimize",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-create",
+    "core:webview:allow-create-webview-window",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "clipboard-manager:allow-read-text",
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-write-html",
+    "opener:default",
+    { "identifier": "opener:allow-open-path", "allow": [{ "path": "**" }] }
+  ]
+}

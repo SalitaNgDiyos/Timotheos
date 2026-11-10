@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "android-tts",
+  "description": "Reading aloud with Android's own text-to-speech",
+  "windows": ["main"],
+  "platforms": ["android"],
+  "permissions": ["tts:default"]
+}
