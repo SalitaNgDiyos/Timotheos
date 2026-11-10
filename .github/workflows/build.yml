@@ -72,6 +72,8 @@ jobs:
           export NDK_HOME="$ANDROID_NDK_LATEST_HOME"
           echo "Android SDK: $ANDROID_HOME, NDK: $NDK_HOME"
           npx tauri android init --ci
+          # the app's own launcher icon (src-tauri/icons/android) over the generated one
+          RES=src-tauri/gen/android/app/src/main/res; cp -r src-tauri/icons/android/. "$RES"/; ls "$RES"/mipmap-xxxhdpi
           # keep the page between the status bar and the navigation bar (Android 15 draws apps under them)
           MA=$(find src-tauri/gen/android -name MainActivity.kt | head -1)
           echo "MainActivity: $MA"
