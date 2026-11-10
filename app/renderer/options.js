@@ -107,6 +107,20 @@
   };
   const BUNDLED = ['Gentium Plus', 'Literata', 'Source Serif 4', 'Inter', 'Noto Serif Hebrew'];
   const COMMON = ['Cambria', 'Constantia', 'Georgia', 'Palatino Linotype', 'Book Antiqua', 'Times New Roman', 'Segoe UI', 'Calibri', 'Verdana', 'Tahoma', 'Arial', 'SBL Greek', 'SBL Hebrew', 'Ezra SIL', 'Cardo'];
+  /* on a phone the list of fonts shows only what the phone really has (the Windows names would change nothing there); on a computer the list is as before */
+  const _fx = {};
+  function hasFont(f) {
+    if (!document.documentElement.classList.contains('mobile')) return true;
+    if (f in _fx) return _fx[f];
+    let r = true;
+    try {
+      const c = document.createElement('canvas').getContext('2d'), t = 'mmmmmmmmmmlli0Oq@Ωאα';
+      const w = fam => { c.font = `72px ${fam}`; return c.measureText(t).width; };
+      const q = `'${String(f).replace(/['\\]/g, '')}'`;
+      r = w(`${q}, monospace`) !== w('monospace') || w(`${q}, serif`) !== w('serif') || w(`${q}, sans-serif`) !== w('sans-serif');
+    } catch (e) { r = true; }
+    return (_fx[f] = r);
+  }
   let installed = null;
 
   const A = () => state.settings.appearance;
@@ -570,5 +584,5 @@
     if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(`Menus & panels size ${next} px`);
   }
 
-  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])] };
+  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
 })();

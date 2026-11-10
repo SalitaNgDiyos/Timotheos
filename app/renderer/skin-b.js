@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later
  * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
-/* Screen B · Clear Tabs: Read · Library · Search · Study · More at the bottom. The title is the verse browser; a Parallel chip opens a
+/* Screen B · Clear Tabs: Bible · Library · Search · Notes · More at the bottom. The title is the verse browser; a Parallel chip opens a
  * second Bible below with a divider to drag; a tap on a verse shows its toolbar; Library shelves; one Search for the Bible and the
  * books; Study with today's reading; More is plain grouped settings (Read aloud with voices, volume, pitch, tempo, repeat). */
 /* global PUI, state, views, go, step, runCommand, TimotheosSpeech, TimotheosStudy, TimotheosOptions, TimotheosTools */
@@ -15,7 +15,7 @@
     tab = t; closeTb(); const p = P(); p.clearPages();
     document.querySelectorAll('.b-tabs [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
     if (t === 'read') return refresh();
-    const page = p.pushPage({ title: { library: 'Library', search: 'Search', study: 'Study', more: 'More' }[t], big: true, back: false, cls: 'root' + (t === 'library' ? '' : ' noacts'),
+    const page = p.pushPage({ title: { library: 'Library', search: 'Search', study: 'Notes', more: 'More' }[t], big: true, back: false, cls: 'root' + (t === 'library' ? '' : ' noacts'),
       actions: t === 'library' ? `<button type="button" class="pib" data-x="import" aria-label="Import modules">${p.ic('import', 22)}</button><button type="button" class="pib" data-x="bsearch" aria-label="Search the books">${p.ic('search', 22)}</button>` : '' });
     page.el.classList.add('in');
     const box = document.createElement('div'); page.body.appendChild(box);
@@ -91,7 +91,7 @@
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P(); tab = 'read';
     el('b-top', `<div class="b-abar">${ib('back', 'back', 'Back to the previous screen')}${ib('fwd', 'fwd', 'Forward to the next screen')}<span class="grow"></span>${ib('view', 'text', 'Reading view: text size, what to show')}${ib('speak', 'speaker', 'Read aloud')}</div>
       <div class="b-big"><h2 data-a="go"><span>John 3</span>${p.ic('chevD', 20)}</h2><button type="button" class="pchip" data-a="bible"><span>KJV</span>${p.ic('chevD', 14)}</button><span class="grow"></span><button type="button" class="pchip ghost" data-a="par" aria-label="Parallel: two Bibles" title="Parallel: two Bibles">${p.ic('compare', 18)}</button></div>`);
-    el('b-tabs', [['read', 'read', 'Read'], ['library', 'library', 'Library'], ['search', 'search', 'Search'], ['study', 'study', 'Study'], ['more', 'more', 'More']].map(([k, i, l]) => `<button type="button" data-t="${k}" class="${k === 'read' ? 'on' : ''}"><i>${p.ic(i, 22)}</i>${l}</button>`).join(''));
+    el('b-tabs', [['read', 'read', 'Bible'], ['library', 'library', 'Library'], ['search', 'search', 'Search'], ['study', 'study', 'Notes'], ['more', 'more', 'More']].map(([k, i, l]) => `<button type="button" data-t="${k}" class="${k === 'read' ? 'on' : ''}"><i>${p.ic(i, 22)}</i>${l}</button>`).join(''));
     el('b-player', `${ib('prevv', 'prevv', 'Previous verse')}${ib('pause', 'pause', 'Pause')}${ib('nextv', 'nextv', 'Next verse')}<span class="lbl"></span>${ib('stop', 'stop', 'Stop')}`);
     document.addEventListener('click', e => {
       const t = e.target.closest('.b-tabs [data-t]'); if (t) { e.stopPropagation(); return setTab(t.dataset.t); }
