@@ -293,6 +293,11 @@ app.whenReady().then(async () => {
     saveSettings();
     return settings;
   });
+  // Firefox themes installed in this user's Firefox: copied into the data folder and offered as skins
+  const FXDIR = () => path.join(app.getPath('userData'), 'firefox-themes');
+  handle('fx:import', () => { const fx = require('./lib/fxthemes'); const r = fx.importInstalled(require('os').homedir(), process.platform, process.env, FXDIR()); return Object.assign(r, { list: fx.list(FXDIR()) }); });
+  handle('fx:list', () => require('./lib/fxthemes').list(FXDIR()));
+  handle('fx:remove', id => { fs.rmSync(path.join(FXDIR(), String(id).replace(/[^A-Za-z0-9._@-]+/g, '_')), { recursive: true, force: true }); return require('./lib/fxthemes').list(FXDIR()); });
   handle('modules:list', () => lib.list());
   handle('modules:rescan', () => rescanAll());
   handle('modules:addFolder', async () => {

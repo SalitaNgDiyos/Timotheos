@@ -113,7 +113,80 @@
   function shortcuts() {
     return Object.assign({}, DEFAULT_SHORTCUTS, (state && state.settings && state.settings.shortcuts) || {});
   }
+  /* ------------------------------------------------------------ Firefox themes (copied from the user's own Firefox)
+     A Firefox theme gives the frame, toolbar, popup and field colours and a header picture. The frame and toolbar take them
+     as they are, the picture over the title bar and the toolbar below it; the reading surfaces get calm colours worked out
+     from the frame, light or dark as the theme is. */
+  let fxDone = false, addFx = null;
+  /* themes from the user's own Firefox (copied by "Import from my Firefox"; kept in the data folder) */
+  async function loadMyFx() {
+    if (!window.api || !api.fxList) return;
+    try { const l = await api.fxList(); fxSkins(); for (const k of Object.keys(SKINS)) if (k.startsWith('fxu-')) delete SKINS[k]; for (const t of l) addFx(t); } catch (e) { /* none */ }
+    if (A().skin && A().skin.startsWith('fxu-') && SKINS[A().skin]) apply();
+  }
+  async function importMyFx() {
+    if (!window.api || !api.fxImport) return;
+    const r = await api.fxImport(); fxSkins(); for (const k of Object.keys(SKINS)) if (k.startsWith('fxu-')) delete SKINS[k]; for (const t of r.list) addFx(t);
+    const n = r.themes.length;
+    TimotheosModules.modal('Firefox themes', n ? `<p>${n} theme${n === 1 ? '' : 's'} copied from your Firefox (${r.profiles} profile${r.profiles === 1 ? '' : 's'}): ${r.themes.map(t => esc(t.name)).join(', ')}.</p><p class="small">They are under <b>Skin › My Firefox themes</b>. They stay on this computer and keep their authors' terms. Firefox's own built-in themes (System, Light, Dark, Alpenglow) are inside Firefox itself and are not copied.</p>`
+      : `<p>No installed Firefox themes were found${r.profiles ? ` in your ${r.profiles} Firefox profile${r.profiles === 1 ? '' : 's'}` : ' (no Firefox profile on this computer)'}.</p><p class="small">Firefox's own built-in themes (System, Light, Dark, Alpenglow) are inside Firefox itself and cannot be copied. Themes you added from addons.mozilla.org are found.</p>`,
+      [{ label: 'OK', value: true, primary: true }]);
+    fillSkinMenu(); if ($('#skinGrid')) fillSkinGrid();
+    return r;
+  }
+  function fxSkins() {
+    if (fxDone || !document.body) return; fxDone = true;
+    const probe = document.createElement('i'); probe.style.display = 'none'; document.body.appendChild(probe);
+    const rgb = c => { probe.style.color = ''; probe.style.color = c || ''; if (!probe.style.color) return null; const m = getComputedStyle(probe).color.match(/[\d.]+/g).map(Number); return [m[0], m[1], m[2], m[3] == null ? 1 : m[3]]; };
+    const hex = c => '#' + c.slice(0, 3).map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0')).join('');
+    const mix = (a, b, t) => [0, 1, 2].map(i => a[i] * (1 - t) + b[i] * t).concat(1);
+    const lum = c => { const f = x => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }; return .2126 * f(c[0]) + .7152 * f(c[1]) + .0722 * f(c[2]); };
+    const con = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+    const reach = (c, base, want) => { let k = 0, out = c; while (con(out, base) < want && k < 20) { k++; out = mix(c, lum(base) > .4 ? [0, 0, 0] : [255, 255, 255], k * .05); } return out; };
+    const build = (t, picture) => {
+      const c = k => rgb(t.colors[k]);
+      const frame = picture || c('frame') || [60, 60, 70, 1]; const ftext = c('tab_background_text') || (lum(frame) < .4 ? [240, 240, 240, 1] : [20, 20, 20, 1]);
+      const dark = lum(frame) < .3;
+      const ink = dark ? [233, 230, 226, 1] : [31, 29, 26, 1];
+      const base = dark ? mix([24, 25, 29], frame, .18) : mix([252, 251, 248], frame, .07);
+      const panel = mix(base, frame, dark ? .28 : .12);
+      const tline = c('tab_line'); const fld = c('toolbar_field_border_focus');
+      let acc = [tline, fld, c('tab_loading'), c('icons_attention'), frame].find(x => x && x[3] > .5 && con(x, base) > 1.6) || frame;
+      acc = reach(acc, base, 3.2);
+      const tb = c('toolbar'); const tool = tb ? mix(frame, tb, tb[3]) : frame;
+      const ttext = c('toolbar_text') || ftext;
+      const pop = c('popup'); const popt = c('popup_text');
+      const v = { bg: hex(base), panel: hex(panel), card: hex(pop && pop[3] > .9 && con(pop, ink) > 4.5 && Math.abs(lum(pop) - lum(base)) < .5 ? pop : mix(base, dark ? [0, 0, 0] : [255, 255, 255], .5)),
+        line: hex(mix(panel, ink, .14)), text: hex(ink), muted: hex(mix(ink, base, .42)), accent: hex(acc), 'accent-soft': hex(mix(base, acc, .18)),
+        woj: dark ? '#ff8f86' : '#b3261e', added: hex(mix(ink, base, .35)), strong: hex(reach(mix(acc, [60, 120, 200], .5), base, 3.5)), morph: hex(reach(mix(acc, [130, 80, 170], .5), base, 3.5)),
+        sel: hex(mix(base, acc, dark ? .26 : .16)), heading: hex(mix(ink, acc, .35)), fn: hex(reach(mix(acc, [60, 120, 200], .5), base, 3.5)),
+        textbg: hex(dark ? mix(base, [0, 0, 0], .1) : mix(base, [255, 255, 255], .6)), tool: hex(tool), tooltext: hex(ttext),
+        captext: hex(ftext), tex: 'transparent', 'sb-track': hex(panel), 'sb-thumb': hex(mix(panel, ink, .3)), 'sb-thumb-hover': hex(mix(panel, ink, .45)), 'sb-thumb-active': hex(acc) };
+      for (const k of ['cap-bible', 'cap-lib', 'cap-cmt', 'cap-dict', 'cap-search', 'cap-study']) v[k] = hex(frame);
+      const lay = t.layers || [];
+      return { name: t.name, dark, fxt: t, v, fx: { frame: hex(frame), ftext: hex(ftext), toolbar: tb ? `rgba(${tb.slice(0, 3).map(Math.round).join(',')},${tb[3]})` : 'transparent', ttext: hex(ttext),
+        img: lay.map(l => `url("${l.src}")`).join(', ') || 'none', pos: lay.map(l => l.pos).join(', ') || 'right top', rep: lay.map(l => l.rep).join(', ') || 'no-repeat', thumb: lay[0] ? lay[0].src : '' } };
+    }
+    addFx = t => {
+      SKINS[t.key] = build(t);
+      // an old-style theme (a picture with only a frame and text colour) is judged by its picture: its colours come from it
+      if (!t.colors.toolbar && t.layers && t.layers[0]) {
+        const im = new Image(); im.onload = () => {
+          try {
+            const cv = document.createElement('canvas'); const w = 48, h = 12; cv.width = w; cv.height = h; const g = cv.getContext('2d');
+            g.drawImage(im, Math.max(0, im.naturalWidth - im.naturalHeight * 6), 0, Math.min(im.naturalWidth, im.naturalHeight * 6), im.naturalHeight, 0, 0, w, h);
+            const d = g.getImageData(0, 0, w, h).data; let r = 0, gg = 0, b = 0, n = 0; for (let k = 0; k < d.length; k += 4) { r += d[k]; gg += d[k + 1]; b += d[k + 2]; n++; }
+            SKINS[t.key] = build(t, [r / n, gg / n, b / n, 1]); SKINS[t.key].fx.frame = t.colors.frame ? hex(rgb(t.colors.frame) || [0, 0, 0]) : SKINS[t.key].fx.frame;
+            if (A().skin === t.key) apply();
+          } catch (e) { /* the picture could not be read: its own colours stay */ }
+        };
+        im.src = t.layers[0].src;
+      }
+    };
+
+  }
   function ensure() {
+    fxSkins();
     const a = state.settings.appearance = Object.assign({}, DEFAULTS, state.settings.appearance || {});
     a.colors = Object.assign({}, a.colors || {});
     a.zoom = Object.assign({}, a.zoom || {});
@@ -137,6 +210,8 @@
     root.dataset.theme = sk.dark ? 'dark' : 'light';
     root.dataset.skin = a.skin;
     for (const [k, v] of Object.entries(sk.v)) root.style.setProperty('--' + k, v);
+    if (sk.fx) { root.dataset.fx = '1'; for (const [k, v] of Object.entries(sk.fx)) root.style.setProperty('--fx-' + k, v); }
+    else delete root.dataset.fx;
     const c = a.colors;
     if (c.woj) root.style.setProperty('--woj', c.woj);
     if (c.strong) { root.style.setProperty('--strong', c.strong); root.style.setProperty('--fn', c.strong); }
@@ -195,15 +270,20 @@
   /* ------------------------------------------------------------ skin quick menu */
   function skinSwatch(id) {
     const v = SKINS[id].v;
+    if (SKINS[id].fx) return `<span class="swatch fxsw" style="background:${SKINS[id].fx.frame} url('${SKINS[id].fx.thumb}') right top / cover no-repeat"></span>`;
     return `<span class="swatch" style="background:linear-gradient(135deg, ${v.textbg} 0 50%, ${v['cap-bible']} 50% 75%, ${v.tool} 75%)"></span>`;
   }
   function fillSkinMenu() {
     const m = $('#skinMenu');
-    m.innerHTML = '<div class="mh">Skin</div>' + Object.entries(SKINS).map(([id, s]) =>
-      `<button data-skin="${id}" class="${A().skin === id ? 'on' : ''}">${skinSwatch(id)}${s.name}${s.dark ? ' <span class="small">dark</span>' : ''}</button>`).join('') +
+    const it = ([id, s]) => `<button data-skin="${id}" class="${A().skin === id ? 'on' : ''}">${skinSwatch(id)}${esc(s.name)}${s.dark ? ' <span class="small">dark</span>' : ''}</button>`;
+    const all = Object.entries(SKINS);
+    m.innerHTML = '<div class="mh">Skin</div>' + all.filter(([, s]) => !s.fx).map(it).join('') +
+      (all.some(([id]) => id.startsWith('fxu-')) ? '<div class="mh">My Firefox themes</div>' + all.filter(([id]) => id.startsWith('fxu-')).map(it).join('') : '') +
+      (window.api && api.fxImport ? '<button data-act="fximport">Import themes from my Firefox…</button>' : '') +
       '<div class="msep"></div><button data-act="opts">More appearance options…</button>';
     m.querySelectorAll('[data-skin]').forEach(b => b.onclick = () => { setSkin(b.dataset.skin); closeMenus(); });
     m.querySelector('[data-act="opts"]').onclick = () => { closeMenus(); open('look'); };
+    const fi = m.querySelector('[data-act="fximport"]'); if (fi) fi.onclick = () => { closeMenus(); importMyFx(); };
   }
   function setSkin(id) { A().skin = id; save({ theme: SKINS[id].dark ? 'dark' : 'light' }); store(); apply(); syncForm(); }
 
@@ -353,14 +433,14 @@
     if (phone) { const [bg, ink, ac] = (window.TimotheosSkins && TimotheosSkins.screenColors()) || ['#0f1013', '#ece6d8', '#d8b46f'];
       own = `<button class="skincard${onId === 'screen' ? ' on' : ''}" data-skin="screen" title="Screen colours"><span class="sk sk-own" style="background:${bg}"><span class="skm" style="background:${bg};color:${ink}"><b style="color:${ac}">16</b> For God so <i style="color:${ac}">loved</i></span></span><span class="skn">Screen colours · this screen's own</span></button>`; }
     $('#skinGrid').innerHTML = own + Object.entries(SKINS).map(([id, s]) => {
-      const v = s.v;
-      return `<button class="skincard${onId === id ? ' on' : ''}" data-skin="${id}" title="${s.name}">
+      const v = s.v; const fx = s.fx;
+      return `<button class="skincard${onId === id ? ' on' : ''}${fx ? ' fxcard' : ''}" data-skin="${id}" title="${esc(s.name)}${fx ? ` — from your Firefox${s.fxt.author ? ', by ' + esc(s.fxt.author) : ''}` : ''}">
         <span class="sk" style="background:${v.bg}">
-          <span class="skt" style="background:${v.tool}"></span>
+          <span class="skt" style="background:${fx ? `${fx.frame} url('${fx.thumb}') right top / cover no-repeat` : v.tool}"></span>
           <span class="skl" style="background:${v.panel}"><i style="background:${v['cap-bible']}"></i><i style="background:${v['cap-lib']}"></i></span>
           <span class="skm" style="background:${v.textbg};color:${v.text}"><b style="color:${v.accent}">16</b> For God so <i style="color:${v.woj}">loved</i></span>
           <span class="skr" style="background:${v.panel}"><i style="background:${v['cap-cmt']}"></i><i style="background:${v['cap-dict']}"></i></span>
-        </span><span class="skn">${s.name}${s.dark ? ' · dark' : ''}</span></button>`;
+        </span><span class="skn">${esc(s.name)}${s.dark ? ' · dark' : ''}${fx ? ' · Firefox' : ''}</span></button>`;
     }).join('');
     $('#skinGrid').querySelectorAll('[data-skin]').forEach(b => b.onclick = () => {
       const id = b.dataset.skin;
@@ -462,10 +542,11 @@
   }
 
   function init() {
-    ensure(); apply();
+    ensure(); apply(); loadMyFx();
     TimotheosIcons.fillIcons();
     wireForm();
     $('#optionsBtn').onclick = () => open();
+    { const fb = $('#fxImportBtn'); if (fb) { if (window.api && api.fxImport && !document.documentElement.classList.contains('sk')) fb.onclick = () => importMyFx(); else fb.closest('.fxrow').classList.add('hidden'); } }
     $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', fillSkinMenu); };
     $('#panelsBtn').onclick = e => { e.stopPropagation(); toggleMenu('#panelsMenu', fillPanelsMenu); };
     document.addEventListener('mousedown', e => { if (!e.target.closest('.menuwrap')) document.querySelectorAll('#panelsMenu, #skinMenu').forEach(m => m.classList.add('hidden')); });
@@ -480,5 +561,5 @@
     if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(`Menus & panels size ${next} px`);
   }
 
-  window.TimotheosOptions = { init, apply, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])] };
+  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])] };
 })();

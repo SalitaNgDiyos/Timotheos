@@ -11,6 +11,9 @@ async function call(ch, ...args) {
 
 contextBridge.exposeInMainWorld('api', {
   getSettings: () => call('settings:get'),
+  fxImport: () => call('fx:import'),
+  fxList: () => call('fx:list'),
+  fxRemove: id => call('fx:remove', id),
   setSettings: p => call('settings:set', p),
   listModules: () => call('modules:list'),
   rescan: () => call('modules:rescan'),

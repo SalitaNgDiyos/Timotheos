@@ -31,6 +31,7 @@ T(/trademark|name "Timotheos"/i.test(rd('NOTICE')) && /privacy/i.test(rd('NOTICE
 const tp = rd('THIRD-PARTY-LICENSES.md');
 T(/\| Rust crate \|/.test(tp) && /\| npm package \|/.test(tp) && /SIL Open Font License/.test(tp) && /MPL-2\.0/.test(tp), 'THIRD-PARTY-LICENSES lists crates, npm packages, fonts and the MPL note');
 T(!/\(none shipped\)/.test(tp), 'every third-party package has its licence text');
+T(!fs.existsSync(path.join(root, 'app/renderer/fxthemes')), 'no third-party themes are bundled (Firefox themes come only from the user\'s own Firefox)');
 T(fs.existsSync(path.join(root, 'app/renderer/fonts/LICENSES.txt')) && /SIL OPEN FONT LICENSE/.test(rd('app/renderer/fonts/LICENSES.txt')), 'font licences are shipped');
 
 // every original source file carries the identifier and the copyright line

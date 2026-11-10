@@ -89,6 +89,12 @@
     document.addEventListener('mousedown', e => { if (!e.target.closest('.bvmenu')) openFor = null; }, true);
   }
 
+  /* text alignment of a view: four small buttons (left, centre, justified, right) */
+  const AL = { left: ['Align left', 'M4 6h16M4 10h10M4 14h16M4 18h10'], center: ['Centre', 'M4 6h16M7 10h10M4 14h16M7 18h10'], justify: ['Justify', 'M4 6h16M4 10h16M4 14h16M4 18h16'], right: ['Align right', 'M4 6h16M10 10h10M4 14h16M10 18h10'] };
+  function alignIcon(k, s = 16) { return `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="${AL[k][1]}"/></svg>`; }
+  function alignRow(cur) { return `<div class="alignrow" role="group" aria-label="Text alignment"><span>Align text</span>${Object.keys(AL).map(k => `<button type="button" data-al="${k}" class="${cur === k ? 'on' : ''}" title="${AL[k][0]}" aria-label="${AL[k][0]}">${alignIcon(k)}</button>`).join('')}</div>`; }
+  window.TimotheosAlign = { row: alignRow, icon: alignIcon, names: AL };
+
   /* ---------------- ☰ : what this view shows ---------------- */
   function mainMenu(btn, i) {
     const v = views()[i]; if (!v) return;
@@ -101,6 +107,7 @@
       ${row('footnotes', "Translator's Notes", sh.footnotes, 'F')}
       ${row('headings', 'Headings', sh.headings, 'H')}
       ${row('vnum', 'Verse numbers', vnOn, '')}
+      ${alignRow(v.align || 'left')}
       <div class="msep"></div>
       <button type="button" data-t="opts">${TimotheosIcons.icon('gear', 14)} Options…</button>
       <div class="mh">More</div>
@@ -109,9 +116,9 @@
       ${row('added', 'Added words in italics', sh.added, 'I')}
       ${row('xrefs', 'Cross-references', sh.xrefs, 'X')}
       ${row('cmtLinks', 'Commentary links', sh.cmtLinks, 'C')}
+      <button type="button" data-t="speak">${TimotheosIcons.icon('speaker', 14)} Read this chapter aloud</button>
       <div class="mh">Developer</div>
-      ${row('tags', 'Show the module\'s tags', sh.tags, '')}
-      <button type="button" data-t="speak">${TimotheosIcons.icon('speaker', 14)} Read this chapter aloud</button>`, m => {
+      ${row('tags', 'Show the module\'s tags', sh.tags, '')}`, m => {
       m.classList.add('mainmenu');
       m.addEventListener('change', e => {
         const t = e.target.dataset.t; if (!t) return;
@@ -121,6 +128,7 @@
         else toggleViewShow(i, t, on);
       });
       m.addEventListener('click', e => {
+        const al = e.target.closest('button[data-al]'); if (al) { setTextAlign(i, al.dataset.al); m.querySelectorAll('[data-al]').forEach(x => x.classList.toggle('on', x === al)); return; }
         const b = e.target.closest('button[data-t]'); if (!b) return;
         m.remove();
         if (b.dataset.t === 'opts') viewOptions(i, btn);

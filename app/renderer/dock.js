@@ -283,6 +283,7 @@
           <button class="dbtn dzoom" data-act="zoom+" title="Larger (Ctrl + mouse wheel up)">${ic('textUp', 15)}</button>
           <button class="dbtn" data-act="float" title="${where.float ? 'Dock again' : 'Float as a window'}">${ic(where.float ? 'dockIn' : 'float', 14)}</button>
           ${where.float ? '' : `<button class="dbtn" data-act="max" title="${div.classList.contains('max') ? 'Restore' : 'Maximize'}">${ic(div.classList.contains('max') ? 'restore' : 'max', 14)}</button>`}
+          <button class="dbtn dmore" data-act="more" title="More: fonts and colours, size, float, maximize">${ic('dots', 14)}</button>
           <button class="dbtn" data-act="close" title="Close (reopen from the Panels menu)">${ic('close', 14)}</button>
         </span></header><div class="dbody"></div>`;
     const body = div.querySelector('.dbody');
@@ -293,11 +294,13 @@
     div.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', () => {
       const a = b.dataset.act;
       if (a === 'close') { if (!(opts.onClose && opts.onClose(act0))) hide(act0); return; }
+      if (a === 'more') return moreMenu(div, b);
       if (a === 'skin') { if (opts.onSkin) opts.onSkin(act0, b); return; }
       if (a === 'float') toggleFloat(act0);
       if (a === 'zoom-' || a === 'zoom+') { if (opts.onZoom) opts.onZoom(act0, a === 'zoom+' ? 1 : -1); }
       if (a === 'max') { maxed = maxed && ids.includes(maxed) ? null : act0; render(); }
     }));
+    fitWatch(div);
     return div;
   }
 
@@ -539,6 +542,25 @@
     commit();
   }
 
+  /* a narrow panel keeps its names whole: first the panel buttons fold into "⋯", then the other tabs show only their icons */
+  const fitRO = typeof ResizeObserver === 'function' ? new ResizeObserver(es => es.forEach(e => fitCap(e.target))) : null;
+  function fitWatch(div) { if (fitRO) fitRO.observe(div); requestAnimationFrame(() => fitCap(div)); }
+  function fitCap(div) {
+    const cap = div.querySelector(':scope > .dcap'); if (!cap) return;
+    const cut = () => [...cap.querySelectorAll('.dtab:not([data-id^="bv"]) > span')].some(sp => sp.offsetParent && sp.scrollWidth > sp.clientWidth + 1) || cap.scrollWidth > cap.clientWidth + 1;
+    cap.classList.remove('tight', 'tight2');
+    if (cut()) { cap.classList.add('tight'); if (cut()) cap.classList.add('tight2'); }
+  }
+  function moreMenu(div, b) {
+    document.querySelectorAll('.dmoremenu').forEach(m => m.remove());
+    const m = document.createElement('div'); m.className = 'menu dmoremenu';
+    const items = [...div.querySelectorAll(':scope > .dcap .dbtns .dbtn')].filter(x => !['more', 'close'].includes(x.dataset.act));
+    m.innerHTML = items.map(x => `<button data-act="${x.dataset.act}">${x.innerHTML}<span>${esc(x.title.replace(/\s*\(.*\)$/, ''))}</span></button>`).join('');
+    document.body.appendChild(m);
+    const r = b.getBoundingClientRect(); m.style.position = 'fixed'; m.style.top = Math.round(r.bottom + 2) + 'px'; m.style.left = Math.round(Math.max(4, Math.min(r.right - m.offsetWidth, innerWidth - m.offsetWidth - 4))) + 'px'; m.style.zIndex = 300;
+    m.addEventListener('click', e => { const it = e.target.closest('[data-act]'); if (!it) return; m.remove(); const src = div.querySelector(`:scope > .dcap .dbtn[data-act="${it.dataset.act}"]`); if (src) src.click(); });
+    setTimeout(() => document.addEventListener('pointerdown', function off(e) { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('pointerdown', off, true); } }, true), 0);
+  }
   function toggleFloat(id) {
     const at = locate(id); if (!at) return;
     if (at.float) { detach(id); placeHome(L, id); }

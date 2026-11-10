@@ -128,6 +128,7 @@ async function openGuide(skin) {
 /* ---------- window.api (the former preload.js) ---------- */
 const api = {
   getSettings: () => call('settings:get'), setSettings: p => call('settings:set', p),
+  fxImport: () => call('fx:import'), fxList: () => call('fx:list'), fxRemove: id => call('fx:remove', id),
   listModules: () => call('modules:list'), rescan: () => call('modules:rescan'), addFolder: () => call('modules:addFolder'),
   removeFolder: p => call('modules:removeFolder', p), importDialog: () => call('modules:importDialog'), importFiles: p => call('modules:import', p),
   removeImported: f => call('modules:removeImported', f), setHiddenModules: ids => call('modules:setHidden', ids), deleteModuleFile: id => call('modules:deleteFile', id),

@@ -484,6 +484,13 @@ function commitRef() {
     api.syncOut({ ref: state.ref, bookName: bk ? bk.name : '' }).catch(() => {});
   }
 }
+/** text alignment of one view: left (as before), center, justify or right */
+function setTextAlign(i, a) {
+  const v = views()[i]; if (!v) return;
+  if (!a || a === 'left') delete v.align; else v.align = a;
+  storeViews(); const sec = panes()[i]; if (sec) applyPaneLook(sec, i);
+}
+window.setTextAlign = setTextAlign;
 /** developer view: the verse exactly as stored in the module, each tag shown and coloured */
 function rawTags(raw) {
   return String(raw == null ? '' : raw).split(/(<[^>]*>)/).map(p => !p ? '' : p[0] === '<' && p.endsWith('>')
@@ -564,6 +571,7 @@ function applyPaneLook(sec, i) {
   if (v.font) t.style.setProperty('--font-text', `'TwGreek', 'TwHebrew', '${String(v.font).replace(/['\\]/g, '')}', 'Gentium Plus', Georgia, serif`); else t.style.removeProperty('--font-text');
   t.dataset.vnpos = v.vnPos || ap.vnPos; t.dataset.vnstyle = ap.vnStyle;
   if (v.color) t.style.color = v.color; else t.style.removeProperty('color');
+  if (v.align) t.dataset.align = v.align; else delete t.dataset.align;
   // headings (the module's <TS> titles): their own font, size, colour and style for this view
   const h = v.head || {}; const hd = (k, val, prop, css) => { if (val != null && val !== '') { t.dataset[k] = typeof val === 'boolean' ? (val ? '1' : '0') : '1'; if (prop) t.style.setProperty(prop, css); } else { delete t.dataset[k]; if (prop) t.style.removeProperty(prop); } };
   hd('hfam', h.font, '--h-font', h.font ? `'${String(h.font).replace(/['\\]/g, '')}', var(--font-text)` : '');

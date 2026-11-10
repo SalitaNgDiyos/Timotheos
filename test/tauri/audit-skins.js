@@ -386,6 +386,9 @@
   PUI.clearPages(); PUI.closeSheet(); await sl(300); await go({b:43,c:3,v:1}); await sl(1000);
   ok(!!$('.bv .paraview')&&!$('.bv table.chapter'),'the Bible reads as paragraphs');
   PUI.readingSheet(); await sl(500); ok(!!sheet()&&!$('#pSheet [data-show="paragraph"]'),'the text format sheet has no Paragraphs switch');
+  { const al=$$('#pSheet [data-al]'); ok(al.length===4,'Align: left, centre, justify, right'); const tx=$(`.bv[data-i="${state.active}"] .bvtext`);
+    for(const k of ['justify','center','right']){ click($(`#pSheet [data-al="${k}"]`)); await sl(250); ok(getComputedStyle(tx.querySelector('.pcol')).textAlign===k&&$(`#pSheet [data-al="${k}"]`).classList.contains('on'),'Align '+k); }
+    click($('#pSheet [data-al="left"]')); await sl(250); ok(!tx.dataset.align,'Align left: as before'); }
   const R0=s=>TWRender.render(s,{rules:[]},{headings:true,footnotes:true,woj:true,added:true},{fn:{n:0}});
   const blocks=h=>{ const d=document.createElement('div'); d.innerHTML=h; return d.querySelectorAll('.pbr').length+d.querySelectorAll('.para').length; };
   ok(blocks(R0('He said, <PI1>"Come."'))===0&&!/pind/.test(R0('He said, <PI1>"Come."')),'<PI> inside a verse does not start a new line');

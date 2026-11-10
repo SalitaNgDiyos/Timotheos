@@ -196,7 +196,7 @@ button.link0 { border: 0; background: none; padding: 0; color: var(--strong); fo
   #workbench, #centerCol, #center, .view { display: block; overflow: visible !important; height: auto; background: #fff !important; color: #000; border: 0; box-shadow: none !important; }
   .ccap { background: none; color: #000; padding: 0 0 6px; box-shadow: none; }
 }
-.dtab.on { flex-shrink: 0; max-width: 70%; }
+.dtab.on { flex-shrink: 0; max-width: 100%; }   /* the open tab keeps its whole name while there is room; others shrink first */
 #bookSel { max-width: 170px; }
 .ref input { width: 180px; }
 @media (max-width: 1380px) {
@@ -283,7 +283,8 @@ body.altkeys .tmenu u { text-decoration: underline; }
 /* Library panel: toolbar, topic list on the left (resizable), text on the right */
 #tab-lib.libtab { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
 .libbar { display: flex; align-items: center; gap: 2px; padding: 5px 6px; border-bottom: 1px solid var(--line); background: var(--panel); flex: none; }
-.libbar select { flex: 0 1 220px; min-width: 80px; margin: 0 4px; }
+.libbar { flex-wrap: wrap; row-gap: 4px; }
+.libbar select { flex: 1 1 200px; min-width: min(100%, 170px); max-width: 100%; margin: 0 4px; }   /* the module's name takes the room to its right; the buttons wrap below when it is narrow */
 .lbtn { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid transparent; background: transparent; border-radius: 6px; color: var(--text); }
 .lbtn:hover:not(:disabled) { background: var(--card); border-color: var(--line); }
 .lbtn.on { color: var(--accent); }
@@ -408,6 +409,7 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .dcap .navic { color: inherit; padding: 3px 3px; }
 .dcap .navic:disabled { opacity: .35; }
 .dcap .dtabs { flex: 0 1 auto; }
+.dgroup:not(.isbv) > .dcap .dtabs { flex: 1 1 auto; }   /* panel names use the room up to the panel buttons */
 /* a Bible view's tab in the caption shows only its icon (its name is on the view's own header) */
 .dgroup .dtab[data-id^="bv"] > span { display: none; }
 
@@ -808,3 +810,21 @@ html.mobile #gnav { display: inline-flex; margin: 0 auto; gap: 6px; align-items:
 html.mobile #gnav .tb { width: 42px; height: 36px; padding: 0; display: inline-grid; place-items: center; border-radius: 9px; }
 html.mobile #gnav .tb:disabled { opacity: .35; }
 html.mobile .toolbar .grow { display: none; }
+
+/* panel captions: names first. Folded buttons sit under "⋯"; at the narrowest the other tabs show icons only */
+.dcap .dmore { display: none; }
+.dcap.tight .dbtns > .dbtn:not(.dmore):not([data-act="close"]) { display: none; }
+.dcap.tight .dmore { display: grid; }
+.dcap.tight2 .dtab:not(.on) > span { display: none; }
+.dcap .dtabs .dtab { flex: 0 1 auto; }
+.dcap .dtabs .dtab.on { flex: 0 0 auto; max-width: 100%; }
+.dmoremenu { display: grid; min-width: 200px; padding: 4px; }
+.dmoremenu button { display: flex; align-items: center; gap: 8px; text-align: left; }
+
+/* Firefox themes: the header picture runs across the title bar and the toolbar below the menus, as in the browser */
+html[data-fx] .titlebar, html[data-fx] #toolbar { background-color: var(--fx-frame) !important; background-image: var(--fx-img) !important; background-position: var(--fx-pos); background-repeat: var(--fx-rep); background-attachment: fixed; }
+html[data-fx] .titlebar { color: var(--fx-ftext) !important; }
+html[data-fx] #toolbar { color: var(--fx-ttext) !important; box-shadow: inset 0 0 0 100vmax var(--fx-toolbar); border-top-color: transparent; min-height: 52px; }
+html[data-fx] .titlebar button, html[data-fx] .titlebar .tbmenus > *, html[data-fx] #toolbar .tb { color: inherit; }
+html[data-fx] #toolbar .tb:hover, html[data-fx] .titlebar .tbmenus > *:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
+.swatch.fxsw { background-size: cover; }
