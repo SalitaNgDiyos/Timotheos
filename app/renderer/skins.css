@@ -253,6 +253,8 @@ html.sk-a.a-compact.a-show .a-chrome .lab { font-size: 17px; }
 /* two Bibles: the strip covers the upper Bible's title, so the strip itself names the place and the Bible (both tappable) while it shows */
 html.sk-a.psplitting.a-show .a-chrome .lab { opacity: 1; pointer-events: auto; font-size: 17px; }
 html.sk-a.psplitting.a-show .a-chrome .lab em { padding: 10px 6px; margin: -10px -6px; }
+/* …and while it is hidden, nothing of it lies over the upper Bible's own name (a tap there chooses that Bible) */
+html.sk-a.psplitting:not(.a-show) .a-chrome .mid { pointer-events: none; }
 
 /* Android, Bible view: the navigation bar is see-through; bars and buttons at the bottom stay above it, the text runs under it */
 html.sk.tw-edge { --safe-b: var(--nav-h, 0px); }

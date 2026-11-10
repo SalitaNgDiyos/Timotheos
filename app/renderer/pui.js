@@ -5,7 +5,7 @@
  * Everything here works on the app's own data and functions (api.*, state, TimotheosStudy, TimotheosModules …):
  * sheets, full-screen pages, the Go-to browser, verse actions, commentary / dictionary / cross-reference / compare
  * cards, Library, Search, Study, Read aloud settings, the reading-view settings and the help list. */
-/* global api, state, views, refName, go, step, selectVerse, setShow, zoomView, sanitize, versePreview, noteHtml, followLink, setActive,
+/* global api, state, views, storeViews, ensurePanes, refName, go, step, selectVerse, setShow, zoomView, sanitize, versePreview, noteHtml, followLink, setActive,
    toggleLink, setVerseNumbers, passLabel, newPlanDialog, TimotheosIcons, TimotheosStudy, TimotheosModules, TimotheosTools, TimotheosSpeech,
    TimotheosOptions, TimotheosBookSearch, TimotheosPhone, runCommand */
 (function () {
@@ -260,7 +260,7 @@
     }
     if (o.count) o.count(cards.length);
     if (!cards.length) { box.innerHTML = `<p class="phint">No dictionary has an entry for “${esc(word)}”.</p>`; return cards; }
-    box.innerHTML = cards.map((c, k) => `<article class="pcard${k ? ' clamp' : ' clamp lead'}" data-k="${k}"><div class="psrc"><span>${esc(c.k)}</span>${c.dict ? `<span class="lv">${esc(c.dict)}</span>` : ''}</div>${c.head ? `<div class="lhead"><span class="lem">${esc(c.head)}</span><span class="ptr">${esc(c.sub)}</span></div>` : `<h5>${esc(c.sub)}${c.approx ? ' ~' : ''}</h5>`}<div class="pbody entry">${c.html}</div><div class="cardft"><button type="button" class="plink" data-more>Read all</button>${c.id ? '<button type="button" class="plink" data-open>Open in Library</button>' : ''}${c.find ? `<button type="button" class="plink" data-find>Find ${esc(c.find)}</button>` : ''}</div></article>`).join('');
+    box.innerHTML = cards.map((c, k) => `<article class="pcard${k ? ' clamp' : ' clamp lead'}" data-k="${k}"><div class="psrc"><span>${esc(c.k)}</span>${c.dict ? `<span class="lv">${esc(c.dict)}</span>` : ''}</div>${c.head ? `<div class="lhead"><span class="lem">${esc(c.head)}</span>${/^[GH]\d+[a-z]?$/i.test(String(c.sub).trim()) ? '' : `<span class="ptr">${esc(c.sub)}</span>`}</div>` : `<h5>${esc(c.sub)}${c.approx ? ' ~' : ''}</h5>`}<div class="pbody entry">${c.html}</div><div class="cardft"><button type="button" class="plink" data-more>Read all</button>${c.id ? '<button type="button" class="plink" data-open>Open in Library</button>' : ''}${c.find ? `<button type="button" class="plink" data-find>Find ${esc(c.find)}</button>` : ''}</div></article>`).join('');
     try { TimotheosTools.applyMarks(box); } catch (e) { /* */ }
     box.onclick = e => {
       const card = e.target.closest('.pcard'); if (!card) return; const c = cards[+card.dataset.k];
@@ -277,7 +277,7 @@
   }
   function wordSheet(w) {
     const lbl = (w.strongs && w.strongs[0]) ? `Strong's ${/^H/i.test(w.strongs[0]) ? 'Hebrew' : 'Greek'} · ${w.strongs[0]}` : `Dictionary · ${w.word || ''}`;
-    const s = sheet(`<div class="pcards"></div><div class="pills"><button type="button" class="pill gold" data-lib>${ic('library', 17)} Open in Library</button><button type="button" class="pill" data-all>${ic('lexicon', 17)} All dictionaries</button><button type="button" class="pill" data-find>${ic('search', 17)} Find ${esc((w.strongs && w.strongs[0]) || w.word || '')}</button></div>`, { title: esc(lbl), cls: 'lex', onClose: () => $$('.pwordon').forEach(x => x.classList.remove('pwordon')) });
+    const s = sheet(`<div class="pcards"></div><div class="pills"><button type="button" class="pill gold" data-lib>${ic('library', 17)} Open in Library</button><button type="button" class="pill" data-all>${ic('lexicon', 17)} All dictionaries</button><button type="button" class="pill" data-find>${ic('search', 17)} Find ${esc((w.strongs && w.strongs[0]) || w.word || '')}</button></div>`, { title: (w.strongs && w.strongs[0]) ? '<span></span>' : esc(lbl), cls: 'lex', onClose: () => $$('.pwordon').forEach(x => x.classList.remove('pwordon')) });
     let cards = [];
     dictCards(s.querySelector('.pcards'), w, { limit: 3 }).then(c => { cards = c || []; });
     s.querySelector('[data-lib]').onclick = () => { const c = cards.find(x => x.id); closeSheet(); if (c) openModule(c.id, c.tid); else library(); };
@@ -412,9 +412,23 @@
   function rdApply() { const o = rdGet(); root.style.setProperty('--rd-mx', RD.m[o.m][1]); root.style.setProperty('--rd-ex', o.m === 0 ? '0px' : ''); root.style.setProperty('--rd-lh', RD.l[o.l][1]); }
   function rdSet(k, i) { const o = rdGet(); o[k] = i; try { localStorage.setItem('tw.rd', JSON.stringify(o)); } catch (e) { /* not kept */ } rdApply(); }
   rdApply();
+  /** the font of one Bible view: the phone's own list (each name shown in its font), for that view only */
+  function fontSheet(i) {
+    const v = views()[i]; if (!v) return;
+    const fonts = TimotheosOptions.fonts(); const fq = f => String(f).replace(/['\\"<>]/g, '');
+    const row = (f, l) => `<button type="button" class="prr${(v.font || '') === f ? ' on' : ''}" data-font="${esc(f)}"><span style="${f ? `font-family:'${fq(f)}', serif` : ''}">${esc(l)}</span>${(v.font || '') === f ? ic('check', 18) : ''}</button>`;
+    const s = sheet(`<div class="rows">${row('', 'As in Options')}${fonts.map(f => row(f, f)).join('')}</div>`, { title: 'Font · ' + esc(bibleAbbr(v.bible) || '') });
+    s.addEventListener('click', e => {
+      const b = e.target.closest('[data-font]'); if (!b) return;
+      const vv = views()[i]; if (!vv) return closeSheet();
+      if (b.dataset.font) vv.font = b.dataset.font; else delete vv.font;
+      storeViews(); ensurePanes(); closeSheet(); flash('Font: ' + (b.dataset.font || 'as in Options'));
+    });
+  }
   /** the text format sheet for one Bible view (with two Bibles on screen, each has its own) */
   function formatFor(i) { if (i != null) par.focus(i); readingSheet(); }
   function readingSheet() {
+    const iv = state.active;   // the view this sheet is for (kept: a tap elsewhere must not move it to the other Bible)
     const v = views()[state.active] || {}; const sh = Object.assign({}, state.settings.show, v.show || {});
     const tog = (k, l, i) => `<button type="button" class="tgl${sh[k] ? ' on' : ''}" data-show="${k}">${ic(i, 20)}<span>${l}</span></button>`;
     const s = sheet(`<div class="prow"><span>Bible</span><button type="button" class="pchip" data-x="bible">${esc(bibleAbbr() || 'Choose')} ${ic('chevD', 14)}</button></div>
@@ -432,6 +446,7 @@
       const x = e.target.closest('[data-x]'); if (!x) return; const a = x.dataset.x;
       if (a === 'link') { toggleLink(state.active); x.classList.toggle('on'); return; }
       if (a === 'vn') { const ap = TimotheosOptions.appearance(); const vv = views()[state.active] || {}; setVerseNumbers(state.active, (vv.vnPos || ap.vnPos) === 'hidden'); return; }
+      if (a === 'font') { closeSheet(); setTimeout(() => fontSheet(iv), 120); return; }
       closeSheet(); setTimeout(() => viewAction(a), 120);
     });
   }

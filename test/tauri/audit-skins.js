@@ -458,6 +458,14 @@
   toggleViewShow(PUI.par.bot(),'columns',false); views()[PUI.par.bot()].show=Object.assign({},views()[PUI.par.bot()].show,{strongs:effShow('strongs',PUI.par.top())});
   await TimotheosSkins.parallel(false); await sl(600);
  });
+ await T('strongs labels',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); await sl(200);
+  PUI.wordSheet({word:'οὕτω',strongs:['G3779']}); await sl(1500);
+  const h=$('#pSheet .ph4'); ok(!!h&&!/Strong/i.test(h.textContent)&&!!h.querySelector('.pclose'),'the Strong\'s sheet has no title of its own, only the close button ('+(h?h.textContent.trim():'')+')');
+  const ptr=$$('#pSheet .lhead .ptr').map(e=>e.textContent.trim()); ok(!ptr.some(t=>/^[GH]\d+$/i.test(t)),'no Strong\'s number beside the Greek word ('+ptr.join(',')+')');
+  ok(/G3779/.test(($('#pSheet .psrc')||{}).textContent||''),'the card still names the number: '+(($('#pSheet .psrc')||{}).textContent||''));
+  await closeSheet();
+ });
  await T('parallel font and bible',async()=>{
   if(SK==='b'){ const t=$$('.b-tabs button').map(b=>b.textContent.trim()).join(','); ok(t==='Bible,Library,Search,Notes,More','Clear Tabs: the tabs are named Bible, Library, Search, Notes, More ('+t+')'); click($('.b-tabs [data-t="study"]')); await sl(600); ok(/Notes/.test(($('.ppage .ptitle,.ppage h1,.ppage .pbar')||{}).textContent||document.querySelector('.ppage').textContent),'the Notes tab opens a page titled Notes'); PUI.clearPages(); click($('.b-tabs [data-t="read"]')); await sl(400); }
   PUI.clearPages(); PUI.closeSheet(); if(TimotheosPhone.splitId()){ await TimotheosSkins.parallel(false); } await sl(500);
@@ -471,12 +479,19 @@
     PUI.formatFor(i); await sl(500);
     const pill=[...$$('#pSheet [data-x="font"]')][0]; ok(!!pill,which+': Font button in the format sheet'); if(!pill) continue;
     click(pill); await sl(900);
-    const sel=$('.bvmenu select.bvfont'); ok(!!sel&&vis(sel),which+': the font list opens ('+(sel?'in '+JSON.stringify(sel.getBoundingClientRect().toJSON()):'none')+')'); if(!sel) continue;
-    { const m=sel.closest('.bvmenu'), r=m.getBoundingClientRect(), sr=sel.getBoundingClientRect(); const t=document.elementFromPoint(sr.left+sr.width/2,sr.top+Math.min(40,sr.height/2)); ok(r.top>=0&&r.bottom<=innerHeight+1&&r.left>=0&&r.right<=innerWidth+1&&(t===sel||m.contains(t)),which+': the font list is on screen and reachable '+JSON.stringify([r.left,r.top,r.width,r.height].map(Math.round))+' hit '+(t&&(t.className||t.tagName))); }
-    const opt=[...sel.options].find(o=>o.value&&o.value!==views()[i].font); sel.value=opt.value; sel.dispatchEvent(new Event('change',{bubbles:true})); await sl(500);
-    ok(views()[i].font===opt.value,which+': the font is saved for that view ('+views()[i].font+')');
-    ok(fam(i).includes(opt.value),which+': the text of that view uses it: '+fam(i).slice(0,60));
-    { const pv=document.querySelectorAll('.bv')[i].querySelector('.pv[data-v], tr[data-v] td, .paraview, table.chapter'); const f=pv?getComputedStyle(pv).fontFamily:''; ok(f.includes(opt.value),which+': the verses themselves use it ('+(pv?pv.tagName+'.'+pv.className:'none')+': '+f.slice(0,50)+')'); }
+    const hitOk=el=>{ const r=el.getBoundingClientRect(); const t=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); return !!t&&(t===el||el.contains(t)); };
+    // a tap on the other Bible's text before choosing must not move the choice to that Bible
+    setActive(which==='bot'?PUI.par.top():PUI.par.bot()); await sl(200);
+    const rows=$$('#pSheet [data-font]'); ok(rows.length>2,which+': the phone font list opens ('+rows.length+' fonts)'); if(rows.length<3) continue;
+    const pick=rows.find(r=>r.dataset.font&&r.dataset.font!==views()[i].font&&r.dataset.font!=='Literata'); pick.scrollIntoView({block:'center'}); await sl(200);
+    ok(hitOk(pick),which+': a font in the list can be tapped');
+    const oth=views()[which==='bot'?PUI.par.top():PUI.par.bot()].font;
+    tapAt(pick); await sl(700);
+    ok(views()[i].font===pick.dataset.font,which+': the font is saved for that view ('+views()[i].font+')');
+    ok(views()[which==='bot'?PUI.par.top():PUI.par.bot()].font===oth,which+': the other Bible keeps its font');
+    ok(fam(i).includes(pick.dataset.font),which+': the text of that view uses it: '+fam(i).slice(0,60));
+    { const pv=document.querySelectorAll('.bv')[i].querySelector('.pv[data-v], tr[data-v] td, .paraview, table.chapter'); const f=pv?getComputedStyle(pv).fontFamily:''; ok(f.includes(pick.dataset.font),which+': the verses themselves use it ('+f.slice(0,50)+')'); }
+    ok(!sheet(),which+': the list closes after the choice');
     await closeMenus(); delete views()[i].font; storeViews(); ensurePanes();
   }
   for(const which of ['bot','top']){
@@ -490,6 +505,11 @@
   // real taps on the screen's own Bible controls, with the other Bible being the active one
   const hit=(el)=>{ const r=el.getBoundingClientRect(); const x=r.left+r.width/2,y=r.top+r.height/2; const t=document.elementFromPoint(x,y); return {ok:!!t&&(t===el||el.contains(t)||t.contains(el)),r:[Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)],at:t&&(t.className||t.tagName)}; };
   const ctl={ top:{a:()=>{ const ch=$('.a-chrome'); const em=$('.a-chrome em'); if(typeof SkinA!=='undefined'&&SkinA.showChrome) SkinA.showChrome(true); if(ch&&vis(em)&&em.textContent.trim()) return em; return $('.dgroup.pbase .bv .sk-ttl small'); }, b:()=>$('.b-big [data-a="bible"]'), c:()=>$('.c-rail [data-a="bible"]')}[SK], bot:()=>$('.pdiv [data-pd="bible"]') };
+  if(SK==='a'){ const top=PUI.par.top(), bot=PUI.par.bot(); setActiveView(bot); await sl(300); PUI.closeSheet(); await closeMenus(); SkinA.showChrome(false); await sl(500);
+    const sm=$('.dgroup.pbase .bv .sk-ttl small'); ok(!!sm&&vis(sm),'a top title: the Bible name shows'); if(sm){ const r=sm.getBoundingClientRect(); const t=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); ok(!!t&&(t===sm||sm.contains(t)),'a top title: a tap on the Bible name reaches it with the strip hidden (hits '+(t&&(t.className||t.tagName))+')');
+      tapAt(sm); await sl(1000); const items=$$('.bvmenu [data-b]'); ok(items.length>1&&state.active===top,'a top title: the list opens for the upper Bible ('+items.length+', active '+state.active+')');
+      const b=items.find(x=>x.dataset.b!==views()[top].bible); if(b){ const before=views()[top].bible, ob=views()[bot].bible; tapAt(b); await sl(1000); ok(views()[top].bible===b.dataset.b&&views()[bot].bible===ob,'a top title: the upper Bible changed, the lower did not'); views()[top].bible=before; await setViews([...views()]); await sl(500); } }
+    await closeMenus(); }
   for(const which of ['top','bot']){
     const want=PUI.par[which](), other=which==='top'?PUI.par.bot():PUI.par.top();
     setActiveView(other); await sl(400); PUI.closeSheet(); await closeMenus(); await sl(200);
