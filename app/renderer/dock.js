@@ -195,8 +195,9 @@
   function place() {
     const V = view;
     for (const { el, a } of groupEls) {
-      Object.assign(el.style, { left: `calc(${pct(a.x0, V.x, V.w)}% + 3px)`, top: `calc(${pct(a.y0, V.y, V.h)}% + 3px)`,
-        width: `calc(${(a.x1 - a.x0) / V.w * 100}% - 6px)`, height: `calc(${(a.y1 - a.y0) / V.h * 100}% - 6px)` });
+      // 1px on each side of an edge: two panels are 2px apart (the divider between them is still 6px wide to grab)
+      Object.assign(el.style, { left: `calc(${pct(a.x0, V.x, V.w)}% + 1px)`, top: `calc(${pct(a.y0, V.y, V.h)}% + 1px)`,
+        width: `calc(${(a.x1 - a.x0) / V.w * 100}% - 2px)`, height: `calc(${(a.y1 - a.y0) / V.h * 100}% - 2px)` });
     }
     for (const { el, a, xs, ys } of cornerEls) { el.style.left = `calc(${pct(a[xs], V.x, V.w)}% - 7px)`; el.style.top = `calc(${pct(a[ys], V.y, V.h)}% - 7px)`; }
     for (const gt of gutEls) {
