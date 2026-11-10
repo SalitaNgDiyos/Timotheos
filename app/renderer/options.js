@@ -122,7 +122,8 @@
   async function loadMyFx() {
     if (!window.api || !api.fxList) return;
     try { const l = await api.fxList(); fxSkins(); for (const k of Object.keys(SKINS)) if (k.startsWith('fxu-')) delete SKINS[k]; for (const t of l) addFx(t); } catch (e) { /* none */ }
-    if (A().skin && A().skin.startsWith('fxu-') && SKINS[A().skin]) apply();
+    if (pendingFx && SKINS[pendingFx]) { A().skin = pendingFx; pendingFx = null; apply(); syncFormSafe(); }
+    else if (A().skin && A().skin.startsWith('fxu-') && SKINS[A().skin]) apply();
   }
   async function importMyFx() {
     if (!window.api || !api.fxImport) return;
@@ -193,11 +194,15 @@
     a.uiSize = Math.max(11, Math.min(22, +a.uiSize || 13));
     a.paneSize = Math.max(11, Math.min(24, +a.paneSize || 14));
     if (!SKINS[a.skin]) {
+      // a theme imported from Firefox is read from the data folder a moment later (loadMyFx): until then a built-in
+      // skin stands in, but the choice itself is kept and comes back as soon as the theme is there
+      if (String(a.skin || '').startsWith('fxu-')) pendingFx = a.skin;
       a.skin = state.settings.theme === 'dark' ? 'slate' : 'parchment';
     }
     return a;
   }
-  function store() { save({ appearance: A() }); }
+  let pendingFx = null;
+  function store() { const a = A(); save({ appearance: pendingFx ? Object.assign({}, a, { skin: pendingFx }) : a }); }
 
   /* ------------------------------------------------------------ applying */
   const q = f => `'${String(f).replace(/['\\]/g, '')}'`;
@@ -285,7 +290,8 @@
     m.querySelector('[data-act="opts"]').onclick = () => { closeMenus(); open('look'); };
     const fi = m.querySelector('[data-act="fximport"]'); if (fi) fi.onclick = () => { closeMenus(); importMyFx(); };
   }
-  function setSkin(id) { A().skin = id; save({ theme: SKINS[id].dark ? 'dark' : 'light' }); store(); apply(); syncForm(); }
+  function syncFormSafe() { try { syncForm(); } catch (e) { /* the Options form is not built yet */ } }
+  function setSkin(id) { pendingFx = null; A().skin = id; save({ theme: SKINS[id].dark ? 'dark' : 'light' }); store(); apply(); syncForm(); }
 
   /* ------------------------------------------------------------ panels menu */
   function fillPanelsMenu() {
