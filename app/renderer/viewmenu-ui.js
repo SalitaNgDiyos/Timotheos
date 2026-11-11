@@ -6,7 +6,7 @@
  * Everything here belongs to one view, so several views keep their own looks side by side. */
 /* global state, views, viewName, storeViews, ensurePanes, renderChapter, paneMenu, viewShow, effShow, toggleViewShow,
    setViewShowMany, setLineSpacing, setVerseNumbers, viewOptions, setViews, addView, ensureInfo, flashMsg, esc, TimotheosOptions,
-   TimotheosStudy, TimotheosSpeech, TimotheosIcons */
+   TimotheosStudy, TimotheosSpeech, TimotheosIcons, dupFile */
 (function () {
   const $ = s => document.querySelector(s);
 
@@ -53,7 +53,8 @@
   function armClose(m) { clearTimeout(leaveTimer); leaveTimer = setTimeout(() => { const f = m.querySelector('input:focus'); if (!f) { m.remove(); openFor = null; } }, 550); }
   function bibleMenu(btn, i) {
     const v = views()[i]; if (!v) return;
-    const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}</span></button>`; }).join('');
+    const lbl = b => { const inf = state.infos.get(b.id); return (inf ? inf.abbr : b.abbr) + '|' + (inf ? inf.title : b.name); };
+    const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); const f = dupFile(state.modules.bibles, b, lbl); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}${f ? ` <span class="dupf">· ${esc(f)}</span>` : ''}</span></button>`; }).join('');
     paneMenu(btn, `<div class="mh">Name of this view</div>
       <div class="bvname"><input type="text" class="bvnameinp" maxlength="40" value="${esc(viewName(i))}" placeholder="Name of this view" aria-label="Name of this Bible view"><button type="button" class="bvsave">Save</button><button type="button" class="bvreset" title="Back to the Bible's own abbreviation">Reset</button></div>
       <div class="mh">Bible of this view</div><div class="bvlist">${list}</div>`, m => {

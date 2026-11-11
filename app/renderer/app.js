@@ -318,6 +318,13 @@ function save(patch) { Object.assign(state.settings, patch); api.setSettings(pat
 
 /* ---------------- modules ---------------- */
 /** the lists the program shows: modules you took out of the lists stay in Options → Modules only */
+// Two modules that show the same name are told apart by their file name: dupFile() gives it when another module of
+// the list carries the same label, and nothing otherwise.
+function dupFile(list, m, label) {
+  const n = label(m); if (!n) return '';
+  return (list || []).filter(x => label(x) === n).length > 1 ? String(m.id || '').replace(/^[a-z]+:/i, '') : '';
+}
+window.dupFile = dupFile;
 function visibleModules(l) {
   const keep = a => (a || []).filter(m => !m.hidden);
   return Object.assign({}, l, { bibles: keep(l.bibles), books: keep(l.books), dicts: keep(l.dicts) });

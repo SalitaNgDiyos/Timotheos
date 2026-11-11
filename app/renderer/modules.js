@@ -220,7 +220,8 @@ async function fillLibSelect() {
     const list = (state.modules.books || []).filter(b => b.kind === kind && !b.locked);
     if (!list.length) continue;
     const og = document.createElement('optgroup'); og.label = KIND_LABEL[kind];
-    for (const b of list.sort((x, y) => (x.title || x.name).localeCompare(y.title || y.name))) { const o = document.createElement('option'); o.value = b.id; o.textContent = (b.opened ? b.title : b.name.replace(/\.[^.]+(\.twm)?$/i, '')) + (b.user ? ' [user]' : ''); og.appendChild(o); }
+    const lbl = b => (b.opened ? b.title : b.name.replace(/\.[^.]+(\.twm)?$/i, ''));
+    for (const b of list.sort((x, y) => (x.title || x.name).localeCompare(y.title || y.name))) { const o = document.createElement('option'); o.value = b.id; const f = window.dupFile(list, b, lbl); o.textContent = lbl(b) + (f ? ' — ' + f : '') + (b.user ? ' [user]' : ''); og.appendChild(o); }
     sel.appendChild(og);
   }
   if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;

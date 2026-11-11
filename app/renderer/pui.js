@@ -460,9 +460,11 @@
     const kinds = KIND.filter(([k]) => mods.some(m => m.kind === k));
     let cur = o.kind || (kinds[0] || [])[0];
     const draw = () => {
-      const list = mods.filter(m => m.kind === cur).sort((a, z) => (a.title || a.name).localeCompare(z.title || z.name));
+      // locked modules (they open only in theWord) come last; modules with the same name show their file name
+      const tl = m => m.title || m.name.replace(/\.[^.]+(\.twm)?$/i, '');
+      const list = mods.filter(m => m.kind === cur).sort((a, z) => (!!a.locked - !!z.locked) || (a.title || a.name).localeCompare(z.title || z.name));
       box.innerHTML = `${kinds.length > 1 ? `<div class="pseg scroll">${kinds.map(([k, l]) => `<button type="button" data-k="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
-        <div class="mods">${list.map(m => { const t = m.title || m.name.replace(/\.[^.]+(\.twm)?$/i, ''); return `<button type="button" class="mod${m.locked ? ' locked' : ''}" data-id="${esc(m.id)}"><span class="cov" style="background:${coverOf(t)}">${esc((m.abbr || t).replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1).toUpperCase())}</span><span class="mt"><b>${esc(t)}</b><span>${m.locked ? 'locked — opens only in theWord' : `${m.totalTopics ? m.totalTopics.toLocaleString() + ' entries · ' : ''}${esc((KIND.find(x => x[0] === m.kind) || [])[1] || m.kind)}${m.user ? ' · your own · editable' : ''}`}</span></span>${ic('chevR', 18)}</button>`; }).join('') || '<p class="phint">No modules of this kind. Import theWord or e-Sword modules from More → Modules.</p>'}</div>
+        <div class="mods">${list.map(m => { const t = m.title || m.name.replace(/\.[^.]+(\.twm)?$/i, ''); return `<button type="button" class="mod${m.locked ? ' locked' : ''}" data-id="${esc(m.id)}"><span class="cov" style="background:${coverOf(t)}">${esc((m.abbr || t).replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1).toUpperCase())}</span><span class="mt"><b>${esc(t)}</b><span>${m.locked ? 'locked — opens only in theWord' : `${m.totalTopics ? m.totalTopics.toLocaleString() + ' entries · ' : ''}${esc((KIND.find(x => x[0] === m.kind) || [])[1] || m.kind)}${m.user ? ' · your own · editable' : ''}`}${window.dupFile(list, m, tl) ? ' · ' + esc(window.dupFile(list, m, tl)) : ''}</span></span>${ic('chevR', 18)}</button>`; }).join('') || '<p class="phint">No modules of this kind. Import theWord or e-Sword modules from More → Modules.</p>'}</div>
         <div class="pills"><button type="button" class="pill" data-import>${ic('import', 16)} Import modules</button><button type="button" class="pill" data-newmod>${ic('plus', 16)} New user module</button></div>`;
     };
     draw();

@@ -476,6 +476,26 @@
   ok(vis(ib)&&r.bottom<innerHeight,'empty app: an Import modules button shows'); ok(!!top&&(top===e||e.contains(top)),'empty app: the title is not covered (hits '+(top&&(top.className||top.tagName))+')');
   e.classList.add('hidden');
  });
+ await T('start and lists',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); await sl(200);
+  // the next start goes straight to the screen chosen last time
+  ok(localStorage.getItem('tw.ui')===SK,'the chosen screen is remembered ('+localStorage.getItem('tw.ui')+')');
+  TimotheosSkins.start(); await sl(1200);
+  ok(!$('#skPick .skp-card'),'a later start does not ask for the screen again'); ok(R.classList.contains('sk-'+SK)&&!$('#skPick:not(.out)'),'it opens in that screen');
+  const keep=localStorage.getItem('tw.ui'); localStorage.removeItem('tw.ui'); TimotheosSkins.start(); await sl(500);
+  ok(!!$('#skPick .skp-card'),'the very first start offers the three screens'); ok(/remembers your choice/.test($('#skPick').textContent)&&!/this session/.test($('#skPick').textContent),'and says the choice is remembered');
+  click($(`#skPick .skp-card[data-k="${SK}"]`)); await sl(900); localStorage.setItem('tw.ui',keep);
+  // library: locked last, same names told apart
+  PUI.library(); await sl(700);
+  let lockedOk=true, dupOk=true, seen=0;
+  for(const seg of [null,...$$('.ppage .pseg button')]){ if(seg){ click(seg); await sl(300); }
+    const mods=$$('.ppage .mod'); const firstLocked=mods.findIndex(m=>m.classList.contains('locked')); if(firstLocked>=0){ seen++; if(mods.slice(firstLocked).some(m=>!m.classList.contains('locked'))) lockedOk=false; }
+    const names={}; mods.forEach(m=>{ const n=m.querySelector('b').textContent; (names[n]=names[n]||[]).push(m.querySelector('.mt > span').textContent); });
+    for(const n in names) if(names[n].length>1&&new Set(names[n]).size<names[n].length) dupOk=false; }
+  ok(lockedOk,'Library: locked modules come last ('+seen+' list(s) with locked ones)'); ok(dupOk,'Library: modules with the same name show different file names');
+  PUI.clearPages(); await sl(200);
+  PUI.chooseBible(); await sl(700); const bl=$$('.bvmenu [data-b]').map(b=>b.textContent.trim()); ok(bl.length>1&&new Set(bl).size===bl.length,'Bible list: no two entries read the same ('+bl.length+')'); await closeMenus();
+ });
  await T('problem report',async()=>{
   PUI.clearPages(); PUI.closeSheet(); await sl(200); const n0=copied.length;
   PUI.helpSheet(); await sl(400); const b=$('#pSheet [data-c="report"]'); ok(!!b,'Help has "Copy problem report"'); if(!b) return;
