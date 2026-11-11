@@ -458,6 +458,15 @@
   toggleViewShow(PUI.par.bot(),'columns',false); views()[PUI.par.bot()].show=Object.assign({},views()[PUI.par.bot()].show,{strongs:effShow('strongs',PUI.par.top())});
   await TimotheosSkins.parallel(false); await sl(600);
  });
+ await T('problem report',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); await sl(200); const n0=copied.length;
+  PUI.helpSheet(); await sl(400); const b=$('#pSheet [data-c="report"]'); ok(!!b,'Help has "Copy problem report"'); if(!b) return;
+  click(b); await sl(500); const t=copied[copied.length-1]||'';
+  ok(copied.length>n0&&/^Timotheos problem report/.test(t),'the report is copied');
+  ok(new RegExp('Phone screen: '+SK).test(t),'it names the phone screen ('+((t.match(/Phone screen: \S+/)||[])[0])+')');
+  ok(/View 0: Bible /.test(t)&&/Fonts offered here: /.test(t),'it describes the Bible views and the fonts of this device');
+  ok(!sheet(),'the sheet closes');
+ });
  await T('strongs labels',async()=>{
   PUI.clearPages(); PUI.closeSheet(); await sl(200);
   PUI.wordSheet({word:'οὕτω',strongs:['G3779']}); await sl(1500);

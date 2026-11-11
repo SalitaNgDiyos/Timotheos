@@ -686,7 +686,7 @@
 
   /* ================================================================ help, modules, options */
   function helpSheet() {
-    const s = sheet(`<div class="rows"><button type="button" class="prr" data-c="guide">${ic('book', 20)}<span>User guide</span></button><button type="button" class="prr" data-c="about">${ic('info', 20)}<span>About Timotheos</span></button></div>`, { title: 'Help' });
+    const s = sheet(`<div class="rows"><button type="button" class="prr" data-c="guide">${ic('book', 20)}<span>User guide</span></button><button type="button" class="prr" data-c="about">${ic('info', 20)}<span>About Timotheos</span></button><button type="button" class="prr" data-c="report">${ic('copy', 20)}<span>Copy problem report</span><small>to paste when you report a problem</small></button></div>`, { title: 'Help' });
     s.onclick = e => { const b = e.target.closest('[data-c]'); if (b) { closeSheet(); runCommand(b.dataset.c); } };
   }
   function modulesSheet() {
