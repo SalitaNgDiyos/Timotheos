@@ -114,7 +114,8 @@
     closeAll(true); const p = P(); const pal = $('.c-pal'); pal.classList.add('on'); scrim(true); opened();
     pal.innerHTML = `<label class="pfield pin">${p.ic('search', 19)}<input id="cPalQ" type="text" placeholder="Verse, word, book or command" autocomplete="off" spellcheck="false" enterkeyhint="go"></label><div class="pbody2"></div>`;
     const qi = pal.querySelector('#cPalQ'), body = pal.querySelector('.pbody2'); let first = null;
-    const cmds = CMDS();
+    const NOPHONE = /^(Add module folder|Imported modules folder|Print the |Reset panel layout)/, phone = document.documentElement.classList.contains('mobile');
+    const cmds = CMDS().filter(c => !(phone && NOPHONE.test(c[0])));
     const localRef = t => { const m = /^(\d?\s*[\p{L}][\p{L}.]*(?:\s+[\p{L}]+)*)\s*(\d+)(?:\s*[:.]\s*(\d+))?$/u.exec(t.trim()); if (!m) return null; const n = m[1].replace(/[.\s]/g, '').toLowerCase();
       const bk = (state.nav || []).find(b => b.name.replace(/\s/g, '').toLowerCase() === n) || (state.nav || []).find(b => (b.abbrs || [b.abbr]).some(x => String(x).replace(/[.\s]/g, '').toLowerCase() === n)) || (state.nav || []).find(b => b.name.replace(/\s/g, '').toLowerCase().startsWith(n));
       return bk ? { b: bk.id, c: +m[2], v: m[3] ? +m[3] : 1 } : null; };
@@ -130,7 +131,7 @@
         if (bks.length && !r) h += `<div class="pg2">Books of the Bible</div>${bks.map(b => `<button type="button" class="pr" data-go="${b.id}.1.1">${p.ic('book', 18)}<span>${p.esc(b.name)}</span><small>${b.chapterList.length} ch</small></button>`).join('')}`;
         h += '<div class="pg2v"></div><div class="pg2b">' + (t.length >= 3 && !r ? '<div class="pg2">Books</div><p class="phint bsprog">Searching the books…</p>' : '') + '</div>';
       }
-      h += `<div class="pg2">Commands</div>${cm.map(c => `<button type="button" class="pr" data-cmd="${cmds.indexOf(c)}">${p.ic(c[1], 18)}<span>${p.esc(c[0])}</span><small>${c[2]}</small></button>`).join('') || '<p class="phint">No command by that name.</p>'}`;
+      h += `<div class="pg2">Commands</div>${cm.map(c => `<button type="button" class="pr" data-cmd="${cmds.indexOf(c)}">${p.ic(c[1], 18)}<span>${p.esc(c[0])}</span></button>`).join('') || '<p class="phint">No command by that name.</p>'}`;
       body.innerHTML = h;
       if (t && t.length >= 3 && !localRef(t)) { clearTimeout(palT); palT = setTimeout(() => words(t, my, body), 450); }
     };
@@ -207,7 +208,7 @@
         k.classList.toggle('on', on); return; }
       const l = e.target.closest('[data-l]'); if (!l) return; closeAll();
       ({ options: () => runCommand('options'), mods: () => p.modulesSheet(), voices: () => p.readAloudPage(), view: () => p.readingSheet(), help: () => p.helpSheet(),
-        layouts: () => { const s = p.sheet(`<div class="rows"><button type="button" class="prr" data-x="par">${p.ic('compare', 20)}<span>Parallel Bible below</span></button><button type="button" class="prr" data-x="reset">${p.ic('layout', 20)}<span>Reset panel layout</span></button><button type="button" class="prr" data-x="screen">${p.ic('grid', 20)}<span>Change screen</span></button></div>`, { title: 'Layouts' }); s.onclick = ev => { const x = ev.target.closest('[data-x]'); if (!x) return; p.closeSheet(); if (x.dataset.x === 'par') par(); if (x.dataset.x === 'reset') runCommand('resetLayout'); if (x.dataset.x === 'screen') window.TimotheosSkins.picker(true); }; } }[l.dataset.l] || (() => {}))();
+        layouts: () => { const s = p.sheet(`<div class="rows"><button type="button" class="prr" data-x="par">${p.ic('compare', 20)}<span>Parallel Bible below</span></button><button type="button" class="prr nophone" data-x="reset">${p.ic('layout', 20)}<span>Reset panel layout</span></button><button type="button" class="prr" data-x="screen">${p.ic('grid', 20)}<span>Change screen</span></button></div>`, { title: 'Layouts' }); s.onclick = ev => { const x = ev.target.closest('[data-x]'); if (!x) return; p.closeSheet(); if (x.dataset.x === 'par') par(); if (x.dataset.x === 'reset') runCommand('resetLayout'); if (x.dataset.x === 'screen') window.TimotheosSkins.picker(true); }; } }[l.dataset.l] || (() => {}))();
     };
     cc.oninput = e => { const z = e.target.closest('[data-zoom]'); if (!z) return; const cur = (views()[state.active] || {}).zoom || 1; const d = Math.round((+z.value - cur) * 10); if (d) zoomView(state.active, d); };
   }

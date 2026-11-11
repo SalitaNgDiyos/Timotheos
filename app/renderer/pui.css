@@ -243,3 +243,9 @@ html.sk-a.psplitting .bv .bvtext .sk-ttl { position: sticky; top: 0; z-index: 6;
 .pwpop .pwft .pill { margin: 0; }
 /* a phone has no keyboard to press: no Shortcuts page in Options */
 html.sk #optionsDlg [data-o="keys"] { display: none !important; }
+
+/* commands a phone cannot carry out (a folder of modules, printing, the panel layout of the computer) are not shown there */
+html.mobile .nophone { display: none !important; }
+html:not(.mobile) .phoneonly { display: none !important; }
+html.sk #empty { padding: 128px 24px 24px; }
+#emptyImport { margin-top: 14px; padding: 10px 18px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-fg, #fff); font: inherit; font-weight: 600; cursor: pointer; }

@@ -458,6 +458,24 @@
   toggleViewShow(PUI.par.bot(),'columns',false); views()[PUI.par.bot()].show=Object.assign({},views()[PUI.par.bot()].show,{strongs:effShow('strongs',PUI.par.top())});
   await TimotheosSkins.parallel(false); await sl(600);
  });
+ await T('phone commands',async()=>{
+  const vis=e=>!!e&&e.getClientRects().length>0;
+  PUI.clearPages(); PUI.closeSheet(); await sl(200);
+  PUI.modulesSheet(); await sl(400);
+  ok(vis($('#pSheet [data-c="import"]')),'Modules: Import shows');
+  ok(!vis($('#pSheet [data-c="addFolder"]'))&&!vis($('#pSheet [data-c="modulesFolder"]')),'Modules: no "Add module folder" and no "Imported modules folder" on a phone');
+  await closeSheet();
+  if(SK==='a'){ SkinA.more(); await sl(500); const t=[...$$('#pSheet .pill')].filter(vis).map(b=>b.textContent.trim()); ok(!t.some(x=>/^Print/.test(x))&&t.includes('Clipboard monitor'),'Quiet Reader More: no Print ('+t.length+' tools)'); ok(!/File · View · Help/.test($('#pSheet').textContent),'no "File · View · Help" heading'); await closeSheet(); }
+  if(SK==='b'){ SkinB.setTab('more'); await sl(500); const rows=[...$$('.ppage .prr, .b-more .prr, .prr')].filter(vis).map(b=>b.textContent.trim()); ok(!rows.some(x=>/^Print/.test(x)),'Clear Tabs More: no Print the chapter'); ok(rows.some(x=>/^Layout/.test(x))&&!rows.some(x=>/panels/.test(x)),'Clear Tabs More: "Layout", not "Layout & panels"'); SkinB.setTab('read'); await sl(300); }
+  if(SK==='c'){ SkinC.palette(); await sl(500); const t=[...$$('.c-pal .pr')].map(b=>b.textContent.trim()); ok(t.length>10&&!t.some(x=>/^(Print|Add module folder|Imported modules folder|Reset panel layout)/.test(x)),'Study Desk commands: no print, folder or panel-layout commands ('+t.length+')'); ok(!$('.c-pal .pr small'),'no File / View tags on the commands'); SkinC.closeAll(); await sl(300); }
+  PUI.studyPage(); await sl(500); const bm=[...$$('.ppage .q')].find(b=>/Bookmarks/.test(b.textContent)); ok(!!bm&&![...bm.querySelectorAll('.nophone')].some(vis),'Bookmarks: no "keys 1–0" on a phone'); PUI.clearPages(); await sl(200);
+  // the empty-app message
+  const e=$('#empty'); e.classList.remove('hidden'); await sl(200);
+  const ps=[...e.querySelectorAll('p')].filter(vis).map(x=>x.textContent); ok(ps.length===1&&/Tap Import modules/.test(ps[0])&&!/drop module files|Options/.test(ps[0]),'empty app: the phone wording shows, not the computer wording');
+  const ib=$('#emptyImport'); const r=ib.getBoundingClientRect(), hr=e.querySelector('h2').getBoundingClientRect(); const top=document.elementFromPoint(hr.left+20,hr.top+hr.height/2);
+  ok(vis(ib)&&r.bottom<innerHeight,'empty app: an Import modules button shows'); ok(!!top&&(top===e||e.contains(top)),'empty app: the title is not covered (hits '+(top&&(top.className||top.tagName))+')');
+  e.classList.add('hidden');
+ });
  await T('problem report',async()=>{
   PUI.clearPages(); PUI.closeSheet(); await sl(200); const n0=copied.length;
   PUI.helpSheet(); await sl(400); const b=$('#pSheet [data-c="report"]'); ok(!!b,'Help has "Copy problem report"'); if(!b) return;

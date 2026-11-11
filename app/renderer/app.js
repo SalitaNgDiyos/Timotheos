@@ -337,6 +337,7 @@ async function refreshModules(list) {
   TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); if (window.TimotheosSearch && TimotheosSearch.fillBibleList) TimotheosSearch.fillBibleList();
   if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.allModules = Object.assign(l, { errors: state.modules.errors }); state.modules = visibleModules(state.allModules); renderDictSelects(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {});
   $('#empty').classList.toggle('hidden', ids.length > 0);
+  const ei = $('#emptyImport'); if (ei && !ei.onclick) ei.onclick = () => runCommand('import');
   statusMods();
   $('#grid').classList.toggle('hidden', ids.length === 0);
   preloadBibles();

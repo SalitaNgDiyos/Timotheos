@@ -37,9 +37,28 @@ worker.onmessage = async ev => {
 worker.onerror = e => console.error('worker error', e.message, e.filename, e.lineno);
 const infoP = invoke('host_info').then(i => { info = i; worker.postMessage({ t: 'init', info: i }); return i; });
 
+// Android: an export is written into the app's own "exports" folder (the worker asks for a place to save and gets a
+// path there); when the request that wrote it is done, Android's "Save to" screen takes it where the user chooses.
+const androidExports = [];
+function androidSaveAs(path) {
+  return new Promise(resolve => {
+    const T = window.TwFiles; if (!T || !T.saveAs) return resolve('unavailable');
+    const t = setTimeout(() => { window.__twSaved = null; resolve('cancelled'); }, 300000);
+    window.__twSaved = how => { clearTimeout(t); window.__twSaved = null; resolve(how); };
+    try { T.saveAs(path, path.split('/').pop()); } catch (e) { clearTimeout(t); window.__twSaved = null; resolve('failed'); }
+  });
+}
+async function androidFlushExports() {
+  while (androidExports.length) {
+    const p = androidExports.shift(); const how = await androidSaveAs(p);
+    const say = { saved: 'Saved where you chose.', cancelled: 'Not saved: no place was chosen.', failed: 'The file could not be saved there.', unavailable: 'This build cannot save files outside the app.' }[how] || '';
+    try { if (say && window.TimotheosStudy) setTimeout(() => window.TimotheosStudy.flash(say), 400); } catch (e) { /* no message */ }
+  }
+}
 async function call(ch, ...args) {
   await infoP; await startedP;
   const r = await new Promise(res => { const id = ++seq; waiting.set(id, res); worker.postMessage({ t: 'ipc', id, ch, args }); });
+  if (androidExports.length && r && r.ok) androidFlushExports(); else androidExports.length = 0;
   if (!r || !r.ok) throw new Error(r ? r.error : 'no answer');
   return r.data;
 }
@@ -87,7 +106,7 @@ async function hostOp(op, a) {
     case 'save': {
       const o = a[0] || {};
       let dp = o.defaultPath;
-      if (isAndroid) { return { canceled: false, filePath: info.dataDir + '/exports/' + String(dp || 'export').replace(/[\\/]/g, '_') }; }
+      if (isAndroid) { const fp = info.dataDir + '/exports/' + String(dp || 'export').replace(/[\\/]/g, '_'); androidExports.push(fp); return { canceled: false, filePath: fp }; }
       const p = await dlgSave({ title: o.title, defaultPath: dp, filters: (o.filters || []).filter(f => !(f.extensions || []).includes('*')) });
       return p ? { canceled: false, filePath: fwd(p) } : { canceled: true };
     }
