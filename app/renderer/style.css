@@ -518,3 +518,6 @@ html.phone #ttsbar { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
 .dlmods .dlstatus { min-height: 1.4em; font-size: 13px; } .dlmods .dlstatus.bad, .dlmods .hint.bad { color: #b3261e; }
 .dlmods .hint { color: var(--muted); font-size: 13px; margin: 4px 0; }
 html.sk .dlmods .dllist { max-height: 44vh; } html.sk .dlmods .dlget, html.sk .dlmods .dlbar button, html.sk .dlmods .dladd button { min-height: 40px; padding: 0 12px; }
+
+/* About: the Timotheos icon, about an inch (96 px) across, at the top left; the text wraps beside it */
+.about .abouticon { float: left; width: 96px; height: 96px; margin: 2px 14px 6px 0; }
