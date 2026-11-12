@@ -154,7 +154,7 @@ function runCommand(cmd) {
     voices: () => TimotheosSpeech.voicesDialog(), goto: () => { const p = document.querySelector('.dgroup.isbv .navpill') || document.querySelector('.navpill'); if (p && window.TimotheosNav) TimotheosNav.openNavPopover('book', p); }, about,
     options: () => TimotheosOptions.open(), resetLayout: () => { TimotheosDock.applyPreset('classic'); flashMsg('Panel layout reset'); },
     copyVerses: () => TimotheosStudy.copyDialog(), daily: () => TimotheosStudy.openStudy('plans'), keys: () => TimotheosStudy.showKeys(), print: () => window.print(),
-    report: () => TimotheosReport.copy(), getModules, downloadModules: () => TimotheosDownload.open(), backupStudy: () => TimotheosStudy.backupStudy(), restoreStudy: () => TimotheosStudy.restoreStudy(),
+    report: () => TimotheosReport.copy(), getModules, downloadModules: () => TimotheosDownload.open(), checkUpdates: () => TimotheosUpdates.check(), backupStudy: () => TimotheosStudy.backupStudy(), restoreStudy: () => TimotheosStudy.restoreStudy(),
     guide: () => api.appCmd('guide', TimotheosOptions.appearance().skin)
   };
   if (local[cmd]) return local[cmd]();
@@ -1276,10 +1276,11 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.10')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.11')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
+    <tr><th>Updates</th><td><button type="button" class="pill" id="aboutUpdates">Check for updates</button> <span class="small">Looks up the newest release on GitHub, only when you press this.</span></td></tr>
     <tr><th>Problem report</th><td><button type="button" class="pill" id="aboutReport">Copy problem report</button> <span class="small">The version, this device, how the Bible views are set, the last buttons used and any errors, as text to paste when you report a problem. Nothing is sent.</span></td></tr>
     <tr><th>Program folder</th><td><code class="sel">${esc(s.appDir || '')}</code></td></tr>
     <tr><th>Your data folder</th><td><code class="sel">${esc(s.userDataDir || '')}</code>${s.portable ? ' (portable mode)' : ''}</td></tr>
@@ -1296,6 +1297,7 @@ function about() {
       TimotheosModules.modal({ LICENSE: 'Licence – AGPL-3.0-or-later', 'THIRD-PARTY-LICENSES': 'Third-party notices', NOTICE: 'Notice', fonts: 'Font licences' }[k], `<pre class="legaltext">${esc(body)}</pre>`, [{ label: 'OK', value: true, primary: true }], true);
     });
     const rp = $('#aboutReport'); if (rp) rp.onclick = () => TimotheosReport.copy();
+    const ub = $('#aboutUpdates'); if (ub) ub.onclick = () => { const c = document.querySelector('#modalBtns button'); if (c) c.click(); setTimeout(() => runCommand('checkUpdates'), 120); };
     const q = $('#aboutVerse'); if (!q) return;
     const flip = () => { const l = q.dataset.l === 'fil' ? 'en' : 'fil'; q.dataset.l = l; q.innerHTML = verse(l); save({ aboutVerse: l }); };
     q.onclick = flip; q.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } };

@@ -47,6 +47,7 @@
         ['User Guide', sc('guide'), 'guide', 'book'],
         ['Keyboard Shortcuts', '', 'keys', 'keyboard'],
         '-',
+        ['Check for Updates…', '', 'checkUpdates'],
         ['About Timotheos', '', 'about'],
       ]],
     ];

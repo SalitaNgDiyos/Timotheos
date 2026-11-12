@@ -676,7 +676,7 @@
   await window.__orig.appCmd('guide',''); await sl(1200); ok(!!$('.guidebox'),'opened again'); history.back(); await sl(600); ok(!$('.guidebox'),'Back closes it');
  });
  await T('no shortcuts',async()=>{
-  PUI.helpSheet(); await sl(300); ok(!/shortcut/i.test($('#pSheet').textContent),'Help: no keyboard shortcuts'); await closeSheet();
+  PUI.helpSheet(); await sl(300); ok(!/shortcut/i.test($('#pSheet').textContent),'Help: no keyboard shortcuts'); ok(!!$('#pSheet [data-c="checkUpdates"]'),'Help has "Check for updates"'); $('#pSheet [data-c="checkUpdates"]').click(); await sl(700); ok(!!$('.updates'),'the row opens the update check'); document.querySelector('#modalBtns button')&&document.querySelector('#modalBtns button').click(); await sl(300); await closeSheet();
   if(SK==='a'){ SkinA.more(); await sl(400); ok(!/shortcut/i.test($('#pSheet').textContent),'More: no keyboard shortcuts'); await closeSheet(); }
   if(SK==='b'){ SkinB.setTab('more'); await sl(400); ok(!/shortcut/i.test($('.ppage.root').textContent),'More tab: no keyboard shortcuts'); SkinB.setTab('read'); await sl(300); }
   if(SK==='c'){ SkinC.palette(); await sl(400); ok(!/shortcut/i.test($('.c-pal').textContent),'Command bar: no keyboard shortcuts'); SkinC.closeAll(); await sl(200); }
