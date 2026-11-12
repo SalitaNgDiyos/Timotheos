@@ -770,6 +770,21 @@
     document.addEventListener('pointerup', e => { if (sx !== null && !moved && root.classList.contains('sk')) off(false); sx = null; }, { capture: true, passive: true });
     document.addEventListener('pointercancel', () => { sx = null; }, { capture: true, passive: true });
     window.PUI_bars = off;
+    // Touch and hold anywhere brings the bars (dock, top buttons) back; a swipe up or down anywhere sends them away again.
+    // A hold on a verse still opens that verse's tools, which cover the bars anyway.
+    (() => {
+      let hx = 0, hy = 0, ht = null, fired = false;
+      const busy = () => root.classList.contains('pg-open') || root.classList.contains('sk-dlg') || root.classList.contains('sk-selecting') || !!document.getElementById('pSheet');
+      const bars = on => { off(!on); if (window.SkinA && root.classList.contains('sk-a')) { try { window.SkinA.showChrome(on, on); } catch (x) {} } };
+      document.addEventListener('touchstart', e => { clearTimeout(ht); fired = false; if (!root.classList.contains('sk') || e.touches.length !== 1 || busy()) return;
+        hx = e.touches[0].clientX; hy = e.touches[0].clientY;
+        ht = setTimeout(() => { if (busy()) return; fired = true; bars(true); }, 560); }, { capture: true, passive: true });
+      document.addEventListener('touchmove', e => { const t = e.touches[0]; if (!t) return; const dx = t.clientX - hx, dy = t.clientY - hy;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) clearTimeout(ht);
+        if (!fired && root.classList.contains('sk') && !busy() && Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.2) { bars(false); } }, { capture: true, passive: true });
+      document.addEventListener('touchend', () => clearTimeout(ht), { capture: true, passive: true });
+      document.addEventListener('touchcancel', () => clearTimeout(ht), { capture: true, passive: true });
+    })();
     // Options, a question, module properties, the reading settings sheet, quick settings and the command bar have the screen:
     // no bottom bar over them. A page that opens (Library, Search…) shows the bar again.
     let was = false, pend = false;

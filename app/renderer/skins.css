@@ -225,6 +225,10 @@ html.sk.sk-baroff .a-caps, html.sk.sk-baroff .c-dock { transform: translate(-50%
 html.sk.sk-baroff .a-fade { opacity: 0; }
 /* Screen B: when the tab bar is away, the Bible text and the pages use the space it covered */
 html.sk-b.sk-baroff { --sk-bot: 0px; --pg-bot: 0px; }
+/* the top buttons (view options, back/forward, text format) go away with the bottom bar and come back with it */
+html.sk .b-abar, html.sk .c-rail .pib, html.sk .c-rail .bib, html.sk .sk-ttl .sk-aa { transition: opacity .22s ease, transform .22s ease; }
+html.sk.sk-baroff .b-abar { opacity: 0; transform: translateY(-12px); pointer-events: none; }
+html.sk.sk-baroff .c-rail .pib, html.sk.sk-baroff .c-rail .bib, html.sk.sk-baroff .sk-ttl .sk-aa { opacity: 0; pointer-events: none; }
 html.sk-b #workbench .dgroup, html.sk-b #pHost { transition: bottom .22s ease; }
 
 /* Quiet Reader: the place/Bible strip lines up with the label above it; the top bar is only a contents icon */
