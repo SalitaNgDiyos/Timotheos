@@ -11,6 +11,10 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
   await sleep(2500);
   const book = state.modules.books.find(b => /Edit Book/.test(b.name));
   await TimotheosModules.openBookModule(book.id); await sleep(500);
+  // in a narrow panel the topic list goes above the text; the panel is made large for the side-by-side checks below
+  { const a = document.getElementById('libSide').getBoundingClientRect(), z = document.getElementById('libBody').getBoundingClientRect(), tw = document.getElementById('tab-lib').offsetWidth;
+    if (tw <= 400) ok(a.bottom <= z.top + 2 && z.width >= tw - 30, `narrow panel (${tw}px): the topic list is above the text, which has the whole width (${Math.round(z.width)}px)`); }
+  const grp = document.getElementById('tab-lib').closest('.dgroup'); grp.classList.add('max'); await sleep(300);
   const side = document.getElementById('libSide').getBoundingClientRect(), body = document.getElementById('libBody').getBoundingClientRect();
   ok(side.left < body.left && Math.abs(side.top - body.top) < 40, `topics on the left (${Math.round(side.left)}) of the text (${Math.round(body.left)})`);
   const items = () => [...document.querySelectorAll('#libTopics li[data-tid]')];
@@ -32,6 +36,7 @@ const pe = (el, type, x, y) => el.dispatchEvent(new PointerEvent(type, { bubbles
   const st = await api.getSettings(); ok(st.appearance.libSideW === TimotheosOptions.appearance().libSideW, 'width saved (' + st.appearance.libSideW + ')');
   document.getElementById('libSideBtn').click(); await sleep(100);
   ok(document.getElementById('libSide').classList.contains('hidden') && document.getElementById('libBody').offsetWidth > w1, 'topic list can be hidden');
+  grp.classList.remove('max'); await sleep(200);
   document.getElementById('libSideBtn').click(); await sleep(100);
   // properties
   document.getElementById('libInfo').click(); await sleep(500);
