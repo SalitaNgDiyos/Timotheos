@@ -125,6 +125,16 @@ jobs:
           ls -la out
           TAG="build-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
           gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Build $TAG" --notes "Files of the build of ${GITHUB_SHA::7}" out/*
+      - name: Keep the newest test build in the pre-release "test" (what Check for updates reads when "Include test builds" is on)
+        # Only pushes to timotheos-tauri. The one pre-release is replaced each time. (A release made with the workflow's own token
+        # does not start another build.)
+        if: ${{ github.event_name == 'push' && github.ref_name == 'timotheos-tauri' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(node -p "require('./package.json').version")
+          gh release delete test -R "$GITHUB_REPOSITORY" --cleanup-tag -y >/dev/null 2>&1 || true
+          gh release create test -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Timotheos $V (test build)" --notes "Test build ${V} of ${GITHUB_SHA::7}. Not a finished release: the files are replaced by the next test build." out/*
 
   release:
     if: github.event_name == 'release'

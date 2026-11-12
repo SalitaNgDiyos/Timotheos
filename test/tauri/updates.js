@@ -22,6 +22,13 @@
     ok(!!$('#upGet') && /^https:\/\//.test($('#upGet').dataset.href), 'with a button to its download page');
     ok(/Installed: Timotheos /.test($('.updates').textContent) && $('.updates').textContent.includes(me), 'the installed version is shown');
     ok(/only when you ask/.test($('.updates').textContent), 'it says when the internet is used');
+    ok(!/test build/.test(t) && !!$('#upTest') && !$('#upTest').checked, 'test builds are off to begin with: the answer is the published release');
+    $('#upTest').checked = true; $('#upTest').dispatchEvent(new Event('change'));
+    await sleep(500); ok(await until(() => $('#upTest') && $('#upTest').checked && /9\.9\.10/.test(($('#upState') || {}).textContent || '')), 'ticking "Include test builds" checks again');
+    ok(/9\.9\.10 \(a test build\)/.test($('#upState').textContent), 'the newer test build is offered and marked as a test build: ' + $('#upState').textContent);
+    ok(state.settings.updTest === true, 'the choice is remembered');
+    ok(U.read(JSON.stringify({ tag_name: 'test', name: 'Timotheos 0.7.1 (test build)' })).latest === '0.7.1', 'a tag without a number takes the version from the name');
+    await save({ updTest: false });
     closeM(); await sleep(300);
     // About has the button
     runCommand('about'); ok(await until(() => $('#aboutUpdates')), 'About has a Check for updates button');

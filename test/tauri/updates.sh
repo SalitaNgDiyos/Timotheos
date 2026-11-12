@@ -5,8 +5,9 @@
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 W=/tmp/claude-0/upsite; rm -rf $W; mkdir -p $W; PORT=${PORT:-18766}
 echo '{"tag_name":"v9.9.9","name":"Timotheos 9.9.9","html_url":"https://github.com/SalitaNgDiyos/Timotheos/releases/tag/v9.9.9","body":"Things are better."}' > $W/latest.json
+echo '{"tag_name":"test","name":"Timotheos 9.9.10 (test build)","html_url":"https://github.com/SalitaNgDiyos/Timotheos/releases/tag/test","body":"A test build."}' > $W/test.json
 (cd $W && python3 -m http.server $PORT --bind 127.0.0.1 >/dev/null 2>&1) & S=$!
 sleep 0.6
-export TIMOTHEOS_REPOS="{\"updates\":\"http://127.0.0.1:$PORT/latest.json\",\"port\":$PORT}"
+export TIMOTHEOS_REPOS="{\"updates\":\"http://127.0.0.1:$PORT/latest.json\",\"test\":\"http://127.0.0.1:$PORT/test.json\",\"port\":$PORT}"
 bash "$ROOT/test/tauri/run.sh" "$ROOT/test/tauri/updates.js" "${1:-/tmp/claude-0/t-updates.png}"
 kill $S 2>/dev/null
