@@ -1180,7 +1180,7 @@ async function pin(el) {
 const MODULE_SITES = [
   ['wordmodules.com', 'https://www.wordmodules.com/', 'theWord modules: Bibles, commentaries, dictionaries, books and devotionals. Everything there is in a format Timotheos reads.'],
   ['biblesupport.com', 'https://www.biblesupport.com/', 'e-Sword modules: Bibles, commentaries, dictionaries and books. Choose the <b>e-Sword</b> downloads (not MySword).'],
-  ['ebible.org', 'https://ebible.org/', 'Bibles in very many languages, free to share. Its own downloads are in other formats (USFM, ePub, PDF, Sword), which Timotheos cannot import yet: use it to find a translation, then look for that translation as a theWord or e-Sword module.']
+  ['ebible.org', 'https://ebible.org/', 'Bibles in very many languages, free to share. Download a translation as USFM (the "_usfm.zip" file) or USFX, then import the file as it is: Timotheos reads both. It has no theWord or e-Sword files.']
 ];
 async function getModules() {
   const phone = document.documentElement.classList.contains('mobile');
