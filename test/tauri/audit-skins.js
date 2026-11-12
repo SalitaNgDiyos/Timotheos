@@ -9,7 +9,7 @@
  const SK='__SK__';
  // stand-ins for what would leave the app (system dialogs, printer, clipboard, speech engine)
  const copied=[]; const origCopy=api.copyText; api.copyText=async(t,h)=>{copied.push(t);};
- const calls=[]; for(const k of ['importDialog','addFolder','exportSave','appCmd','openExternal','print','exportVsls','exportRdp']) if(api[k]){const f=api[k]; api[k]=async(...a)=>{calls.push(k+':'+(a[0]||''));return null;};}
+ const calls=[]; for(const k of ['importDialog','addFolder','exportSave','appCmd','openExternal','print','exportVsls','exportRdp']) if(api[k]){const f=api[k]; (window.__orig=window.__orig||{})[k]=f; api[k]=async(...a)=>{calls.push(k+':'+(a[0]||''));return null;};}
  window.print=()=>calls.push('window.print');
  const spoken=[]; let cur=null,tm=null;
  const mock={getVoices:()=>[{name:'Mock EN',lang:'en-US',voiceURI:'mock-en',localService:true},{name:'Mock FIL',lang:'fil-PH',voiceURI:'mock-fil',localService:true}],
@@ -106,7 +106,7 @@
   if(SK==='b'){ await openTools(1); click($('.seltb [data-v="more"]')); await sl(100); click($('.seltb [data-v="lookup"]')); await sl(1500); ok(!!sheet()&&/Strong|Dictionary/.test(sheet().textContent),'Dictionary from the verse toolbar'); await closeSheet(); return; }
   tapAt(w,.5,.5); await sl(1600);
   if(SK!=='b'){ const pop=$('#pWordPop'); ok(!!pop&&!sheet()&&!($('.c-drawer.r')&&$('.c-drawer.r').classList.contains('on')),'tap a word: the small word pop-up, not the big panel'); for(let k=0;k<20&&!$$('#pWordPop .pcard').length;k++) await sl(200); ok($$('#pWordPop .pcard').length>0,'the pop-up shows the entry'); ok(+getComputedStyle(pop).zIndex>95,'the pop-up is above every sheet and drawer ('+getComputedStyle(pop).zIndex+')'); ok($('#popup').classList.contains('hidden'),'the old hover pop-up stays away'); click($('#pWordPop [data-big]')); await sl(1600); }
-  if(SK==='a'){ ok(!!sheet()&&/Strong's|Dictionary/.test($('#pSheet .ph4').textContent),'Dictionary in the pop-up: its dictionary sheet ('+$('#pSheet .ph4').textContent+')'); ok($$('#pSheet .pcard').length>0,'the entry is shown'); click($('#pSheet [data-find]')); await sl(1500); ok($$('.ppage .hit').length>0||!!$('.ppage .sq'),'Find opens the search with the word'); PUI.clearPages(); await sl(300); }
+  if(SK==='a'){ ok(!!sheet()&&/Strong's|Dictionary/.test(($('#pSheet .psrc')||{}).textContent||''),'Dictionary in the pop-up: its dictionary sheet ('+(($('#pSheet .psrc')||{}).textContent||'')+')'); ok($$('#pSheet .pcard').length>0,'the entry is shown'); click($('#pSheet [data-find]')); await sl(1500); ok($$('.ppage .hit').length>0||!!$('.ppage .sq'),'Find opens the search with the word'); PUI.clearPages(); await sl(300); }
   if(SK==='c'){ ok($('.c-drawer.r').classList.contains('on')&&/Dictionary/.test($('.c-drawer.r .dh').textContent),'Dictionary in the pop-up: the study drawer shows its dictionary'); ok($$('.c-drawer.r .pchip').length>0,'the words of the verse with Strong\'s numbers'); for(const tl of ['commentary','xref','note','library']){ click($(`.c-drawer.r [data-tool="${tl}"]`)); await sl(1300); ok($('.c-drawer.r .pp').children.length>0,'study drawer: '+tl); } SkinC.closeAll(); await sl(300); }
  });
 
@@ -177,10 +177,10 @@
     const li0=R.classList.contains('sk-light'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light')!==li0,'Dark switch: '+(li0?'dark':'light')+' desk'); click($('.c-cc [data-cc="dark"]')); await sl(200); ok(R.classList.contains('sk-light')===li0,'Dark switch back');
     const z0=(views()[state.active]||{}).zoom||1; const sl2=$('.c-cc [data-zoom]'); sl2.value=String(Math.round((z0+.3)*10)/10); sl2.dispatchEvent(new Event('input',{bubbles:true})); await sl(400); ok(((views()[state.active]||{}).zoom||1)>z0,'text size slider'); sl2.value=String(z0); sl2.dispatchEvent(new Event('input',{bubbles:true})); await sl(300);
     SkinC.closeAll(); await sl(300); }
-  PUI.readingSheet(); await sl(400); ok($$('#pSheet .tgl').length===12&&!$('#pSheet [data-show="paragraph"]')&&!!$('#pSheet [data-show="tags"]'),'Reading view: 12 things to show or hide (no Paragraphs switch; Module tags for developers)');
+  PUI.readingSheet(); await sl(400); ok($$('#pSheet .tgl').length===13&&!$('#pSheet [data-show="paragraph"]')&&!!$('#pSheet [data-show="tags"]'),'Reading view: 13 things to show or hide (no Paragraphs switch; Module tags for developers)');
   const h=$('#pSheet .tgl[data-show="headings"]'); const was=h.classList.contains('on'); click(h); await sl(800); const now=!!Object.assign({},state.settings.show,(views()[state.active]||{}).show).headings; ok(now!==was,'Headings switch works'); click($('#pSheet .tgl[data-show="headings"]')); await sl(600);
   const z0=(views()[state.active]||{}).zoom||1; click($('#pSheet [data-z="1"]')); await sl(300); ok(((views()[state.active]||{}).zoom||1)>z0,'A+ makes the text larger'); click($('#pSheet [data-z="-1"]')); await sl(300);
-  for(const a of ['font','fcolor','selbg','pen','ul','menu']){ PUI.readingSheet(); await sl(300); click($(`#pSheet [data-x="${a}"]`)); await sl(500); ok(menuOpen(),'view: '+a+' menu opens as a sheet'); await closeMenus(); }
+  for(const a of ['font','fcolor','selbg','pen','ul','menu']){ PUI.readingSheet(); await sl(300); click($(`#pSheet [data-x="${a}"]`)); await sl(500); if(a==='font'){ ok(!!sheet()&&$$('#pSheet [data-font]').length>2,'view: font opens the phone font list'); await closeSheet(); } else ok(menuOpen(),'view: '+a+' menu opens as a sheet'); await closeMenus(); }
   PUI.readingSheet(); await sl(300); click($('#pSheet [data-x="bible"]')); await sl(500); ok(menuOpen()&&$$('.bvmenu button, .bvmenu label').length>0,'choose the Bible'); await closeMenus(); await closeSheet();
   PUI.readingSheet(); await sl(300); click($('#pSheet [data-x="info"]')); await sl(900); ok(!$('#propsDlg').classList.contains('hidden')||modalOpen(),'About this Bible'); $('#propsDlg').classList.add('hidden'); await closeModal(); await closeSheet();
  });
@@ -346,14 +346,18 @@
  // ---------- word pop-up: drag it anywhere ----------
  await T('word popup',async()=>{
   if(SK==='b'){ PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[],el:row(1)}); } else { row(1).scrollIntoView({block:'center'}); await sl(200); const w=row(1).querySelector('.word[data-strong]')||row(1).querySelector('.word'); tapAt(w,.5,.5); }
-  await sl(1200); const pop=$('#pWordPop'); ok(!!pop,'the word pop-up opens'); if(!pop) return;
-  const bar=pop.querySelector('.pwbar'), r0=pop.getBoundingClientRect(), b=bar.getBoundingClientRect();
+  await sl(1200); let pop=$('#pWordPop'); ok(!!pop,'the word pop-up opens'); if(!pop) return;
+  let bar=pop.querySelector('.pwbar'); const r0=pop.getBoundingClientRect(), b=bar.getBoundingClientRect();
   const pe=(t,x,y)=>bar.dispatchEvent(new PointerEvent(t,{bubbles:true,cancelable:true,pointerId:7,clientX:x,clientY:y,isPrimary:true}));
   const sx=b.left+30, sy=b.top+b.height/2; pe('pointerdown',sx,sy); pe('pointermove',sx-200,sy+300); pe('pointermove',sx-150,sy+260); pe('pointerup',sx-150,sy+260); await sl(200);
   const r1=pop.getBoundingClientRect(); ok(Math.abs((r1.top-r0.top)-260)<=2||r1.bottom<=innerHeight,'drag the top bar: the pop-up moves ('+Math.round(r0.left)+','+Math.round(r0.top)+' → '+Math.round(r1.left)+','+Math.round(r1.top)+')');
   ok(r1.top!==r0.top||r1.left!==r0.left,'it is somewhere else now');
-  pe('pointerdown',r1.left+30,r1.top+10); pe('pointermove',5000,5000); pe('pointerup',5000,5000); await sl(150); const r2=pop.getBoundingClientRect();
-  ok(r2.right<=innerWidth+1&&r2.top<innerHeight-60,'it stays on the screen when dragged past the edge ('+Math.round(r2.left)+','+Math.round(r2.top)+')');
+  // dragged mostly past the edge it is thrown away (0.6.5: popups go back off the screen); a little over the edge, it is put back inside
+  pe('pointerdown',r1.left+30,r1.top+10); pe('pointermove',5000,5000); pe('pointerup',5000,5000); await sl(150);
+  ok(!$('#pWordPop'),'dragged off the screen, it closes');
+  PUI.wordPop({word:'love',strongs:['G26'],morphs:[]}); await sl(500); pop=$('#pWordPop'); bar=pop.querySelector('.pwbar'); const r1b=pop.getBoundingClientRect();
+  pe('pointerdown',r1b.left+30,r1b.top+10); pe('pointermove',r1b.left+30+innerWidth-r1b.right+30,r1b.top+10); pe('pointerup',r1b.left+30+innerWidth-r1b.right+30,r1b.top+10); await sl(150); const r2=pop.getBoundingClientRect();
+  ok(!!$('#pWordPop')&&r2.right<=innerWidth+1&&r2.top<innerHeight-60,'a little past the edge, it is put back on the screen ('+Math.round(r2.left)+','+Math.round(r2.top)+')');
   pe('pointerdown',r2.left+30,r2.top+10); pe('pointermove',60,140); pe('pointerup',60,140); await sl(150); const kept=pop.getBoundingClientRect();
   click(pop.querySelector('.pwx')); await sl(200); ok(!$('#pWordPop'),'× closes it');
   PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[]}); await sl(500); const r3=$('#pWordPop').getBoundingClientRect(); ok(Math.abs(r3.left-kept.left)<=1&&Math.abs(r3.top-kept.top)<=1,'the next word opens where it was put');
@@ -453,6 +457,230 @@
   await sl(1500); ok(effShow('columns',PUI.par.bot()),'a display chosen later for the lower Bible is kept');
   toggleViewShow(PUI.par.bot(),'columns',false); views()[PUI.par.bot()].show=Object.assign({},views()[PUI.par.bot()].show,{strongs:effShow('strongs',PUI.par.top())});
   await TimotheosSkins.parallel(false); await sl(600);
+ });
+ await T('phone commands',async()=>{
+  const vis=e=>!!e&&e.getClientRects().length>0;
+  PUI.clearPages(); PUI.closeSheet(); await sl(200);
+  PUI.modulesSheet(); await sl(400);
+  ok(vis($('#pSheet [data-c="import"]')),'Modules: Import shows');
+  ok(vis($('#pSheet [data-c="getModules"]')),'Modules: "Where to get modules" shows'); click($('#pSheet [data-c="getModules"]')); await sl(700); { const g=$('#modal .getmods'); ok(!!g&&/phone\'s browser/.test(g.textContent)&&!/Ctrl\+I|drag them/.test(g.textContent),'it opens with the phone steps, not the computer ones'); ok($$('#modal .gmsite a').length===3,'and the three sites'); $('#modal').classList.add('hidden'); await sl(200); } PUI.modulesSheet(); await sl(400);
+  ok(!vis($('#pSheet [data-c="addFolder"]'))&&!vis($('#pSheet [data-c="modulesFolder"]')),'Modules: no "Add module folder" and no "Imported modules folder" on a phone');
+  await closeSheet();
+  if(SK==='a'){ SkinA.more(); await sl(500); const t=[...$$('#pSheet .pill')].filter(vis).map(b=>b.textContent.trim()); ok(!t.some(x=>/^Print/.test(x))&&t.includes('Clipboard monitor'),'Quiet Reader More: no Print ('+t.length+' tools)'); ok(!/File · View · Help/.test($('#pSheet').textContent),'no "File · View · Help" heading'); await closeSheet(); }
+  if(SK==='b'){ SkinB.setTab('more'); await sl(500); const rows=[...$$('.ppage .prr, .b-more .prr, .prr')].filter(vis).map(b=>b.textContent.trim()); ok(!rows.some(x=>/^Print/.test(x)),'Clear Tabs More: no Print the chapter'); ok(rows.some(x=>/^Layout/.test(x))&&!rows.some(x=>/panels/.test(x)),'Clear Tabs More: "Layout", not "Layout & panels"'); SkinB.setTab('read'); await sl(300); }
+  if(SK==='c'){ SkinC.palette(); await sl(500); const t=[...$$('.c-pal .pr')].map(b=>b.textContent.trim()); ok(t.length>10&&!t.some(x=>/^(Print|Add module folder|Imported modules folder|Reset panel layout)/.test(x)),'Study Desk commands: no print, folder or panel-layout commands ('+t.length+')'); ok(!$('.c-pal .pr small'),'no File / View tags on the commands'); SkinC.closeAll(); await sl(300); }
+  PUI.studyPage(); await sl(500); const bm=[...$$('.ppage .q')].find(b=>/Bookmarks/.test(b.textContent)); ok(!!bm&&![...bm.querySelectorAll('.nophone')].some(vis),'Bookmarks: no "keys 1–0" on a phone'); PUI.clearPages(); await sl(200);
+  // the empty-app message
+  const e=$('#empty'); e.classList.remove('hidden'); await sl(200);
+  const ps=[...e.querySelectorAll('p')].filter(vis).map(x=>x.textContent); ok(ps.length===1&&/Tap Import modules/.test(ps[0])&&!/drop module files|Options/.test(ps[0]),'empty app: the phone wording shows, not the computer wording');
+  const ib=$('#emptyImport'); const r=ib.getBoundingClientRect(), hr=e.querySelector('h2').getBoundingClientRect(); const top=document.elementFromPoint(hr.left+20,hr.top+hr.height/2);
+  ok(vis(ib)&&r.bottom<innerHeight,'empty app: an Import modules button shows'); ok(!!top&&(top===e||e.contains(top)),'empty app: the title is not covered (hits '+(top&&(top.className||top.tagName))+')');
+  e.classList.add('hidden');
+ });
+ await T('verse links',async()=>{
+  const saved={bibles:state.modules.bibles,otn:state.settings.popupNT}; const link=(b,c,v)=>`<p><a class="link" data-href="tw://bible.*?id=${b}.${c}.${v}">ref</a></p>`;
+  const bibles=state.modules.bibles.map(b=>b.id); const kjv=bibles.find(i=>/kjv\.ont/i.test(i)); const wy=bibles.find(i=>/wycliffe/i.test(i));
+  ok(!!kjv&&!!wy,'two Bibles for the test');
+  const hidden=()=>{const p=$('#popup'); return !p||p.classList.contains('hidden');};
+  const tapLink=async(b,c,v)=>{ PUI.sheet(link(b,c,v),{title:'Entry'}); await sl(300); const a=$('#pSheet a[data-href]'); {const te=new Event('touchstart',{bubbles:true}); te.touches=[]; te.changedTouches=[]; a.dispatchEvent(te);} a.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); await sl(700); click(a); await sl(900); };
+  // the NT Bible set in Options is the one that shows
+  state.settings.popupNT=wy; await tapLink(43,3,16);
+  ok(hidden(),'no hover pop-up from a finger tap'); ok(!$('#pSheet'),'the sheet is gone'); ok(state.ref.b===43&&state.ref.c===3&&state.ref.v===16,'John 3:16 is the active verse ('+JSON.stringify(state.ref)+')');
+  ok(views()[state.active].bible===wy,'it shows the default NT Bible ('+views()[state.active].bible+')');
+  // Automatic: the first Bible of the list that has the book
+  state.settings.popupNT=''; await tapLink(43,3,17); const first=state.modules.bibles.find(x=>true).id;
+  ok(views()[state.active].bible===first&&state.ref.v===17,'Automatic: the first Bible of the list ('+views()[state.active].bible+', expected '+first+')');
+  // no Bible at all for that testament: how to get Bibles
+  state.modules.bibles=[]; await tapLink(43,3,16); await sl(400);
+  ok(!!$('#modal .getmods'),'no Bible: "Where to get modules" opens'); $('#modal').classList.add('hidden'); state.modules.bibles=saved.bibles; state.settings.popupNT=saved.otn;
+  // the lemma line at the end of a Strong's entry
+  const orig=api.lookup; api.lookup=async(k,key)=>k==='strong'?{html:'<p class="g">δίδωμι <i>(didōmi)</i> — to give</p><p class="l">G1325 δίδωμι (didōmi) — verb</p>',subject:'δίδωμι',dict:'GBE',dictId:'x',id:1}:orig(k,key,arguments[2]);
+  const box=document.createElement('div'); document.body.appendChild(box); await PUI.dictCards(box,{strongs:['G1325'],word:''},{limit:1}); api.lookup=orig;
+  ok(/to give/.test(box.textContent)&&!/G1325 δίδωμι/.test(box.textContent),'the last line "G1325 δίδωμι (didōmi) — verb" is left out, the meaning stays'); box.remove();
+  // the same dictionary does not give a second entry for the same word
+  const ol=api.lookup, ow=api.wordLookup, ot=api.bookTopic;
+  api.lookup=async(k)=>k==='strong'?{html:'<p>first entry</p>',subject:'G1325',dict:'GBE',dictId:'bm:gbe',id:1}:null;
+  api.wordLookup=async()=>[{id:'bm:gbe',title:'Greek Bible English Definitions',kind:'dictionary',hits:[{id:7,subject:'δίδωμι',exact:true}]},{id:'bm:other',title:'Other Dictionary',kind:'dictionary',hits:[{id:3,subject:'give',exact:true}]}];
+  api.bookTopic=async()=>({subject:'x',html:'<p>word entry</p>'});
+  const b2=document.createElement('div'); document.body.appendChild(b2); await PUI.dictCards(b2,{strongs:['G1325'],word:'maipamigay'},{limit:6});
+  ok(b2.querySelectorAll('.pcard').length===2&&!/GREEK BIBLE ENGLISH/i.test(b2.textContent)&&/Other Dictionary/i.test(b2.textContent),'the Strong\'s dictionary shows once; another dictionary still adds its own entry ('+b2.querySelectorAll('.pcard').length+' cards)');
+  api.lookup=ol; api.wordLookup=ow; api.bookTopic=ot; b2.remove();
+ });
+ await T('start and lists',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); await sl(200);
+  // the next start goes straight to the screen chosen last time
+  ok(localStorage.getItem('tw.ui')===SK,'the chosen screen is remembered ('+localStorage.getItem('tw.ui')+')');
+  TimotheosSkins.start(); await sl(1200);
+  ok(!$('#skPick .skp-card'),'a later start does not ask for the screen again'); ok(R.classList.contains('sk-'+SK)&&!$('#skPick:not(.out)'),'it opens in that screen');
+  const keep=localStorage.getItem('tw.ui'); localStorage.removeItem('tw.ui'); TimotheosSkins.start(); await sl(500);
+  ok(!!$('#skPick .skp-card'),'the very first start offers the three screens'); ok(/remembers your choice/.test($('#skPick').textContent)&&!/this session/.test($('#skPick').textContent),'and says the choice is remembered');
+  click($(`#skPick .skp-card[data-k="${SK}"]`)); await sl(900); localStorage.setItem('tw.ui',keep);
+  // library: locked last, same names told apart
+  PUI.library(); await sl(700);
+  let lockedOk=true, dupOk=true, seen=0;
+  for(const seg of [null,...$$('.ppage .pseg button')]){ if(seg){ click(seg); await sl(300); }
+    const mods=$$('.ppage .mod'); const firstLocked=mods.findIndex(m=>m.classList.contains('locked')); if(firstLocked>=0){ seen++; if(mods.slice(firstLocked).some(m=>!m.classList.contains('locked'))) lockedOk=false; }
+    const names={}; mods.forEach(m=>{ const n=m.querySelector('b').textContent; (names[n]=names[n]||[]).push(m.querySelector('.mt > span').textContent); });
+    for(const n in names) if(names[n].length>1&&new Set(names[n]).size<names[n].length) dupOk=false; }
+  ok(lockedOk,'Library: locked modules come last ('+seen+' list(s) with locked ones)'); ok(dupOk,'Library: modules with the same name show different file names');
+  PUI.clearPages(); await sl(200);
+  PUI.chooseBible(); await sl(700); const bl=$$('.bvmenu [data-b]').map(b=>b.textContent.trim()); ok(bl.length>1&&new Set(bl).size===bl.length,'Bible list: no two entries read the same ('+bl.length+')'); await closeMenus();
+ });
+ await T('problem report',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); await sl(200); const n0=copied.length;
+  PUI.helpSheet(); await sl(400); const b=$('#pSheet [data-c="report"]'); ok(!!b,'Help has "Copy problem report"'); if(!b) return;
+  click(b); await sl(500); const t=copied[copied.length-1]||'';
+  ok(copied.length>n0&&/^Timotheos problem report/.test(t),'the report is copied');
+  ok(new RegExp('Phone screen: '+SK).test(t),'it names the phone screen ('+((t.match(/Phone screen: \S+/)||[])[0])+')');
+  ok(/View 0: Bible /.test(t)&&/Fonts offered here: /.test(t),'it describes the Bible views and the fonts of this device');
+  ok(!sheet(),'the sheet closes');
+ });
+ await T('strongs labels',async()=>{
+  PUI.clearPages(); PUI.closeSheet(); await sl(200);
+  PUI.wordSheet({word:'οὕτω',strongs:['G3779']}); await sl(1500);
+  const h=$('#pSheet .ph4'); ok(!!h&&!/Strong/i.test(h.textContent)&&!!h.querySelector('.pclose'),'the Strong\'s sheet has no title of its own, only the close button ('+(h?h.textContent.trim():'')+')');
+  const ptr=$$('#pSheet .lhead .ptr').map(e=>e.textContent.trim()); ok(!ptr.some(t=>/^[GH]\d+$/i.test(t)),'no Strong\'s number beside the Greek word ('+ptr.join(',')+')');
+  ok(/G3779/.test(($('#pSheet .psrc')||{}).textContent||''),'the card still names the number: '+(($('#pSheet .psrc')||{}).textContent||''));
+  await closeSheet();
+ });
+ await T('parallel font and bible',async()=>{
+  if(SK==='b'){ const t=$$('.b-tabs button').map(b=>b.textContent.trim()).join(','); ok(t==='Bible,Library,Search,Notes,More','Clear Tabs: the tabs are named Bible, Library, Search, Notes, More ('+t+')'); click($('.b-tabs [data-t="study"]')); await sl(600); ok(/Notes/.test(($('.ppage .ptitle,.ppage h1,.ppage .pbar')||{}).textContent||document.querySelector('.ppage').textContent),'the Notes tab opens a page titled Notes'); PUI.clearPages(); click($('.b-tabs [data-t="read"]')); await sl(400); }
+  PUI.clearPages(); PUI.closeSheet(); if(TimotheosPhone.splitId()){ await TimotheosSkins.parallel(false); } await sl(500);
+  if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='c') SkinC.par(true); else await TimotheosSkins.parallel(true);
+  await sl(1800); if(!R.classList.contains('psplitting')){ ok(false,'two Bibles'); return; }
+  const vis=e=>!!e&&e.getClientRects().length>0&&getComputedStyle(e).display!=='none';
+  const fam=i=>getComputedStyle(document.querySelectorAll('.bv .bvtext')[i]).fontFamily;
+  { const l=TimotheosOptions.fonts(); ok(['Gentium Plus','Literata','Inter'].every(f=>l.includes(f)),'phone font list keeps the bundled fonts ('+l.length+' fonts)'); const ms=f=>{const c=document.createElement('canvas').getContext('2d'); const w=fm=>{c.font='72px '+fm; return c.measureText('mmmmmmmmmmlli0Oq').width;}; return w("'"+f+"', monospace")!==w('monospace')||w("'"+f+"', serif")!==w('serif')||w("'"+f+"', sans-serif")!==w('sans-serif');}; const bad=l.filter(f=>!['Gentium Plus','Literata','Source Serif 4','Inter','Noto Serif Hebrew'].includes(f)&&!ms(f)); ok(bad.length===0,'every font offered on the phone is really there (not: '+bad.join(', ')+')'); }
+  for(const which of ['bot','top']){
+    const i=PUI.par[which](); PUI.closeSheet(); await sl(200); await closeMenus();
+    PUI.formatFor(i); await sl(500);
+    const pill=[...$$('#pSheet [data-x="font"]')][0]; ok(!!pill,which+': Font button in the format sheet'); if(!pill) continue;
+    click(pill); await sl(900);
+    const hitOk=el=>{ const r=el.getBoundingClientRect(); const t=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); return !!t&&(t===el||el.contains(t)); };
+    // a tap on the other Bible's text before choosing must not move the choice to that Bible
+    setActive(which==='bot'?PUI.par.top():PUI.par.bot()); await sl(200);
+    const rows=$$('#pSheet [data-font]'); ok(rows.length>2,which+': the phone font list opens ('+rows.length+' fonts)'); if(rows.length<3) continue;
+    const pick=rows.find(r=>r.dataset.font&&r.dataset.font!==views()[i].font&&r.dataset.font!=='Literata'); pick.scrollIntoView({block:'center'}); await sl(200);
+    ok(hitOk(pick),which+': a font in the list can be tapped');
+    const oth=views()[which==='bot'?PUI.par.top():PUI.par.bot()].font;
+    tapAt(pick); await sl(700);
+    ok(views()[i].font===pick.dataset.font,which+': the font is saved for that view ('+views()[i].font+')');
+    ok(views()[which==='bot'?PUI.par.top():PUI.par.bot()].font===oth,which+': the other Bible keeps its font');
+    ok(fam(i).includes(pick.dataset.font),which+': the text of that view uses it: '+fam(i).slice(0,60));
+    { const pv=document.querySelectorAll('.bv')[i].querySelector('.pv[data-v], tr[data-v] td, .paraview, table.chapter'); const f=pv?getComputedStyle(pv).fontFamily:''; ok(f.includes(pick.dataset.font),which+': the verses themselves use it ('+f.slice(0,50)+')'); }
+    ok(!sheet(),which+': the list closes after the choice');
+    await closeMenus(); delete views()[i].font; storeViews(); ensurePanes();
+  }
+  for(const which of ['bot','top']){
+    const i=PUI.par[which](); PUI.closeSheet(); await sl(200); await closeMenus();
+    PUI.formatFor(i); await sl(500);
+    const chip=$('#pSheet [data-x="bible"]'); click(chip); await sl(900);
+    const b=[...$$('.bvmenu [data-b]')].find(x=>x.dataset.b!==views()[i].bible); ok(!!b&&vis(b),which+': the list of Bibles shows from the sheet ('+$$('.bvmenu [data-b]').length+')');
+    const before=views()[i].bible; if(b){ click(b); await sl(900); ok(views()[i].bible===b.dataset.b,which+': the Bible of that view changed ('+before+' → '+views()[i].bible+')'); views()[i].bible=before; await setViews([...views()]); await sl(500); }
+    await closeMenus(); await closeSheet();
+  }
+  // real taps on the screen's own Bible controls, with the other Bible being the active one
+  const hit=(el)=>{ const r=el.getBoundingClientRect(); const x=r.left+r.width/2,y=r.top+r.height/2; const t=document.elementFromPoint(x,y); return {ok:!!t&&(t===el||el.contains(t)||t.contains(el)),r:[Math.round(r.left),Math.round(r.top),Math.round(r.width),Math.round(r.height)],at:t&&(t.className||t.tagName)}; };
+  const ctl={ top:{a:()=>{ const ch=$('.a-chrome'); const em=$('.a-chrome em'); if(typeof SkinA!=='undefined'&&SkinA.showChrome) SkinA.showChrome(true); if(ch&&vis(em)&&em.textContent.trim()) return em; return $('.dgroup.pbase .bv .sk-ttl small'); }, b:()=>$('.b-big [data-a="bible"]'), c:()=>$('.c-rail [data-a="bible"]')}[SK], bot:()=>$('.pdiv [data-pd="bible"]') };
+  if(SK==='a'){ const top=PUI.par.top(), bot=PUI.par.bot(); setActiveView(bot); await sl(300); PUI.closeSheet(); await closeMenus(); SkinA.showChrome(false); await sl(500);
+    const sm=$('.dgroup.pbase .bv .sk-ttl small'); ok(!!sm&&vis(sm),'a top title: the Bible name shows'); if(sm){ const r=sm.getBoundingClientRect(); const t=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2); ok(!!t&&(t===sm||sm.contains(t)),'a top title: a tap on the Bible name reaches it with the strip hidden (hits '+(t&&(t.className||t.tagName))+')');
+      tapAt(sm); await sl(1000); const items=$$('.bvmenu [data-b]'); ok(items.length>1&&state.active===top,'a top title: the list opens for the upper Bible ('+items.length+', active '+state.active+')');
+      const b=items.find(x=>x.dataset.b!==views()[top].bible); if(b){ const before=views()[top].bible, ob=views()[bot].bible; tapAt(b); await sl(1000); ok(views()[top].bible===b.dataset.b&&views()[bot].bible===ob,'a top title: the upper Bible changed, the lower did not'); views()[top].bible=before; await setViews([...views()]); await sl(500); } }
+    await closeMenus(); }
+  for(const which of ['top','bot']){
+    const want=PUI.par[which](), other=which==='top'?PUI.par.bot():PUI.par.top();
+    setActiveView(other); await sl(400); PUI.closeSheet(); await closeMenus(); await sl(200);
+    const c=ctl[which](); ok(!!c&&vis(c),SK+' '+which+': the Bible control shows ('+(c?JSON.stringify(hit(c).r):'none')+')'); if(!c||!vis(c)) continue;
+    const h=hit(c); ok(true,SK+' '+which+': tapping '+c.tagName+'.'+(c.className||'')+' "'+c.textContent.trim().slice(0,30)+'" chrome='+(R.classList.contains('a-show'))); ok(h.ok,SK+' '+which+': a tap reaches it (hits '+h.at+')');
+    tapAt(c); await sl(1000);
+    const items=$$('.bvmenu [data-b]'); const sheetOpen=!!sheet();
+    ok(items.length>1||sheetOpen,SK+' '+which+': a list of Bibles opened ('+items.length+' items, sheet '+sheetOpen+')');
+    if(items.length>1){ const m=$('.bvmenu'); const mr=m.getBoundingClientRect(); ok(mr.top>=0&&mr.bottom<=innerHeight+1&&mr.height>40,SK+' '+which+': the list is inside the screen '+JSON.stringify([Math.round(mr.left),Math.round(mr.top),Math.round(mr.width),Math.round(mr.height)]));
+      const b=items.find(x=>x.dataset.b!==views()[want].bible); const hb=hit(b); ok(hb.ok,SK+' '+which+': an item can be tapped (hits '+hb.at+')');
+      const before=views()[want].bible, oth=views()[other].bible; tapAt(b); await sl(1000);
+      ok(views()[want].bible===b.dataset.b&&views()[other].bible===oth,SK+' '+which+': changed the '+which+' Bible only ('+before+' → '+views()[want].bible+'; other '+views()[other].bible+')');
+      views()[want].bible=before; await setViews([...views()]); await sl(500); }
+    await closeMenus(); await closeSheet();
+  }
+ await closeMenus(); await TimotheosSkins.parallel(false); await sl(600);
+ });
+ // ---- touch helpers: a finger put down on an element, moved, lifted
+ const fing=(el,type,x,y)=>{const e=new Event(type,{bubbles:true,cancelable:true}); const pt={clientX:x,clientY:y,identifier:7,target:el}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; el.dispatchEvent(e);};
+ const drag=async(el,dx,dy,o={})=>{const r=el.getBoundingClientRect(); const x=o.x!=null?o.x:r.left+r.width/2, y=o.y!=null?o.y:r.top+Math.min(r.height/2,60); const tg=o.on||el; fing(tg,'touchstart',x,y); for(let k=1;k<=6;k++){fing(tg,'touchmove',x+dx*k/6,y+dy*k/6); await sl(16);} fing(tg,'touchend',x+dx,y+dy); await sl(400);};
+ const pdown=el=>{let e; try{e=new PointerEvent('pointerdown',{bubbles:true});}catch(x){e=new Event('pointerdown',{bubbles:true});} el.dispatchEvent(e);};
+ await T('bible drop',async()=>{
+  await go({b:43,c:3,v:16}); await sl(500); await closeMenus();
+  let lab; if(SK==='a'){ SkinA.showChrome(true,false); await sl(250); lab=$('.a-chrome .lab em'); } else if(SK==='b') lab=$('.b-big [data-a="bible"]'); else lab=$('.c-rail [data-a="bible"]');
+  ok(!!lab&&lab.getBoundingClientRect().width>0,'the Bible label is on the top bar');
+  pdown(lab); click(lab); await sl(600);
+  const m=$('.bvmenu.biblemenu'); const lr=lab.getBoundingClientRect(); const mr=m&&m.getBoundingClientRect();
+  ok(m&&m.classList.contains('pdrop'),'tapping it drops the Bible list from the top bar');
+  ok(mr&&mr.top>=lr.bottom-2&&mr.top<=lr.bottom+40&&mr.top<innerHeight/3,'the list starts at the lower edge of the bar ('+(mr&&Math.round(mr.top))+' under '+Math.round(lr.bottom)+')');
+  ok(mr&&mr.left<=lr.right&&mr.right>=lr.left&&mr.bottom<=innerHeight,'it is beside the label and stays on the screen');
+  ok(m&&m.querySelectorAll('[data-b]').length>=2,'it lists the Bibles');
+  if(m){ await drag(m,0,-160,{y:mr.top+40}); ok(!m.isConnected,'dragged back up, it closes'); }
+  pdown(lab); click(lab); await sl(500); const m2=$('.bvmenu.biblemenu'); if(m2){ await drag(m2,0,-30,{y:m2.getBoundingClientRect().top+40}); ok(m2.isConnected,'a short drag lets it spring back'); }
+  await closeMenus(); if(SK==='a') SkinA.showChrome(false);
+ });
+ await T('swipe back',async()=>{
+  PUI.readingSheet(); await sl(400); let sh=$('#pSheet .psheet'); ok(!!sh,'a sheet is open');
+  await drag(sh,0,40); ok(!!$('#pSheet'),'a short drag down: the sheet springs back');
+  sh=$('#pSheet .psheet'); await drag(sh,0,260); await sl(200); ok(!$('#pSheet'),'dragged down from its middle: the sheet closes');
+  const n0=PUI.pageCount(); PUI.library(); await sl(500); const pg=[...$$('.ppage')].pop(); ok(PUI.pageCount()===n0+1,'a page is open');
+  await drag(pg,240,8,{x:60}); await sl(300); ok(PUI.pageCount()===n0,'dragged back to the right: the page closes');
+  PUI.wordPop({word:'love',strongs:[],morphs:[]}); await sl(500); const wp=$('#pWordPop'), bar=wp&&wp.querySelector('.pwbar');
+  if(bar){ const r=bar.getBoundingClientRect(); const pe=(t,x,y)=>{let e; try{e=new PointerEvent(t,{bubbles:true,clientX:x,clientY:y,pointerId:3});}catch(z){e=new MouseEvent(t,{bubbles:true,clientX:x,clientY:y});} bar.dispatchEvent(e);};
+   pe('pointerdown',r.left+20,r.top+10); pe('pointermove',r.left+60,r.top+40); pe('pointerup',r.left+60,r.top+40); await sl(200); ok(!!$('#pWordPop'),'the word pop-up moved a little stays open');
+   const r2=bar.getBoundingClientRect(); pe('pointerdown',r2.left+20,r2.top+10); pe('pointermove',r2.left+20+innerWidth*0.8,r2.top+10); pe('pointerup',r2.left+20+innerWidth*0.8,r2.top+10); await sl(200); ok(!$('#pWordPop'),'thrown off the screen, the word pop-up closes'); }
+  about(); await sl(500); const box=$('#modal .box'); ok(modalOpen(),'a dialog is open'); await drag(box,0,240,{y:box.getBoundingClientRect().top+30}); await sl(300); ok(!modalOpen(),'dragged down, the dialog closes');
+  if(SK==='c'){ SkinC.navDrawer(true); await sl(400); const d=$('.c-drawer.l'); await drag(d,-220,4,{y:300}); ok(!d.classList.contains('on'),'the Navigator dragged back to the left closes');
+   SkinC.quick(); await sl(400); const cc=$('.c-cc'); await drag(cc,0,-200,{y:cc.getBoundingClientRect().top+30}); ok(!cc.classList.contains('on'),'quick settings pushed back up close'); }
+ });
+ await T('hold and swipe bars',async()=>{
+  await go({b:19,c:119,v:1}); await sl(900); const bars=[{a:'.a-caps',b:'.b-tabs',c:'.c-dock'}[SK]]; const top={b:'.b-abar',c:'.c-rail .pib'}[SK];
+  const shown=()=>!R.classList.contains('sk-baroff'); const hide=async()=>{PUI_bars(true); await sl(300);};
+  const tx=$('.bv.active .bvtext')||$('.bvtext'); const r=tx.getBoundingClientRect(); const x=r.left+r.width/2, y=r.top+r.height/3;
+  const tgt=document.elementFromPoint(r.left+3,y)||tx;     // the margin, not a verse
+  await hide(); ok(!shown(),'bars hidden to begin with');
+  fing(tgt,'touchstart',r.left+3,y); await sl(800); fing(tgt,'touchend',r.left+3,y); await sl(300);
+  ok(shown(),'touch and hold on the page brings the bars back');
+  if(top){ const e=$(top); ok(getComputedStyle(e).opacity>0.9,'the top buttons are back too'); }
+  fing(tgt,'touchstart',x,y); fing(tgt,'touchmove',x,y-60); fing(tgt,'touchend',x,y-60); await sl(400);
+  ok(!shown(),'a swipe up hides them'); if(top){ ok(getComputedStyle($(top)).opacity<0.2,'the top buttons hide with them'); }
+  const oh=$(bars[0]); ok(getComputedStyle(oh).opacity<0.2,'the bottom bar is hidden');
+  fing(tgt,'touchstart',x,y); await sl(800); fing(tgt,'touchend',x,y); await sl(300); ok(shown(),'hold again: back');
+  fing(tgt,'touchstart',x,y); fing(tgt,'touchmove',x,y+60); fing(tgt,'touchend',x,y+60); await sl(400); ok(!shown(),'a swipe down hides them');
+  fing(tgt,'touchstart',x,y); fing(tgt,'touchmove',x+70,y+6); fing(tgt,'touchend',x+70,y+6); await sl(300); ok(!shown(),'a sideways swipe changes nothing');
+ });
+ await T('bottom edge',async()=>{
+  PUI_bars(true); await sl(300); ok(R.classList.contains('sk-baroff'),'the bottom bar hides while reading');
+  const t=document.elementFromPoint(innerWidth/2,innerHeight-12)||document.body; fing(t,'touchstart',innerWidth/2,innerHeight-12); fing(t,'touchmove',innerWidth/2,innerHeight-60); fing(t,'touchend',innerWidth/2,innerHeight-60); await sl(400);
+  ok(!R.classList.contains('sk-baroff'),'a swipe up from the bottom edge brings it back');
+ });
+ await T('phone guide',async()=>{
+  if(!window.__orig||!window.__orig.appCmd){ok(false,'no appCmd');return;}
+  await window.__orig.appCmd('guide',TimotheosOptions.appearance().skin); await sl(1800);
+  const gb=$('.guidebox'); const fr=gb&&gb.querySelector('iframe'); ok(!!fr&&/phone=1/.test(fr.src),'Help › User guide opens the phone guide over the page');
+  const d=fr&&fr.contentDocument; ok(!!d&&!!d.getElementById('guideP')&&!d.getElementById('guide'),'only the phone guide is in it');
+  const txt=d?d.body.textContent:''; ok(d&&!d.querySelector('#guideP kbd')&&!/Ctrl\+|Alt\+|F11|F5|right-click|mouse/i.test(d.getElementById('guideP').textContent),'no keys, mouse or right-click in the phone guide');
+  ok(d&&/Quiet Reader/.test(txt)&&/Study Desk/.test(txt)&&/drag/i.test(txt),'it explains the phone screens and dragging popups back');
+  const nav=d.getElementById('toc'), W=fr.contentWindow; ok(W.getComputedStyle(nav).position==='absolute'&&nav.getBoundingClientRect().right<=2,'its contents list is a hidden drawer');
+  d.getElementById('tocBtn').click(); await sl(350); ok(nav.getBoundingClientRect().left>=-1&&d.body.classList.contains('tocon'),'the Contents button pulls it out');
+  const wr=d.querySelector('.wrap'); const f2=(type,x,y)=>{const e=new W.Event(type,{bubbles:true,cancelable:true}); const pt={clientX:x,clientY:y,identifier:1,target:nav}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; nav.dispatchEvent(e);};
+  f2('touchstart',200,300); for(let k=1;k<=5;k++){f2('touchmove',200-k*40,302);await sl(16);} f2('touchend',0,302); await sl(350); ok(!d.body.classList.contains('tocon'),'dragged back to the left, it hides');
+  const f3=(type,x,y)=>{const e=new W.Event(type,{bubbles:true,cancelable:true}); const pt={clientX:x,clientY:y,identifier:1,target:wr}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; wr.dispatchEvent(e);};
+  f3('touchstart',8,300); for(let k=1;k<=5;k++){f3('touchmove',8+k*40,302);await sl(16);} f3('touchend',208,302); await sl(350); ok(d.body.classList.contains('tocon'),'pulled out from the left edge, it shows');
+  d.getElementById('tocScrim').click(); await sl(300);
+  const tb=d.querySelector('.titlebar .ttl'); const f4=(type,y)=>{const e=new W.Event(type,{bubbles:true,cancelable:true}); const pt={clientX:120,clientY:y,identifier:1,target:tb}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; tb.dispatchEvent(e);};
+  f4('touchstart',20); for(let k=1;k<=5;k++){f4('touchmove',20+k*40);await sl(16);} f4('touchend',220); await sl(500); ok(!$('.guidebox'),'dragging its title bar down closes the guide');
+  await window.__orig.appCmd('guide',''); await sl(1200); ok(!!$('.guidebox'),'opened again'); history.back(); await sl(600); ok(!$('.guidebox'),'Back closes it');
+ });
+ await T('no shortcuts',async()=>{
+  PUI.helpSheet(); await sl(300); ok(!/shortcut/i.test($('#pSheet').textContent),'Help: no keyboard shortcuts'); ok(!!$('#pSheet [data-c="checkUpdates"]'),'Help has "Check for updates"'); $('#pSheet [data-c="checkUpdates"]').click(); await sl(700); ok(!!$('.updates'),'the row opens the update check'); document.querySelector('#modalBtns button')&&document.querySelector('#modalBtns button').click(); await sl(300); await closeSheet();
+  if(SK==='a'){ SkinA.more(); await sl(400); ok(!/shortcut/i.test($('#pSheet').textContent),'More: no keyboard shortcuts'); await closeSheet(); }
+  if(SK==='b'){ SkinB.setTab('more'); await sl(400); ok(!/shortcut/i.test($('.ppage.root').textContent),'More tab: no keyboard shortcuts'); SkinB.setTab('read'); await sl(300); }
+  if(SK==='c'){ SkinC.palette(); await sl(400); ok(!/shortcut/i.test($('.c-pal').textContent),'Command bar: no keyboard shortcuts'); SkinC.closeAll(); await sl(200); }
+  runCommand('options'); await sl(500); const kb=$('#optionsDlg [data-o="keys"]'); ok(!kb||getComputedStyle(kb).display==='none','Options: no Shortcuts page'); await closeOptions();
  });
  await T('change screen',async()=>{ TimotheosSkins.picker(true); await sl(300); ok(!!$('#skPick .skp-x'),'Change screen offers to keep the current one'); click($('#skPick .skp-x')); await sl(400); ok(R.classList.contains('sk-'+SK)&&!$('#skPick'),'Keep the current screen'); });
  ok(!errs.length,'no script errors'+(errs.length?': '+[...new Set(errs)].slice(0,6).join(' / '):''));

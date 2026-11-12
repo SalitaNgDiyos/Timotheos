@@ -107,6 +107,20 @@
   };
   const BUNDLED = ['Gentium Plus', 'Literata', 'Source Serif 4', 'Inter', 'Noto Serif Hebrew'];
   const COMMON = ['Cambria', 'Constantia', 'Georgia', 'Palatino Linotype', 'Book Antiqua', 'Times New Roman', 'Segoe UI', 'Calibri', 'Verdana', 'Tahoma', 'Arial', 'SBL Greek', 'SBL Hebrew', 'Ezra SIL', 'Cardo'];
+  /* on a phone the list of fonts shows only what the phone really has (the Windows names would change nothing there); on a computer the list is as before */
+  const _fx = {};
+  function hasFont(f) {
+    if (!document.documentElement.classList.contains('mobile')) return true;
+    if (f in _fx) return _fx[f];
+    let r = true;
+    try {
+      const c = document.createElement('canvas').getContext('2d'), t = 'mmmmmmmmmmlli0Oq@Ωאα';
+      const w = fam => { c.font = `72px ${fam}`; return c.measureText(t).width; };
+      const q = `'${String(f).replace(/['\\]/g, '')}'`;
+      r = w(`${q}, monospace`) !== w('monospace') || w(`${q}, serif`) !== w('serif') || w(`${q}, sans-serif`) !== w('sans-serif');
+    } catch (e) { r = true; }
+    return (_fx[f] = r);
+  }
   let installed = null;
 
   const A = () => state.settings.appearance;
@@ -122,7 +136,8 @@
   async function loadMyFx() {
     if (!window.api || !api.fxList) return;
     try { const l = await api.fxList(); fxSkins(); for (const k of Object.keys(SKINS)) if (k.startsWith('fxu-')) delete SKINS[k]; for (const t of l) addFx(t); } catch (e) { /* none */ }
-    if (A().skin && A().skin.startsWith('fxu-') && SKINS[A().skin]) apply();
+    if (pendingFx && SKINS[pendingFx]) { A().skin = pendingFx; pendingFx = null; apply(); syncFormSafe(); }
+    else if (A().skin && A().skin.startsWith('fxu-') && SKINS[A().skin]) apply();
   }
   async function importMyFx() {
     if (!window.api || !api.fxImport) return;
@@ -193,11 +208,15 @@
     a.uiSize = Math.max(11, Math.min(22, +a.uiSize || 13));
     a.paneSize = Math.max(11, Math.min(24, +a.paneSize || 14));
     if (!SKINS[a.skin]) {
+      // a theme imported from Firefox is read from the data folder a moment later (loadMyFx): until then a built-in
+      // skin stands in, but the choice itself is kept and comes back as soon as the theme is there
+      if (String(a.skin || '').startsWith('fxu-')) pendingFx = a.skin;
       a.skin = state.settings.theme === 'dark' ? 'slate' : 'parchment';
     }
     return a;
   }
-  function store() { save({ appearance: A() }); }
+  let pendingFx = null;
+  function store() { const a = A(); save({ appearance: pendingFx ? Object.assign({}, a, { skin: pendingFx }) : a }); }
 
   /* ------------------------------------------------------------ applying */
   const q = f => `'${String(f).replace(/['\\]/g, '')}'`;
@@ -217,6 +236,7 @@
     if (c.strong) { root.style.setProperty('--strong', c.strong); root.style.setProperty('--fn', c.strong); }
     if (c.sel) root.style.setProperty('--sel', c.sel);
     root.style.setProperty('--vnum', c.vnum || sk.v.accent);
+    try { TimotheosLogo.sync(a.skin, sk.dark, sk.v.accent); } catch (e) { /* the icon stays as it was */ }
     root.style.setProperty('--textbg', a.bgMode === 'color' ? a.bgColor : sk.v.textbg);
     root.dataset.texture = a.texture;
     root.style.setProperty('--font-text', textStack(a.fontText));
@@ -285,7 +305,8 @@
     m.querySelector('[data-act="opts"]').onclick = () => { closeMenus(); open('look'); };
     const fi = m.querySelector('[data-act="fximport"]'); if (fi) fi.onclick = () => { closeMenus(); importMyFx(); };
   }
-  function setSkin(id) { A().skin = id; save({ theme: SKINS[id].dark ? 'dark' : 'light' }); store(); apply(); syncForm(); }
+  function syncFormSafe() { try { syncForm(); } catch (e) { /* the Options form is not built yet */ } }
+  function setSkin(id) { pendingFx = null; A().skin = id; save({ theme: SKINS[id].dark ? 'dark' : 'light' }); store(); apply(); syncForm(); }
 
   /* ------------------------------------------------------------ panels menu */
   function fillPanelsMenu() {
@@ -299,7 +320,7 @@
     const bibles = all.filter(p => TimotheosDock.isBible(p.id)).map(row).join('');
     const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => `<button data-preset="${id}">${TimotheosIcons.icon('layout', 15)}${p.label}</button>`).join('');
     const saved = Object.keys(state.settings.savedLayouts || {}).map(n => `<button data-saved="${esc(n)}">${TimotheosIcons.icon('study', 15)}${esc(n)}</button>`).join('');
-    m.innerHTML = `<div class="mh">Panels <span class="small">(click to show or close · the grid has 4 columns × 3 rows)</span></div>
+    m.innerHTML = `<div class="mh">Panels <span class="small">(click to show or close)</span></div>
       <button data-act="newbv">${TimotheosIcons.icon('plus', 15)}<span class="pic" style="color:var(--cap-bible)">${TimotheosIcons.icon('bible', 15)}</span><b>Bible View</b> <span class="small">(add another)</span></button>${bibles}${rows}
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
@@ -420,7 +441,7 @@
   }
   function fontOptions(sel, cur, withSystem) {
     const grp = (label, list) => `<optgroup label="${label}">${list.map(f => `<option value="${esc(f)}" style="font-family:${esc(q(f))}">${esc(f)}</option>`).join('')}</optgroup>`;
-    let h = withSystem ? '<option value="system">Windows default (Segoe UI)</option>' : '';
+    let h = withSystem ? `<option value="system">${/Windows/.test(navigator.userAgent) ? 'Windows default (Segoe UI)' : 'System default'}</option>` : '';
     h += grp('Included with Timotheos', BUNDLED);
     if (installed && installed.length) h += grp('Installed on this computer', installed.filter(f => !BUNDLED.includes(f)));
     else h += grp('Common Windows fonts (if installed)', COMMON);
@@ -526,10 +547,12 @@
     fontOptions($('#fontText'), a.fontText); fontOptions($('#fontGreek'), a.fontGreek); fontOptions($('#fontHebrew'), a.fontHebrew); fontOptions($('#fontUi'), a.fontUi, true);
     $('#fontNote').textContent = installed && installed.length
       ? `The fonts installed on this computer are listed (${installed.length}). Fonts "Included with Timotheos" work on every computer.`
-      : 'Timotheos could not list the fonts on this computer, so common Windows fonts are offered; one that is not installed shows as the fallback font. Fonts "Included with Timotheos" always work.';
+      : 'Timotheos could not list the fonts on this computer, so common fonts are offered; one that is not installed shows as the fallback font. Fonts "Included with Timotheos" always work.';
   }
   function page(o) {
     $('#optNav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.o === o));
+    // "Reset appearance" belongs to the pages about the look: not to Modules or Shortcuts
+    const rs = $('#optReset'); if (rs) rs.style.visibility = (o === 'mods' || o === 'keys') ? 'hidden' : '';
     document.querySelectorAll('.optpage').forEach(p => p.classList.toggle('hidden', p.dataset.o !== o));
     if (o === 'speech' && window.TimotheosSpeech) TimotheosSpeech.fillOptions(document.getElementById('ttsOpt'));
   }
@@ -564,5 +587,5 @@
     if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(`Menus & panels size ${next} px`);
   }
 
-  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])] };
+  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
 })();

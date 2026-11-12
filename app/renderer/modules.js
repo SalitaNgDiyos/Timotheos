@@ -13,7 +13,7 @@ const lib = { cur: null, history: [], topics: [], cmtSel: null, xr: {}, marks: {
 function renderLibraryList() {
   const ul = $('#libList'); ul.innerHTML = '';
   const books = state.modules.books || [];
-  if (!books.length) { ul.innerHTML = '<li class="hint">None yet – use <b>Import modules…</b> or add a folder.</li>'; return; }
+  if (!books.length) { ul.innerHTML = '<li class="hint">None yet – use <b>Import modules…</b> or add a folder. ' + (window.GET_MODS_LINK || '') + '</li>'; return; }
   for (const kind of KIND_ORDER) {
     const list = books.filter(b => b.kind === kind).sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name));
     if (!list.length) continue;
@@ -36,7 +36,7 @@ function renderLibraryList() {
 }
 
 /* ---------------- import ---------------- */
-async function importModules(paths) {
+async function importModules(paths, quiet) {
   let r;
   try { r = paths ? await api.importFiles(paths) : await api.importDialog(); }
   catch (e) { return messageBox('Import failed', esc(e.message)); }
@@ -46,6 +46,7 @@ async function importModules(paths) {
     TimotheosStudy.study.ud = await api.userData();
   }
   await refreshModules(r.list);
+  if (quiet) return r;   // the caller says what happened itself (Download modules)
   const label = { imported: 'Imported', updated: 'Updated', already: 'Already in library', skipped: 'Not imported' };
   const rows = r.results.map(x => `<tr class="st-${x.status}"><td>${esc(label[x.status] || x.status)}</td><td><b>${esc(x.title || x.name)}</b><div class="small">${esc(x.name)}${x.from && x.from.includes('›') ? ' · from ' + esc(x.from.split(' › ')[0]) : ''}</div></td><td>${esc(x.format || '')} ${esc(x.kind || '')}</td><td class="small">${esc(x.reason || x.note || '')}</td></tr>`).join('');
   const n = r.results.filter(x => x.status === 'imported' || x.status === 'updated').length;
@@ -94,7 +95,7 @@ async function newUserModuleDialog(defaultKind = 'commentary') {
       <label>Abbreviation <input id="umAbbr" type="text" placeholder="e.g. MyCmt"></label>
     </div>
     <label class="field">Description (optional) <input id="umDesc" type="text" placeholder="Short summary of this module"></label>
-    <p class="small">Saved in your Timotheos modules folder in standard theWord (.twm) SQLite format with <code>user=1</code>.</p>`;
+    <p class="small">Saved in your Timotheos modules folder as a theWord module (.twm) that you can edit. theWord can open it too.</p>`;
   const res = await modal('New user module', html, [{ label: 'Cancel', value: null }, { label: 'Create module', value: 'ok', primary: true }]);
   if (res !== 'ok') return null;
   const kind = $('#umKind').value;
@@ -220,7 +221,8 @@ async function fillLibSelect() {
     const list = (state.modules.books || []).filter(b => b.kind === kind && !b.locked);
     if (!list.length) continue;
     const og = document.createElement('optgroup'); og.label = KIND_LABEL[kind];
-    for (const b of list.sort((x, y) => (x.title || x.name).localeCompare(y.title || y.name))) { const o = document.createElement('option'); o.value = b.id; o.textContent = (b.opened ? b.title : b.name.replace(/\.[^.]+(\.twm)?$/i, '')) + (b.user ? ' [user]' : ''); og.appendChild(o); }
+    const lbl = b => (b.opened ? b.title : b.name.replace(/\.[^.]+(\.twm)?$/i, ''));
+    for (const b of list.sort((x, y) => (x.title || x.name).localeCompare(y.title || y.name))) { const o = document.createElement('option'); o.value = b.id; const f = window.dupFile(list, b, lbl); o.textContent = lbl(b) + (f ? ' — ' + f : '') + (b.user ? ' [user]' : ''); og.appendChild(o); }
     sel.appendChild(og);
   }
   if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
@@ -375,7 +377,8 @@ function wireLibrary() {
   const ap = () => TimotheosOptions.appearance();
   const applySide = () => {
     const a = ap(); const w = Math.max(0, Math.min(4000, a.libSideW == null ? 230 : a.libSideW));
-    $('#libSplit').style.gridTemplateColumns = a.libSideHidden ? 'minmax(0, 1fr)' : `${w}px 6px minmax(0, 1fr)`;
+    // the usual width (230px) gives way in a narrow panel so that the text keeps most of the room; a width you dragged is kept as it is
+    $('#libSplit').style.gridTemplateColumns = a.libSideHidden ? 'minmax(0, 1fr)' : `${w === 230 ? 'min(230px, 40%)' : w + 'px'} 6px minmax(0, 1fr)`;
     $('#libSide').classList.toggle('collapsed', !a.libSideHidden && w === 0);
     $('#libSide').classList.toggle('hidden', !!a.libSideHidden); $('#libSplitter').classList.toggle('hidden', !!a.libSideHidden);
     $('#libSideBtn').classList.toggle('on', !a.libSideHidden);
@@ -669,7 +672,7 @@ async function updateCommentary() {
 
   if (!list.length) {
     syncCmtHeaderBar([]);
-    $("#cmtBody").innerHTML = `<p class="hint">No commentaries yet. Import theWord (.cmt.twm) or e-Sword (.cmtx / .cmti) commentaries with <b>Import modules…</b>, or create your own commentary below.</p><div class="row"><button id="cmtCreateUserBtn" class="primary">+ New user commentary…</button></div>`;
+    $("#cmtBody").innerHTML = `<p class="hint">No commentaries yet. Import theWord (.cmt.twm) or e-Sword (.cmtx / .cmti) commentaries with <b>Import modules…</b>, or create your own commentary below. ${window.GET_MODS_LINK || ''}</p><div class="row"><button id="cmtCreateUserBtn" class="primary">+ New user commentary…</button></div>`;
     const btn = $("#cmtCreateUserBtn"); if (btn) btn.onclick = () => newUserModuleDialog("commentary");
     return;
   }
@@ -800,8 +803,12 @@ async function decorateChapter(b, c, root, show) {
     const v = +pv.dataset.v;
     const refs = xr[v] || [];
     if (refs.length) {
+      // by default a small mark with the number of references ends the verse (a click lists them); "written out" prints them in the text
+      if (!show.xrefsFull) { verseEnd(pv, `<span class="xrs xrmk" data-v="${v}"><a class="xrmore" data-v="${v}" title="${refs.length} cross-reference${refs.length === 1 ? '' : 's'}: click to list them">†${refs.length}</a></span>`); }
+      else {
       const shown = refs.slice(0, 8).map(r => `<a class="xr${r.back ? ' back' : ''}${r.user ? ' mine' : ''}" data-xr="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' : ''}${esc(abbrRef(r.b, r.c, r.v, r.span))}${r.back ? ']' : ''}</a>`).join('; ');
       verseEnd(pv, `<span class="xrs" data-v="${v}">${shown}${refs.length > 8 ? ` <a class="xrmore" data-v="${v}">+${refs.length - 8} more</a>` : ''}</span>`);
+      }
     }
     const cm = Object.entries(marks).filter(([, m]) => m.verses.includes(v));
     if (cm.length) { const at = pv.querySelector('sup.vnum, .dropcap'); const h = `<sup class="cm" title="Commentary: ${esc(cm.map(([, m]) => m.abbr).join(', '))}">c</sup>`; if (at) at.insertAdjacentHTML('afterend', h); else pv.insertAdjacentHTML('afterbegin', h); }
@@ -977,10 +984,13 @@ function wireModules() {
     if (!e.target.closest('.bv td') || String(window.getSelection())) return;
     const w = wordAt(e); if (w) lookupWord(w);
   });
+  // a finger tap also sends a "mouse over": on the phone screens a tap on a link goes straight to where the link leads, with no hover pop-up
+  let touchAt = 0; document.addEventListener('touchstart', () => { touchAt = Date.now(); }, { passive: true, capture: true });
+  const fingerTap = () => document.documentElement.classList.contains('sk') && Date.now() - touchAt < 1500;
   // [B1 & B4] Hover preview for Bible links AND book/footnote bookmark links
   document.addEventListener('mouseover', async e => {
     const a = e.target.closest && e.target.closest('a[data-href]');
-    if (!a || a.closest('#popup')) return;
+    if (!a || a.closest('#popup') || fingerTap()) return;
     const href = a.dataset.href || '';
     const popupParam = /[?&]popup=(\d)/i.exec(href);
     const popupMode = popupParam ? +popupParam[1] : 1;
@@ -1014,7 +1024,7 @@ function wireModules() {
     }
   });
   document.addEventListener('mouseover', async e => {
-    const a = e.target.closest('a.xr'); if (!a) return;
+    const a = e.target.closest('a.xr'); if (!a || fingerTap()) return;
     const [b, c, v, span] = a.dataset.xr.split('.').map(Number);
     a.title = '';
     const html = await versePreview(b, c, v, v + span);

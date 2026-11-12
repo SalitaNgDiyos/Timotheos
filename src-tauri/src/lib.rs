@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use tauri::{http, Manager};
 
@@ -195,7 +196,7 @@ fn host_info(app: tauri::AppHandle) -> Value {
     let (data, exe, home, tmp) = (fwd(data), fwd(exe), fwd(home), fwd(tmp));
     json!({ "dataDir": data, "exeDir": exe, "home": home, "tmp": tmp, "platform": os, "version": env!("CARGO_PKG_VERSION"),
             "env": { "TIMOTHEOS_SCRIPT": std::env::var("TIMOTHEOS_SCRIPT").ok(), "TIMOTHEOS_MODULES": std::env::var("TIMOTHEOS_MODULES").ok(), "TIMOTHEOS_PORTABLE_DIR": std::env::var("TIMOTHEOS_PORTABLE_DIR").ok(),
-                      "TIMOTHEOS_WAIT": std::env::var("TIMOTHEOS_WAIT").ok() } })
+                      "TIMOTHEOS_WAIT": std::env::var("TIMOTHEOS_WAIT").ok(), "TIMOTHEOS_REPOS": std::env::var("TIMOTHEOS_REPOS").ok() } })
 }
 
 /// test hook: the page reports its result in a file; whoever started the program takes the picture and ends it
@@ -220,6 +221,83 @@ fn write_b64(path: String, data: String, append: bool) -> Result<(), String> {
 
 #[tauri::command]
 fn read_text_file(path: String) -> Result<String, String> { fs::read_to_string(path).map_err(|e| e.to_string()) }
+
+/* ---------- the internet: only the "Download modules" window uses it, and only when the user asks ---------- */
+static NET_DONE: AtomicU64 = AtomicU64::new(0);
+static NET_TOTAL: AtomicU64 = AtomicU64::new(0);
+static NET_STOP: AtomicBool = AtomicBool::new(false);
+
+fn temp_dir_of(app: &tauri::AppHandle) -> PathBuf {
+    if cfg!(target_os = "android") { app.path().app_cache_dir().unwrap_or_default() } else { std::env::temp_dir() }
+}
+/// https only; a test build may also read from this computer itself (http://127.0.0.1), which is how the tests run
+fn net_url_ok(u: &str) -> bool {
+    let p = match url::Url::parse(u) { Ok(p) => p, Err(_) => return false };
+    if p.scheme() == "https" && p.host_str().is_some() { return true; }
+    cfg!(debug_assertions) && p.scheme() == "http" && p.host_str() == Some("127.0.0.1")
+}
+fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
+    if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
+    let agent = ureq::AgentBuilder::new()
+        .https_only(!cfg!(debug_assertions))
+        .timeout_connect(std::time::Duration::from_secs(25))
+        .timeout_read(std::time::Duration::from_secs(60))
+        .redirects(5)
+        .user_agent(concat!("Timotheos/", env!("CARGO_PKG_VERSION")))
+        .build();
+    let resp = agent.get(url).call().map_err(|e| match e {
+        ureq::Error::Status(c, _) => format!("The site answered with error {c}."),
+        ureq::Error::Transport(t) => format!("No connection: {t}"),
+    })?;
+    let total: u64 = resp.header("Content-Length").and_then(|v| v.parse().ok()).unwrap_or(0);
+    if max > 0 && total > max { return Err("The file is larger than Timotheos downloads.".into()); }
+    NET_TOTAL.store(total, Ordering::Relaxed);
+    if let Some(d) = dest.parent() { fs::create_dir_all(d).map_err(|e| e.to_string())?; }
+    let part = PathBuf::from(format!("{}.part", dest.to_string_lossy()));
+    let mut out = fs::File::create(&part).map_err(|e| e.to_string())?;
+    let mut rd = resp.into_reader();
+    let mut buf = vec![0u8; 64 * 1024];
+    let mut done: u64 = 0;
+    let res: Result<(), String> = loop {
+        if NET_STOP.load(Ordering::Relaxed) { break Err("Stopped.".into()); }
+        match rd.read(&mut buf) {
+            Ok(0) => break Ok(()),
+            Ok(n) => {
+                done += n as u64;
+                if max > 0 && done > max { break Err("The file is larger than Timotheos downloads.".into()); }
+                if let Err(e) = out.write_all(&buf[..n]) { break Err(e.to_string()); }
+                NET_DONE.store(done, Ordering::Relaxed);
+            }
+            Err(e) => break Err(format!("The download broke off: {e}")),
+        }
+    };
+    drop(out);
+    if let Err(e) = res { let _ = fs::remove_file(&part); return Err(e); }
+    if total > 0 && done != total { let _ = fs::remove_file(&part); return Err("The download broke off before the end.".into()); }
+    let _ = fs::remove_file(dest);
+    fs::rename(&part, dest).map_err(|e| e.to_string())?;
+    Ok(done)
+}
+/// fetch one file into the temporary folder of Timotheos (nowhere else), for the "Download modules" window
+#[tauri::command(async)]
+fn net_get(app: tauri::AppHandle, url: String, dest: String, max: u64) -> Result<u64, String> {
+    let tmp = temp_dir_of(&app);
+    let d = PathBuf::from(&dest);
+    if !d.starts_with(&tmp) || d.components().any(|c| matches!(c, std::path::Component::ParentDir)) { return Err("Downloads go to the temporary folder only.".into()); }
+    // what earlier downloads left in the temporary folder is cleared away first (the import keeps its own copy)
+    if let Ok(rd) = fs::read_dir(&tmp) {
+        for e in rd.filter_map(|e| e.ok()) {
+            let p = e.path();
+            if e.file_name().to_string_lossy().starts_with("download-") && p.is_dir() && Some(p.as_path()) != d.parent() { let _ = fs::remove_dir_all(&p); }
+        }
+    }
+    NET_DONE.store(0, Ordering::Relaxed); NET_TOTAL.store(0, Ordering::Relaxed); NET_STOP.store(false, Ordering::Relaxed);
+    net_fetch(&url, &d, max)
+}
+#[tauri::command]
+fn net_progress() -> Value { json!({ "done": NET_DONE.load(Ordering::Relaxed), "total": NET_TOTAL.load(Ordering::Relaxed) }) }
+#[tauri::command]
+fn net_stop() { NET_STOP.store(true, Ordering::Relaxed); }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -252,7 +330,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64])
+        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_get, net_progress, net_stop])
         .run(tauri::generate_context!())
         .expect("error while running Timotheos");
 }
@@ -260,6 +338,23 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn only_https_addresses_are_downloaded() {
+        assert!(net_url_ok("https://ebible.org/Scriptures/translations.csv"));
+        assert!(!net_url_ok("http://ebible.org/x"));
+        assert!(!net_url_ok("file:///etc/passwd"));
+        assert!(!net_url_ok("ftp://example.org/x"));
+        assert!(!net_url_ok("nonsense"));
+    }
+    /// needs the internet: run with `cargo test -- --ignored` (the build on GitHub does)
+    #[test]
+    #[ignore]
+    fn the_ebible_list_can_be_fetched_over_https() {
+        let f = std::env::temp_dir().join("timotheos-net-test.csv");
+        let n = net_fetch("https://ebible.org/Scriptures/translations.csv", &f, 20 << 20).unwrap();
+        assert!(n > 100_000);
+        assert!(fs::read_to_string(&f).unwrap().contains("translationId"));
+    }
     #[test]
     fn text_that_is_not_utf8_does_not_stop_the_program() {
         let f = std::env::temp_dir().join("timotheos-utf8-test.sqlite");

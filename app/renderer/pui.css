@@ -185,6 +185,14 @@ label.pfield, .pfield { display: flex; align-items: center; gap: 10px; backgroun
 
 /* the old dialogs and menus, in the screen's colours */
 html.sk .bvmenu, html.sk .menu.bvmenu { position: fixed !important; left: 0 !important; right: 0 !important; top: auto !important; bottom: 0 !important; width: auto !important; max-width: none !important; max-height: 75vh; overflow-y: auto; border-radius: 26px 26px 0 0; padding: 16px 14px calc(22px + var(--safe-b, 0px)); background: var(--p-sheet) !important; color: var(--p-ink) !important; border: 0 !important; box-shadow: 0 -16px 50px rgba(0,0,0,.4) !important; z-index: 97 !important; font: 15px var(--p-ui); }
+/* the Bible list from a Bible label at the top: it drops from the bar's lower edge, beside the label, and goes back up when dragged up */
+html.sk .bvmenu.pdrop, html.sk .menu.bvmenu.pdrop { top: var(--drop-top) !important; bottom: auto !important; left: var(--drop-left) !important; right: auto !important; width: var(--drop-w) !important; max-height: calc(100vh - var(--drop-top) - 18px - var(--safe-b, 0px)); border-radius: 6px 6px 22px 22px; padding: 12px 12px 8px; box-shadow: 0 18px 44px rgba(0,0,0,.42), 0 0 0 1px var(--p-line) inset !important; transform-origin: var(--drop-x, 50%) 0; animation: pdropIn .2s cubic-bezier(.2,.8,.2,1); overscroll-behavior: contain; }
+html.sk .bvmenu.pdrop::before { content: ''; position: absolute; top: -7px; left: calc(var(--drop-x, 50%) - 7px); width: 14px; height: 14px; background: var(--p-sheet); transform: rotate(45deg); border-radius: 3px 0 0 0; }
+html.sk .bvmenu.pdrop > .pgrab { position: sticky; bottom: -8px; margin: 8px auto 0; }
+@keyframes pdropIn { from { opacity: 0; transform: translateY(-14px) scaleY(.92); } to { opacity: 1; transform: none; } }
+html.sk .bvmenu:not(.pdrop) > .pgrab { margin: -4px auto 10px; }
+html.sk .pswiping { transition: none !important; will-change: transform; }
+.pwpop.leaving { opacity: .45; }
 html.sk .bvmenu > button, html.sk .bvmenu label { padding: 11px 10px !important; font-size: 15px; color: var(--p-ink) !important; }
 html.sk .bvmenu kbd, html.sk #ctxMenu kbd { display: none; }
 html.sk #modal .box { background: var(--p-sheet) !important; color: var(--p-ink) !important; border-radius: 22px !important; border: 0 !important; max-width: calc(100vw - 24px) !important; }
@@ -233,3 +241,15 @@ html.sk-a.psplitting .bv .bvtext .sk-ttl { position: sticky; top: 0; z-index: 6;
 .pwpop .pcard { padding: 12px 14px; }
 .pwpop .pwft { display: flex; gap: 8px; padding: 8px 12px 12px; flex-wrap: wrap; }
 .pwpop .pwft .pill { margin: 0; }
+/* a phone has no keyboard to press: no Shortcuts page in Options */
+html.sk #optionsDlg [data-o="keys"] { display: none !important; }
+
+/* commands a phone cannot carry out (a folder of modules, printing, the panel layout of the computer) are not shown there */
+html.mobile .nophone { display: none !important; }
+html:not(.mobile) .phoneonly { display: none !important; }
+html.sk #empty { padding: 128px 24px 24px; }
+#emptyImport { margin-top: 14px; padding: 10px 18px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-fg, #fff); font: inherit; font-weight: 600; cursor: pointer; }
+
+html.sk select:not([multiple]):not([size]) { background-color: var(--p-surf); color: var(--p-ink); border-color: var(--p-line);
+  background-image: linear-gradient(45deg, transparent 50%, var(--p-muted, var(--p-ink)) 50%), linear-gradient(135deg, var(--p-muted, var(--p-ink)) 50%, transparent 50%); }
+html.sk select option, html.sk select optgroup { background-color: var(--p-surf); color: var(--p-ink); }

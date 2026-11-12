@@ -468,6 +468,33 @@ app.whenReady().then(async () => {
   handle('search:describe', (q, opts) => searchLib.describe(q, opts));
   handle('search:ranges', () => searchLib.PREDEFINED.map(([id, label]) => ({ id, label })));
   handle('search:checkRange', text => { const r = searchLib.parseRange(text, settings.apocryphaPlacement); return { ok: !r.errors.length && r.ranges.length > 0, errors: r.errors }; });
+  // Back up / restore the study data as one file (studybackup.js). Restoring first keeps a copy of what was here.
+  handle('study:backup', async () => {
+    const sb = require('./lib/studybackup');
+    const name = 'Timotheos study ' + new Date().toISOString().slice(0, 10) + '.timotheos.json';
+    const r = await dialog.showSaveDialog(win, { defaultPath: name, filters: [{ name: 'Timotheos study backup (.json)', extensions: ['json'] }] });
+    if (r.canceled || !r.filePath) return null;
+    fs.writeFileSync(r.filePath, sb.pack(userData.get(), app.getVersion()));
+    return { path: r.filePath, counts: sb.counts(userData.get()) };
+  });
+  handle('study:restoreRead', async () => {
+    const sb = require('./lib/studybackup');
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Timotheos study backup (.json)', extensions: ['json'] }, { name: 'All files', extensions: ['*'] }] });
+    if (r.canceled || !r.filePaths || !r.filePaths[0]) return null;
+    const b = sb.read(fs.readFileSync(r.filePaths[0], 'utf8'));
+    return { path: r.filePaths[0], made: b.made, counts: b.counts, here: sb.counts(userData.get()) };
+  });
+  handle('study:restoreApply', async (file, mode) => {
+    const sb = require('./lib/studybackup');
+    const b = sb.read(fs.readFileSync(String(file), 'utf8'));
+    const cur = userData.get();
+    const keep = userData.file.replace(/\.json$/, '') + '.before-restore-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+    try { fs.writeFileSync(keep, JSON.stringify(cur)); } catch (e) { throw new Error('The study data here could not be set aside first, so nothing was restored.'); }
+    const next = mode === 'replace' ? Object.assign({}, cur, b.data) : sb.merge(cur, b.data);
+    for (const k of sb.KEYS) if (next[k] !== undefined) userData.data[k] = next[k];
+    userData.save();
+    return { counts: sb.counts(userData.get()), kept: path.basename(keep) };
+  });
   handle('ud:get', () => userData.get());
   handle('ud:set', (key, value) => userData.set(key, value));
   handle('plans:presets', () => Object.entries(plans.PRESETS).map(([id, p]) => ({ id, label: p.label, groups: p.groups })));

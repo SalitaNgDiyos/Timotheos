@@ -118,7 +118,7 @@
     const old = $('#skPick'); if (old) old.remove(); if (window.PUI) PUI.closeSheet();
     const last = lsGet('tw.ui');
     const d = document.createElement('div'); d.id = 'skPick';
-    d.innerHTML = `<div class="skp-in"><h1>Timotheos</h1><p class="skp-sub">Choose how the app looks and works for this session.</p><div class="skp-cards">${['a', 'b', 'c'].map(k => `<button type="button" class="skp-card" data-k="${k}">${MINI[k]}<span class="skp-t">${SK[k].name}${last === k ? '<em>last time</em>' : ''}</span><span class="skp-d">${SK[k].line}</span></button>`).join('')}</div><p class="skp-foot">All three have every feature of Timotheos. You can change this later: More → Change screen.</p>${again ? '<button type="button" class="skp-x" data-k="">Keep the current screen</button>' : ''}</div>`;
+    d.innerHTML = `<div class="skp-in"><h1>Timotheos</h1><p class="skp-sub">Choose how the app looks and works. Timotheos remembers your choice.</p><div class="skp-cards">${['a', 'b', 'c'].map(k => `<button type="button" class="skp-card" data-k="${k}">${MINI[k]}<span class="skp-t">${SK[k].name}${last === k ? '<em>last time</em>' : ''}</span><span class="skp-d">${SK[k].line}</span></button>`).join('')}</div><p class="skp-foot">All three have every feature of Timotheos. You can change this later: More → Change screen.</p>${again ? '<button type="button" class="skp-x" data-k="">Keep the current screen</button>' : ''}</div>`;
     document.body.appendChild(d);
     d.addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; const k = b.dataset.k; d.classList.add('out'); setTimeout(() => d.remove(), 220); if (k) apply(k); });
     return d;
@@ -167,7 +167,22 @@
     const on = root.classList.contains('sk') && !/(^|\s)(sk-dlg|pg-open|c-deskon|sk-selecting)(\s|$)/.test(root.className) && !document.getElementById('skPick') && !(window.TimotheosPhone && TimotheosPhone.over());
     if (window.TwBars && window.TwBars.edge) { root.classList.toggle('tw-edge', on); if (on !== lastEdge) { lastEdge = on; try { window.TwBars.edge(on); } catch (e) { /* */ } } }
   }
-  function init() { wireDivider(); if (root.classList.contains('mobile')) picker(false); bars(); new MutationObserver(() => { bars(); edge(); }).observe(root, { attributes: true, attributeFilter: ['class'] }); }
+  // A phone starts in the screen chosen last time; the three are offered only the first time (and from "Change screen").
+  // A plain cover with the name hides the half-built page until the Bible view is there.
+  function start() {
+    const last = lsGet('tw.ui');
+    if (!SK[last]) return picker(false);
+    const old = $('#skPick'); if (old) old.remove();
+    const d = document.createElement('div'); d.id = 'skPick'; d.className = 'skp-wait'; d.innerHTML = '<div class="skp-in"><h1>Timotheos</h1></div>'; document.body.appendChild(d);
+    const t0 = Date.now();
+    const go = () => {
+      const ready = window.PUI && window.TimotheosPhone && typeof state !== 'undefined' && state.settings && (document.querySelector('.bv') || ($('#empty') && !$('#empty').classList.contains('hidden')));
+      if (!ready && Date.now() - t0 < 10000) return setTimeout(go, 120);
+      try { apply(last); d.classList.add('out'); setTimeout(() => d.remove(), 220); } catch (e) { d.remove(); picker(false); }
+    };
+    go();
+  }
+  function init() { wireDivider(); if (root.classList.contains('mobile')) start(); bars(); new MutationObserver(() => { bars(); edge(); }).observe(root, { attributes: true, attributeFilter: ['class'] }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  window.TimotheosSkins = { plain, colors, screenColors: () => ({ a: ['#0f1013', '#ece6d8', '#d8b46f'], b: ['#faf7f0', '#1f1b16', '#8a3a33'], c: ['#0f1b20', '#e8efee', '#e0a07a'] })[cur], place, bible, picker, apply, current: () => cur, parallel, secondBible, refresh };
+  window.TimotheosSkins = { start, plain, colors, screenColors: () => ({ a: ['#0f1013', '#ece6d8', '#d8b46f'], b: ['#faf7f0', '#1f1b16', '#8a3a33'], c: ['#0f1b20', '#e8efee', '#e0a07a'] })[cur], place, bible, picker, apply, current: () => cur, parallel, secondBible, refresh };
 })();

@@ -88,7 +88,8 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
   ok(ts.every(t => t.querySelector('[data-v="8"].sel')), 'verse 8 is lit in both views');
   ok(ts.every(t => mid(t, 8) < 40), 'verse 8 is in the middle of both views: ' + ts.map(t => Math.round(mid(t, 8))).join(', '));
   selectVerse(2, true); await sleep(1500);
-  ok(ts.every(t => t.querySelector('[data-v="2"].sel') && mid(t, 2) < 40), 'moving to verse 2 moves both: ' + ts.map(t => Math.round(mid(t, 2))).join(', '));
+  // verse 2 is near the top of the chapter: a view that is already at its top cannot bring it nearer the middle
+  ok(ts.every(t => t.querySelector('[data-v="2"].sel') && (mid(t, 2) < 40 || t.scrollTop === 0)), 'moving to verse 2 moves both: ' + ts.map(t => Math.round(mid(t, 2))).join(', '));
   ts[1].scrollTop += 300; await sleep(1200);
   ok(ts[0].querySelector('.sel') && ts[0].querySelector('.sel').dataset.v === ts[1].querySelector('.sel').dataset.v && +ts[1].querySelector('.sel').dataset.v > 2, 'scrolling one view moves the active verse in both: ' + ts[0].querySelector('.sel').dataset.v + '/' + ts[1].querySelector('.sel').dataset.v);
   // 6. Intralinear

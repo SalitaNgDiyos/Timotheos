@@ -485,4 +485,43 @@ html.phone #ttsbar { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
 .alignrow { display: flex; align-items: center; gap: 2px; padding: 4px 10px; }
 .alignrow > span { flex: 1; }
 .alignrow button { border: 1px solid transparent; background: transparent; color: inherit; padding: 4px 6px; border-radius: 6px; display: grid; place-items: center; }
+.lhrow b.lhv { min-width: 3.2em; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lhrow button[data-lh] { font-size: 15px; min-width: 26px; }
+.lhrow button.lhdef { font-size: 12px; margin-left: 4px; border-color: var(--line); }
 .alignrow button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* cross-references as a small mark at the end of the verse */
+.xrs.xrmk a.xrmore { text-decoration: none; cursor: pointer; opacity: .75; }
+.xrs.xrmk a.xrmore:hover { opacity: 1; text-decoration: underline; }
+
+/* "Where to get modules" */
+.getmods .gmsites { display: grid; gap: 8px; margin: 8px 0 12px; }
+.getmods .gmsite { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.getmods .gmsite a { font-size: 1.05em; cursor: pointer; }
+.getmods h4 { margin: 10px 0 4px; }
+.getmods ol { margin: 0 0 10px; padding-left: 22px; } .getmods li { margin: 3px 0; }
+#emptyGet { margin-top: 14px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; cursor: pointer; }
+
+/* Download modules */
+.dlmods { display: grid; gap: 8px; min-width: 0; }
+.dlmods .dlnote { margin: 0; color: var(--muted); }
+.dlmods .dlbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dlmods .dlbar select { max-width: 100%; }
+.dlmods .dladd { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.dlmods .dladd label { display: grid; gap: 3px; } .dlmods .dladd input { width: 100%; box-sizing: border-box; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; color: inherit; }
+.dlmods .dladd button { justify-self: start; display: inline-block; margin-right: 6px; } .dlmods .dladd p { margin: 0; }
+.dlmods #dlFind { width: 100%; box-sizing: border-box; padding: 6px 8px; }
+.dlmods .dllist { display: grid; gap: 6px; max-height: min(46vh, 420px); overflow: auto; align-content: start; }
+.dlmods .dlrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.dlmods .dlt { display: grid; gap: 1px; min-width: 0; } .dlmods .dlt b, .dlmods .dlt span, .dlmods .dlt small { overflow-wrap: anywhere; }
+.dlmods .dlt span { font-size: 12.5px; } .dlmods .dlt small { color: var(--muted); font-size: 11.5px; }
+.dlmods .dlstatus { min-height: 1.4em; font-size: 13px; } .dlmods .dlstatus.bad, .dlmods .hint.bad { color: #b3261e; }
+.dlmods .hint { color: var(--muted); font-size: 13px; margin: 4px 0; }
+html.sk .dlmods .dllist { max-height: 44vh; } html.sk .dlmods .dlget, html.sk .dlmods .dlbar button, html.sk .dlmods .dladd button { min-height: 40px; padding: 0 12px; }
+
+/* About: the Timotheos icon, about an inch (96 px) across, at the top left; the text wraps beside it */
+.about .abouticon { float: left; width: 96px; height: 96px; margin: 2px 14px 6px 0; }
+
+/* Check for updates */
+.updates .upnew { font-weight: 600; } .updates .uperr { color: #b3261e; }
+.updates .upnotes { white-space: pre-wrap; max-height: 40vh; overflow: auto; font: inherit; font-size: .92em; margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: rgba(128,128,128,.12); }

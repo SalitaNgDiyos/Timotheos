@@ -93,6 +93,7 @@ const secs = () => [...document.querySelectorAll('section.bv')];
   document.getElementById('optionsDlg').classList.add('hidden');
   // topic list resized to the panel edge
   TimotheosDock.show('lib'); await sleep(200); window.hideLookupFeed();
+  const lgrp = document.getElementById('tab-lib').closest('.dgroup'); lgrp.classList.add('max'); await sleep(300);   // side by side needs a panel wider than 400px
   const sp = document.getElementById('libSplitter'); sp.setPointerCapture = () => {};
   const ls = document.getElementById('libSplit').getBoundingClientRect(); const sr = sp.getBoundingClientRect();
   sp.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: sr.left + 2, clientY: sr.top + 20, pointerId: 1, button: 0 }));
@@ -104,6 +105,7 @@ const secs = () => [...document.querySelectorAll('section.bv')];
   sp.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: sr2.left + 160, clientY: sr2.top + 20, pointerId: 1 }));
   sp.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: sr2.left + 160, clientY: sr2.top + 20, pointerId: 1 })); await sleep(200);
   ok(document.getElementById('libSide').offsetWidth > 100, 'and dragged back out: ' + document.getElementById('libSide').offsetWidth + 'px');
+  lgrp.classList.remove('max'); await sleep(200);
   // wrapping: no sideways scrolling, no broken words in a narrow view
   TimotheosDock.applyPreset('classic'); await sleep(300);
   const t1 = secs()[0].querySelector('.bvtext');

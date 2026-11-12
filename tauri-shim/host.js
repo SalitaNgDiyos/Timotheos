@@ -37,9 +37,28 @@ worker.onmessage = async ev => {
 worker.onerror = e => console.error('worker error', e.message, e.filename, e.lineno);
 const infoP = invoke('host_info').then(i => { info = i; worker.postMessage({ t: 'init', info: i }); return i; });
 
+// Android: an export is written into the app's own "exports" folder (the worker asks for a place to save and gets a
+// path there); when the request that wrote it is done, Android's "Save to" screen takes it where the user chooses.
+const androidExports = [];
+function androidSaveAs(path) {
+  return new Promise(resolve => {
+    const T = window.TwFiles; if (!T || !T.saveAs) return resolve('unavailable');
+    const t = setTimeout(() => { window.__twSaved = null; resolve('cancelled'); }, 300000);
+    window.__twSaved = how => { clearTimeout(t); window.__twSaved = null; resolve(how); };
+    try { T.saveAs(path, path.split('/').pop()); } catch (e) { clearTimeout(t); window.__twSaved = null; resolve('failed'); }
+  });
+}
+async function androidFlushExports() {
+  while (androidExports.length) {
+    const p = androidExports.shift(); const how = await androidSaveAs(p);
+    const say = { saved: 'Saved where you chose.', cancelled: 'Not saved: no place was chosen.', failed: 'The file could not be saved there.', unavailable: 'This build cannot save files outside the app.' }[how] || '';
+    try { if (say && window.TimotheosStudy) setTimeout(() => window.TimotheosStudy.flash(say), 400); } catch (e) { /* no message */ }
+  }
+}
 async function call(ch, ...args) {
   await infoP; await startedP;
   const r = await new Promise(res => { const id = ++seq; waiting.set(id, res); worker.postMessage({ t: 'ipc', id, ch, args }); });
+  if (androidExports.length && r && r.ok) androidFlushExports(); else androidExports.length = 0;
   if (!r || !r.ok) throw new Error(r ? r.error : 'no answer');
   return r.data;
 }
@@ -87,7 +106,7 @@ async function hostOp(op, a) {
     case 'save': {
       const o = a[0] || {};
       let dp = o.defaultPath;
-      if (isAndroid) { return { canceled: false, filePath: info.dataDir + '/exports/' + String(dp || 'export').replace(/[\\/]/g, '_') }; }
+      if (isAndroid) { const fp = info.dataDir + '/exports/' + String(dp || 'export').replace(/[\\/]/g, '_'); androidExports.push(fp); return { canceled: false, filePath: fp }; }
       const p = await dlgSave({ title: o.title, defaultPath: dp, filters: (o.filters || []).filter(f => !(f.extensions || []).includes('*')) });
       return p ? { canceled: false, filePath: fwd(p) } : { canceled: true };
     }
@@ -112,13 +131,18 @@ async function hostOp(op, a) {
 
 let guideBox = null;
 async function openGuide(skin) {
-  const url = 'guide.html' + (skin ? '?skin=' + encodeURIComponent(skin) : '');
-  if (isMobile) {   // no second window on a phone: the guide lies over the page
+  const phone = isMobile || document.documentElement.classList.contains('sk');
+  const url = 'guide.html?' + (skin ? 'skin=' + encodeURIComponent(skin) + '&' : '') + (phone ? 'phone=1' : 'desktop=1');
+  if (phone) {   // no second window on a phone: the guide lies over the page (the phone's own guide, not the computer's)
     if (guideBox) return;
     guideBox = document.createElement('div'); guideBox.className = 'guidebox';
     guideBox.innerHTML = `<button type="button" aria-label="Close">✕</button><iframe src="${url}"></iframe>`;
-    guideBox.querySelector('button').onclick = () => { guideBox.remove(); guideBox = null; };
-    document.body.appendChild(guideBox); return;
+    // Back closes it, and so does dragging its title bar down (the guide page does the dragging: window.guideClose)
+    const P = window.PUI;
+    const close = viaBack => { if (!guideBox) return; guideBox.remove(); guideBox = null; if (P && viaBack !== true) P.dropBack('guide'); };
+    guideBox.querySelector('button').onclick = () => close();
+    window.guideClose = close;
+    document.body.appendChild(guideBox); if (P) P.pushBack(close, 'guide'); return;
   }
   const ex = await WebviewWindow.getByLabel('guide');
   if (ex) { try { await ex.setFocus(); return; } catch (e) { /* closed */ } }
@@ -136,7 +160,7 @@ const api = {
   pathForFile: () => '',
   bibleInfo: (id, o) => call('bible:info', id, o), nav: ids => call('bible:nav', ids), chapter: (ids, b, c) => call('bible:chapter', ids, b, c),
   search: (ids, q, o) => call('search', ids, q, o), searchDescribe: (q, o) => call('search:describe', q, o), searchRanges: () => call('search:ranges'), checkRange: t => call('search:checkRange', t),
-  userData: () => call('ud:get'), setUserData: (k, v) => call('ud:set', k, v),
+  userData: () => call('ud:get'), studyBackup: () => call('study:backup'), studyRestoreRead: () => call('study:restoreRead'), studyRestoreApply: (f, m) => call('study:restoreApply', f, m), setUserData: (k, v) => call('ud:set', k, v),
   planPresets: () => call('plans:presets'), createPlan: (o, ids) => call('plans:create', o, ids), planCatchUp: p => call('plans:catchUp', p), planRestart: p => call('plans:restart', p),
   copyText: (t, h) => call('clipboard:write', t, h), print: () => call('print'), lookup: (k, key, b) => call('lookup', k, key, b),
   bookOpen: id => call('book:open', id), bookAbout: id => call('book:about', id), bookTopics: id => call('book:topics', id), bookSearch: (id, q) => call('book:search', id, q),
@@ -157,7 +181,29 @@ const api = {
   onMenu: fn => on('menu', fn), syncOut: p => call('sync:out', p), onExternalSync: fn => on('external:sync', fn),
 };
 window.api = api;
-window.TimotheosHost = { isMobile, isAndroid, info: () => info };
+// The Bible that comes with Timotheos (bundled/amb.nt, Ang Malayang Biblia, by the author of Timotheos): written to a
+// temporary folder so that the ordinary import can take it. app.js asks for it once, when no Bible is installed at all.
+async function seedBundled() {
+  const r = await fetch('bundled/amb.nt'); if (!r.ok) return [];
+  const blob = await r.blob(); if (!blob.size) return [];
+  const dir = info.tmp + '/bundled-' + Date.now();
+  return [await androidCopy({ name: 'amb.nt', size: blob.size, slice: (a, b) => blob.slice(a, b) }, dir)];
+}
+// The internet, for the "Download modules" window only: one file at a time is fetched by the program itself (not by the
+// page, which is not allowed to reach other sites) into the temporary folder, where the ordinary import takes it.
+const net = {
+  MAX: 400 << 20,
+  async get(url, name, onProgress) {
+    await infoP;
+    const dest = info.tmp + '/download-' + Date.now() + '/' + (String(name || 'file').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_').slice(0, 150) || 'file');
+    const t = onProgress ? setInterval(async () => { try { onProgress(await invoke('net_progress')); } catch (e) { /* no progress */ } }, 350) : null;
+    try { await invoke('net_get', { url, dest, max: net.MAX }); } catch (e) { throw new Error(String(e && e.message || e)); } finally { if (t) clearInterval(t); }
+    return dest;
+  },
+  async text(url) { const p = await net.get(url, 'list.txt'); return invoke('read_text_file', { path: p }); },
+  stop: () => invoke('net_stop'),
+};
+window.TimotheosHost = { isMobile, isAndroid, info: () => info, seedBundled, net };
 
 /* ---------- window buttons, dragging, size memory (computer only) ---------- */
 function windowButtons() {

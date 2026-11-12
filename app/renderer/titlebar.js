@@ -15,11 +15,15 @@
       ['File', 'f', [
         ['New User Module…', '', 'newUserMod', 'plus'],
         ['Import Modules…', sc('import'), 'import', 'import'],
+        ['Download Modules…', '', 'downloadModules'],
+        ['Where to Get Modules…', '', 'getModules'],
         ['Add Module Folder…', sc('addFolder'), 'addFolder', 'folder'],
         ['Show Imported Modules Folder', '', 'modulesFolder'],
         ['Rescan Modules', sc('rescan'), 'rescan', 'refresh'],
         '-',
         ['Export Topics…', '', 'exportTopics', 'import'],
+        ['Back Up My Study…', '', 'backupStudy'],
+        ['Restore My Study…', '', 'restoreStudy'],
         ['Print the Library Topic', '', 'printTopic', 'print'],
         ['Options…', sc('options'), 'options', 'gear'],
         ['Print…', 'Ctrl+P', 'print', 'print'],
@@ -43,6 +47,7 @@
         ['User Guide', sc('guide'), 'guide', 'book'],
         ['Keyboard Shortcuts', '', 'keys', 'keyboard'],
         '-',
+        ['Check for Updates…', '', 'checkUpdates'],
         ['About Timotheos', '', 'about'],
       ]],
     ];

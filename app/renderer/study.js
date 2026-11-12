@@ -646,6 +646,33 @@ function renderTree() {
 function wireStudyTab() {
   $('#studySeg').onclick = e => { const b = e.target.closest('button[data-s]'); if (b) { study.seg = b.dataset.s; renderStudy(); } };
 }
+/* ---------------- back up and restore the study data ---------------- */
+const countLine = c => `${c.notes} note${c.notes === 1 ? '' : 's'}, ${c.highlights} highlighted verse${c.highlights === 1 ? '' : 's'}, ${c.bookmarks} bookmark${c.bookmarks === 1 ? '' : 's'}, ${c.lists} verse list${c.lists === 1 ? '' : 's'} (${c.listVerses} verse${c.listVerses === 1 ? '' : 's'}), ${c.plans} reading plan${c.plans === 1 ? '' : 's'}`;
+const plainErr = e => String((e && e.message) || e).replace(/^Error:\s*/, '');
+async function backupStudy() {
+  try { const r = await api.studyBackup(); if (r) flash(`Backed up: ${countLine(r.counts)}`); }
+  catch (e) { TimotheosModules.modal('Back up my study', `<p>The backup could not be saved.</p><p class="small">${esc(plainErr(e))}</p>`, [{ label: 'OK', value: true, primary: true }]); }
+}
+async function restoreStudy() {
+  let r; try { r = await api.studyRestoreRead(); }
+  catch (e) { TimotheosModules.modal('Restore my study', `<p>${esc(plainErr(e))}</p>`, [{ label: 'OK', value: true, primary: true }]); return; }
+  if (!r) return;
+  const made = r.made ? new Date(r.made).toLocaleString() : 'an unknown date';
+  const how = await TimotheosModules.modal('Restore my study', `<p>This backup was made on <b>${esc(made)}</b>.</p>
+    <table class="imp"><tr><th>In the backup</th><td id="rsIn">${esc(countLine(r.counts))}</td></tr><tr><th>On this device now</th><td id="rsHere">${esc(countLine(r.here))}</td></tr></table>
+    <p><b>Add to what is here</b> keeps everything on this device and adds what only the backup has. Where both have a note for the same verse, the one changed last is kept.</p>
+    <p><b>Replace what is here</b> makes this device the same as the backup.</p>
+    <p class="small">Either way, Timotheos first sets a copy of what is here aside in its data folder.</p>`,
+    [{ label: 'Cancel', value: null }, { label: 'Replace what is here', value: 'replace' }, { label: 'Add to what is here', value: 'merge', primary: true }]);
+  if (!how) return;
+  try {
+    const out = await api.studyRestoreApply(r.path, how);
+    study.ud = await api.userData();
+    if (window.renderChapter) await window.renderChapter(false);
+    try { renderStudy(); } catch (e2) { /* the panel is not open */ }
+    flash(`Restored. Now here: ${countLine(out.counts)}`);
+  } catch (e) { TimotheosModules.modal('Restore my study', `<p>Nothing was changed.</p><p class="small">${esc(plainErr(e))}</p>`, [{ label: 'OK', value: true, primary: true }]); }
+}
 function onOpen() { renderStudy(); }
 function openStudy(seg) { study.seg = seg; openTab('study'); }
 async function renderStudy() {
@@ -817,4 +844,4 @@ function showKeys() {
   setTimeout(() => { const b = $('#editKeysFromHelp'); if (b) b.onclick = () => { $('#modal').classList.add('hidden'); TimotheosOptions.open('keys'); }; }, 30);
 }
 
-window.TimotheosStudy = { highlight, selectionTarget, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, flash, verseText, study };
+window.TimotheosStudy = { backupStudy, restoreStudy, highlight, selectionTarget, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, flash, verseText, study };

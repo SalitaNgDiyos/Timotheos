@@ -5,7 +5,7 @@
  * Everything here works on the app's own data and functions (api.*, state, TimotheosStudy, TimotheosModules …):
  * sheets, full-screen pages, the Go-to browser, verse actions, commentary / dictionary / cross-reference / compare
  * cards, Library, Search, Study, Read aloud settings, the reading-view settings and the help list. */
-/* global api, state, views, refName, go, step, selectVerse, setShow, zoomView, sanitize, versePreview, noteHtml, followLink, setActive,
+/* global api, state, views, storeViews, ensurePanes, refName, go, step, selectVerse, setShow, zoomView, sanitize, versePreview, noteHtml, followLink, setActive,
    toggleLink, setVerseNumbers, passLabel, newPlanDialog, TimotheosIcons, TimotheosStudy, TimotheosModules, TimotheosTools, TimotheosSpeech,
    TimotheosOptions, TimotheosBookSearch, TimotheosPhone, runCommand */
 (function () {
@@ -42,6 +42,49 @@
   });
   const fromBack = tag => { const b = backs.find(x => x.tag === tag); return !b; };
 
+  /* ================================================================ drag a popup back to the edge it came from
+   * swipeAway(el, dir, close): dir is the way it goes out ('down' for a sheet from the bottom, 'up' for one dropped from the top bar,
+   * 'right' / 'left' for a page or drawer from that side). The popup follows the finger; let go far enough (or flick) and it closes,
+   * otherwise it springs back. A list inside that can still scroll that way scrolls first; sliders and text boxes are left alone. */
+  const SKIP = 'input[type="range"], textarea, select, input:not([type]), input[type="text"], input[type="search"], input[type="number"], [contenteditable="true"], .nodrag';
+  function canScroll(from, stop, dir) {
+    for (let n = from; n && n !== stop.parentNode; n = n.parentElement) {
+      if (n.nodeType !== 1) continue; const cs = getComputedStyle(n);
+      if (dir === 'down' || dir === 'up') { if (!/(auto|scroll)/.test(cs.overflowY) || n.scrollHeight <= n.clientHeight + 1) continue; if (dir === 'down' ? n.scrollTop > 0 : n.scrollTop + n.clientHeight < n.scrollHeight - 1) return true; }
+      else { if (!/(auto|scroll)/.test(cs.overflowX) || n.scrollWidth <= n.clientWidth + 1) continue; if (dir === 'right' ? n.scrollLeft > 0 : n.scrollLeft + n.clientWidth < n.scrollWidth - 1) return true; }
+      if (n === stop) break;
+    }
+    return false;
+  }
+  function swipeAway(el, dir, close, o = {}) {
+    if (!el || el._swipe) return; el._swipe = 1;
+    const vert = dir === 'down' || dir === 'up', sign = dir === 'down' || dir === 'right' ? 1 : -1;
+    let x0 = 0, y0 = 0, t0 = 0, live = false, dead = false, d = 0;
+    const set = (v, anim) => { el.style.transition = anim ? 'transform .2s ease, opacity .2s ease' : 'none'; el.style.transform = v == null ? '' : (o.base ? o.base + ' ' : '') + (vert ? `translateY(${v}px)` : `translateX(${v}px)`); };
+    el.addEventListener('touchstart', e => {
+      live = false; dead = e.touches.length !== 1 || !!(e.target.closest && e.target.closest(SKIP)) || (o.handle && !e.target.closest(o.handle));
+      if (o.edge && !dead) { const t = e.touches[0]; const r = el.getBoundingClientRect(); const near = dir === 'right' ? t.clientX - r.left : dir === 'left' ? r.right - t.clientX : dir === 'down' ? t.clientY - r.top : r.bottom - t.clientY; if (near > o.edge) dead = true; }
+      if (dead) return; const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = performance.now(); d = 0;
+    }, { passive: true });
+    el.addEventListener('touchmove', e => {
+      if (dead) return; const t = e.touches[0]; const dx = t.clientX - x0, dy = t.clientY - y0;
+      if (!live) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        const along = (vert ? dy : dx) * sign, across = Math.abs(vert ? dx : dy);
+        if (along <= 0 || across > along || canScroll(e.target, el, dir)) { dead = true; return; }
+        live = true; x0 = t.clientX; y0 = t.clientY; el.classList.add('pswiping');
+      }
+      d = Math.max(0, ((vert ? t.clientY - y0 : t.clientX - x0)) * sign); set(d * sign, false); if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+    const end = () => {
+      if (!live) return; live = false; el.classList.remove('pswiping');
+      const r = el.getBoundingClientRect(), size = vert ? r.height : r.width, v = d / Math.max(1, performance.now() - t0);
+      if (d > Math.min(110, size * 0.3) || (v > 0.55 && d > 30)) { set((size + 60) * sign, true); el.style.opacity = '0'; setTimeout(() => { close(); if (o.reset !== false) { el.style.transition = 'none'; el.style.transform = ''; el.style.opacity = ''; requestAnimationFrame(() => { el.style.transition = ''; }); } }, 190); }
+      else { set(null, true); setTimeout(() => { el.style.transition = ''; }, 220); }
+    };
+    el.addEventListener('touchend', end, { passive: true }); el.addEventListener('touchcancel', end, { passive: true });
+  }
+
   /* ================================================================ sheets */
   let sheetClose = null;
   function closeSheet(viaBack) {
@@ -55,11 +98,8 @@
     w.innerHTML = `<div class="pscrim"></div><div class="psheet"${o.height ? ` style="max-height:${o.height}"` : ''}><div class="pgrab"></div>${o.title ? `<h4 class="ph4">${o.title}<button type="button" class="pclose" aria-label="Close">${ic('close', 18)}</button></h4>` : ''}<div class="psbody">${html}</div></div>`;
     document.body.appendChild(w); sheetClose = o.onClose || null;
     w.querySelector('.pscrim').onclick = closeSheet; const x = w.querySelector('.pclose'); if (x) x.onclick = closeSheet;
-    // drag the grab bar down to close
-    const sh = w.querySelector('.psheet'); let y0 = null;
-    sh.addEventListener('touchstart', e => { if (sh.scrollTop <= 0 && e.target.closest('.pgrab, .ph4')) y0 = e.touches[0].clientY; }, { passive: true });
-    sh.addEventListener('touchmove', e => { if (y0 == null) return; const d = Math.max(0, e.touches[0].clientY - y0); sh.style.transform = `translateY(${d}px)`; }, { passive: true });
-    sh.addEventListener('touchend', e => { if (y0 == null) return; const d = e.changedTouches[0].clientY - y0; y0 = null; sh.style.transform = ''; if (d > 90) closeSheet(); }, { passive: true });
+    // drag it down to close (from the grab bar, the title, or anywhere once its list is at the top)
+    swipeAway(w.querySelector('.psheet'), 'down', () => { if (w.id === 'pSheet') closeSheet(); }, { reset: false });
     requestAnimationFrame(() => w.classList.add('in'));
     return w.querySelector('.psbody');
   }
@@ -73,6 +113,8 @@
     el.innerHTML = `<header class="pgbar">${o.back === false ? '' : `<button type="button" class="pib pgback" aria-label="Back">${ic('chevL', 24)}</button>`}<span class="pgtitle">${o.big ? '' : esc(o.title || '')}</span><span class="grow"></span>${o.actions || ''}</header><div class="pgbody">${o.big ? `<h2 class="pgbig">${esc(o.title || '')}</h2>` : ''}</div>`;
     host().appendChild(el); stack.push({ el, o }); root.classList.add('pg-open'); pushBack(() => popPage(true), 'page');
     const b = el.querySelector('.pgback'); if (b) b.onclick = () => popPage();
+    // a page came in from the right: drag it back to the right to close it (screen tabs, which are not stacked pages, stay)
+    if (o.back !== false) swipeAway(el, 'right', () => { if (stack.length && stack[stack.length - 1].el === el) popPage(); }, { reset: false });
     requestAnimationFrame(() => el.classList.add('in'));
     return { el, body: el.querySelector('.pgbody'), bar: el.querySelector('.pgbar') };
   }
@@ -203,22 +245,23 @@
     const cards = []; const bid = activeBible(); const seen = new Set();
     for (const s of strongs) {
       const r = await api.lookup('strong', s, bid).catch(() => null);
-      if (r) cards.push({ k: `Strong's · ${s}`, head: lemmaOf(s, r), sub: r.subject || s, html: sanitize(r.html), dict: r.dict, id: r.dictId, tid: r.id, find: s });
+      if (r) cards.push({ k: `Strong's · ${s}`, head: lemmaOf(s, r), sub: r.subject || s, html: dropLemmaLine(sanitize(r.html), s), dict: r.dict, id: r.dictId, tid: r.id, find: s });
       else cards.push({ k: `Strong's · ${s}`, sub: s, html: '<p class="phint">No Strong\'s dictionary has this number. Import one (e.g. Strong\'s Greek / Hebrew) from More → Modules.</p>', find: s });
     }
     for (const m of morphs) { const r = await api.lookup('morph', m, bid).catch(() => null); if (r) cards.push({ k: 'Morphology', sub: m, html: sanitize(r.html), dict: r.dict, id: r.dictId, tid: r.id }); }
     const lim = o.limit || 6;
+    const given = new Set(cards.map(c => c.id).filter(Boolean));   // a dictionary that already gave the Strong's / morphology entry is not asked again by the word: the same entry would show twice
     for (const q of [...new Set([word, w.lemma].filter(x => x && x.length >= 2))]) {
       const res = await api.wordLookup(q, true).catch(() => []);
       for (const r of res || []) {
-        if (r.kind !== 'dictionary' || cards.length >= lim) continue; const h = r.hits[0]; const key = r.id + '|' + h.id; if (seen.has(key)) continue; seen.add(key);
+        if (r.kind !== 'dictionary' || cards.length >= lim || given.has(r.id)) continue; const h = r.hits[0]; const key = r.id + '|' + h.id; if (seen.has(key)) continue; seen.add(key);
         const t = await api.bookTopic(r.id, h.id).catch(() => null);
         cards.push({ k: r.title || r.abbr, sub: (t && t.subject) || h.subject, html: t ? sanitize(t.html) : '', id: r.id, tid: h.id, find: q, approx: !h.exact });
       }
     }
     if (o.count) o.count(cards.length);
     if (!cards.length) { box.innerHTML = `<p class="phint">No dictionary has an entry for “${esc(word)}”.</p>`; return cards; }
-    box.innerHTML = cards.map((c, k) => `<article class="pcard${k ? ' clamp' : ' clamp lead'}" data-k="${k}"><div class="psrc"><span>${esc(c.k)}</span>${c.dict ? `<span class="lv">${esc(c.dict)}</span>` : ''}</div>${c.head ? `<div class="lhead"><span class="lem">${esc(c.head)}</span><span class="ptr">${esc(c.sub)}</span></div>` : `<h5>${esc(c.sub)}${c.approx ? ' ~' : ''}</h5>`}<div class="pbody entry">${c.html}</div><div class="cardft"><button type="button" class="plink" data-more>Read all</button>${c.id ? '<button type="button" class="plink" data-open>Open in Library</button>' : ''}${c.find ? `<button type="button" class="plink" data-find>Find ${esc(c.find)}</button>` : ''}</div></article>`).join('');
+    box.innerHTML = cards.map((c, k) => `<article class="pcard${k ? ' clamp' : ' clamp lead'}" data-k="${k}"><div class="psrc"><span>${esc(c.k)}</span>${c.dict ? `<span class="lv">${esc(c.dict)}</span>` : ''}</div>${c.head ? `<div class="lhead"><span class="lem">${esc(c.head)}</span>${/^[GH]\d+[a-z]?$/i.test(String(c.sub).trim()) ? '' : `<span class="ptr">${esc(c.sub)}</span>`}</div>` : `<h5>${esc(c.sub)}${c.approx ? ' ~' : ''}</h5>`}<div class="pbody entry">${c.html}</div><div class="cardft"><button type="button" class="plink" data-more>Read all</button>${c.id ? '<button type="button" class="plink" data-open>Open in Library</button>' : ''}${c.find ? `<button type="button" class="plink" data-find>Find ${esc(c.find)}</button>` : ''}</div></article>`).join('');
     try { TimotheosTools.applyMarks(box); } catch (e) { /* */ }
     box.onclick = e => {
       const card = e.target.closest('.pcard'); if (!card) return; const c = cards[+card.dataset.k];
@@ -228,6 +271,19 @@
     };
     return cards;
   }
+  /** the entry's last line "G1325 δίδωμι (didōmi) — verb" only repeats the number, the word and its sound that the card already shows: it is left out */
+  function dropLemmaLine(html, key) {
+    if (!/^[GH]\d+[a-z]?$/i.test(String(key || ''))) return html;
+    const d = document.createElement('div'); d.innerHTML = html; const k = String(key).toUpperCase();
+    const own = el => ![...el.children].some(c => /^(P|DIV|LI|TR|TABLE|UL|OL|H\d|BLOCKQUOTE)$/.test(c.tagName));
+    const lines = [...d.querySelectorAll('p, div, li, tr, span.lemline')].filter(own).filter(el => {
+      const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      return t.length < 160 && t.toUpperCase().startsWith(k) && /[Ͱ-Ͽἀ-῿֐-׿]/.test(t) && /[—–-]\s*\S/.test(t) && /\([^)]+\)/.test(t);
+    });
+    if (!lines.length) return html;
+    lines[lines.length - 1].remove();
+    return d.innerHTML;
+  }
   function lemmaOf(key, r) {
     const d = document.createElement('div'); d.innerHTML = r.html; const t = (r.subject || '') + ' ' + (d.textContent || '').slice(0, 400);
     const m = (/^H/i.test(key) ? /[֐-׿יִ-ﭏ]+(?:[־\s][֐-׿יִ-ﭏ]+)?/ : /[Ͱ-Ͽἀ-῿̀-ͯ]+/).exec(t);
@@ -235,7 +291,7 @@
   }
   function wordSheet(w) {
     const lbl = (w.strongs && w.strongs[0]) ? `Strong's ${/^H/i.test(w.strongs[0]) ? 'Hebrew' : 'Greek'} · ${w.strongs[0]}` : `Dictionary · ${w.word || ''}`;
-    const s = sheet(`<div class="pcards"></div><div class="pills"><button type="button" class="pill gold" data-lib>${ic('library', 17)} Open in Library</button><button type="button" class="pill" data-all>${ic('lexicon', 17)} All dictionaries</button><button type="button" class="pill" data-find>${ic('search', 17)} Find ${esc((w.strongs && w.strongs[0]) || w.word || '')}</button></div>`, { title: esc(lbl), cls: 'lex', onClose: () => $$('.pwordon').forEach(x => x.classList.remove('pwordon')) });
+    const s = sheet(`<div class="pcards"></div><div class="pills"><button type="button" class="pill gold" data-lib>${ic('library', 17)} Open in Library</button><button type="button" class="pill" data-all>${ic('lexicon', 17)} All dictionaries</button><button type="button" class="pill" data-find>${ic('search', 17)} Find ${esc((w.strongs && w.strongs[0]) || w.word || '')}</button></div>`, { title: (w.strongs && w.strongs[0]) ? '<span></span>' : esc(lbl), cls: 'lex', onClose: () => $$('.pwordon').forEach(x => x.classList.remove('pwordon')) });
     let cards = [];
     dictCards(s.querySelector('.pcards'), w, { limit: 3 }).then(c => { cards = c || []; });
     s.querySelector('[data-lib]').onclick = () => { const c = cards.find(x => x.id); closeSheet(); if (c) openModule(c.id, c.tid); else library(); };
@@ -278,9 +334,11 @@
       if (e.target.closest('button')) return; e.preventDefault();
       const r = el.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { bar.setPointerCapture(e.pointerId); } catch (x) { /* */ }
       el.classList.add('moving');
-      const mv = ev => place(el, ev.clientX - dx, ev.clientY - dy);
-      const up = () => { bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up); el.classList.remove('moving');
-        wpPos = { x: parseFloat(el.style.left), y: parseFloat(el.style.top) }; };
+      // it follows the finger freely (also off the screen); let go with more than half of it outside and it closes
+      const mv = ev => { el.style.left = Math.round(ev.clientX - dx) + 'px'; el.style.top = Math.round(ev.clientY - dy) + 'px'; el.classList.toggle('leaving', window.PUI_wpOff(el)); };
+      const up = () => { bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up); el.classList.remove('moving', 'leaving');
+        if (window.PUI_wpOff(el)) { wordPopClose(); return; }
+        place(el, parseFloat(el.style.left), parseFloat(el.style.top)); wpPos = { x: parseFloat(el.style.left), y: parseFloat(el.style.top) }; };
       bar.addEventListener('pointermove', mv); bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
     });
   }
@@ -368,9 +426,23 @@
   function rdApply() { const o = rdGet(); root.style.setProperty('--rd-mx', RD.m[o.m][1]); root.style.setProperty('--rd-ex', o.m === 0 ? '0px' : ''); root.style.setProperty('--rd-lh', RD.l[o.l][1]); }
   function rdSet(k, i) { const o = rdGet(); o[k] = i; try { localStorage.setItem('tw.rd', JSON.stringify(o)); } catch (e) { /* not kept */ } rdApply(); }
   rdApply();
+  /** the font of one Bible view: the phone's own list (each name shown in its font), for that view only */
+  function fontSheet(i) {
+    const v = views()[i]; if (!v) return;
+    const fonts = TimotheosOptions.fonts(); const fq = f => String(f).replace(/['\\"<>]/g, '');
+    const row = (f, l) => `<button type="button" class="prr${(v.font || '') === f ? ' on' : ''}" data-font="${esc(f)}"><span style="${f ? `font-family:'${fq(f)}', serif` : ''}">${esc(l)}</span>${(v.font || '') === f ? ic('check', 18) : ''}</button>`;
+    const s = sheet(`<div class="rows">${row('', 'As in Options')}${fonts.map(f => row(f, f)).join('')}</div>`, { title: 'Font · ' + esc(bibleAbbr(v.bible) || '') });
+    s.addEventListener('click', e => {
+      const b = e.target.closest('[data-font]'); if (!b) return;
+      const vv = views()[i]; if (!vv) return closeSheet();
+      if (b.dataset.font) vv.font = b.dataset.font; else delete vv.font;
+      storeViews(); ensurePanes(); closeSheet(); flash('Font: ' + (b.dataset.font || 'as in Options'));
+    });
+  }
   /** the text format sheet for one Bible view (with two Bibles on screen, each has its own) */
   function formatFor(i) { if (i != null) par.focus(i); readingSheet(); }
   function readingSheet() {
+    const iv = state.active;   // the view this sheet is for (kept: a tap elsewhere must not move it to the other Bible)
     const v = views()[state.active] || {}; const sh = Object.assign({}, state.settings.show, v.show || {});
     const tog = (k, l, i) => `<button type="button" class="tgl${sh[k] ? ' on' : ''}" data-show="${k}">${ic(i, 20)}<span>${l}</span></button>`;
     const s = sheet(`<div class="prow"><span>Bible</span><button type="button" class="pchip" data-x="bible">${esc(bibleAbbr() || 'Choose')} ${ic('chevD', 14)}</button></div>
@@ -378,7 +450,7 @@
       <div class="prow pr3"><span>Margins</span><div class="pseg" data-rd="m">${RD.m.map((x, i) => `<button type="button" data-i="${i}" class="${rdGet().m === i ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>
       <div class="prow pr3"><span>Line height</span><div class="pseg" data-rd="l">${RD.l.map((x, i) => `<button type="button" data-i="${i}" class="${rdGet().l === i ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>
       <div class="prow pr3"><span>Align</span><div class="pseg palign">${['left', 'center', 'justify', 'right'].map(k => `<button type="button" data-al="${k}" class="${(v.align || 'left') === k ? 'on' : ''}" aria-label="${window.TimotheosAlign ? TimotheosAlign.names[k][0] : k}">${window.TimotheosAlign ? TimotheosAlign.icon(k, 18) : k}</button>`).join('')}</div></div>
-      <h4 class="sec">Show in the text</h4><div class="tgls">${tog('strongs', "Strong's", 'lexicon')}${tog('morph', 'Morphology', 'hash')}${tog('columns', 'Interlinear', 'compare')}${tog('footnotes', 'Footnotes', 'note')}${tog('headings', 'Headings', 'outline')}${tog('woj', 'Words of Jesus', 'fontColor')}${tog('added', 'Added words', 'type')}${tog('xrefs', 'Cross-refs', 'xref')}${tog('cmtLinks', 'Commentary marks', 'commentary')}${tog('highlights', 'My highlights', 'highlight')}${tog('notes', 'My notes', 'note')}${tog('tags', 'Module tags (developer)', 'cmd')}</div>
+      <h4 class="sec">Show in the text</h4><div class="tgls">${tog('strongs', "Strong's", 'lexicon')}${tog('morph', 'Morphology', 'hash')}${tog('columns', 'Interlinear', 'compare')}${tog('footnotes', 'Footnotes', 'note')}${tog('headings', 'Headings', 'outline')}${tog('woj', 'Words of Jesus', 'fontColor')}${tog('added', 'Added words', 'type')}${tog('xrefs', 'Cross-refs', 'xref')}${tog('xrefsFull', 'Cross-refs written out', 'xref')}${tog('cmtLinks', 'Commentary marks', 'commentary')}${tog('highlights', 'My highlights', 'highlight')}${tog('notes', 'My notes', 'note')}${tog('tags', 'Module tags (developer)', 'cmd')}</div>
       <h4 class="sec">This view</h4><div class="pills"><button type="button" class="pill" data-x="font">${ic('type', 16)} Font</button><button type="button" class="pill" data-x="hfont">${ic('outline', 16)} Heading font</button><button type="button" class="pill" data-x="fcolor">${ic('fontColor', 16)} Text colour</button><button type="button" class="pill" data-x="selbg">${ic('verseBg', 16)} Active verse colour</button><button type="button" class="pill" data-x="pen">${ic('highlighter', 16)} Highlighter pen</button><button type="button" class="pill" data-x="ul">${ic('underline', 16)} Underline pen</button><button type="button" class="pill${v.linked ? ' on' : ''}" data-x="link">${ic('link', 16)} Move with other views</button><button type="button" class="pill" data-x="vn">${ic('hash', 16)} Verse numbers</button><button type="button" class="pill" data-x="menu">${ic('menu', 16)} All view options</button><button type="button" class="pill" data-x="info">${ic('info', 16)} About this Bible</button></div>`, { title: 'Reading view' });
     s.addEventListener('click', e => {
       const z = e.target.closest('[data-z]'); if (z) { zoomView(state.active, +z.dataset.z); const vv = views()[state.active] || {}; z.parentNode.querySelector('b').textContent = Math.round((vv.zoom || 1) * 100) + '%'; return; }
@@ -388,6 +460,7 @@
       const x = e.target.closest('[data-x]'); if (!x) return; const a = x.dataset.x;
       if (a === 'link') { toggleLink(state.active); x.classList.toggle('on'); return; }
       if (a === 'vn') { const ap = TimotheosOptions.appearance(); const vv = views()[state.active] || {}; setVerseNumbers(state.active, (vv.vnPos || ap.vnPos) === 'hidden'); return; }
+      if (a === 'font') { closeSheet(); setTimeout(() => fontSheet(iv), 120); return; }
       closeSheet(); setTimeout(() => viewAction(a), 120);
     });
   }
@@ -401,14 +474,17 @@
     const kinds = KIND.filter(([k]) => mods.some(m => m.kind === k));
     let cur = o.kind || (kinds[0] || [])[0];
     const draw = () => {
-      const list = mods.filter(m => m.kind === cur).sort((a, z) => (a.title || a.name).localeCompare(z.title || z.name));
+      // locked modules (they open only in theWord) come last; modules with the same name show their file name
+      const tl = m => m.title || m.name.replace(/\.[^.]+(\.twm)?$/i, '');
+      const list = mods.filter(m => m.kind === cur).sort((a, z) => (!!a.locked - !!z.locked) || (a.title || a.name).localeCompare(z.title || z.name));
       box.innerHTML = `${kinds.length > 1 ? `<div class="pseg scroll">${kinds.map(([k, l]) => `<button type="button" data-k="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
-        <div class="mods">${list.map(m => { const t = m.title || m.name.replace(/\.[^.]+(\.twm)?$/i, ''); return `<button type="button" class="mod${m.locked ? ' locked' : ''}" data-id="${esc(m.id)}"><span class="cov" style="background:${coverOf(t)}">${esc((m.abbr || t).replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1).toUpperCase())}</span><span class="mt"><b>${esc(t)}</b><span>${m.locked ? 'locked — opens only in theWord' : `${m.totalTopics ? m.totalTopics.toLocaleString() + ' entries · ' : ''}${esc((KIND.find(x => x[0] === m.kind) || [])[1] || m.kind)}${m.user ? ' · your own · editable' : ''}`}</span></span>${ic('chevR', 18)}</button>`; }).join('') || '<p class="phint">No modules of this kind. Import theWord or e-Sword modules from More → Modules.</p>'}</div>
-        <div class="pills"><button type="button" class="pill" data-import>${ic('import', 16)} Import modules</button><button type="button" class="pill" data-newmod>${ic('plus', 16)} New user module</button></div>`;
+        <div class="mods">${list.map(m => { const t = m.title || m.name.replace(/\.[^.]+(\.twm)?$/i, ''); return `<button type="button" class="mod${m.locked ? ' locked' : ''}" data-id="${esc(m.id)}"><span class="cov" style="background:${coverOf(t)}">${esc((m.abbr || t).replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1).toUpperCase())}</span><span class="mt"><b>${esc(t)}</b><span>${m.locked ? 'locked — opens only in theWord' : `${m.totalTopics ? m.totalTopics.toLocaleString() + ' entries · ' : ''}${esc((KIND.find(x => x[0] === m.kind) || [])[1] || m.kind)}${m.user ? ' · your own · editable' : ''}`}${window.dupFile(list, m, tl) ? ' · ' + esc(window.dupFile(list, m, tl)) : ''}</span></span>${ic('chevR', 18)}</button>`; }).join('') || '<p class="phint">No modules of this kind. Import theWord or e-Sword modules from More → Modules.</p>'}</div>
+        <div class="pills"><button type="button" class="pill" data-import>${ic('import', 16)} Import modules</button><button type="button" class="pill" data-newmod>${ic('plus', 16)} New user module</button><button type="button" class="pill" data-getmods>${ic('info', 16)} Where to get modules</button></div>`;
     };
     draw();
     box.onclick = e => {
       const k = e.target.closest('[data-k]'); if (k) { cur = k.dataset.k; return draw(); }
+      if (e.target.closest('[data-getmods]')) return runCommand('getModules');
       const m = e.target.closest('.mod'); if (m) { if (m.classList.contains('locked')) return flash('This module is locked: it opens only in theWord'); return openModule(m.dataset.id); }
       if (e.target.closest('[data-import]')) return TimotheosModules.importModules();
       if (e.target.closest('[data-newmod]')) return TimotheosModules.newUserModuleDialog(cur === 'book' ? 'book' : cur === 'dictionary' ? 'dictionary' : 'commentary');
@@ -422,7 +498,7 @@
     const info = (state.modules.books || []).find(b => b.id === id) || {};
     const title = info.title || info.name || 'Module';
     const p = pushPage({ title, actions: `<button type="button" class="pib" data-x="speak" aria-label="Read aloud">${ic('speaker', 22)}</button><button type="button" class="pib" data-x="menu" aria-label="More">${ic('more', 22)}</button>`, cls: 'modpage' });
-    p.body.innerHTML = '<div class="mtop"></div><div class="mentry hidden"><div class="mehead"><button type="button" class="pchip" data-x="list">' + ic('chevL', 14) + ' All topics</button><span class="grow"></span><button type="button" class="pib" data-x="prev">' + ic('chevL', 20) + '</button><button type="button" class="pib" data-x="next">' + ic('chevR', 20) + '</button></div><div class="mebody"></div><div class="pills mefoot"><button type="button" class="pill" data-x="find">' + ic('search', 15) + ' Find in Bible</button><button type="button" class="pill" data-x="copy">' + ic('copy', 15) + ' Copy</button><button type="button" class="pill" data-x="print">' + ic('print', 15) + ' Print</button></div></div>';
+    p.body.innerHTML = '<div class="mtop"></div><div class="mentry hidden"><div class="mehead"><button type="button" class="pchip" data-x="list">' + ic('chevL', 14) + ' All topics</button><span class="grow"></span><button type="button" class="pib" data-x="prev">' + ic('chevL', 20) + '</button><button type="button" class="pib" data-x="next">' + ic('chevR', 20) + '</button></div><div class="mebody"></div><div class="pills mefoot"><button type="button" class="pill" data-x="find">' + ic('search', 15) + ' Find in Bible</button><button type="button" class="pill" data-x="copy">' + ic('copy', 15) + ' Copy</button><button type="button" class="pill nophone" data-x="print">' + ic('print', 15) + ' Print</button></div></div>';
     const top = p.body.querySelector('.mtop'), entry = p.body.querySelector('.mentry'), ebody = p.body.querySelector('.mebody');
     const backs = [borrow($('#libFilter'), top), borrow($('#libCount'), top), borrow($('#libTopics'), top), borrow($('#libBody'), ebody)];
     $('#libFilter').placeholder = 'Find a topic…';
@@ -560,14 +636,15 @@
       today = `<button type="button" class="card2" data-plan><div class="k">Today · ${esc(p.name)}</div><h5>${esc((s.readings || []).map(r => passLabel(r)).join(' · '))}</h5><p>Reading ${p.sessions.indexOf(s) + 1} of ${p.sessions.length} · ${pct}% done</p><div class="progress"><i style="width:${pct}%"></i></div></button>`;
     } else today = `<button type="button" class="card2" data-newplan><div class="k">Daily reading</div><h5>Start a reading plan</h5><p>Through the Bible in a year, the New Testament, Psalms and Proverbs…</p></button>`;
     const notes = Object.entries(u.notes || {}).sort((a, z) => (z[1].t || 0) - (a[1].t || 0)).slice(0, 4);
-    box.innerHTML = `${today}<div class="qgrid"><button type="button" class="q" data-s="notes">${ic('note', 22)}<div>Notes<small>${c.notes}</small></div></button><button type="button" class="q" data-s="hl">${ic('highlight', 22)}<div>Highlights<small>${c.hl}</small></div></button><button type="button" class="q" data-s="marks">${ic('bookmark', 22)}<div>Bookmarks<small>${c.bm} · keys 1–0</small></div></button><button type="button" class="q" data-s="lists">${ic('study', 22)}<div>Verse lists<small>${c.lists}</small></div></button></div>
-      <div class="pills"><button type="button" class="pill" data-s="plans">${ic('calendar', 16)} Reading plans (${c.plans})</button><button type="button" class="pill" data-dev>${ic('book', 16)} Devotionals today</button></div>
+    box.innerHTML = `${today}<div class="qgrid"><button type="button" class="q" data-s="notes">${ic('note', 22)}<div>Notes<small>${c.notes}</small></div></button><button type="button" class="q" data-s="hl">${ic('highlight', 22)}<div>Highlights<small>${c.hl}</small></div></button><button type="button" class="q" data-s="marks">${ic('bookmark', 22)}<div>Bookmarks<small>${c.bm}<span class="nophone"> · keys 1–0</span></small></div></button><button type="button" class="q" data-s="lists">${ic('study', 22)}<div>Verse lists<small>${c.lists}</small></div></button></div>
+      <div class="pills"><button type="button" class="pill" data-s="plans">${ic('calendar', 16)} Reading plans (${c.plans})</button><button type="button" class="pill" data-dev>${ic('book', 16)} Devotionals today</button><button type="button" class="pill" data-bk="backupStudy">${ic('import', 16)} Back up my study</button><button type="button" class="pill" data-bk="restoreStudy">${ic('refresh', 16)} Restore</button></div>
       ${notes.length ? `<h4 class="sec">Recent notes</h4><div class="glist">${notes.map(([k, n]) => `<button type="button" class="prr" data-go="${k}">${ic('note', 18)}<span>${esc(rn(parseKey(k)))}</span><small>${esc(text(n.html).slice(0, 34))}</small></button>`).join('')}</div>` : ''}`;
     box.onclick = e => {
       const g = e.target.closest('[data-go]'); if (g) { clearPages(); return go(parseKey(g.dataset.go)); }
       if (e.target.closest('[data-newplan]')) return newPlanDialog();
       if (e.target.closest('[data-plan]')) return studySection('plans');
       if (e.target.closest('[data-dev]')) return devotionals();
+      const bk = e.target.closest('[data-bk]'); if (bk) return runCommand(bk.dataset.bk);
       const s = e.target.closest('[data-s]'); if (s) return s.dataset.s === 'hl' ? highlightsPage() : studySection(s.dataset.s);
     };
   }
@@ -627,11 +704,11 @@
 
   /* ================================================================ help, modules, options */
   function helpSheet() {
-    const s = sheet(`<div class="rows"><button type="button" class="prr" data-c="guide">${ic('book', 20)}<span>User guide</span></button><button type="button" class="prr" data-c="keys">${ic('keyboard', 20)}<span>Keyboard shortcuts</span></button><button type="button" class="prr" data-c="about">${ic('info', 20)}<span>About Timotheos</span></button></div>`, { title: 'Help' });
+    const s = sheet(`<div class="rows"><button type="button" class="prr" data-c="guide">${ic('book', 20)}<span>User guide</span></button><button type="button" class="prr" data-c="about">${ic('info', 20)}<span>About Timotheos</span></button><button type="button" class="prr" data-c="checkUpdates">${ic('refresh', 20)}<span>Check for updates</span><small>asks GitHub, only now</small></button><button type="button" class="prr" data-c="report">${ic('copy', 20)}<span>Copy problem report</span><small>to paste when you report a problem</small></button></div>`, { title: 'Help' });
     s.onclick = e => { const b = e.target.closest('[data-c]'); if (b) { closeSheet(); runCommand(b.dataset.c); } };
   }
   function modulesSheet() {
-    const s = sheet(`<div class="rows"><button type="button" class="prr" data-c="import">${ic('import', 20)}<span>Import modules…</span><small>theWord, e-Sword</small></button><button type="button" class="prr" data-c="addFolder">${ic('folder', 20)}<span>Add module folder…</span></button><button type="button" class="prr" data-c="rescan">${ic('refresh', 20)}<span>Rescan modules</span></button><button type="button" class="prr" data-c="modulesFolder">${ic('folder', 20)}<span>Imported modules folder</span></button><button type="button" class="prr" data-c="newUserMod">${ic('plus', 20)}<span>New user module…</span></button><button type="button" class="prr" data-o="mods">${ic('layers', 20)}<span>Manage modules</span><small>show, hide, properties, uninstall</small></button><button type="button" class="prr" data-c="exportTopics">${ic('import', 20)}<span>Export topics…</span></button></div>`, { title: 'Modules' });
+    const s = sheet(`<div class="rows"><button type="button" class="prr" data-c="import">${ic('import', 20)}<span>Import modules…</span><small>theWord, e-Sword</small></button><button type="button" class="prr" data-c="downloadModules">${ic('import', 20)}<span>Download modules…</span><small>eBible.org and other repositories</small></button><button type="button" class="prr" data-c="getModules">${ic('info', 20)}<span>Where to get modules</span><small>free sites, how to import</small></button><button type="button" class="prr nophone" data-c="addFolder">${ic('folder', 20)}<span>Add module folder…</span></button><button type="button" class="prr" data-c="rescan">${ic('refresh', 20)}<span>Rescan modules</span></button><button type="button" class="prr nophone" data-c="modulesFolder">${ic('folder', 20)}<span>Imported modules folder</span></button><button type="button" class="prr" data-c="newUserMod">${ic('plus', 20)}<span>New user module…</span></button><button type="button" class="prr" data-o="mods">${ic('layers', 20)}<span>Manage modules</span><small>show, hide, uninstall</small></button><button type="button" class="prr" data-c="exportTopics">${ic('import', 20)}<span>Export topics…</span></button></div>`, { title: 'Modules' });
     s.onclick = e => { const b = e.target.closest('[data-c],[data-o]'); if (!b) return; closeSheet(); if (b.dataset.o) TimotheosOptions.open(b.dataset.o); else runCommand(b.dataset.c); };
   }
 
@@ -693,6 +770,21 @@
     document.addEventListener('pointerup', e => { if (sx !== null && !moved && root.classList.contains('sk')) off(false); sx = null; }, { capture: true, passive: true });
     document.addEventListener('pointercancel', () => { sx = null; }, { capture: true, passive: true });
     window.PUI_bars = off;
+    // Touch and hold anywhere brings the bars (dock, top buttons) back; a swipe up or down anywhere sends them away again.
+    // A hold on a verse still opens that verse's tools, which cover the bars anyway.
+    (() => {
+      let hx = 0, hy = 0, ht = null, fired = false;
+      const busy = () => root.classList.contains('pg-open') || root.classList.contains('sk-dlg') || root.classList.contains('sk-selecting') || !!document.getElementById('pSheet');
+      const bars = on => { off(!on); if (window.SkinA && root.classList.contains('sk-a')) { try { window.SkinA.showChrome(on, on); } catch (x) {} } };
+      document.addEventListener('touchstart', e => { clearTimeout(ht); fired = false; if (!root.classList.contains('sk') || e.touches.length !== 1 || busy()) return;
+        hx = e.touches[0].clientX; hy = e.touches[0].clientY;
+        ht = setTimeout(() => { if (busy()) return; fired = true; bars(true); }, 560); }, { capture: true, passive: true });
+      document.addEventListener('touchmove', e => { const t = e.touches[0]; if (!t) return; const dx = t.clientX - hx, dy = t.clientY - hy;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) clearTimeout(ht);
+        if (!fired && root.classList.contains('sk') && !busy() && hy < innerHeight - (parseFloat(getComputedStyle(root).getPropertyValue('--safe-b')) || 0) - 64 && Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.2) { bars(false); } }, { capture: true, passive: true });
+      document.addEventListener('touchend', () => clearTimeout(ht), { capture: true, passive: true });
+      document.addEventListener('touchcancel', () => clearTimeout(ht), { capture: true, passive: true });
+    })();
     // Options, a question, module properties, the reading settings sheet, quick settings and the command bar have the screen:
     // no bottom bar over them. A page that opens (Library, Search…) shows the bar again.
     let was = false, pend = false;
@@ -708,6 +800,57 @@
     const later = () => { if (!pend) { pend = true; requestAnimationFrame(over); } };
     new MutationObserver(later).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     window.addEventListener('load', () => new MutationObserver(later).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }));
+  })();
+  /* ---- popups that the old screens open (view menus, the Bible list, dialogs, Study Desk's panels) can be dragged back too ---- */
+  let lastTap = null;
+  document.addEventListener('pointerdown', e => { lastTap = e.target; }, { capture: true, passive: true });
+  // the bar a label sits in: the first fixed or sticky box around it (or the title over the text)
+  function barOf(el) {
+    for (let n = el; n && n !== document.body; n = n.parentElement) {
+      if (n.matches && n.matches('.sk-ttl, .pdiv, .pgbar')) return n;
+      const cs = getComputedStyle(n); if ((cs.position === 'fixed' || cs.position === 'sticky') && n.getBoundingClientRect().height < innerHeight * 0.3) return n;
+    }
+    return null;
+  }
+  /* the Bible list opened from a Bible label at the top: it drops from the lower edge of that bar, next to the label */
+  function dropFromBar(m, anchor) {
+    if (!anchor || !anchor.isConnected || anchor.closest('.bvmenu, #pSheet, .ppage .pgbody')) return false;
+    const ar = anchor.getBoundingClientRect(); if (!ar.width || ar.top > innerHeight * 0.6) return false;
+    const bar = barOf(anchor); const top = Math.round(bar ? Math.min(bar.getBoundingClientRect().bottom, ar.bottom + 14) : ar.bottom + 6);
+    if (innerHeight - top < 240) return false;
+    const w = Math.min(innerWidth - 16, 380), cx = ar.left + ar.width / 2;
+    m.classList.add('pdrop'); m.style.setProperty('--drop-top', top + 'px'); m.style.setProperty('--drop-left', Math.round(Math.max(8, Math.min(cx - w / 2, innerWidth - w - 8))) + 'px'); m.style.setProperty('--drop-w', w + 'px');
+    m.style.setProperty('--drop-x', Math.round(Math.max(18, Math.min(w - 18, cx - Math.max(8, Math.min(cx - w / 2, innerWidth - w - 8))))) + 'px');
+    return true;
+  }
+  function wireMenu(m) {
+    if (m._pw) return; m._pw = 1;
+    const up = m.classList.contains('biblemenu') && dropFromBar(m, lastTap);
+    if (!m.querySelector(':scope > .pgrab')) m.insertAdjacentHTML(up ? 'beforeend' : 'afterbegin', '<div class="pgrab"></div>');
+    const close = () => { m.remove(); };
+    swipeAway(m, up ? 'up' : 'down', close, { reset: false });
+    pushBack(() => { if (m.isConnected) m.remove(); }, 'menu');
+    const gone = new MutationObserver(() => { if (!m.isConnected) { gone.disconnect(); dropBack('menu'); } }); gone.observe(document.body, { childList: true });
+  }
+  window.addEventListener('load', () => {
+    new MutationObserver(ms => { if (!root.classList.contains('sk')) return; for (const mu of ms) for (const n of mu.addedNodes) if (n.nodeType === 1 && n.classList.contains('bvmenu')) wireMenu(n); }).observe(document.body, { childList: true });
+    const dlgBox = id => document.querySelector(`#${id} > .box, #${id} > div, #${id} > section`);
+    const shut = id => { const el = document.getElementById(id); if (!el || el.classList.contains('hidden')) return;
+      const b = id === 'modal' ? [...el.querySelectorAll('#modalButtons button, .btns button, button')].reverse().find(x => /cancel|close|no\b/i.test(x.textContent)) : el.querySelector(id === 'optionsDlg' ? '#optClose, .optclose, [data-close]' : '#ppClose, [data-close]');
+      if (b) b.click(); else el.classList.add('hidden'); };
+    // a dialog in the middle (a question, Copy verses…) and the full-screen ones (Options, module properties): drag down to close
+    const armDlg = id => { const el = document.getElementById(id); if (!el) return; const go = () => { if (!root.classList.contains('sk') || el.classList.contains('hidden')) return; const b = dlgBox(id); if (b) swipeAway(b, 'down', () => shut(id)); };
+      new MutationObserver(go).observe(el, { attributes: true, attributeFilter: ['class'], childList: true }); go(); };
+    ['modal', 'optionsDlg', 'propsDlg'].forEach(armDlg);
+  });
+  // the word pop-up has no edge: throw it off the screen (more than half of it outside) to close it
+  window.PUI_wpOff = el => { const r = el.getBoundingClientRect(); const vis = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0)); return vis < r.width * r.height * 0.5; };
+  // swiping up from the bottom edge brings the hidden bottom bar (tab bar, capsule, dock) back
+  (() => {
+    let y0 = null, x0 = 0;
+    document.addEventListener('touchstart', e => { y0 = null; if (!root.classList.contains('sk') || e.touches.length !== 1) return; const t = e.touches[0]; const safe = parseFloat(getComputedStyle(root).getPropertyValue('--safe-b')) || 0; if (t.clientY >= innerHeight - safe - 64) { y0 = t.clientY; x0 = t.clientX; } }, { capture: true, passive: true });
+    document.addEventListener('touchmove', e => { if (y0 == null) return; const t = e.touches[0]; if (y0 - t.clientY > 26 && Math.abs(t.clientX - x0) < y0 - t.clientY) { y0 = null; if (window.PUI_bars) window.PUI_bars(false); } }, { capture: true, passive: true });
+    document.addEventListener('touchend', () => { y0 = null; }, { capture: true, passive: true });
   })();
   // the old dialogs (Options, a question, module properties) close with Back too
   window.addEventListener('load', () => {
@@ -753,5 +896,5 @@
   window.PUI = { fitLabels, par, pushBack, dropBack, $, $$, ic, esc, flash, rn, bookOf, chapterTitle, bibleAbbr, activeBible, sheet, closeSheet, pushPage, popPage, clearPages, pageCount, borrow, decorate, decorateAll, verseOf, markVerse,
     act, HL, lastColor, setLastColor, verseSheet, formatFor, commentaryCards, commentarySheet, dictCards, wordSheet, wordPop, wordPopClose, xrefList, xrefSheet, compareSheet, bookmarkSheet,
     goSheetGrid, goSheetList, chooseBible, viewAction, readingSheet, libraryInto, library, openModule, feedPage, searchInto, search, fullPanel, studyInto, studySection,
-    highlightsPage, devotionals, studyPage, readAloudInto, readAloudPage, helpSheet, modulesSheet, ttsInfo, ttsProgress, H, wordOf, recents, counts, debounce, text };
+    highlightsPage, devotionals, studyPage, readAloudInto, readAloudPage, helpSheet, modulesSheet, ttsInfo, ttsProgress, H, wordOf, recents, counts, debounce, text, swipeAway };
 })();

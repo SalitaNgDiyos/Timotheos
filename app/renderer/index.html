@@ -15,7 +15,7 @@
 </head>
 <body>
 <div id="titlebar" class="titlebar">
-  <div class="brand" title="Timotheos"><span class="logo" data-icon="bible" data-icon-size="15"></span><span class="tbname">Timotheos</span></div>
+  <div class="brand" title="Timotheos"><span class="logo"><img data-logo="64" src="logo-emerald-64.png" alt="" width="22" height="22" draggable="false"></span><span class="tbname">Timotheos</span></div>
   <nav id="tbMenus" class="tbmenus" aria-label="Menu"></nav>
   <div class="tbdrag"></div>
 </div>
@@ -100,7 +100,9 @@
   <div id="grid"></div>
   <div id="empty" class="empty hidden">
     <h2>No Bible modules yet</h2>
-    <p>Click <b>Import</b> (or drop module files onto this window) to bring in theWord or e-Sword modules, or open <b>Options → Modules</b> to read them from a folder where they already are.</p>
+    <p class="nophone">Click <b>Import</b> (or drop module files onto this window) to bring in theWord or e-Sword modules, or open <b>Options → Modules</b> to read them from a folder where they already are.</p>
+    <p class="phoneonly">Timotheos reads theWord and e-Sword modules. Tap <b>Import modules</b> and choose the module files on your phone (for example in Downloads). Timotheos keeps its own copy of each one.</p>
+    <button type="button" id="emptyImport">Import modules…</button> <button type="button" id="emptyGet" class="ghostbtn">Where to get modules</button>
   </div>
 </div>
 <footer id="statusbar" class="statusbar"><span id="stRef"></span><span class="grow"></span><span id="stMods"></span></footer>
@@ -189,7 +191,7 @@
         <div class="libcount small" id="libCount"></div>
       </div>
       <div class="lsplitter" id="libSplitter" title="Drag to make the topic list wider or narrower"></div>
-      <div id="libBody" class="lookup"><p class="hint">Choose a commentary, dictionary or book above.</p></div>
+      <div id="libBody" class="lookup"><p class="hint">Choose a commentary, dictionary or book above.</p><p class="hint" id="libGetHint"><a class="link" data-href="cmd:getModules">Where to get modules</a></p></div>
     </div>
   </div>
   <div class="tab searchtab" id="tab-search">
@@ -387,6 +389,9 @@
 <div id="ctxMenu" class="menu ctx hidden"></div>
 <div id="modal" class="modal hidden"><div class="box"><h3 id="modalTitle"></h3><div id="modalBody"></div><div id="modalBtns" class="row end"></div></div></div>
 <div id="dropzone" class="dropzone hidden"><div>Drop theWord or e-Sword modules to import them</div></div>
+<script src="report.js"></script>
+<script src="download.js"></script>
+<script src="updates.js"></script>
 <script src="icons.js"></script>
 <script src="i18n.js"></script>
 <script src="dock.js"></script>
@@ -398,6 +403,7 @@
 <script src="bsearch-ui.js"></script>
 <script src="speech-ui.js"></script>
 <script src="tools-ui.js"></script>
+<script src="logo.js"></script>
 <script src="options.js"></script>
 <script src="titlebar.js"></script>
 <script src="props.js"></script>

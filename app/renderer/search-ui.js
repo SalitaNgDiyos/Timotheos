@@ -26,6 +26,9 @@ async function init() {
   if ($('#optNearAcross')) $('#optNearAcross').checked = !!o.nearAcross;
   $('#searchForm').addEventListener('submit', e => { e.preventDefault(); run(); });
   wireBibleList(); fillBibleList(); if (o.bibles === 'chosen') $('#searchPick').open = true;
+  // the list of Bibles to tick shows only with "The Bibles I tick below": with the other choices it had no effect
+  const syncPick = () => $('#searchPick').classList.toggle('hidden', $('#searchBibles').value !== 'chosen');
+  syncPick(); $('#searchBibles').addEventListener('change', syncPick);
   $('#searchInput').addEventListener('input', explainSoon);
   for (const id of ['optDefault', 'optWhole', 'optCase', 'optDiac', 'optRegex', 'optNearW', 'optNearV', 'optNearAcross', 'searchBibles']) {
     const el = $('#' + id);
@@ -80,7 +83,7 @@ function fillBibleList() {
   $('#searchPickCount').textContent = `(${on.size} of ${state.modules.bibles.length})`;
 }
 function wireBibleList() {
-  const setPicked = ids => { save({ searchBibleIds: ids }); $('#searchBibles').value = 'chosen'; saveOpts(); fillBibleList(); explainSoon(); };
+  const setPicked = ids => { save({ searchBibleIds: ids }); $('#searchBibles').value = 'chosen'; $('#searchPick').classList.remove('hidden'); saveOpts(); fillBibleList(); explainSoon(); };
   $('#searchBibleList').addEventListener('change', () => setPicked([...document.querySelectorAll('#searchBibleList input:checked')].map(i => i.value)));
   $('#spAll').onclick = () => setPicked(state.modules.bibles.map(b => b.id));
   $('#spNone').onclick = () => setPicked([]);

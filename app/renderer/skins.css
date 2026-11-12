@@ -225,6 +225,10 @@ html.sk.sk-baroff .a-caps, html.sk.sk-baroff .c-dock { transform: translate(-50%
 html.sk.sk-baroff .a-fade { opacity: 0; }
 /* Screen B: when the tab bar is away, the Bible text and the pages use the space it covered */
 html.sk-b.sk-baroff { --sk-bot: 0px; --pg-bot: 0px; }
+/* the top buttons (view options, back/forward, text format) go away with the bottom bar and come back with it */
+html.sk .b-abar, html.sk .c-rail .pib, html.sk .c-rail .bib, html.sk .sk-ttl .sk-aa { transition: opacity .22s ease, transform .22s ease; }
+html.sk.sk-baroff .b-abar { opacity: 0; transform: translateY(-12px); pointer-events: none; }
+html.sk.sk-baroff .c-rail .pib, html.sk.sk-baroff .c-rail .bib, html.sk.sk-baroff .sk-ttl .sk-aa { opacity: 0; pointer-events: none; }
 html.sk-b #workbench .dgroup, html.sk-b #pHost { transition: bottom .22s ease; }
 
 /* Quiet Reader: the place/Bible strip lines up with the label above it; the top bar is only a contents icon */
@@ -250,6 +254,11 @@ html.sk-a.a-show .a-chrome, html.sk-a.a-compact .a-chrome { background: var(--p-
 .a-chrome .lab em { font: 600 11px var(--p-ui); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); flex: none; }
 html.sk-a.a-compact .a-chrome .lab { opacity: 1; pointer-events: auto; }
 html.sk-a.a-compact.a-show .a-chrome .lab { font-size: 17px; }
+/* two Bibles: the strip covers the upper Bible's title, so the strip itself names the place and the Bible (both tappable) while it shows */
+html.sk-a.psplitting.a-show .a-chrome .lab { opacity: 1; pointer-events: auto; font-size: 17px; }
+html.sk-a.psplitting.a-show .a-chrome .lab em { padding: 10px 6px; margin: -10px -6px; }
+/* …and while it is hidden, nothing of it lies over the upper Bible's own name (a tap there chooses that Bible) */
+html.sk-a.psplitting:not(.a-show) .a-chrome .mid { pointer-events: none; }
 
 /* Android, Bible view: the navigation bar is see-through; bars and buttons at the bottom stay above it, the text runs under it */
 html.sk.tw-edge { --safe-b: var(--nav-h, 0px); }

@@ -154,6 +154,7 @@ function runCommand(cmd) {
     voices: () => TimotheosSpeech.voicesDialog(), goto: () => { const p = document.querySelector('.dgroup.isbv .navpill') || document.querySelector('.navpill'); if (p && window.TimotheosNav) TimotheosNav.openNavPopover('book', p); }, about,
     options: () => TimotheosOptions.open(), resetLayout: () => { TimotheosDock.applyPreset('classic'); flashMsg('Panel layout reset'); },
     copyVerses: () => TimotheosStudy.copyDialog(), daily: () => TimotheosStudy.openStudy('plans'), keys: () => TimotheosStudy.showKeys(), print: () => window.print(),
+    report: () => TimotheosReport.copy(), getModules, downloadModules: () => TimotheosDownload.open(), checkUpdates: () => TimotheosUpdates.check(), backupStudy: () => TimotheosStudy.backupStudy(), restoreStudy: () => TimotheosStudy.restoreStudy(),
     guide: () => api.appCmd('guide', TimotheosOptions.appearance().skin)
   };
   if (local[cmd]) return local[cmd]();
@@ -317,12 +318,26 @@ function save(patch) { Object.assign(state.settings, patch); api.setSettings(pat
 
 /* ---------------- modules ---------------- */
 /** the lists the program shows: modules you took out of the lists stay in Options → Modules only */
+// Two modules that show the same name are told apart by their file name: dupFile() gives it when another module of
+// the list carries the same label, and nothing otherwise.
+function dupFile(list, m, label) {
+  const n = label(m); if (!n) return '';
+  return (list || []).filter(x => label(x) === n).length > 1 ? String(m.id || '').replace(/^[a-z]+:/i, '') : '';
+}
+window.dupFile = dupFile;
 function visibleModules(l) {
   const keep = a => (a || []).filter(m => !m.hidden);
   return Object.assign({}, l, { bibles: keep(l.bibles), books: keep(l.books), dicts: keep(l.dicts) });
 }
 async function refreshModules(list) {
   state.allModules = list || await api.listModules();
+  // The first start, with no Bible at all: the Bible that comes with Timotheos (Ang Malayang Biblia, New Testament) is
+  // put in, once. Uninstalling it later does not bring it back.
+  if (!state.seedTried && !(state.allModules.bibles || []).length && !state.settings.seeded && window.TimotheosHost && TimotheosHost.seedBundled) {
+    state.seedTried = true;
+    try { const paths = await TimotheosHost.seedBundled(); if (paths && paths.length) { const r = await api.importFiles(paths); if (r && r.list) state.allModules = r.list; await save({ seeded: true }); } }
+    catch (e) { /* the app starts empty, as before */ }
+  }
   state.modules = visibleModules(state.allModules);
   const ids = state.modules.bibles.map(b => b.id);
   const prevZoom = (views()[0] && views()[0].zoom) || state.settings.bibleZoom || 1;
@@ -336,6 +351,8 @@ async function refreshModules(list) {
   TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); if (window.TimotheosSearch && TimotheosSearch.fillBibleList) TimotheosSearch.fillBibleList();
   if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.allModules = Object.assign(l, { errors: state.modules.errors }); state.modules = visibleModules(state.allModules); renderDictSelects(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {});
   $('#empty').classList.toggle('hidden', ids.length > 0);
+  const ei = $('#emptyImport'); if (ei && !ei.onclick) ei.onclick = () => runCommand('import');
+  const eg = $('#emptyGet'); if (eg && !eg.onclick) eg.onclick = () => runCommand('getModules');
   statusMods();
   $('#grid').classList.toggle('hidden', ids.length === 0);
   preloadBibles();
@@ -453,7 +470,7 @@ async function addFolder() { const l = await api.addFolder(); if (l) { state.set
 async function rescan() { const l = await api.rescan(); state.infos.clear(); await refreshModules(l); flashMsg(`Modules rescanned: ${(state.modules.bibles || []).length} Bibles, ${(state.modules.books || []).length} other modules`); }
 
 /* ---------------- Bible views ---------------- */
-const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs', 'cmtLinks', 'tags'];
+const VIEW_KEYS = ['strongs', 'morph', 'lemma', 'columns', 'footnotes', 'headings', 'woj', 'added', 'xrefs', 'xrefsFull', 'cmtLinks', 'tags'];
 const SIDE = [['strongs', 'S', "Strong's numbers (S)"], ['morph', 'M', 'Morphology codes (M)'], ['lemma', 'L', 'Lemmas (L)'], ['columns', '⫼', 'Intralinear View: each word over its original word (Alt+I)'], ['footnotes', 'F', 'Footnotes (F)'], ['headings', 'H', 'Headings (H)'],
   ['woj', 'J', 'Words of Jesus in red (J)'], ['added', 'I', 'Added words in italics (I)'], ['xrefs', 'X', 'Cross-references (X)']];
 const views = () => state.settings.views || [];
@@ -491,6 +508,13 @@ function setTextAlign(i, a) {
   storeViews(); const sec = panes()[i]; if (sec) applyPaneLook(sec, i);
 }
 window.setTextAlign = setTextAlign;
+/** line spacing of one view (null: the one in Options › Fonts) */
+function setLineSpacing(i, lh) {
+  const v = views()[i]; if (!v) return;
+  if (lh == null) delete v.lh; else v.lh = Math.round(Math.min(3, Math.max(1, +lh)) * 100) / 100;
+  storeViews(); const sec = panes()[i]; if (sec) applyPaneLook(sec, i);
+}
+window.setLineSpacing = setLineSpacing;
 /** developer view: the verse exactly as stored in the module, each tag shown and coloured */
 function rawTags(raw) {
   return String(raw == null ? '' : raw).split(/(<[^>]*>)/).map(p => !p ? '' : p[0] === '<' && p.endsWith('>')
@@ -572,6 +596,7 @@ function applyPaneLook(sec, i) {
   t.dataset.vnpos = v.vnPos || ap.vnPos; t.dataset.vnstyle = ap.vnStyle;
   if (v.color) t.style.color = v.color; else t.style.removeProperty('color');
   if (v.align) t.dataset.align = v.align; else delete t.dataset.align;
+  if (v.lh) { t.style.setProperty('--lh', v.lh); t.dataset.lh = v.lh; } else { t.style.removeProperty('--lh'); delete t.dataset.lh; }
   // headings (the module's <TS> titles): their own font, size, colour and style for this view
   const h = v.head || {}; const hd = (k, val, prop, css) => { if (val != null && val !== '') { t.dataset[k] = typeof val === 'boolean' ? (val ? '1' : '0') : '1'; if (prop) t.style.setProperty(prop, css); } else { delete t.dataset[k]; if (prop) t.style.removeProperty(prop); } };
   hd('hfam', h.font, '--h-font', h.font ? `'${String(h.font).replace(/['\\]/g, '')}', var(--font-text)` : '');
@@ -1149,8 +1174,69 @@ async function pin(el) {
   return showLookup({ word, lemma: el.dataset.lemma, strongs: split('strong'), morphs: split('morph') });
 }
 
+/* ---------------- Where to get modules ---------------- */
+// Three places on the web, and how to bring what they offer into Timotheos. Shown from File/Help, from the empty app,
+// and from the Commentary and Library panels while they have nothing to show.
+const MODULE_SITES = [
+  ['wordmodules.com', 'https://www.wordmodules.com/', 'theWord modules: Bibles, commentaries, dictionaries, books and devotionals. Everything there is in a format Timotheos reads.'],
+  ['biblesupport.com', 'https://www.biblesupport.com/', 'e-Sword modules: Bibles, commentaries, dictionaries and books. Choose the <b>e-Sword</b> downloads (not MySword).'],
+  ['ebible.org', 'https://ebible.org/', 'Bibles in very many languages, free to share. Download a translation as USFM (the "_usfm.zip" file) or USFX, then import the file as it is: Timotheos reads both. It has no theWord or e-Sword files.']
+];
+async function getModules() {
+  const phone = document.documentElement.classList.contains('mobile');
+  const steps = phone
+    ? `<li>Open one of the sites in your phone's browser and download the module. It goes to your <b>Downloads</b>.</li>
+       <li>Do not open the file. There is no need to unzip it.</li>
+       <li>Come back to Timotheos and tap <b>Import modules</b> (below, or in <i>Modules</i>). Choose the files in Downloads.</li>
+       <li>Timotheos keeps its own copy and tells you what it imported. Bibles appear in the list of Bibles, the rest in the Library and Commentary.</li>`
+    : `<li>Open one of the sites and download the module to your computer, for example to <b>Downloads</b>.</li>
+       <li>Do not run the file. There is no need to unzip it.</li>
+       <li>In Timotheos click <b>Import</b> (toolbar, <i>File → Import Modules…</i> or <kbd>Ctrl+I</kbd>) and choose the files, or drag them onto the Timotheos window. You can choose many at once.</li>
+       <li>A report says what was imported. Bibles appear in the list of Bibles of each view, commentaries in the <b>Commentary</b> panel, dictionaries and books in the <b>Library</b>.</li>`;
+  const html = `<div class="getmods">
+    <p>Timotheos reads modules made for <b>theWord</b> and <b>e-Sword</b>. These sites offer them without charge. Bibles from eBible.org can also be fetched inside Timotheos: <b>Download modules</b>, below.</p>
+    <div class="gmsites">${MODULE_SITES.map(([n, u, d]) => `<div class="gmsite"><a class="link" data-href="${u}"><b>${n}</b></a><span>${d}</span></div>`).join('')}</div>
+    <h4>How to bring a module into Timotheos</h4>
+    <ol>${steps}</ol>
+    <p class="small"><b>Files Timotheos reads:</b> theWord <code>.ont</code> <code>.ot</code> <code>.nt</code> <code>.twm</code> <code>.twzip</code>; e-Sword <code>.bblx</code> <code>.cmtx</code> <code>.dctx</code> <code>.lexx</code> <code>.topx</code> <code>.refx</code> <code>.devx</code> (and the older <code>…i</code> forms); and a <code>.zip</code> that holds any of these. A module that comes as a program (<code>.exe</code>) cannot be imported, and locked or encrypted modules are not opened.</p>
+    <p class="small">A site may ask you to make a free account before you can download. Timotheos is not connected with these sites, and each module stays under its publisher's own terms.</p></div>`;
+  const r = await TimotheosModules.modal('Where to get modules', html, [{ label: 'Close', value: null }, { label: 'Download modules…', value: 'download' }, { label: 'Import modules…', value: 'import', primary: true }], true);
+  if (r === 'import') runCommand('import');
+  if (r === 'download') runCommand('downloadModules');
+}
+const GET_MODS_LINK = '<a class="link" data-href="cmd:getModules">Where to get modules</a>';
+window.GET_MODS_LINK = GET_MODS_LINK;
+/* On a phone screen, a verse link tapped inside a dictionary pop-up, sheet or page (not in a Bible view) shows the normal Bible view with that
+   verse selected. The Bible is the default Old / New Testament Bible of Options → Modules; when that is "Automatic" (or does not have the
+   book), the first Bible of the list in the Bible view's name menu that has the book. With no Bible for that testament, "Where to get modules". */
+function phoneVerseLink(link) {
+  if (!document.documentElement.classList.contains('sk') || link.closest('.bv')) return false;
+  const href = link.dataset.href || '';
+  const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
+  const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
+  if (!/^tw:\/\/bible/i.test(href) || !id) return false;
+  if (bm && bm[1] && bm[1] !== '*' && resolveBibleSpec(bm[1])) return false;   // the link names a Bible that is installed: as before
+  phoneVerse(+id[1], +id[2], id[3] ? +id[3] : 1);
+  return true;
+}
+async function bibleForBook(b) {
+  const has = async bid => { const inf = await ensureInfo(bid); return !!(inf && inf.books && inf.books[b]); };
+  const pref = b >= 1 && b <= 39 ? state.settings.popupOT : b >= 40 && b <= 66 ? state.settings.popupNT : '';
+  if (pref && state.modules.bibles.some(x => x.id === pref) && await has(pref)) return pref;
+  for (const x of state.modules.bibles) if (await has(x.id)) return x.id;
+  return null;
+}
+async function phoneVerse(b, c, v) {
+  const P = window.PUI;
+  const bid = await bibleForBook(b);
+  if (P) { try { P.wordPopClose(); } catch (e) { /* none */ } try { P.closeSheet(); } catch (e) { /* none */ } try { P.clearPages(); } catch (e) { /* none */ } }
+  if (!bid) return getModules();
+  if (views()[state.active].bible !== bid) await useBible(bid);
+  return go({ b, c, v });
+}
 async function followLink(href) {
   if (!href) return;
+  if (href === 'cmd:getModules') return getModules();
   if (/^https?:/i.test(href)) return api.openExternal(href);
   if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href) && await TimotheosModules.followBookLink(href)) return;
   const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
@@ -1189,10 +1275,13 @@ function about() {
   const s = state.settings; const lang0 = s.aboutVerse === 'en' ? 'en' : 'fil';
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
-    <p><b>Timotheos ${esc(s.version || '0.6.5')}</b> – an offline Bible study program for Windows that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
+    <p><b>Timotheos ${esc(s.version || '0.6.11')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
+    <tr><th>Updates</th><td><button type="button" class="pill" id="aboutUpdates">Check for updates</button> <span class="small">Looks up the newest release on GitHub, only when you press this.</span></td></tr>
+    <tr><th>Problem report</th><td><button type="button" class="pill" id="aboutReport">Copy problem report</button> <span class="small">The version, this device, how the Bible views are set, the last buttons used and any errors, as text to paste when you report a problem. Nothing is sent.</span></td></tr>
     <tr><th>Program folder</th><td><code class="sel">${esc(s.appDir || '')}</code></td></tr>
     <tr><th>Your data folder</th><td><code class="sel">${esc(s.userDataDir || '')}</code>${s.portable ? ' (portable mode)' : ''}</td></tr>
     <tr><th>Module folders</th><td>${(s.moduleFolders || []).map(esc).join('<br>') || 'none'}</td></tr></table>
@@ -1207,6 +1296,8 @@ function about() {
       let body; try { const r = await fetch(file); body = r.ok ? await r.text() : 'This text is not in this build. It is in the source code: ' + file; } catch (e) { body = 'This text could not be read here. It is in the source code: ' + file; }
       TimotheosModules.modal({ LICENSE: 'Licence – AGPL-3.0-or-later', 'THIRD-PARTY-LICENSES': 'Third-party notices', NOTICE: 'Notice', fonts: 'Font licences' }[k], `<pre class="legaltext">${esc(body)}</pre>`, [{ label: 'OK', value: true, primary: true }], true);
     });
+    const rp = $('#aboutReport'); if (rp) rp.onclick = () => TimotheosReport.copy();
+    const ub = $('#aboutUpdates'); if (ub) ub.onclick = () => { const c = document.querySelector('#modalBtns button'); if (c) c.click(); setTimeout(() => runCommand('checkUpdates'), 120); };
     const q = $('#aboutVerse'); if (!q) return;
     const flip = () => { const l = q.dataset.l === 'fil' ? 'en' : 'fil'; q.dataset.l = l; q.innerHTML = verse(l); save({ aboutVerse: l }); };
     q.onclick = flip; q.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } };
@@ -1253,7 +1344,7 @@ function wireUi() {
     const row = e.target.closest('.bv tr[data-v], .bv .pv[data-v]');
     if (row && !e.target.closest('button, input, select, textarea, .menu') && !String(window.getSelection()).trim()) selectVerse(+row.dataset.v, false);
     const link = e.target.closest('[data-href]');
-    if (link) { e.preventDefault(); followLink(link.dataset.href); return; }
+    if (link) { e.preventDefault(); if (phoneVerseLink(link)) return; followLink(link.dataset.href); return; }
     const t = popupTarget(e.target);
     if (t) { pin(t); return; }
   });

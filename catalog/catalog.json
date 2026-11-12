@@ -1,0 +1,17 @@
+{
+  "timotheosCatalog": 1,
+  "name": "Timotheos",
+  "about": "Modules offered by the author of Timotheos.",
+  "modules": [
+    {
+      "title": "Ang Malayang Biblia, Bagong Testamento (AMB)",
+      "language": "Tagalog",
+      "kind": "Bible",
+      "description": "New Testament translated from the Greek by Edmund Paulino Valdez, with Strong's numbers. This is the Bible that comes with Timotheos.",
+      "licence": "Translated and published by Edmund Paulino Valdez; under the translator's own terms.",
+      "file": "amb.nt",
+      "size": 6556796,
+      "url": "https://raw.githubusercontent.com/SalitaNgDiyos/Timotheos/timotheos-tauri/app/renderer/bundled/amb.nt"
+    }
+  ]
+}

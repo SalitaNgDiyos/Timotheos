@@ -4,11 +4,14 @@
 # run.sh <script.js> <out.png> [wait_ms]  — runs the built Timotheos (Tauri) under a virtual screen, runs the page script of
 # test/ui (same scripts as the Electron tests), takes a picture and prints the RESULT line.
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
-H=/tmp/claude-0/tui/home; rm -rf $H; mkdir -p "$H"
+# KEEP=1: start again with the data folder of the run before (to test what is kept after a restart)
+H=/tmp/claude-0/tui/home
+if [ -z "$KEEP" ]; then rm -rf $H; mkdir -p "$H"
 DEF='["/home/claude/testmods","/home/claude/esreal"]'; F=${FOLDERS:-$DEF}
 cat > "$H/settings.json" <<J
 {"moduleFolders":$F,"openBibles":["tw:kjv.ont","es:a_001_b_wycliffe_1394_-_purvey_revision.bbli"],"ref":{"b":43,"c":3,"v":16}$EXTRA}
 J
+fi
 BIN=${BIN:-$ROOT/src-tauri/target/debug/timotheos}
 READY=/tmp/claude-0/tui/ready; rm -f $READY
 export TIMOTHEOS_SCRIPT="$(readlink -f "$1")" TIMOTHEOS_WAIT=${3:-800} TIMOTHEOS_READY=$READY TIMOTHEOS_PORTABLE_DIR=$H
