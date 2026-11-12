@@ -189,19 +189,24 @@
     copydlg: x => TimotheosStudy.copyDialog({ v1: x.v, v2: x.v }),
     addxref: x => { selectVerse(x.v, false); TimotheosModules.addXref(x.v); },
     select: x => { root.classList.add('sk-selecting'); flash('Select the words, then hold the verse again'); },
-    lookup: (x, w) => wordSheet(w || {})
+    lookup: (x, w) => wordSheet(w || {}),
+    copyword: () => { const t = copyWordNow; if (t) api.copyText(t, null).then(() => flash(`Copied “${shortW(t)}”`)); }
   };
   const lastColor = () => { try { return localStorage.getItem('tw.hl') || 'yellow'; } catch (e) { return 'yellow'; } };
   const setLastColor = c => { try { localStorage.setItem('tw.hl', c); } catch (e) { /* */ } };
   const ACTS = [['copy', 'copy', 'Copy'], ['highlight', 'highlight', 'Highlight'], ['underline', 'underline', 'Underline'], ['read', 'speaker', 'Read aloud'], ['compare', 'compare', 'Compare'], ['xref', 'xref', 'Cross-refs'], ['commentary', 'commentary', 'Commentary'], ['note', 'note', 'Note']];
   const MORE_ACTS = [['bookmark', 'bookmark', 'Bookmark'], ['list', 'study', 'Add to list'], ['copydlg', 'copy', 'Copy verses…'], ['addxref', 'plus', 'Add cross-ref'], ['select', 'select', 'Select words'], ['unhighlight', 'close', 'Remove marks']];
   /** the verse sheet of Quiet Reader (hold a verse) */
+  let copyWordNow = '';
+  const shortW = t => t.length > 28 ? t.slice(0, 27) + '…' : t;
   function verseSheet(x, word) {
     markVerse(x.row, true);
+    const selT = String(window.getSelection ? window.getSelection() : '').replace(/\s+/g, ' ').trim();
+    copyWordNow = (selT && selT.length <= 80 ? selT : '') || (word && word.word) || '';   // what is selected comes first, else the word that was held
     const hasNote = !!(ud().notes || {})[vkey(x.ref.b, x.ref.c, x.v)];
     const s = sheet(`<div class="acts">${ACTS.map(([a, i, l]) => `<button type="button" class="act" data-a="${a}"><i>${ic(i, 24)}</i>${a === 'note' && hasNote ? 'Edit note' : l}</button>`).join('')}</div>
       <div class="pdots"><span>Highlight colour</span>${HL.slice(0, 5).map(([c, h]) => `<button type="button" class="pdot${c === lastColor() ? ' on' : ''}" data-c="${c}" style="background:${h}" aria-label="${c}"></button>`).join('')}</div>
-      <div class="pills">${MORE_ACTS.map(([a, i, l]) => `<button type="button" class="pill" data-a="${a}">${ic(i, 16)} ${l}</button>`).join('')}${word && (word.word || (word.strongs || []).length) ? `<button type="button" class="pill" data-a="lookup">${ic('lexicon', 16)} Look up “${esc(word.word || word.strongs[0])}”</button><button type="button" class="pill" data-a="find">${ic('search', 16)} Find “${esc(word.word || word.strongs[0])}”</button>` : ''}</div>`,
+      <div class="pills">${MORE_ACTS.map(([a, i, l]) => `<button type="button" class="pill" data-a="${a}">${ic(i, 16)} ${l}</button>`).join('')}${word && (word.word || (word.strongs || []).length) ? `<button type="button" class="pill" data-a="lookup">${ic('lexicon', 16)} Look up “${esc(word.word || word.strongs[0])}”</button><button type="button" class="pill" data-a="find">${ic('search', 16)} Find “${esc(word.word || word.strongs[0])}”</button>` : ''}${copyWordNow ? `<button type="button" class="pill" data-a="copyword">${ic('copy', 16)} Copy “${esc(shortW(copyWordNow))}”</button>` : ''}</div>`,
     { title: `${esc(rn(x.ref))} <em>${esc(bibleAbbr((views()[x.i] || {}).bible))}</em>`, cls: 'verse', onClose: () => markVerse(null) });
     s.addEventListener('click', e => {
       const d = e.target.closest('[data-c]'); if (d) { setLastColor(d.dataset.c); $$('.pdot', s).forEach(z => z.classList.toggle('on', z === d)); act.highlight(x, d.dataset.c); return; }
@@ -757,6 +762,29 @@
     document.addEventListener('selectionchange', () => { if (root.classList.contains('sk-selecting') && !String(window.getSelection()).trim()) { /* still choosing */ } });
   }
   window.addEventListener('load', wire);
+  /* ---------------- hold a word in a Library page, a commentary or a dictionary: Look up / Find / Copy ---------------- */
+  function bookWordSheet(w, cw) {
+    const s = sheet(`<div class="pills">${w && w.length > 1 ? `<button type="button" class="pill" data-a="lookup">${ic('lexicon', 16)} Look up “${esc(shortW(w))}”</button><button type="button" class="pill" data-a="find">${ic('search', 16)} Find “${esc(shortW(w))}”</button>` : ''}<button type="button" class="pill" data-a="copyword">${ic('copy', 16)} Copy “${esc(shortW(cw))}”</button></div>`, { title: `“${esc(shortW(cw))}”` });
+    s.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; closeSheet();
+      if (a === 'lookup') setTimeout(() => wordSheet({ word: w, strongs: [], morphs: [] }), 60); else if (a === 'find') search({ q: w });
+      else api.copyText(cw, null).then(() => flash(`Copied “${shortW(cw)}”`)); });
+  }
+  (() => {
+    let bt = null, bx = 0, by = 0;
+    const inBook = el => el && el.closest && el.closest('.ppage .pgbody') && !el.closest('a, button, input, textarea, select, .bv, .pills');
+    document.addEventListener('touchstart', e => {
+      clearTimeout(bt); if (!root.classList.contains('sk') || e.touches.length !== 1 || !inBook(e.target)) return;
+      const tg = e.target; bx = e.touches[0].clientX; by = e.touches[0].clientY;
+      bt = setTimeout(() => {
+        const st = String(window.getSelection ? window.getSelection() : '').replace(/\s+/g, ' ').trim(); let w = '';
+        if (st && st.length <= 80 && !/\s/.test(st)) w = st; else { try { w = TimotheosModules.wordAt({ target: tg, clientX: bx, clientY: by }) || ''; } catch (x) { w = ''; } }
+        w = w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''); const cw = (st && st.length <= 80 ? st : '') || w; if (cw) bookWordSheet(w, cw);
+      }, 650);
+    }, { capture: true, passive: true });
+    document.addEventListener('touchmove', e => { const t = e.touches[0]; if (t && (Math.abs(t.clientX - bx) > 10 || Math.abs(t.clientY - by) > 10)) clearTimeout(bt); }, { capture: true, passive: true });
+    document.addEventListener('touchend', () => clearTimeout(bt), { capture: true, passive: true });
+    document.addEventListener('touchcancel', () => clearTimeout(bt), { capture: true, passive: true });
+  })();
   // the bottom bar (tab bar, capsule, dock) goes away when the text is swiped or scrolled, and comes back with a tap on the page
   (() => {
     // (the time of the last change is kept: the text is resized then, and that must not count as scrolling)
@@ -880,17 +908,23 @@
   };
 
   /* the place labels show the whole book name: a name too long for its space gets a smaller font (down to a floor), never cut */
-  const FIT = [['.a-chrome .lab span', 16], ['.b-big h2 span', 18], ['.c-rail .ref span:last-child', 18], ['.pdiv .pd-ref span', 13]];
+  // [what to fit, smallest size, the bar that can put the Bible's name above the book's (Options → Skin → Long book names)]
+  const FIT = [['.a-chrome .lab span', 16], ['.b-big h2 span', 18, '.b-big'], ['.c-rail .ref span:last-child', 18, '.c-rail'], ['.pdiv .pd-ref span', 13]];
   function fitLabels() {
-    for (const [s, min] of FIT) document.querySelectorAll(s).forEach(e => {
-      e.style.fontSize = ''; e.classList.remove('wrap2'); if (!e.getClientRects().length) return;
-      const max = parseFloat(getComputedStyle(e).fontSize);
+    const stackOk = (typeof state !== 'undefined' && state.settings ? state.settings.stackName : undefined) !== false;
+    const fit = (e, min) => {
+      e.style.fontSize = '';
       for (let k = 0; k < 3 && e.scrollWidth > e.clientWidth + 1; k++) {
         const now = parseFloat(getComputedStyle(e).fontSize); const nx = Math.max(min, Math.floor(now * e.clientWidth / e.scrollWidth * 10) / 10 - .2);
         if (nx >= now) break; e.style.fontSize = nx + 'px';
       }
+    };
+    for (const [s, min, bar] of FIT) document.querySelectorAll(s).forEach(e => {
+      e.style.fontSize = ''; e.classList.remove('wrap2'); const box = bar ? e.closest(bar) : null; if (box) box.classList.remove('stack');
+      if (!e.getClientRects().length) return;
+      fit(e, min);
+      if (box && stackOk && e.scrollWidth > e.clientWidth + 1) { box.classList.add('stack'); fit(e, min); }          // still too long: the Bible's name goes above
       if (s === '.b-big h2 span' && e.scrollWidth > e.clientWidth + 1) e.classList.add('wrap2');   // still too long at the smallest size: two lines, nothing cut off
-      if (parseFloat(getComputedStyle(e).fontSize) >= max) e.style.fontSize = '';
     });
     // the top strip: the Bible's name gives way to the book's full name (it is left out when only a sliver would be left)
     document.querySelectorAll('.a-chrome .lab').forEach(l => {

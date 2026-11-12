@@ -121,6 +121,20 @@ html.sk-c .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 4px
 .c-rail .ref span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .c-rail .bib { font: 600 12px var(--p-ui); letter-spacing: .08em; color: var(--p-acc2); padding: 5px 9px; border-radius: 8px; background: var(--p-on2); border: 0; flex: none; }
 .c-rail .sp { flex: 1; }
+.c-rail .rid { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 0 1 auto; }
+.c-rail .rid .ref { min-width: 0; }
+/* a very long book name (Options → Skin → "Long book names"): the Bible's name goes above it */
+.c-rail.stack .rid { flex-direction: column; align-items: flex-start; gap: 1px; }
+.c-rail.stack .rid .bib { order: -1; font-size: 10px; padding: 1px 7px; line-height: 1.3; }
+.c-rail.stack .rid { flex: 1 1 0; }
+.c-rail.stack .sp { display: none; }
+.c-rail.stack .rid .ref { font-size: 26px; line-height: 1.2; max-width: 100%; }
+.c-rail.stack .rid .ref span:last-child { line-height: 1.3; padding-bottom: 1px; }
+.b-big.stack { flex-direction: column; align-items: flex-start; justify-content: center; gap: 0; padding-bottom: 2px; }
+.b-big.stack [data-a="bible"] { order: -1; flex: 0 0 auto; max-width: 100%; font-size: 12px; padding: 1px 9px; min-height: 0; line-height: 1.35; }
+.b-big.stack [data-a="bible"] .ic { width: 12px; height: 12px; }
+.b-big.stack h2 { max-width: 100%; }
+.b-big.stack h2 span { line-height: 1.34; }
 .c-edge { position: fixed; width: 4px; height: 70px; border-radius: 2px; background: rgba(255,255,255,.16); top: 44%; z-index: 12; }
 html.sk-c.sk-light .c-edge { background: rgba(0,0,0,.16); }
 .c-dock { position: fixed; left: 50%; bottom: calc(30px + var(--safe-b)); transform: translateX(-50%); height: 64px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 24px; background: var(--p-glass); box-shadow: 0 14px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.07) inset; z-index: 62; }

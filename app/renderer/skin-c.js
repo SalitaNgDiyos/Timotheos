@@ -230,7 +230,7 @@
   function mount() {
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P();
     try { root.classList.toggle('sk-light', localStorage.getItem('tw.c.light') === '1'); } catch (e) { /* */ } if (window.TimotheosSkins) TimotheosSkins.colors();
-    el('c-rail', `${ib('back', 'back', 'Back to the previous screen')}<button type="button" class="ref" data-a="nav"><span>John 3:16</span></button><button type="button" class="bib" data-a="bible">KJV</button><span class="sp"></span>${ib('aa', 'text', 'Text format for this Bible')}${ib('fwd', 'fwd', 'Forward to the next screen')}`);
+    el('c-rail', `${ib('back', 'back', 'Back to the previous screen')}<span class="rid"><button type="button" class="ref" data-a="nav"><span>John 3:16</span></button><button type="button" class="bib" data-a="bible">KJV</button></span><span class="sp"></span>${ib('aa', 'text', 'Text format for this Bible')}${ib('fwd', 'fwd', 'Forward to the next screen')}`);
     el('c-edge', '').style.left = '2px'; el('c-edge', '').style.right = '2px';
     el('c-dock', `<span class="grabzone" data-a="desk"></span>${ib('nav', 'drawerL', 'Books & chapters')}${ib('cmd', 'cmd', 'Command bar')}${ib('speak', 'speaker', 'Read aloud')}<span class="sep"></span>${ib('tools', 'drawerR', 'Commentary, dictionary, cross-references')}`);
     el('c-scrim', '');

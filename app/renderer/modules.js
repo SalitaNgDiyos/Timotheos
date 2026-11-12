@@ -850,6 +850,27 @@ async function lookupWord(word) {
   return window.showLookup({ word: w });
 }
 
+/** the text selected on the page, on one line and up to 80 characters ('' when nothing, or too much, is selected) */
+function selectedText() { const s = String(window.getSelection ? window.getSelection() : '').replace(/\s+/g, ' ').trim(); return s && s.length <= 80 ? s : ''; }
+const trimWord = w => String(w || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+const shortQ = s => s.length > 28 ? s.slice(0, 27) + '…' : s;
+/* Right-click in the other books (Library, Commentary, dictionaries, lookups): Look up / Find / Copy for the selected word, or the one under the mouse */
+document.addEventListener('contextmenu', e => {
+  if (document.documentElement.classList.contains('sk')) return;                       // the phone screens have their own
+  const host = e.target.closest && e.target.closest('.lookup, .cmtbody'); if (!host || e.target.closest('[data-v], input, textarea, select, #ctxMenu, .menu')) return;
+  const sel = selectedText(); const one = sel && !/\s/.test(sel) ? trimWord(sel) : '';
+  let w = one; if (!w) { try { w = trimWord(wordAt(e)); } catch (x) { w = ''; } }
+  const copyTxt = sel || w; if (!copyTxt) return;
+  e.preventDefault();
+  const q = esc(w || copyTxt);
+  const items = [w && w.length > 1 ? `<button data-a="look" data-q="${q}">Look up “${esc(shortQ(w))}”</button>` : '', w ? `<button data-a="find" data-q="${q}">Find “${esc(shortQ(w))}”</button>` : '', `<button data-a="copyword" data-q="${esc(copyTxt)}">Copy “${esc(shortQ(copyTxt))}”</button>`];
+  const mn = document.getElementById('ctxMenu'); mn.innerHTML = items.join(''); mn.classList.remove('hidden');
+  mn.style.left = Math.min(e.clientX, innerWidth - mn.offsetWidth - 8) + 'px'; mn.style.top = Math.min(e.clientY, innerHeight - mn.offsetHeight - 8) + 'px';
+  mn.onclick = async ev => { const bt = ev.target.closest('button'); if (!bt) return; mn.classList.add('hidden'); const k = bt.dataset.a;
+    if (k === 'look') lookupWord(bt.dataset.q); else if (k === 'find') window.TimotheosSearch.find(bt.dataset.q);
+    else if (k === 'copyword') { await api.copyText(bt.dataset.q, null); TimotheosStudy.flash(`Copied “${shortQ(bt.dataset.q)}”`); } };
+});
+
 function wordAt(e) {
   const r = document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : null;
   if (!r || r.startContainer.nodeType !== 3) return '';
@@ -1032,4 +1053,4 @@ function wireModules() {
   });
 }
 
-window.TimotheosModules = { lib, stepTopic, renderLibraryList, fillLibSelect, updateCommentary, decorateChapter, followBookLink, extractBookmarkSlice, importModules, newUserModuleDialog, editUserTopicDialog, editUserCommentaryDialog, wireModules, openBookModule, modal, messageBox, confirmBox, wordAt, lookupWord, showAllXrefs, addXref };
+window.TimotheosModules = { lib, stepTopic, renderLibraryList, fillLibSelect, updateCommentary, decorateChapter, followBookLink, extractBookmarkSlice, importModules, newUserModuleDialog, editUserTopicDialog, editUserCommentaryDialog, wireModules, openBookModule, modal, messageBox, confirmBox, wordAt, selectedText, lookupWord, showAllXrefs, addXref };

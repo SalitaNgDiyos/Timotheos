@@ -328,7 +328,18 @@
    ok(!$('.b-big [data-a="par"]'),'no Parallel button in the header (it is in Layout and More)');
    const sp=$('.b-big h2 span'), ch=$('.b-big [data-a="bible"] span'); ch.textContent='Septuagint-LXX'; PUI.fitLabels(); await sl(200);
    const nm=sp.textContent; ok(sp.scrollWidth<=sp.clientWidth+1&&sp.getBoundingClientRect().height<=56,'long Bible name: the book name is not cut off ('+nm+', '+getComputedStyle(sp).fontSize+', '+Math.round(sp.getBoundingClientRect().height)+'px high)');
-   ok(ch.getBoundingClientRect().right<=innerWidth-8,'the Bible chip stays on the screen ('+Math.round(ch.getBoundingClientRect().right)+' of '+innerWidth+')'); }
+   ok(ch.getBoundingClientRect().right<=innerWidth-8,'the Bible chip stays on the screen ('+Math.round(ch.getBoundingClientRect().right)+' of '+innerWidth+')');
+   const bar=$('.b-big'), chip=ch.closest('button'); ok(bar.classList.contains('stack')&&chip.getBoundingClientRect().bottom<=sp.getBoundingClientRect().top+3,'a very long name: the Bible\'s name is above it ('+Math.round(parseFloat(getComputedStyle(sp).fontSize))+'px)');
+   ok(sp.getBoundingClientRect().height<=30&&bar.getBoundingClientRect().height<=62,'in one line, inside the top bar ('+Math.round(sp.getBoundingClientRect().height)+'px, bar '+Math.round(bar.getBoundingClientRect().height)+'px)');
+   await save({stackName:false}); PUI.fitLabels(); await sl(200); ok(!bar.classList.contains('stack'),'Options → Long book names off: not stacked');
+   await save({stackName:true}); PUI.fitLabels(); await sl(200); ok(bar.classList.contains('stack'),'and on again: stacked'); }
+  if(SK==='c'){
+   const bk=[...state.nav].sort((x,y)=>y.name.length-x.name.length)[0]; await go({b:bk.id,c:1,v:1}); await sl(900);
+   const rail=$('.c-rail'), rf=$('.c-rail .ref span:last-child'), bb=$('.c-rail .bib'); bb.textContent='Septuagint-LXX'; PUI.fitLabels(); await sl(200);
+   ok(rail.classList.contains('stack')&&bb.getBoundingClientRect().bottom<=rf.getBoundingClientRect().top+3,'a very long name: the Bible\'s name is above it ('+rf.textContent+', '+Math.round(parseFloat(getComputedStyle(rf).fontSize))+'px)');
+   ok(rf.scrollWidth<=rf.clientWidth+1&&bb.getBoundingClientRect().top>=0&&rf.getBoundingClientRect().bottom<=rail.getBoundingClientRect().bottom+1,'the whole name shows, inside the top bar');
+   await save({stackName:false}); PUI.fitLabels(); await sl(200); ok(!rail.classList.contains('stack'),'Options → Long book names off: not stacked');
+   await save({stackName:true}); PUI.fitLabels(); await sl(200); }
   await go({b:43,c:3,v:16}); await sl(600); });
  await T('colour skins',async()=>{
   const O=TimotheosOptions, lum=e=>{ const m=getComputedStyle(e).backgroundColor.match(/[\d.]+/g); if(!m) return -1; return (0.299*m[0]+0.587*m[1]+0.114*m[2])/255; };
@@ -665,6 +676,21 @@
   fing(tgt,'touchstart',x,y); await sl(800); fing(tgt,'touchend',x,y); await sl(300); ok(shown(),'hold again: back');
   fing(tgt,'touchstart',x,y); fing(tgt,'touchmove',x,y+60); fing(tgt,'touchend',x,y+60); await sl(400); ok(!shown(),'a swipe down hides them');
   fing(tgt,'touchstart',x,y); fing(tgt,'touchmove',x+70,y+6); fing(tgt,'touchend',x+70,y+6); await sl(300); ok(!shown(),'a sideways swipe changes nothing');
+ });
+ await T('word copy',async()=>{
+  await go({b:43,c:3,v:16}); await sl(700); PUI.closeSheet(); await sl(200);
+  const x=PUI.verseOf(row(16)); PUI.verseSheet(x,{word:'wisdom',strongs:[],morphs:[]}); await sl(300);
+  const pc=$('#pSheet [data-a="copyword"]'); ok(!!pc&&/Copy “wisdom”/.test(pc.textContent),'the verse tools offer Copy “wisdom”');
+  copied.length=0; if(pc) pc.click(); await sl(300); ok(copied[copied.length-1]==='wisdom','and it copies the word');
+  await closeSheet();
+  // a page of another book: hold a word → Look up / Find / Copy
+  const pg=document.createElement('div'); pg.className='ppage'; pg.style.cssText='position:fixed;left:0;top:140px;width:360px;z-index:99999;background:#fff;color:#000;font-size:18px'; pg.innerHTML='<div class="pgbody"><div class="pbody"><p id="hw" style="margin:0;padding:0">wisdom begins with awe.</p></div></div>'; document.body.appendChild(pg);
+  const p=$('#hw'), tw=document.createTreeWalker(p,NodeFilter.SHOW_TEXT), n=tw.nextNode(), i=n.textContent.indexOf('wisdom'); const rg=document.createRange(); rg.setStart(n,i); rg.setEnd(n,i+6); const rr=rg.getBoundingClientRect();
+  const X=rr.left+rr.width/2, Y=rr.top+rr.height/2; const mk=(type)=>{ const ev=new Event(type,{bubbles:true,cancelable:true}); ev.touches=type==='touchend'?[]:[{clientX:X,clientY:Y}]; ev.changedTouches=[{clientX:X,clientY:Y}]; return ev; };
+  (document.elementFromPoint(X,Y)||p).dispatchEvent(mk('touchstart')); await sl(900); (document.elementFromPoint(X,Y)||p).dispatchEvent(mk('touchend')); await sl(300);
+  const sh=sheet(); ok(!!sh&&/Look up “wisdom”/.test(sh.textContent)&&/Find “wisdom”/.test(sh.textContent)&&/Copy “wisdom”/.test(sh.textContent),'hold a word in another book: Look up / Find / Copy “wisdom”');
+  copied.length=0; const cb=sh&&sh.querySelector('[data-a="copyword"]'); if(cb) cb.click(); await sl(300); ok(copied[copied.length-1]==='wisdom','Copy copies it');
+  await closeSheet(); pg.remove();
  });
  await T('bottom edge',async()=>{
   PUI_bars(true); await sl(300); ok(R.classList.contains('sk-baroff'),'the bottom bar hides while reading');

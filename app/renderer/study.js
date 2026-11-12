@@ -574,7 +574,9 @@ function wireContextMenu() {
     const col = cellEl ? +cellEl.dataset.col : 0;
     const sv = selectedVerses();
     const tgt = selectionTarget(cellEl);
-    const word = (TimotheosModules.wordAt(e) || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    const sel = TimotheosModules.selectedText(), selWord = sel && !/\s/.test(sel) ? sel.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '') : '';   // what is selected comes first
+    const word = selWord || (TimotheosModules.wordAt(e) || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+    const copyTxt = sel || word, shortQ = t => t.length > 28 ? t.slice(0, 27) + '…' : t;
     const strongEl = e.target.closest('[data-strong]');
     const strongs = strongEl ? strongEl.dataset.strong.split(/\s+/).filter(Boolean) : [];
     const ref = { b: state.ref.b, c: state.ref.c, v };
@@ -586,6 +588,7 @@ function wireContextMenu() {
     const items = [
       `<div class="mh">${esc(label)} <span class="small">${esc(abbr)}</span></div>`,
       `<button data-a="copy">Copy ${rangeRef.v2 ? 'verses' : 'verse'} <kbd>Ctrl+C</kbd></button>`,
+      copyTxt ? `<button data-a="copyword" data-q="${esc(copyTxt)}">Copy “${esc(shortQ(copyTxt))}”</button>` : '',
       `<button data-a="copydlg">Copy verses… <kbd>${esc(sc.copyVerses || 'F5')}</kbd></button>`,
       `<button data-a="list">Add to verse list “${esc(study.ud.currentList)}” <kbd>${esc(sc.addVerseList || 'Ctrl+L')}</kbd></button>`,
       `<div class="mrow"><span>Bookmark</span>${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map(d => `<button data-a="bm" data-d="${d}" title="${study.ud.bookmarks[slot(d)] ? 'replaces ' + esc(refName(study.ud.bookmarks[slot(d)])) : 'empty'}">${d}</button>`).join('')}</div>`,
@@ -605,6 +608,7 @@ function wireContextMenu() {
       const bt = ev.target.closest('button'); if (!bt) return;
       hideCtx();
       const a = bt.dataset.a;
+      if (a === 'copyword') { await api.copyText(bt.dataset.q, null); flash(`Copied “${shortQ(bt.dataset.q)}”`); return; }
       if (a !== 'hl') selectVerse(v, false);
       if (a === 'copy') quickCopy(rangeRef);
       else if (a === 'copydlg') copyDialog(sv);

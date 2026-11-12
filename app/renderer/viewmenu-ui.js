@@ -50,7 +50,7 @@
   /* ---------------- Bible chooser: opens on click or hover, stays while the mouse travels to it ---------------- */
   let openFor = null, leaveTimer = null;
   const keepOpen = () => clearTimeout(leaveTimer);
-  function armClose(m) { clearTimeout(leaveTimer); leaveTimer = setTimeout(() => { const f = m.querySelector('input:focus'); if (!f) { m.remove(); openFor = null; } }, 550); }
+  function armClose(m) { clearTimeout(leaveTimer); leaveTimer = setTimeout(() => { const f = m.querySelector('input:focus'); if (!f) { m.remove(); openFor = null; } }, 0); }   // goes the moment the mouse is off it (the menu sits right under the label: no gap to cross)
   function bibleMenu(btn, i) {
     const v = views()[i]; if (!v) return;
     const lbl = b => { const inf = state.infos.get(b.id); return (inf ? inf.abbr : b.abbr) + '|' + (inf ? inf.title : b.name); };
@@ -72,7 +72,9 @@
       });
     });
     // the menu sits right under the label: no gap to cross
-    const m = document.querySelector('.bvmenu.biblemenu'); if (m) { const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 'px'; m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px'; }
+    const m = document.querySelector('.bvmenu.biblemenu'); if (m) { const r = btn.getBoundingClientRect(); m.style.top = r.bottom + 'px'; m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + 'px';
+      m.style.maxHeight = Math.max(160, innerHeight - r.bottom - 10) + 'px';   // never longer than the window: a long list scrolls inside the menu
+      const sel = m.querySelector('.bvlist .on'); if (sel) sel.scrollIntoView({ block: 'nearest' }); }
   }
   function wireBibleHover() {
     const host = $('#workbench'); let intent = null, over = null;
