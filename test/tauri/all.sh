@@ -3,9 +3,10 @@
 # Copyright (C) 2026 Edmund P. Valdez
 # all.sh — every UI suite against the Tauri build; prints how many checks passed and lists the failed ones
 cd "$(dirname "$(readlink -f "$0")")/../.."
-for t in ${TESTS:-features dock copy zoom titlebar views books text tools library v049 v061 v062 v063 v064 v065 v066 seed report fxkeep}; do
+for t in ${TESTS:-features dock copy zoom titlebar views books text tools library v049 v061 v062 v063 v064 v065 v066 seed report download fxkeep}; do
   case $t in
     fxkeep) r=$(bash test/tauri/fxkeep.sh 2>&1) ;;
+    download) r=$(bash test/tauri/download.sh 2>&1) ;;
     seed) r=$(FOLDERS='[]' bash test/tauri/run.sh test/tauri/seed.js /tmp/claude-0/t-seed.png 2>&1) ;;
     v065) bash test/tauri/fx-profile.sh make; r=$(bash test/tauri/run.sh test/tauri/v065.js /tmp/claude-0/t-v065.png 2>&1); bash test/tauri/fx-profile.sh clean ;;
     library) cp /tmp/claude-0/editbook.bak "/tmp/claude-0/libmods/Edit Book.gbk.twm" 2>/dev/null

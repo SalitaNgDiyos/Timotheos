@@ -168,6 +168,10 @@
   <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
   <li><i>Panels → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
 </ul>
+<h3>New in 0.6.8</h3>
+<ul>
+  <li><i>File → Download Modules…</i> fetches modules from inside Timotheos: Bibles from eBible.org, the Timotheos repository, and any repository you add. This is the only part of Timotheos that uses the internet.</li>
+</ul>
 <h3>New in 0.6.7</h3>
 <ul>
   <li><i>File → Where to Get Modules…</i> lists three sites with free theWord and e-Sword modules and explains how to import them. The same link is in the Commentary and Library panels while they are empty.</li>
@@ -446,6 +450,15 @@
 </section>
 
 <section id="modules"><h2>Modules Timotheos reads</h2>
+<h3>Download modules inside Timotheos</h3>
+<p><i>File → Download Modules…</i> lists modules you can fetch without leaving the program. Choose a <b>repository</b> at the top:</p>
+<ul>
+  <li><b>Timotheos</b>: modules offered by the author of Timotheos.</li>
+  <li><b>eBible.org</b>: Bibles in very many languages that their publishers allow to be shared. Type a language or a title to find one.</li>
+  <li><b>Add a repository…</b>: paste the address of a catalog that another site publishes for Timotheos. <i>Remove this one</i> takes it out of the list again.</li>
+</ul>
+<p>Click <b>Download</b> beside a module. Timotheos fetches it, imports it and says when it is in your library. Timotheos uses the internet only in this window and only when you ask; nothing about you or your study is sent.</p>
+<p><b>Making a catalog.</b> A catalog is a small text file (JSON) on a web site with an <code>https</code> address: <code>{ "name": "…", "about": "…", "modules": [ { "title": "…", "url": "https://…/module.ont", "language": "…", "kind": "Bible", "description": "…", "licence": "…", "size": 1234567 } ] }</code>. Only <code>title</code> and <code>url</code> are needed. List only modules you have the right to share.</p>
 <h3>Where to get modules</h3>
 <p><i>File → Where to Get Modules…</i> opens this list with links you can click:</p>
 <ul>
@@ -630,6 +643,9 @@
 </section>
 
 <section id="p-modules"><h2>Modules</h2>
+<h3>Download modules inside Timotheos</h3>
+<p><i>Modules → Download modules</i> lists modules you can fetch without leaving the app. Choose a <b>repository</b> at the top: <b>Timotheos</b> (from the author), <b>eBible.org</b> (Bibles in very many languages; type a language or a title to find one), or one you added with <b>Add a repository…</b>.</p>
+<p>Tap <b>Download</b> beside a module. Timotheos fetches it, imports it and says when it is in your library. A whole Bible is a few megabytes. Timotheos uses the internet only in this window and only when you ask.</p>
 <h3>Where to get modules</h3>
 <p><i>Modules → Where to get modules</i> opens this list with links you can tap:</p>
 <ul>

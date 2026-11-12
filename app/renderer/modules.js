@@ -36,7 +36,7 @@ function renderLibraryList() {
 }
 
 /* ---------------- import ---------------- */
-async function importModules(paths) {
+async function importModules(paths, quiet) {
   let r;
   try { r = paths ? await api.importFiles(paths) : await api.importDialog(); }
   catch (e) { return messageBox('Import failed', esc(e.message)); }
@@ -46,6 +46,7 @@ async function importModules(paths) {
     TimotheosStudy.study.ud = await api.userData();
   }
   await refreshModules(r.list);
+  if (quiet) return r;   // the caller says what happened itself (Download modules)
   const label = { imported: 'Imported', updated: 'Updated', already: 'Already in library', skipped: 'Not imported' };
   const rows = r.results.map(x => `<tr class="st-${x.status}"><td>${esc(label[x.status] || x.status)}</td><td><b>${esc(x.title || x.name)}</b><div class="small">${esc(x.name)}${x.from && x.from.includes('›') ? ' · from ' + esc(x.from.split(' › ')[0]) : ''}</div></td><td>${esc(x.format || '')} ${esc(x.kind || '')}</td><td class="small">${esc(x.reason || x.note || '')}</td></tr>`).join('');
   const n = r.results.filter(x => x.status === 'imported' || x.status === 'updated').length;

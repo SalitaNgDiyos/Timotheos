@@ -154,7 +154,7 @@ function runCommand(cmd) {
     voices: () => TimotheosSpeech.voicesDialog(), goto: () => { const p = document.querySelector('.dgroup.isbv .navpill') || document.querySelector('.navpill'); if (p && window.TimotheosNav) TimotheosNav.openNavPopover('book', p); }, about,
     options: () => TimotheosOptions.open(), resetLayout: () => { TimotheosDock.applyPreset('classic'); flashMsg('Panel layout reset'); },
     copyVerses: () => TimotheosStudy.copyDialog(), daily: () => TimotheosStudy.openStudy('plans'), keys: () => TimotheosStudy.showKeys(), print: () => window.print(),
-    report: () => TimotheosReport.copy(), getModules, backupStudy: () => TimotheosStudy.backupStudy(), restoreStudy: () => TimotheosStudy.restoreStudy(),
+    report: () => TimotheosReport.copy(), getModules, downloadModules: () => TimotheosDownload.open(), backupStudy: () => TimotheosStudy.backupStudy(), restoreStudy: () => TimotheosStudy.restoreStudy(),
     guide: () => api.appCmd('guide', TimotheosOptions.appearance().skin)
   };
   if (local[cmd]) return local[cmd]();
@@ -1194,14 +1194,15 @@ async function getModules() {
        <li>In Timotheos click <b>Import</b> (toolbar, <i>File → Import Modules…</i> or <kbd>Ctrl+I</kbd>) and choose the files, or drag them onto the Timotheos window. You can choose many at once.</li>
        <li>A report says what was imported. Bibles appear in the list of Bibles of each view, commentaries in the <b>Commentary</b> panel, dictionaries and books in the <b>Library</b>.</li>`;
   const html = `<div class="getmods">
-    <p>Timotheos reads modules made for <b>theWord</b> and <b>e-Sword</b>. These sites offer them without charge:</p>
+    <p>Timotheos reads modules made for <b>theWord</b> and <b>e-Sword</b>. These sites offer them without charge. Bibles from eBible.org can also be fetched inside Timotheos: <b>Download modules</b>, below.</p>
     <div class="gmsites">${MODULE_SITES.map(([n, u, d]) => `<div class="gmsite"><a class="link" data-href="${u}"><b>${n}</b></a><span>${d}</span></div>`).join('')}</div>
     <h4>How to bring a module into Timotheos</h4>
     <ol>${steps}</ol>
     <p class="small"><b>Files Timotheos reads:</b> theWord <code>.ont</code> <code>.ot</code> <code>.nt</code> <code>.twm</code> <code>.twzip</code>; e-Sword <code>.bblx</code> <code>.cmtx</code> <code>.dctx</code> <code>.lexx</code> <code>.topx</code> <code>.refx</code> <code>.devx</code> (and the older <code>…i</code> forms); and a <code>.zip</code> that holds any of these. A module that comes as a program (<code>.exe</code>) cannot be imported, and locked or encrypted modules are not opened.</p>
     <p class="small">A site may ask you to make a free account before you can download. Timotheos is not connected with these sites, and each module stays under its publisher's own terms.</p></div>`;
-  const r = await TimotheosModules.modal('Where to get modules', html, [{ label: 'Close', value: null }, { label: 'Import modules…', value: 'import', primary: true }], true);
+  const r = await TimotheosModules.modal('Where to get modules', html, [{ label: 'Close', value: null }, { label: 'Download modules…', value: 'download' }, { label: 'Import modules…', value: 'import', primary: true }], true);
   if (r === 'import') runCommand('import');
+  if (r === 'download') runCommand('downloadModules');
 }
 const GET_MODS_LINK = '<a class="link" data-href="cmd:getModules">Where to get modules</a>';
 window.GET_MODS_LINK = GET_MODS_LINK;
@@ -1246,7 +1247,7 @@ function about() {
   const s = state.settings; const lang0 = s.aboutVerse === 'en' ? 'en' : 'fil';
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
-    <p><b>Timotheos ${esc(s.version || '0.6.7')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.8')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
