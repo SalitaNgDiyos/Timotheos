@@ -94,7 +94,7 @@ async function newUserModuleDialog(defaultKind = 'commentary') {
       <label>Abbreviation <input id="umAbbr" type="text" placeholder="e.g. MyCmt"></label>
     </div>
     <label class="field">Description (optional) <input id="umDesc" type="text" placeholder="Short summary of this module"></label>
-    <p class="small">Saved in your Timotheos modules folder in standard theWord (.twm) SQLite format with <code>user=1</code>.</p>`;
+    <p class="small">Saved in your Timotheos modules folder as a theWord module (.twm) that you can edit. theWord can open it too.</p>`;
   const res = await modal('New user module', html, [{ label: 'Cancel', value: null }, { label: 'Create module', value: 'ok', primary: true }]);
   if (res !== 'ok') return null;
   const kind = $('#umKind').value;
@@ -376,7 +376,8 @@ function wireLibrary() {
   const ap = () => TimotheosOptions.appearance();
   const applySide = () => {
     const a = ap(); const w = Math.max(0, Math.min(4000, a.libSideW == null ? 230 : a.libSideW));
-    $('#libSplit').style.gridTemplateColumns = a.libSideHidden ? 'minmax(0, 1fr)' : `${w}px 6px minmax(0, 1fr)`;
+    // the usual width (230px) gives way in a narrow panel so that the text keeps most of the room; a width you dragged is kept as it is
+    $('#libSplit').style.gridTemplateColumns = a.libSideHidden ? 'minmax(0, 1fr)' : `${w === 230 ? 'min(230px, 40%)' : w + 'px'} 6px minmax(0, 1fr)`;
     $('#libSide').classList.toggle('collapsed', !a.libSideHidden && w === 0);
     $('#libSide').classList.toggle('hidden', !!a.libSideHidden); $('#libSplitter').classList.toggle('hidden', !!a.libSideHidden);
     $('#libSideBtn').classList.toggle('on', !a.libSideHidden);
@@ -801,8 +802,12 @@ async function decorateChapter(b, c, root, show) {
     const v = +pv.dataset.v;
     const refs = xr[v] || [];
     if (refs.length) {
+      // by default a small mark with the number of references ends the verse (a click lists them); "written out" prints them in the text
+      if (!show.xrefsFull) { verseEnd(pv, `<span class="xrs xrmk" data-v="${v}"><a class="xrmore" data-v="${v}" title="${refs.length} cross-reference${refs.length === 1 ? '' : 's'}: click to list them">†${refs.length}</a></span>`); }
+      else {
       const shown = refs.slice(0, 8).map(r => `<a class="xr${r.back ? ' back' : ''}${r.user ? ' mine' : ''}" data-xr="${r.b}.${r.c}.${r.v}.${r.span}">${r.back ? '[' : ''}${esc(abbrRef(r.b, r.c, r.v, r.span))}${r.back ? ']' : ''}</a>`).join('; ');
       verseEnd(pv, `<span class="xrs" data-v="${v}">${shown}${refs.length > 8 ? ` <a class="xrmore" data-v="${v}">+${refs.length - 8} more</a>` : ''}</span>`);
+      }
     }
     const cm = Object.entries(marks).filter(([, m]) => m.verses.includes(v));
     if (cm.length) { const at = pv.querySelector('sup.vnum, .dropcap'); const h = `<sup class="cm" title="Commentary: ${esc(cm.map(([, m]) => m.abbr).join(', '))}">c</sup>`; if (at) at.insertAdjacentHTML('afterend', h); else pv.insertAdjacentHTML('afterbegin', h); }

@@ -20,6 +20,8 @@
         ['Rescan Modules', sc('rescan'), 'rescan', 'refresh'],
         '-',
         ['Export Topics…', '', 'exportTopics', 'import'],
+        ['Back Up My Study…', '', 'backupStudy'],
+        ['Restore My Study…', '', 'restoreStudy'],
         ['Print the Library Topic', '', 'printTopic', 'print'],
         ['Options…', sc('options'), 'options', 'gear'],
         ['Print…', 'Ctrl+P', 'print', 'print'],

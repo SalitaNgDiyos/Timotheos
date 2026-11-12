@@ -319,7 +319,7 @@
     const bibles = all.filter(p => TimotheosDock.isBible(p.id)).map(row).join('');
     const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => `<button data-preset="${id}">${TimotheosIcons.icon('layout', 15)}${p.label}</button>`).join('');
     const saved = Object.keys(state.settings.savedLayouts || {}).map(n => `<button data-saved="${esc(n)}">${TimotheosIcons.icon('study', 15)}${esc(n)}</button>`).join('');
-    m.innerHTML = `<div class="mh">Panels <span class="small">(click to show or close · the grid has 4 columns × 3 rows)</span></div>
+    m.innerHTML = `<div class="mh">Panels <span class="small">(click to show or close)</span></div>
       <button data-act="newbv">${TimotheosIcons.icon('plus', 15)}<span class="pic" style="color:var(--cap-bible)">${TimotheosIcons.icon('bible', 15)}</span><b>Bible View</b> <span class="small">(add another)</span></button>${bibles}${rows}
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
@@ -440,7 +440,7 @@
   }
   function fontOptions(sel, cur, withSystem) {
     const grp = (label, list) => `<optgroup label="${label}">${list.map(f => `<option value="${esc(f)}" style="font-family:${esc(q(f))}">${esc(f)}</option>`).join('')}</optgroup>`;
-    let h = withSystem ? '<option value="system">Windows default (Segoe UI)</option>' : '';
+    let h = withSystem ? `<option value="system">${/Windows/.test(navigator.userAgent) ? 'Windows default (Segoe UI)' : 'System default'}</option>` : '';
     h += grp('Included with Timotheos', BUNDLED);
     if (installed && installed.length) h += grp('Installed on this computer', installed.filter(f => !BUNDLED.includes(f)));
     else h += grp('Common Windows fonts (if installed)', COMMON);
@@ -546,10 +546,12 @@
     fontOptions($('#fontText'), a.fontText); fontOptions($('#fontGreek'), a.fontGreek); fontOptions($('#fontHebrew'), a.fontHebrew); fontOptions($('#fontUi'), a.fontUi, true);
     $('#fontNote').textContent = installed && installed.length
       ? `The fonts installed on this computer are listed (${installed.length}). Fonts "Included with Timotheos" work on every computer.`
-      : 'Timotheos could not list the fonts on this computer, so common Windows fonts are offered; one that is not installed shows as the fallback font. Fonts "Included with Timotheos" always work.';
+      : 'Timotheos could not list the fonts on this computer, so common fonts are offered; one that is not installed shows as the fallback font. Fonts "Included with Timotheos" always work.';
   }
   function page(o) {
     $('#optNav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.o === o));
+    // "Reset appearance" belongs to the pages about the look: not to Modules or Shortcuts
+    const rs = $('#optReset'); if (rs) rs.style.visibility = (o === 'mods' || o === 'keys') ? 'hidden' : '';
     document.querySelectorAll('.optpage').forEach(p => p.classList.toggle('hidden', p.dataset.o !== o));
     if (o === 'speech' && window.TimotheosSpeech) TimotheosSpeech.fillOptions(document.getElementById('ttsOpt'));
   }

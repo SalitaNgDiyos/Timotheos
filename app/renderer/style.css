@@ -489,3 +489,7 @@ html.phone #ttsbar { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
 .lhrow button[data-lh] { font-size: 15px; min-width: 26px; }
 .lhrow button.lhdef { font-size: 12px; margin-left: 4px; border-color: var(--line); }
 .alignrow button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+/* cross-references as a small mark at the end of the verse */
+.xrs.xrmk a.xrmore { text-decoration: none; cursor: pointer; opacity: .75; }
+.xrs.xrmk a.xrmore:hover { opacity: 1; text-decoration: underline; }

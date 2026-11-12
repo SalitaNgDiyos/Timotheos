@@ -8,7 +8,7 @@ body { font-size: var(--ui-size); font-family: var(--font-ui); }
 .ic { flex: none; display: block; }
 
 /* toolbar */
-.toolbar { background: var(--tool); color: var(--tooltext); gap: 3px; padding: 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.toolbar { background: var(--tool); color: var(--tooltext); gap: 3px; padding: 3px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: 7px; font: 600 16px var(--font-text); color: inherit; margin-right: 2px; }
 .brand .logo { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--accent); color: var(--tool); }
 :root[data-theme="dark"] .brand .logo { color: #111; }
@@ -33,7 +33,8 @@ button.tb.on { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 
 /* workbench */
 #workbench { flex: 1; display: block; min-height: 0; position: relative; padding: 6px; background: var(--bg); }
-#grid { position: absolute; inset: 3px; min-width: 0; min-height: 0; }
+/* the panels reach the edges of the window: each panel sits 1px inside its cell, so the grid starts 1px outside */
+#grid { position: absolute; inset: -1px; min-width: 0; min-height: 0; }
 #grid > .dgroup { position: absolute; min-width: 0; min-height: 0; box-sizing: border-box; }
 .gut { position: absolute; z-index: 2; border-radius: 3px; }
 .gut.h { cursor: col-resize; } .gut.v { cursor: row-resize; }
@@ -132,10 +133,15 @@ td sup.vnum, .rline sup.vnum { cursor: pointer; }
 .pane .small { margin: 0 0 6px; }
 .tree { max-height: none; margin-top: 0; }
 #tab-search { container-type: inline-size; }
+/* a wide search panel: the search line, then "which Bibles" and "which part" side by side, the options folded away,
+   and the results across the whole width below (they had a narrow column on the right before) */
 @container (min-width: 560px) {
-  .searchcols { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 16px; align-items: start; }
-  .searchcols .search { position: sticky; top: 0; }
-  .searchcols .status { margin-top: 0; }
+  .searchcols .search { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px 12px; align-items: start; }
+  .searchcols .search > * { grid-column: 1 / -1; min-width: 0; }
+  .searchcols .search > .row:has(#searchBibles) { grid-column: 1; grid-row: 3; }
+  .searchcols .search > .row:has(#searchScope) { grid-column: 2; grid-row: 3; }
+  .searchcols .search > .row:has(#searchInput) { grid-row: 1; } .searchcols .search > #searchExplain { grid-row: 2; }
+  .searchcols .search > #searchPick { grid-row: 4; } .searchcols .search > details:not(#searchPick) { grid-row: 5; }
 }
 
 /* status bar */
@@ -200,7 +206,7 @@ button.link0 { border: 0; background: none; padding: 0; color: var(--strong); fo
 #bookSel { max-width: 170px; }
 .ref input { width: 180px; }
 @media (max-width: 1380px) {
-  #copyBtn .lbl, #printBtn .lbl, #importBtn2 .lbl, #focusBtn .lbl, .brand .lbl0 { display: none; }
+  #copyBtn .lbl, #printBtn .lbl, #focusBtn .lbl, .brand .lbl0 { display: none; }
 }
 @media (max-width: 1100px) {
   .toolbar .lbl { display: none; }
@@ -831,3 +837,20 @@ html[data-fx] #toolbar .tb:hover, html[data-fx] .titlebar .tbmenus > *:hover { b
 
 /* toolbar menus (Skin, Panels) scroll when their list is longer than the window */
 #toolbar .menu { overflow-y: auto; overscroll-behavior: contain; }
+
+/* Drop-down lists draw themselves in the skin's colours (the system's own drawing ignored them: a white box with pale
+   text in the dark skins). The small arrow is drawn here too. Lists that show several rows keep their own look. */
+select:not([multiple]):not([size]) { -webkit-appearance: none; appearance: none; background-color: var(--card); color: var(--text);
+  padding-right: 24px; background-repeat: no-repeat; background-size: 5px 5px, 5px 5px;
+  background-position: calc(100% - 13px) calc(50% + 1px), calc(100% - 8px) calc(50% + 1px);
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); }
+select option, select optgroup { background-color: var(--card); color: var(--text); }
+
+/* Library in a narrow panel: the list of topics goes above the text (a short list that scrolls), so the text has the whole width */
+#tab-lib { container-type: inline-size; }
+@container (max-width: 400px) {
+  #tab-lib .libsplit { grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: minmax(120px, 30%) minmax(0, 1fr); }
+  #tab-lib .libsplit:has(> .libside.hidden) { grid-template-rows: minmax(0, 1fr); }
+  #tab-lib .lsplitter { display: none; }
+  #tab-lib .libside { padding: 6px 6px 2px; }
+}

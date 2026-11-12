@@ -120,6 +120,7 @@
       ${row('columns', 'Intralinear View', sh.columns, 'Alt+I')}
       ${row('added', 'Added words in italics', sh.added, 'I')}
       ${row('xrefs', 'Cross-references', sh.xrefs, 'X')}
+      ${row('xrefsFull', '   …written out in the text', sh.xrefsFull)}
       ${row('cmtLinks', 'Commentary links', sh.cmtLinks, 'C')}
       <button type="button" data-t="speak">${TimotheosIcons.icon('speaker', 14)} Read this chapter aloud</button>
       <div class="mh">Developer</div>

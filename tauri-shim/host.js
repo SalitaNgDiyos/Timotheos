@@ -160,7 +160,7 @@ const api = {
   pathForFile: () => '',
   bibleInfo: (id, o) => call('bible:info', id, o), nav: ids => call('bible:nav', ids), chapter: (ids, b, c) => call('bible:chapter', ids, b, c),
   search: (ids, q, o) => call('search', ids, q, o), searchDescribe: (q, o) => call('search:describe', q, o), searchRanges: () => call('search:ranges'), checkRange: t => call('search:checkRange', t),
-  userData: () => call('ud:get'), setUserData: (k, v) => call('ud:set', k, v),
+  userData: () => call('ud:get'), studyBackup: () => call('study:backup'), studyRestoreRead: () => call('study:restoreRead'), studyRestoreApply: (f, m) => call('study:restoreApply', f, m), setUserData: (k, v) => call('ud:set', k, v),
   planPresets: () => call('plans:presets'), createPlan: (o, ids) => call('plans:create', o, ids), planCatchUp: p => call('plans:catchUp', p), planRestart: p => call('plans:restart', p),
   copyText: (t, h) => call('clipboard:write', t, h), print: () => call('print'), lookup: (k, key, b) => call('lookup', k, key, b),
   bookOpen: id => call('book:open', id), bookAbout: id => call('book:about', id), bookTopics: id => call('book:topics', id), bookSearch: (id, q) => call('book:search', id, q),
@@ -181,7 +181,15 @@ const api = {
   onMenu: fn => on('menu', fn), syncOut: p => call('sync:out', p), onExternalSync: fn => on('external:sync', fn),
 };
 window.api = api;
-window.TimotheosHost = { isMobile, isAndroid, info: () => info };
+// The Bible that comes with Timotheos (bundled/amb.nt, Ang Malayang Biblia, by the author of Timotheos): written to a
+// temporary folder so that the ordinary import can take it. app.js asks for it once, when no Bible is installed at all.
+async function seedBundled() {
+  const r = await fetch('bundled/amb.nt'); if (!r.ok) return [];
+  const blob = await r.blob(); if (!blob.size) return [];
+  const dir = info.tmp + '/bundled-' + Date.now();
+  return [await androidCopy({ name: 'amb.nt', size: blob.size, slice: (a, b) => blob.slice(a, b) }, dir)];
+}
+window.TimotheosHost = { isMobile, isAndroid, info: () => info, seedBundled };
 
 /* ---------- window buttons, dragging, size memory (computer only) ---------- */
 function windowButtons() {

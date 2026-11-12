@@ -34,7 +34,7 @@ contextBridge.exposeInMainWorld('api', {
   searchDescribe: (q, opts) => call('search:describe', q, opts),
   searchRanges: () => call('search:ranges'),
   checkRange: t => call('search:checkRange', t),
-  userData: () => call('ud:get'),
+  userData: () => call('ud:get'), studyBackup: () => call('study:backup'), studyRestoreRead: () => call('study:restoreRead'), studyRestoreApply: (f, m) => call('study:restoreApply', f, m),
   setUserData: (k, v) => call('ud:set', k, v),
   planPresets: () => call('plans:presets'),
   createPlan: (o, ids) => call('plans:create', o, ids),

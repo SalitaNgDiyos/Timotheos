@@ -28,3 +28,9 @@ Timotheos includes third-party components under their own licences. They are lis
 THIRD-PARTY-LICENSES.md (and in the font folder, app/renderer/fonts/LICENSES.txt). Timotheos does not claim ownership of
 any of them. Bible and other modules that you open in Timotheos (theWord, e-Sword) are your own files and stay under
 the licences of their publishers.
+
+Bundled Bible
+Timotheos comes with one Bible module, Ang Malayang Biblia, Bagong Testamento (AMB), translated and published by
+Edmund Paulino Valdez (https://github.com/SalitaNgDiyos/Malayang-Biblia-Translation) and included here by him. It is a
+text that the program reads, not part of the program: the licence above covers the software, and the translation stays
+under its translator's own terms.
