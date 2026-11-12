@@ -497,6 +497,14 @@
   const orig=api.lookup; api.lookup=async(k,key)=>k==='strong'?{html:'<p class="g">δίδωμι <i>(didōmi)</i> — to give</p><p class="l">G1325 δίδωμι (didōmi) — verb</p>',subject:'δίδωμι',dict:'GBE',dictId:'x',id:1}:orig(k,key,arguments[2]);
   const box=document.createElement('div'); document.body.appendChild(box); await PUI.dictCards(box,{strongs:['G1325'],word:''},{limit:1}); api.lookup=orig;
   ok(/to give/.test(box.textContent)&&!/G1325 δίδωμι/.test(box.textContent),'the last line "G1325 δίδωμι (didōmi) — verb" is left out, the meaning stays'); box.remove();
+  // the same dictionary does not give a second entry for the same word
+  const ol=api.lookup, ow=api.wordLookup, ot=api.bookTopic;
+  api.lookup=async(k)=>k==='strong'?{html:'<p>first entry</p>',subject:'G1325',dict:'GBE',dictId:'bm:gbe',id:1}:null;
+  api.wordLookup=async()=>[{id:'bm:gbe',title:'Greek Bible English Definitions',kind:'dictionary',hits:[{id:7,subject:'δίδωμι',exact:true}]},{id:'bm:other',title:'Other Dictionary',kind:'dictionary',hits:[{id:3,subject:'give',exact:true}]}];
+  api.bookTopic=async()=>({subject:'x',html:'<p>word entry</p>'});
+  const b2=document.createElement('div'); document.body.appendChild(b2); await PUI.dictCards(b2,{strongs:['G1325'],word:'maipamigay'},{limit:6});
+  ok(b2.querySelectorAll('.pcard').length===2&&!/GREEK BIBLE ENGLISH/i.test(b2.textContent)&&/Other Dictionary/i.test(b2.textContent),'the Strong\'s dictionary shows once; another dictionary still adds its own entry ('+b2.querySelectorAll('.pcard').length+' cards)');
+  api.lookup=ol; api.wordLookup=ow; api.bookTopic=ot; b2.remove();
  });
  await T('start and lists',async()=>{
   PUI.clearPages(); PUI.closeSheet(); await sl(200);

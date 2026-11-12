@@ -250,10 +250,11 @@
     }
     for (const m of morphs) { const r = await api.lookup('morph', m, bid).catch(() => null); if (r) cards.push({ k: 'Morphology', sub: m, html: sanitize(r.html), dict: r.dict, id: r.dictId, tid: r.id }); }
     const lim = o.limit || 6;
+    const given = new Set(cards.map(c => c.id).filter(Boolean));   // a dictionary that already gave the Strong's / morphology entry is not asked again by the word: the same entry would show twice
     for (const q of [...new Set([word, w.lemma].filter(x => x && x.length >= 2))]) {
       const res = await api.wordLookup(q, true).catch(() => []);
       for (const r of res || []) {
-        if (r.kind !== 'dictionary' || cards.length >= lim) continue; const h = r.hits[0]; const key = r.id + '|' + h.id; if (seen.has(key)) continue; seen.add(key);
+        if (r.kind !== 'dictionary' || cards.length >= lim || given.has(r.id)) continue; const h = r.hits[0]; const key = r.id + '|' + h.id; if (seen.has(key)) continue; seen.add(key);
         const t = await api.bookTopic(r.id, h.id).catch(() => null);
         cards.push({ k: r.title || r.abbr, sub: (t && t.subject) || h.subject, html: t ? sanitize(t.html) : '', id: r.id, tid: h.id, find: q, approx: !h.exact });
       }

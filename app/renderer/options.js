@@ -236,6 +236,7 @@
     if (c.strong) { root.style.setProperty('--strong', c.strong); root.style.setProperty('--fn', c.strong); }
     if (c.sel) root.style.setProperty('--sel', c.sel);
     root.style.setProperty('--vnum', c.vnum || sk.v.accent);
+    try { TimotheosLogo.sync(a.skin, sk.dark, sk.v.accent); } catch (e) { /* the icon stays as it was */ }
     root.style.setProperty('--textbg', a.bgMode === 'color' ? a.bgColor : sk.v.textbg);
     root.dataset.texture = a.texture;
     root.style.setProperty('--font-text', textStack(a.fontText));
