@@ -43,11 +43,14 @@ const TimotheosLogo = (() => {
     return 'sapphire';
   }
   const src = px => `logo-${cur}-${px >= 128 ? 384 : 64}.png`;
-  function paint() { document.querySelectorAll('img[data-logo]').forEach(i => { const s = src(+i.dataset.logo); if (i.getAttribute('src') !== s) i.setAttribute('src', s); }); }
+  function paint() { document.querySelectorAll('img[data-logo]').forEach(i => { const s = src(+i.dataset.logo); if (i.getAttribute('src') !== s) i.setAttribute('src', s); i.title = `Timotheos icon: ${NAMES[cur]}. Tap it for the next one.`; }); }
   function sync(skin, dark, accent) {
     const w = pick(skin, !!dark, accent); cur = w;
     document.documentElement.dataset.logo = w; paint(); return w;
   }
-  return { sync, paint, src, pick, current: () => cur, NAMES, BUILTIN };
+  /** one tap on the icon: the next of the seven, round and round. It stays until the skin changes (then the skin's own comes back). */
+  function next() { const k = Object.keys(NAMES); cur = k[(k.indexOf(cur) + 1) % k.length]; document.documentElement.dataset.logo = cur; paint(); return cur; }
+  document.addEventListener('click', e => { const i = e.target && e.target.closest && e.target.closest('img[data-logo]'); if (i) { e.preventDefault(); next(); } });
+  return { sync, paint, src, pick, next, current: () => cur, NAMES, BUILTIN };
 })();
 window.TimotheosLogo = TimotheosLogo;

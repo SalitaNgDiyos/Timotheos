@@ -272,7 +272,9 @@ button.cpx:hover { color: var(--woj); }
   padding-left: 8px; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)); }
 .titlebar .brand { gap: 7px; font: 600 var(--ui-size, 13px) var(--font-ui); margin-right: 8px; }
 .titlebar .brand .logo { width: 22px; height: 22px; border-radius: 6px; background: none; }
-.brand .logo img { width: 100%; height: 100%; display: block; object-fit: contain; pointer-events: none; }
+.brand .logo img { width: 100%; height: 100%; display: block; object-fit: contain; }
+.titlebar .brand .logo { -webkit-app-region: no-drag; }
+img[data-logo] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .tbmenus { display: flex; -webkit-app-region: no-drag; }
 .tmwrap { position: relative; }
 .tmenu { background: transparent; border: 0; color: inherit; padding: 5px 10px; border-radius: 6px; font-size: calc(var(--ui-size, 13px) - 0.5px); }

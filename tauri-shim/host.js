@@ -212,7 +212,7 @@ function windowButtons() {
   c.innerHTML = '<button type="button" data-w="min" aria-label="Minimise"><svg viewBox="0 0 10 10"><path d="M1 5h8"/></svg></button><button type="button" data-w="max" aria-label="Maximise"><svg viewBox="0 0 10 10"><rect x="1.5" y="1.5" width="7" height="7" fill="none"/></svg></button><button type="button" data-w="close" aria-label="Close"><svg viewBox="0 0 10 10"><path d="M1.5 1.5l7 7M8.5 1.5l-7 7"/></svg></button>';
   c.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.w === 'min') win.minimize(); else if (b.dataset.w === 'max') win.toggleMaximize(); else win.close(); });
   bar.appendChild(c);
-  bar.addEventListener('mousedown', e => { if (e.button === 0 && !e.target.closest('button,.tmwrap,.tmdrop,input,select,a,.winctl')) win.startDragging(); });
+  bar.addEventListener('mousedown', e => { if (e.button === 0 && !e.target.closest('button,.tmwrap,.tmdrop,input,select,a,.winctl,.brand .logo')) win.startDragging(); });
   bar.addEventListener('dblclick', e => { if (!e.target.closest('button,.tmwrap,.tmdrop,input,select,a,.winctl')) win.toggleMaximize(); });
 }
 async function restoreBounds() {

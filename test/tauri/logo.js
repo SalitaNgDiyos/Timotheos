@@ -24,6 +24,17 @@
     ok(P('fxu-x', false, '#c0392b') === 'crimson' && P('fxu-x', true, '#2a63b8') === 'sapphire' && P('x', false, '#2f7d4f') === 'emerald' && P('x', false, '#d4a017') === 'pearlgold' && P('x', true, '#1abc9c') === 'pearlgreen' && P('x', true, '#d4a017') === 'ember', 'another skin gets the icon nearest to its accent colour');
     ok(P('x', true, '#777777') === 'ember' && P('x', false, '#888') === 'pearlred' && P('x', false, 'nonsense') === 'pearlred', 'a grey or unknown accent: the glowing one on dark, pearl and red on light');
     ok(Object.values(TimotheosLogo.BUILTIN).length === 8 && new Set(Object.values(TimotheosLogo.BUILTIN)).size === 7 && Object.keys(TimotheosLogo.NAMES).length === 7, 'all seven icons are used by the built-in skins');
+    // a tap on the icon goes to the next of the seven and loops
+    TimotheosOptions.setSkin('sampaguita'); await sleep(300);
+    const order = Object.keys(TimotheosLogo.NAMES), seen = [$('.titlebar .logo img').getAttribute('src').match(/logo-(\w+)-64/)[1]];
+    for (let i = 0; i < 7; i++) { $('.titlebar .logo img').click(); await sleep(120); seen.push($('.titlebar .logo img').getAttribute('src').match(/logo-(\w+)-64/)[1]); }
+    ok(seen[0] === 'emerald' && seen.slice(1).join() === 'crimson,pearlgold,pearlred,sapphire,pearlgreen,ember,emerald', 'seven taps go through all the icons and come back round: ' + seen.join(' > '));
+    ok(new Set(seen).size === 7 && document.documentElement.dataset.logo === 'emerald', 'all seven were shown');
+    $('.titlebar .logo img').click(); await sleep(150);
+    runCommand('about'); await sleep(700); ok(/logo-crimson-384/.test($('.abouticon').getAttribute('src')), 'About shows the same icon');
+    $('.abouticon').click(); await sleep(150); ok(/logo-pearlgold-384/.test($('.abouticon').getAttribute('src')) && /logo-pearlgold-64/.test($('.titlebar .logo img').getAttribute('src')), 'a tap on the About icon changes both');
+    $('#modalBtns button').click(); await sleep(200);
+    TimotheosOptions.setSkin('slate'); await sleep(300); ok(TimotheosLogo.current() === 'ember', 'changing the skin brings back the skin\'s own icon');
     TimotheosOptions.setSkin('slate'); await sleep(200);
   } catch (e) { ok(false, 'error: ' + (e && e.stack || e)); }
   console.log('RESULT ' + out.join(' | '));
