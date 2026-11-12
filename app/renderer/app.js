@@ -154,7 +154,7 @@ function runCommand(cmd) {
     voices: () => TimotheosSpeech.voicesDialog(), goto: () => { const p = document.querySelector('.dgroup.isbv .navpill') || document.querySelector('.navpill'); if (p && window.TimotheosNav) TimotheosNav.openNavPopover('book', p); }, about,
     options: () => TimotheosOptions.open(), resetLayout: () => { TimotheosDock.applyPreset('classic'); flashMsg('Panel layout reset'); },
     copyVerses: () => TimotheosStudy.copyDialog(), daily: () => TimotheosStudy.openStudy('plans'), keys: () => TimotheosStudy.showKeys(), print: () => window.print(),
-    report: () => TimotheosReport.copy(), backupStudy: () => TimotheosStudy.backupStudy(), restoreStudy: () => TimotheosStudy.restoreStudy(),
+    report: () => TimotheosReport.copy(), getModules, backupStudy: () => TimotheosStudy.backupStudy(), restoreStudy: () => TimotheosStudy.restoreStudy(),
     guide: () => api.appCmd('guide', TimotheosOptions.appearance().skin)
   };
   if (local[cmd]) return local[cmd]();
@@ -352,6 +352,7 @@ async function refreshModules(list) {
   if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.allModules = Object.assign(l, { errors: state.modules.errors }); state.modules = visibleModules(state.allModules); renderDictSelects(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {});
   $('#empty').classList.toggle('hidden', ids.length > 0);
   const ei = $('#emptyImport'); if (ei && !ei.onclick) ei.onclick = () => runCommand('import');
+  const eg = $('#emptyGet'); if (eg && !eg.onclick) eg.onclick = () => runCommand('getModules');
   statusMods();
   $('#grid').classList.toggle('hidden', ids.length === 0);
   preloadBibles();
@@ -1173,8 +1174,40 @@ async function pin(el) {
   return showLookup({ word, lemma: el.dataset.lemma, strongs: split('strong'), morphs: split('morph') });
 }
 
+/* ---------------- Where to get modules ---------------- */
+// Three places on the web, and how to bring what they offer into Timotheos. Shown from File/Help, from the empty app,
+// and from the Commentary and Library panels while they have nothing to show.
+const MODULE_SITES = [
+  ['wordmodules.com', 'https://www.wordmodules.com/', 'theWord modules: Bibles, commentaries, dictionaries, books and devotionals. Everything there is in a format Timotheos reads.'],
+  ['biblesupport.com', 'https://www.biblesupport.com/', 'e-Sword modules: Bibles, commentaries, dictionaries and books. Choose the <b>e-Sword</b> downloads (not MySword).'],
+  ['ebible.org', 'https://ebible.org/', 'Bibles in very many languages, free to share. Its own downloads are in other formats (USFM, ePub, PDF, Sword), which Timotheos cannot import yet: use it to find a translation, then look for that translation as a theWord or e-Sword module.']
+];
+async function getModules() {
+  const phone = document.documentElement.classList.contains('mobile');
+  const steps = phone
+    ? `<li>Open one of the sites in your phone's browser and download the module. It goes to your <b>Downloads</b>.</li>
+       <li>Do not open the file. There is no need to unzip it.</li>
+       <li>Come back to Timotheos and tap <b>Import modules</b> (below, or in <i>Modules</i>). Choose the files in Downloads.</li>
+       <li>Timotheos keeps its own copy and tells you what it imported. Bibles appear in the list of Bibles, the rest in the Library and Commentary.</li>`
+    : `<li>Open one of the sites and download the module to your computer, for example to <b>Downloads</b>.</li>
+       <li>Do not run the file. There is no need to unzip it.</li>
+       <li>In Timotheos click <b>Import</b> (toolbar, <i>File → Import Modules…</i> or <kbd>Ctrl+I</kbd>) and choose the files, or drag them onto the Timotheos window. You can choose many at once.</li>
+       <li>A report says what was imported. Bibles appear in the list of Bibles of each view, commentaries in the <b>Commentary</b> panel, dictionaries and books in the <b>Library</b>.</li>`;
+  const html = `<div class="getmods">
+    <p>Timotheos reads modules made for <b>theWord</b> and <b>e-Sword</b>. These sites offer them without charge:</p>
+    <div class="gmsites">${MODULE_SITES.map(([n, u, d]) => `<div class="gmsite"><a class="link" data-href="${u}"><b>${n}</b></a><span>${d}</span></div>`).join('')}</div>
+    <h4>How to bring a module into Timotheos</h4>
+    <ol>${steps}</ol>
+    <p class="small"><b>Files Timotheos reads:</b> theWord <code>.ont</code> <code>.ot</code> <code>.nt</code> <code>.twm</code> <code>.twzip</code>; e-Sword <code>.bblx</code> <code>.cmtx</code> <code>.dctx</code> <code>.lexx</code> <code>.topx</code> <code>.refx</code> <code>.devx</code> (and the older <code>…i</code> forms); and a <code>.zip</code> that holds any of these. A module that comes as a program (<code>.exe</code>) cannot be imported, and locked or encrypted modules are not opened.</p>
+    <p class="small">A site may ask you to make a free account before you can download. Timotheos is not connected with these sites, and each module stays under its publisher's own terms.</p></div>`;
+  const r = await TimotheosModules.modal('Where to get modules', html, [{ label: 'Close', value: null }, { label: 'Import modules…', value: 'import', primary: true }], true);
+  if (r === 'import') runCommand('import');
+}
+const GET_MODS_LINK = '<a class="link" data-href="cmd:getModules">Where to get modules</a>';
+window.GET_MODS_LINK = GET_MODS_LINK;
 async function followLink(href) {
   if (!href) return;
+  if (href === 'cmd:getModules') return getModules();
   if (/^https?:/i.test(href)) return api.openExternal(href);
   if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href) && await TimotheosModules.followBookLink(href)) return;
   const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
@@ -1213,7 +1246,7 @@ function about() {
   const s = state.settings; const lang0 = s.aboutVerse === 'en' ? 'en' : 'fil';
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
-    <p><b>Timotheos ${esc(s.version || '0.6.6')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.7')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

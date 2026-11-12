@@ -493,3 +493,11 @@ html.phone #ttsbar { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
 /* cross-references as a small mark at the end of the verse */
 .xrs.xrmk a.xrmore { text-decoration: none; cursor: pointer; opacity: .75; }
 .xrs.xrmk a.xrmore:hover { opacity: 1; text-decoration: underline; }
+
+/* "Where to get modules" */
+.getmods .gmsites { display: grid; gap: 8px; margin: 8px 0 12px; }
+.getmods .gmsite { display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.getmods .gmsite a { font-size: 1.05em; cursor: pointer; }
+.getmods h4 { margin: 10px 0 4px; }
+.getmods ol { margin: 0 0 10px; padding-left: 22px; } .getmods li { margin: 3px 0; }
+#emptyGet { margin-top: 14px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: inherit; font: inherit; cursor: pointer; }

@@ -13,7 +13,7 @@ const lib = { cur: null, history: [], topics: [], cmtSel: null, xr: {}, marks: {
 function renderLibraryList() {
   const ul = $('#libList'); ul.innerHTML = '';
   const books = state.modules.books || [];
-  if (!books.length) { ul.innerHTML = '<li class="hint">None yet – use <b>Import modules…</b> or add a folder.</li>'; return; }
+  if (!books.length) { ul.innerHTML = '<li class="hint">None yet – use <b>Import modules…</b> or add a folder. ' + (window.GET_MODS_LINK || '') + '</li>'; return; }
   for (const kind of KIND_ORDER) {
     const list = books.filter(b => b.kind === kind).sort((a, b) => (a.title || a.name).localeCompare(b.title || b.name));
     if (!list.length) continue;
@@ -671,7 +671,7 @@ async function updateCommentary() {
 
   if (!list.length) {
     syncCmtHeaderBar([]);
-    $("#cmtBody").innerHTML = `<p class="hint">No commentaries yet. Import theWord (.cmt.twm) or e-Sword (.cmtx / .cmti) commentaries with <b>Import modules…</b>, or create your own commentary below.</p><div class="row"><button id="cmtCreateUserBtn" class="primary">+ New user commentary…</button></div>`;
+    $("#cmtBody").innerHTML = `<p class="hint">No commentaries yet. Import theWord (.cmt.twm) or e-Sword (.cmtx / .cmti) commentaries with <b>Import modules…</b>, or create your own commentary below. ${window.GET_MODS_LINK || ''}</p><div class="row"><button id="cmtCreateUserBtn" class="primary">+ New user commentary…</button></div>`;
     const btn = $("#cmtCreateUserBtn"); if (btn) btn.onclick = () => newUserModuleDialog("commentary");
     return;
   }

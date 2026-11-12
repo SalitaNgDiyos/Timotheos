@@ -66,5 +66,15 @@
   const missing = named.filter(n => !pm.includes(n)); ok(named.length >= 5 && missing.length === 0, `guide: every panel it names is in the Panels menu (${named.length} named; missing: ${missing.join(', ')})`);
   document.body.click();
   ok(/Back Up My Study/.test(desk) && /†3/.test(desk), 'guide: it explains the study backup and the cross-reference marks');
+  // where to get modules
+  let opened = null; api.openExternal = async u => { opened = u; };
+  ok(/id="libGetHint"><a class="link" data-href="cmd:getModules"/.test(await (await fetch('index.html')).text()), 'the Library, before a module is chosen, offers "Where to get modules"');
+  runCommand('getModules'); await sleep(500);
+  const gm = $('#modal .getmods'); ok(!!gm, 'File → Where to Get Modules… opens the list');
+  const links = $$('#modal .gmsite a').map(a => a.dataset.href); ok(['https://www.wordmodules.com/', 'https://www.biblesupport.com/', 'https://ebible.org/'].every(u => links.includes(u)), 'it has the three sites: ' + links.join(' '));
+  ok(/Ctrl\+I/.test(gm.textContent) && /drag them onto/.test(gm.textContent) && /\.exe/.test(gm.textContent), 'it explains how to import on a computer, and what cannot be imported');
+  $('#modal .gmsite a').click(); await sleep(300); ok(opened === 'https://www.wordmodules.com/', 'a site link opens in the browser: ' + opened);
+  ok($$('#modal button').some(b => /Import modules/.test(b.textContent)), 'it offers Import modules…'); $$('#modal button').find(b => b.textContent.trim() === 'Close').click(); await sleep(200);
+  ok(/Where to get modules/.test(desk) && /wordmodules\.com/.test(desk) && /biblesupport\.com/.test(desk) && /ebible\.org/.test(desk), 'guide: it lists the sites and the steps');
   console.log('RESULT ' + out.join(' | '));
 })();

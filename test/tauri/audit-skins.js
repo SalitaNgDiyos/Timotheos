@@ -463,6 +463,7 @@
   PUI.clearPages(); PUI.closeSheet(); await sl(200);
   PUI.modulesSheet(); await sl(400);
   ok(vis($('#pSheet [data-c="import"]')),'Modules: Import shows');
+  ok(vis($('#pSheet [data-c="getModules"]')),'Modules: "Where to get modules" shows'); click($('#pSheet [data-c="getModules"]')); await sl(700); { const g=$('#modal .getmods'); ok(!!g&&/phone\'s browser/.test(g.textContent)&&!/Ctrl\+I|drag them/.test(g.textContent),'it opens with the phone steps, not the computer ones'); ok($$('#modal .gmsite a').length===3,'and the three sites'); $('#modal').classList.add('hidden'); await sl(200); } PUI.modulesSheet(); await sl(400);
   ok(!vis($('#pSheet [data-c="addFolder"]'))&&!vis($('#pSheet [data-c="modulesFolder"]')),'Modules: no "Add module folder" and no "Imported modules folder" on a phone');
   await closeSheet();
   if(SK==='a'){ SkinA.more(); await sl(500); const t=[...$$('#pSheet .pill')].filter(vis).map(b=>b.textContent.trim()); ok(!t.some(x=>/^Print/.test(x))&&t.includes('Clipboard monitor'),'Quiet Reader More: no Print ('+t.length+' tools)'); ok(!/File · View · Help/.test($('#pSheet').textContent),'no "File · View · Help" heading'); await closeSheet(); }

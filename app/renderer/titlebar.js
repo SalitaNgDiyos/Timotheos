@@ -15,6 +15,7 @@
       ['File', 'f', [
         ['New User Module…', '', 'newUserMod', 'plus'],
         ['Import Modules…', sc('import'), 'import', 'import'],
+        ['Where to Get Modules…', '', 'getModules'],
         ['Add Module Folder…', sc('addFolder'), 'addFolder', 'folder'],
         ['Show Imported Modules Folder', '', 'modulesFolder'],
         ['Rescan Modules', sc('rescan'), 'rescan', 'refresh'],
