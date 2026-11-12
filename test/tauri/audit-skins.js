@@ -636,6 +636,22 @@
   if(SK==='c'){ SkinC.navDrawer(true); await sl(400); const d=$('.c-drawer.l'); await drag(d,-220,4,{y:300}); ok(!d.classList.contains('on'),'the Navigator dragged back to the left closes');
    SkinC.quick(); await sl(400); const cc=$('.c-cc'); await drag(cc,0,-200,{y:cc.getBoundingClientRect().top+30}); ok(!cc.classList.contains('on'),'quick settings pushed back up close'); }
  });
+ await T('hold and swipe bars',async()=>{
+  await go({b:19,c:119,v:1}); await sl(900); const bars=[{a:'.a-caps',b:'.b-tabs',c:'.c-dock'}[SK]]; const top={b:'.b-abar',c:'.c-rail .pib'}[SK];
+  const shown=()=>!R.classList.contains('sk-baroff'); const hide=async()=>{PUI_bars(true); await sl(300);};
+  const tx=$('.bv.active .bvtext')||$('.bvtext'); const r=tx.getBoundingClientRect(); const x=r.left+r.width/2, y=r.top+r.height/3;
+  const tgt=document.elementFromPoint(r.left+3,y)||tx;     // the margin, not a verse
+  await hide(); ok(!shown(),'bars hidden to begin with');
+  fing(tgt,'touchstart',r.left+3,y); await sl(800); fing(tgt,'touchend',r.left+3,y); await sl(300);
+  ok(shown(),'touch and hold on the page brings the bars back');
+  if(top){ const e=$(top); ok(getComputedStyle(e).opacity>0.9,'the top buttons are back too'); }
+  fing(tgt,'touchstart',x,y); fing(tgt,'touchmove',x,y-60); fing(tgt,'touchend',x,y-60); await sl(400);
+  ok(!shown(),'a swipe up hides them'); if(top){ ok(getComputedStyle($(top)).opacity<0.2,'the top buttons hide with them'); }
+  const oh=$(bars[0]); ok(getComputedStyle(oh).opacity<0.2,'the bottom bar is hidden');
+  fing(tgt,'touchstart',x,y); await sl(800); fing(tgt,'touchend',x,y); await sl(300); ok(shown(),'hold again: back');
+  fing(tgt,'touchstart',x,y); fing(tgt,'touchmove',x,y+60); fing(tgt,'touchend',x,y+60); await sl(400); ok(!shown(),'a swipe down hides them');
+  fing(tgt,'touchstart',x,y); fing(tgt,'touchmove',x+70,y+6); fing(tgt,'touchend',x+70,y+6); await sl(300); ok(!shown(),'a sideways swipe changes nothing');
+ });
  await T('bottom edge',async()=>{
   PUI_bars(true); await sl(300); ok(R.classList.contains('sk-baroff'),'the bottom bar hides while reading');
   const t=document.elementFromPoint(innerWidth/2,innerHeight-12)||document.body; fing(t,'touchstart',innerWidth/2,innerHeight-12); fing(t,'touchmove',innerWidth/2,innerHeight-60); fing(t,'touchend',innerWidth/2,innerHeight-60); await sl(400);

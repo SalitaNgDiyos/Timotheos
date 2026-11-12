@@ -781,7 +781,7 @@
         ht = setTimeout(() => { if (busy()) return; fired = true; bars(true); }, 560); }, { capture: true, passive: true });
       document.addEventListener('touchmove', e => { const t = e.touches[0]; if (!t) return; const dx = t.clientX - hx, dy = t.clientY - hy;
         if (Math.abs(dx) > 10 || Math.abs(dy) > 10) clearTimeout(ht);
-        if (!fired && root.classList.contains('sk') && !busy() && Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.2) { bars(false); } }, { capture: true, passive: true });
+        if (!fired && root.classList.contains('sk') && !busy() && hy < innerHeight - (parseFloat(getComputedStyle(root).getPropertyValue('--safe-b')) || 0) - 64 && Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx) * 1.2) { bars(false); } }, { capture: true, passive: true });
       document.addEventListener('touchend', () => clearTimeout(ht), { capture: true, passive: true });
       document.addEventListener('touchcancel', () => clearTimeout(ht), { capture: true, passive: true });
     })();
