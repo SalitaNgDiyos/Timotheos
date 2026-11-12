@@ -602,7 +602,7 @@
     const h=hit(c); ok(true,SK+' '+which+': tapping '+c.tagName+'.'+(c.className||'')+' "'+c.textContent.trim().slice(0,30)+'" chrome='+(R.classList.contains('a-show'))); ok(h.ok,SK+' '+which+': a tap reaches it (hits '+h.at+')');
     tapAt(c); await sl(1000);
     const items=$$('.bvmenu [data-b]'); const sheetOpen=!!sheet();
-    ok(items.length>1||sheetOpen,SK+' '+which+': a list of Bibles opened ('+items.length+' items, sheet '+sheetOpen+')');
+    ok(items.length>1||sheetOpen,SK+' '+which+': a list of Bibles opened ('+items.length+' items, sheet '+sheetOpen+', baroff '+R.classList.contains('sk-baroff')+', ctl '+(c.className||c.tagName)+', op '+getComputedStyle(c).opacity+', pe '+getComputedStyle(c).pointerEvents+')');
     if(items.length>1){ const m=$('.bvmenu'); const mr=m.getBoundingClientRect(); ok(mr.top>=0&&mr.bottom<=innerHeight+1&&mr.height>40,SK+' '+which+': the list is inside the screen '+JSON.stringify([Math.round(mr.left),Math.round(mr.top),Math.round(mr.width),Math.round(mr.height)]));
       const b=items.find(x=>x.dataset.b!==views()[want].bible); const hb=hit(b); ok(hb.ok,SK+' '+which+': an item can be tapped (hits '+hb.at+')');
       const before=views()[want].bible, oth=views()[other].bible; tapAt(b); await sl(1000);
