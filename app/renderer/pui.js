@@ -883,12 +883,13 @@
   const FIT = [['.a-chrome .lab span', 16], ['.b-big h2 span', 18], ['.c-rail .ref span:last-child', 18], ['.pdiv .pd-ref span', 13]];
   function fitLabels() {
     for (const [s, min] of FIT) document.querySelectorAll(s).forEach(e => {
-      e.style.fontSize = ''; if (!e.getClientRects().length) return;
+      e.style.fontSize = ''; e.classList.remove('wrap2'); if (!e.getClientRects().length) return;
       const max = parseFloat(getComputedStyle(e).fontSize);
       for (let k = 0; k < 3 && e.scrollWidth > e.clientWidth + 1; k++) {
         const now = parseFloat(getComputedStyle(e).fontSize); const nx = Math.max(min, Math.floor(now * e.clientWidth / e.scrollWidth * 10) / 10 - .2);
         if (nx >= now) break; e.style.fontSize = nx + 'px';
       }
+      if (s === '.b-big h2 span' && e.scrollWidth > e.clientWidth + 1) e.classList.add('wrap2');   // still too long at the smallest size: two lines, nothing cut off
       if (parseFloat(getComputedStyle(e).fontSize) >= max) e.style.fontSize = '';
     });
     // the top strip: the Bible's name gives way to the book's full name (it is left out when only a sliver would be left)

@@ -78,7 +78,6 @@
     // the label at the top belongs to the top Bible (with two Bibles on screen the lower one has its own, in the strip)
     const ti = p.par.top(); const h = document.querySelector('.b-big h2 span'); const lb = p.par.label(ti) || `${k.name} ${state.ref.c}`; if (h && h.textContent !== lb) h.textContent = lb;
     const bb = document.querySelector('.b-big [data-a="bible"] span'); const an = p.par.abbr(ti); if (bb && bb.textContent !== an) bb.textContent = an;
-    const par = document.querySelector('.b-big [data-a="par"]'); if (par) par.classList.toggle('acc', !!window.TimotheosPhone.splitId());
     const gb = document.getElementById('gBack'), gf = document.getElementById('gFwd');
     const b = document.querySelector('.b-abar [data-a="back"]'), f = document.querySelector('.b-abar [data-a="fwd"]');
     if (b) b.disabled = !gb || gb.disabled; if (f) f.disabled = !gf || gf.disabled;
@@ -90,7 +89,7 @@
   function mount() {
     ac = new AbortController(); const sig = { signal: ac.signal }; const p = P(); tab = 'read';
     el('b-top', `<div class="b-abar">${ib('back', 'back', 'Back to the previous screen')}${ib('fwd', 'fwd', 'Forward to the next screen')}<span class="grow"></span>${ib('view', 'text', 'Reading view: text size, what to show')}${ib('speak', 'speaker', 'Read aloud')}</div>
-      <div class="b-big"><h2 data-a="go"><span>John 3</span>${p.ic('chevD', 20)}</h2><button type="button" class="pchip" data-a="bible"><span>KJV</span>${p.ic('chevD', 14)}</button><span class="grow"></span><button type="button" class="pchip ghost" data-a="par" aria-label="Parallel: two Bibles" title="Parallel: two Bibles">${p.ic('compare', 18)}</button></div>`);
+      <div class="b-big"><h2 data-a="go"><span>John 3</span>${p.ic('chevD', 20)}</h2><button type="button" class="pchip" data-a="bible"><span>KJV</span>${p.ic('chevD', 14)}</button></div>`);
     el('b-tabs', [['read', 'read', 'Bible'], ['library', 'library', 'Library'], ['search', 'search', 'Search'], ['study', 'study', 'Notes'], ['more', 'more', 'More']].map(([k, i, l]) => `<button type="button" data-t="${k}" class="${k === 'read' ? 'on' : ''}"><i>${p.ic(i, 22)}</i>${l}</button>`).join(''));
     el('b-player', `${ib('prevv', 'prevv', 'Previous verse')}${ib('pause', 'pause', 'Pause')}${ib('nextv', 'nextv', 'Next verse')}<span class="lbl"></span>${ib('stop', 'stop', 'Stop')}`);
     document.addEventListener('click', e => {

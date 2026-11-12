@@ -92,7 +92,11 @@ html.sk-b.psplitting .bv .bvtext .sk-ttl { display: none; }
 .b-big h2 { margin: 0; border: 0; background: transparent; padding: 0; color: var(--p-ink); font: 500 32px/1 Literata, Georgia, serif; letter-spacing: -.01em; display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto; }
 .b-big h2 span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .b-big h2 .ic { color: var(--p-muted); flex: none; }
+.b-big h2 span.wrap2 { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.05; }
 .b-big .grow { flex: 1; }
+/* no parallel button up here any more (Layout → Parallel Bibles): the book's full name comes first, the Bible's name gives way */
+.b-big [data-a="bible"] { flex: 0 8 auto; min-width: 0; max-width: 100%; }
+.b-big [data-a="bible"] span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 3ch; }
 .b-tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(84px + var(--safe-b)); display: flex; padding: 8px 10px calc(22px + var(--safe-b)); background: var(--p-tabs, rgba(250,247,240,.97)); box-shadow: 0 -1px 0 var(--p-line); z-index: 80; }
 .b-tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font: 600 11px var(--p-ui); color: var(--p-muted); border: 0; background: transparent; padding: 0; }
 .b-tabs button i { width: 58px; height: 32px; display: grid; place-items: center; border-radius: 16px; transition: background .2s; }

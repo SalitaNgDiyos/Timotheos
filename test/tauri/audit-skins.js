@@ -189,7 +189,7 @@
   await go({b:19,c:23,v:1}); await sl(600);
   if(SK==='c'){ SkinC.desk('cmt'); await sl(1200); click($('.c-desk [data-dc="par"]')); await sl(1800); ok(R.classList.contains('psplitting')&&!$('.c-desk').classList.contains('on'),'Study Desk: Parallel puts the second Bible below, with no desk around it');
    ok(!R.classList.contains('c-deskbible'),'no Commentary, Library or Search buttons over the lower Bible'); for(const k of ['cmt','lib','search']){ SkinC.desk(k); await sl(1300); ok($('.c-desk .db').children.length>0,'the desk still opens: '+k); } SkinC.deskClose(); await sl(400); ok(!$('.c-desk').classList.contains('on'),'the desk closes'); }
-  else if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true);
+  else await TimotheosSkins.parallel(true);
   await sl(1500); ok(R.classList.contains('psplitting'),'two Bibles, one above the other'); const g=$$('.dgroup.psplit .bv .sk-ttl')[0]; ok(!!g,'each has its label');
   {
    const lab=$(SK==='a'?'.dgroup.pbase .sk-ttl span':SK==='b'?'.b-big h2 span':'.c-rail .ref span:last-child'), chip=$(SK==='a'?'.dgroup.pbase .sk-ttl small':SK==='b'?'.b-big [data-a="bible"]':'.c-rail .bib'); const rs=$('.pdiv .pd-ref span'), bc=$('.pdiv .pd-bib'), bot=PUI.par.bot(), top=PUI.par.top();
@@ -215,7 +215,7 @@
   }
   const d=$('.pdiv'); const r=d.getBoundingClientRect(); d.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:1,clientY:r.top+14})); d.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerId:1,clientY:r.top-120})); d.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:1})); await sl(200);
   ok(parseFloat(getComputedStyle(R).getPropertyValue('--sk-sp'))<.5,'the divider can be dragged');
-  if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(false); await sl(500); ok(!R.classList.contains('psplitting'),'Parallel off');
+  await TimotheosSkins.parallel(false); await sl(500); ok(!R.classList.contains('psplitting'),'Parallel off');
  });
  // ---------- every command of More ----------
  await T('more',async()=>{
@@ -323,6 +323,12 @@
    ok(parseFloat(getComputedStyle(sp).fontSize)>=16,'and not tiny ('+getComputedStyle(sp).fontSize+')');
    ok(getComputedStyle(em).display==='none'||em.getBoundingClientRect().right<=sp.closest('.mid').getBoundingClientRect().right+1,'the Bible name stays inside the strip (or is left out when there is no room)'); ok(sp.getBoundingClientRect().height<=48,'the name fits the strip even on two lines ('+Math.round(sp.getBoundingClientRect().height)+'px)');
    SkinA.showChrome(false); await sl(300); }
+  if(SK==='b'){ // no Parallel button up here; a long Bible name beside a long book name: the book keeps its full name
+   const bk=[...state.nav].sort((x,y)=>y.name.length-x.name.length)[0]; await go({b:bk.id,c:1,v:1}); await sl(900);
+   ok(!$('.b-big [data-a="par"]'),'no Parallel button in the header (it is in Layout and More)');
+   const sp=$('.b-big h2 span'), ch=$('.b-big [data-a="bible"] span'); ch.textContent='Septuagint-LXX'; PUI.fitLabels(); await sl(200);
+   const nm=sp.textContent; ok(sp.scrollWidth<=sp.clientWidth+1&&sp.getBoundingClientRect().height<=56,'long Bible name: the book name is not cut off ('+nm+', '+getComputedStyle(sp).fontSize+', '+Math.round(sp.getBoundingClientRect().height)+'px high)');
+   ok(ch.getBoundingClientRect().right<=innerWidth-8,'the Bible chip stays on the screen ('+Math.round(ch.getBoundingClientRect().right)+' of '+innerWidth+')'); }
   await go({b:43,c:3,v:16}); await sl(600); });
  await T('colour skins',async()=>{
   const O=TimotheosOptions, lum=e=>{ const m=getComputedStyle(e).backgroundColor.match(/[\d.]+/g); if(!m) return -1; return (0.299*m[0]+0.587*m[1]+0.114*m[2])/255; };
@@ -433,7 +439,7 @@
  });
  // ---------- two Bibles after the split desk of Study Desk ----------
  await T('split gap',async()=>{
-  R.style.setProperty('--sp-head','57px'); if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='a') await TimotheosSkins.parallel(true); else { await TimotheosSkins.parallel(true); }
+  R.style.setProperty('--sp-head','57px'); if(SK==='a') await TimotheosSkins.parallel(true); else { await TimotheosSkins.parallel(true); }
   await sl(1500); if(!R.classList.contains('psplitting')){ ok(false,'two Bibles'); return; }
   const g=$('.dgroup.psplit').getBoundingClientRect(); const d=$('.pdiv');
   { const pr=d.getBoundingClientRect(); ok(Math.abs(g.top-pr.bottom)<=1.5,'the lower Bible starts right under the strip, no empty band ('+Math.round(pr.bottom)+' / '+Math.round(g.top)+')'); }
@@ -444,13 +450,13 @@
    const tx=$('.dgroup.pbase .bv .bvtext'); tx.scrollTop=800; await sl(400); const tr=t.getBoundingClientRect(), gr=$('.dgroup.pbase').getBoundingClientRect();
    ok(Math.abs(tr.top-gr.top)<=1.5,'scrolled: the top row sits at the very top, no text above it ('+Math.round(tr.top)+' / '+Math.round(gr.top)+')');
    const hit=document.elementFromPoint(gr.left+gr.width-40,tr.top+4); ok(!!hit&&(hit===t||t.contains(hit)||!hit.closest('.pv[data-v]')),'the text does not show through the top row'); tx.scrollTop=0; }
-  R.style.removeProperty('--sp-head'); if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(false); await sl(800);
+  R.style.removeProperty('--sp-head'); await TimotheosSkins.parallel(false); await sl(800);
  });
  // ---------- two Bibles: plain text below, a text format button for each ----------
  await T('parallel format',async()=>{
   PUI.clearPages(); PUI.closeSheet(); if(TimotheosPhone.splitId()){ if(SK==='c'&&SkinC.closeAll) {} await TimotheosSkins.parallel(false); } await sl(500);
   const oth=views().findIndex((v,k)=>k!==state.active); if(oth>=0){ views()[oth].show=Object.assign({},views()[oth].show,{columns:true,strongs:true}); delete views()[oth].parPlain; }
-  if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='c') SkinC.par(true); else await TimotheosSkins.parallel(true);
+  if(SK==='c') SkinC.par(true); else await TimotheosSkins.parallel(true);
   await sl(1800); if(!R.classList.contains('psplitting')){ ok(false,'two Bibles'); return; }
   const top=PUI.par.top(), bot=PUI.par.bot();
   ok(!effShow('columns',bot)&&effShow('strongs',bot)===effShow('strongs',top),'the lower Bible is plain text like the top one (no word-over-word display)');
@@ -461,7 +467,7 @@
   await openFor($('.pdiv .pd-aa'),bot,'strip');
   if(SK==='c') await openFor($('.c-rail [data-a="aa"]'),top,'rail');
   // the choice made for the lower Bible is kept
-  toggleViewShow(bot,'columns',true); setActiveView(top); await sl(500); { await TimotheosSkins.parallel(false); await sl(300); if(SK==='b') click($('.b-big [data-a="par"]')); else await TimotheosSkins.parallel(true); }
+  toggleViewShow(bot,'columns',true); setActiveView(top); await sl(500); { await TimotheosSkins.parallel(false); await sl(300); await TimotheosSkins.parallel(true); }
   await sl(1500); ok(effShow('columns',PUI.par.bot()),'a display chosen later for the lower Bible is kept');
   toggleViewShow(PUI.par.bot(),'columns',false); views()[PUI.par.bot()].show=Object.assign({},views()[PUI.par.bot()].show,{strongs:effShow('strongs',PUI.par.top())});
   await TimotheosSkins.parallel(false); await sl(600);
@@ -554,7 +560,7 @@
  await T('parallel font and bible',async()=>{
   if(SK==='b'){ const t=$$('.b-tabs button').map(b=>b.textContent.trim()).join(','); ok(t==='Bible,Library,Search,Notes,More','Clear Tabs: the tabs are named Bible, Library, Search, Notes, More ('+t+')'); click($('.b-tabs [data-t="study"]')); await sl(600); ok(/Notes/.test(($('.ppage .ptitle,.ppage h1,.ppage .pbar')||{}).textContent||document.querySelector('.ppage').textContent),'the Notes tab opens a page titled Notes'); PUI.clearPages(); click($('.b-tabs [data-t="read"]')); await sl(400); }
   PUI.clearPages(); PUI.closeSheet(); if(TimotheosPhone.splitId()){ await TimotheosSkins.parallel(false); } await sl(500);
-  if(SK==='b') click($('.b-big [data-a="par"]')); else if(SK==='c') SkinC.par(true); else await TimotheosSkins.parallel(true);
+  if(SK==='c') SkinC.par(true); else await TimotheosSkins.parallel(true);
   await sl(1800); if(!R.classList.contains('psplitting')){ ok(false,'two Bibles'); return; }
   const vis=e=>!!e&&e.getClientRects().length>0&&getComputedStyle(e).display!=='none';
   const fam=i=>getComputedStyle(document.querySelectorAll('.bv .bvtext')[i]).fontFamily;
