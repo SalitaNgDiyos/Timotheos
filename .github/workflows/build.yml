@@ -84,6 +84,11 @@ jobs:
           MF=src-tauri/gen/android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' "$MF" || sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MF"
           grep -n 'INTERNET' "$MF"
+          # "Download and install" an update: permission to ask Android to install an APK, and a file provider for the app's cache folder
+          grep -q 'REQUEST_INSTALL_PACKAGES' "$MF" || sed -i 's#<application#<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application#' "$MF"
+          sed -i 's#</application>#    <provider android:name="org.timotheos.bible.UpdateFileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_paths" /></provider>\n    </application>#' "$MF"
+          mkdir -p "$RES/xml"; printf '<?xml version="1.0" encoding="utf-8"?>\n<paths><cache-path name="updates" path="." /></paths>\n' > "$RES/xml/update_paths.xml"
+          grep -n 'REQUEST_INSTALL_PACKAGES\|UpdateFileProvider' "$MF"
           G=src-tauri/gen/android/app/build.gradle.kts
           sed -i '0,/^dependencies {/s//dependencies {\n    implementation("androidx.core:core-ktx:1.13.1")/' "$G"
           grep -n -A2 "^dependencies {" "$G"

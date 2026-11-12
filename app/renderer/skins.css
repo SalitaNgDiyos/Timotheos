@@ -250,12 +250,12 @@ html.sk-a.psplitting .dgroup.pbase .bv .bvtext .sk-ttl small::after { font: 600 
 html.sk-a.a-show .a-chrome, html.sk-a.a-compact .a-chrome { background: var(--p-bg); box-shadow: 0 1px 0 var(--p-line); }
 .a-chrome .mid { flex: 1; min-width: 0; display: flex; justify-content: center; align-items: center; }
 .a-chrome .lab { display: flex; align-items: baseline; gap: 9px; min-width: 0; max-width: 100%; border: 0; background: transparent; padding: 6px 4px; color: var(--p-ink); font: 400 19px/1.2 Literata, Georgia, serif; letter-spacing: -.01em; opacity: 0; pointer-events: none; transition: opacity .2s; }
-.a-chrome .lab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.a-chrome .lab em { font: 600 11px var(--p-ui); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); flex: none; }
+.a-chrome .lab span { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.1; min-width: 0; max-width: 100%; flex: 0 0 auto; text-align: center; }   /* the book's full name keeps its size (a long one goes onto two lines); the Bible's name gives way */
+.a-chrome .lab em { font: 600 11px var(--p-ui); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: var(--p-acc); flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.sk-a.a-compact .a-chrome .lab { opacity: 1; pointer-events: auto; }
-html.sk-a.a-compact.a-show .a-chrome .lab { font-size: 17px; }
+html.sk-a.a-compact.a-show .a-chrome .lab { font-size: 19px; }
 /* two Bibles: the strip covers the upper Bible's title, so the strip itself names the place and the Bible (both tappable) while it shows */
-html.sk-a.psplitting.a-show .a-chrome .lab { opacity: 1; pointer-events: auto; font-size: 17px; }
+html.sk-a.psplitting.a-show .a-chrome .lab { opacity: 1; pointer-events: auto; font-size: 19px; }
 html.sk-a.psplitting.a-show .a-chrome .lab em { padding: 10px 6px; margin: -10px -6px; }
 /* …and while it is hidden, nothing of it lies over the upper Bible's own name (a tap there chooses that Bible) */
 html.sk-a.psplitting:not(.a-show) .a-chrome .mid { pointer-events: none; }

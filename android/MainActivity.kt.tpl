@@ -5,11 +5,14 @@ package __PKG__
 import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
+import android.provider.Settings
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -75,7 +78,32 @@ class MainActivity : TauriActivity() {
     } catch (e: Exception) { saved("failed") }
   }
 
+  // An update that the page has downloaded into the app's cache folder: Android's own installer screen takes it from here
+  // (the user taps Install there; Android never installs silently). The first time, Android asks to let this app install apps.
+  // The page hears the outcome through window.__twInstall("started" | "permission" | "failed").
+  private fun installed(how: String) { web?.evaluateJavascript("window.__twInstall && window.__twInstall('$how')", null) }
+
   inner class Files {
+    @JavascriptInterface
+    fun install(path: String) {
+      runOnUiThread {
+        try {
+          val f = File(path).canonicalFile
+          // only an .apk inside the app's own cache folder
+          if (!f.isFile || !f.name.endsWith(".apk") || !f.path.startsWith(cacheDir.canonicalPath)) { installed("failed"); return@runOnUiThread }
+          if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+            startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+            installed("permission"); return@runOnUiThread
+          }
+          val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.updates", f)
+          val i = Intent(Intent.ACTION_VIEW)
+          i.setDataAndType(uri, "application/vnd.android.package-archive")
+          i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+          startActivity(i); installed("started")
+        } catch (e: Exception) { installed("failed") }
+      }
+    }
+
     @JavascriptInterface
     fun saveAs(path: String, name: String) {
       runOnUiThread {
@@ -117,3 +145,6 @@ class MainActivity : TauriActivity() {
     }
   }
 }
+
+// the file provider that hands a downloaded update to Android's installer (declared in the manifest by the build)
+class UpdateFileProvider : FileProvider()

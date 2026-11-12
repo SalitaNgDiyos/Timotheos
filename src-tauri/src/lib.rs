@@ -299,6 +299,40 @@ fn net_progress() -> Value { json!({ "done": NET_DONE.load(Ordering::Relaxed), "
 #[tauri::command]
 fn net_stop() { NET_STOP.store(true, Ordering::Relaxed); }
 
+/// the file must lie inside a "download-…" folder of the temporary folder of Timotheos (what net_get fills)
+fn tmp_download(app: &tauri::AppHandle, path: &str) -> Result<PathBuf, String> {
+    let tmp = temp_dir_of(app).canonicalize().map_err(|e| e.to_string())?;
+    let f = PathBuf::from(path).canonicalize().map_err(|_| "The downloaded file is not there.".to_string())?;
+    let ok = f.is_file() && f.starts_with(&tmp) && f.parent().and_then(|d| d.file_name()).map(|n| n.to_string_lossy().starts_with("download-")).unwrap_or(false);
+    if ok { Ok(f) } else { Err("That file is not one Timotheos downloaded.".into()) }
+}
+/// SHA-256 of a downloaded file, as lower-case hex (an update is compared with the fingerprint GitHub lists before it is run)
+#[tauri::command(async)]
+fn net_sha256(app: tauri::AppHandle, path: String) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    let f = tmp_download(&app, &path)?;
+    let mut rd = fs::File::open(&f).map_err(|e| e.to_string())?;
+    let mut h = Sha256::new(); let mut buf = vec![0u8; 64 * 1024];
+    loop { let n = rd.read(&mut buf).map_err(|e| e.to_string())?; if n == 0 { break; } h.update(&buf[..n]); }
+    Ok(h.finalize().iter().map(|b| format!("{:02x}", b)).collect())
+}
+/// Start the downloaded installer (Windows: the setup program, and Timotheos closes so that it can be replaced) or show the
+/// downloaded file in its folder (Linux). Android installs through its own screen (TwFiles.install in the activity).
+#[tauri::command]
+fn update_run(app: tauri::AppHandle, path: String) -> Result<String, String> {
+    let f = tmp_download(&app, &path)?;
+    let name = f.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default();
+    if cfg!(target_os = "windows") {
+        if !name.ends_with(".exe") { return Err("That is not a Windows installer.".into()); }
+        std::process::Command::new(&f).spawn().map_err(|e| format!("The installer could not be started: {e}"))?;
+        Ok("started".into())
+    } else if cfg!(target_os = "linux") {
+        let d = f.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+        std::process::Command::new("xdg-open").arg(&d).spawn().map_err(|e| format!("The folder could not be opened: {e}"))?;
+        Ok("folder".into())
+    } else { Err("This system installs updates in another way.".into()) }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -330,7 +364,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_get, net_progress, net_stop])
+        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_get, net_progress, net_stop, net_sha256, update_run])
         .run(tauri::generate_context!())
         .expect("error while running Timotheos");
 }

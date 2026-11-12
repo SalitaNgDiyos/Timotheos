@@ -880,7 +880,7 @@
   };
 
   /* the place labels show the whole book name: a name too long for its space gets a smaller font (down to a floor), never cut */
-  const FIT = [['.a-chrome .lab span', 13], ['.b-big h2 span', 18], ['.c-rail .ref span:last-child', 18], ['.pdiv .pd-ref span', 13]];
+  const FIT = [['.a-chrome .lab span', 16], ['.b-big h2 span', 18], ['.c-rail .ref span:last-child', 18], ['.pdiv .pd-ref span', 13]];
   function fitLabels() {
     for (const [s, min] of FIT) document.querySelectorAll(s).forEach(e => {
       e.style.fontSize = ''; if (!e.getClientRects().length) return;
@@ -890,6 +890,11 @@
         if (nx >= now) break; e.style.fontSize = nx + 'px';
       }
       if (parseFloat(getComputedStyle(e).fontSize) >= max) e.style.fontSize = '';
+    });
+    // the top strip: the Bible's name gives way to the book's full name (it is left out when only a sliver would be left)
+    document.querySelectorAll('.a-chrome .lab').forEach(l => {
+      const em = l.querySelector('em'); if (!em) return; em.style.display = ''; if (!l.getClientRects().length) return;
+      if (em.clientWidth < 34 && em.scrollWidth > em.clientWidth) em.style.display = 'none';
     });
   }
   window.addEventListener('resize', () => requestAnimationFrame(fitLabels));

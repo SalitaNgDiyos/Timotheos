@@ -202,6 +202,17 @@ const net = {
   },
   async text(url) { const p = await net.get(url, 'list.txt'); return invoke('read_text_file', { path: p }); },
   stop: () => invoke('net_stop'),
+  sha256: path => invoke('net_sha256', { path }),
+  // the downloaded installer: Windows starts it (and Timotheos closes, below), Linux shows its folder, Android's own installer screen opens
+  async install(path) {
+    if (isAndroid) {
+      const T = window.TwFiles; if (!T || !T.install) throw new Error('This build cannot start the Android installer.');
+      return new Promise(resolve => { const t = setTimeout(() => { window.__twInstall = null; resolve('started'); }, 20000); window.__twInstall = how => { clearTimeout(t); window.__twInstall = null; resolve(how); }; try { T.install(path); } catch (e) { clearTimeout(t); window.__twInstall = null; resolve('failed'); } });
+    }
+    const how = await invoke('update_run', { path });
+    if (how === 'started') setTimeout(() => invoke('quit').catch(() => {}), 1500);
+    return how;
+  },
 };
 window.TimotheosHost = { isMobile, isAndroid, info: () => info, seedBundled, net };
 

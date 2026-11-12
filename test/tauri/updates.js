@@ -29,6 +29,23 @@
     ok(state.settings.updTest === true, 'the choice is remembered');
     ok(U.read(JSON.stringify({ tag_name: 'test', name: 'Timotheos 0.7.1 (test build)' })).latest === '0.7.1', 'a tag without a number takes the version from the name');
     await save({ updTest: false });
+    // download and install: the file for this system, its fingerprint, then the installer
+    const N = TimotheosHost.net; let gave = null; N.install = async p => { gave = p; return 'folder'; };
+    const envo = TimotheosHost.info().env, env0 = envo.TIMOTHEOS_REPOS, setUp = f => { envo.TIMOTHEOS_REPOS = env0.replace('latest.json', f); };
+    const open1 = async () => { closeM(); await sleep(300); runCommand('checkUpdates'); await until(() => $('#upDo') || /Could not|No release/.test(($('#upState') || {}).textContent || '')); };
+    await open1();
+    ok(!!$('#upDo') && /Timotheos_9\.9\.9_amd64\.deb/.test($('#upAct').textContent), 'a newer release offers "Download and install" with the file for this system');
+    ok(!!$('#upGet'), 'and still the download page');
+    $('#upDo').click();
+    ok(await until(() => /Downloaded and checked/.test($('#upState').textContent), 120), 'download, fingerprint check and hand-over: ' + $('#upState').textContent.slice(0, 80));
+    ok(/download-\d+\/Timotheos_9\.9\.9_amd64\.deb$/.test(gave || ''), 'the installer got the downloaded file: ' + gave);
+    ok(!!$('#upDo') && !$('#upDo').disabled, 'the button is usable again');
+    setUp('badsum.json'); gave = null; await open1(); $('#upDo').click();
+    ok(await until(() => /does not match/.test($('#upState').textContent), 120) && gave === null, 'a file whose fingerprint is wrong is refused and not installed');
+    setUp('nosum.json'); await open1(); $('#upDo').click();
+    ok(await until(() => /no fingerprint/.test($('#upState').textContent), 60) && gave === null, 'a file without a fingerprint is not installed by itself');
+    setUp('latest.json');
+    let refused = ''; try { await N.sha256('/etc/passwd'); } catch (e) { refused = String(e.message || e); } ok(/not one Timotheos downloaded/.test(refused), 'only files Timotheos downloaded can be checked');
     closeM(); await sleep(300);
     // About has the button
     runCommand('about'); ok(await until(() => $('#aboutUpdates')), 'About has a Check for updates button');

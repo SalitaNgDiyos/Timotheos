@@ -315,6 +315,14 @@
    for(const s of sels){ const e=$(s); ok(!!e&&e.textContent.trim()===want,'top label is the full book name and chapter: '+(e&&e.textContent)); ok(!!e&&e.scrollWidth<=e.clientWidth+1,'not cut off: '+want+' ('+(e&&getComputedStyle(e).fontSize)+')'); }
    ok($$('.dgroup .bv .sk-ttl span').every(e=>!e.getClientRects().length||e.textContent.trim()===PUI.par.label(+e.closest('.bv').dataset.i)),'each Bible view\'s own label is the full name ('+want+')');
    if(SK==='a'){ SkinA.showChrome(false); await sl(300); } }
+  if(SK==='a'){ // a long Bible name beside a long book name: the book keeps its full name and a readable size, the Bible's name gives way
+   const bk=[...state.nav].sort((x,y)=>y.name.length-x.name.length)[0]; await go({b:bk.id,c:1,v:1}); await sl(900);
+   const t=$('.bv .bvtext'); t.scrollTop=600; t.dispatchEvent(new Event('scroll')); await sl(400); SkinA.showChrome(true,false); await sl(400);
+   const em=$('.a-chrome .lab em'), sp=$('.a-chrome .lab span'); em.textContent='SEPTUAGINT-LXX'; PUI.fitLabels(); await sl(200);
+   ok(sp.scrollWidth<=sp.clientWidth+1&&sp.textContent.includes(bk.name),'long Bible name: the full book name is not cut off ('+sp.textContent+')');
+   ok(parseFloat(getComputedStyle(sp).fontSize)>=16,'and not tiny ('+getComputedStyle(sp).fontSize+')');
+   ok(getComputedStyle(em).display==='none'||em.getBoundingClientRect().right<=sp.closest('.mid').getBoundingClientRect().right+1,'the Bible name stays inside the strip (or is left out when there is no room)'); ok(sp.getBoundingClientRect().height<=48,'the name fits the strip even on two lines ('+Math.round(sp.getBoundingClientRect().height)+'px)');
+   SkinA.showChrome(false); await sl(300); }
   await go({b:43,c:3,v:16}); await sl(600); });
  await T('colour skins',async()=>{
   const O=TimotheosOptions, lum=e=>{ const m=getComputedStyle(e).backgroundColor.match(/[\d.]+/g); if(!m) return -1; return (0.299*m[0]+0.587*m[1]+0.114*m[2])/255; };
