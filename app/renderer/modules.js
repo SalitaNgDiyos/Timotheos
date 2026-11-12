@@ -984,10 +984,13 @@ function wireModules() {
     if (!e.target.closest('.bv td') || String(window.getSelection())) return;
     const w = wordAt(e); if (w) lookupWord(w);
   });
+  // a finger tap also sends a "mouse over": on the phone screens a tap on a link goes straight to where the link leads, with no hover pop-up
+  let touchAt = 0; document.addEventListener('touchstart', () => { touchAt = Date.now(); }, { passive: true, capture: true });
+  const fingerTap = () => document.documentElement.classList.contains('sk') && Date.now() - touchAt < 1500;
   // [B1 & B4] Hover preview for Bible links AND book/footnote bookmark links
   document.addEventListener('mouseover', async e => {
     const a = e.target.closest && e.target.closest('a[data-href]');
-    if (!a || a.closest('#popup')) return;
+    if (!a || a.closest('#popup') || fingerTap()) return;
     const href = a.dataset.href || '';
     const popupParam = /[?&]popup=(\d)/i.exec(href);
     const popupMode = popupParam ? +popupParam[1] : 1;
@@ -1021,7 +1024,7 @@ function wireModules() {
     }
   });
   document.addEventListener('mouseover', async e => {
-    const a = e.target.closest('a.xr'); if (!a) return;
+    const a = e.target.closest('a.xr'); if (!a || fingerTap()) return;
     const [b, c, v, span] = a.dataset.xr.split('.').map(Number);
     a.title = '';
     const html = await versePreview(b, c, v, v + span);

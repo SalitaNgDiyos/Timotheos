@@ -477,6 +477,27 @@
   ok(vis(ib)&&r.bottom<innerHeight,'empty app: an Import modules button shows'); ok(!!top&&(top===e||e.contains(top)),'empty app: the title is not covered (hits '+(top&&(top.className||top.tagName))+')');
   e.classList.add('hidden');
  });
+ await T('verse links',async()=>{
+  const saved={bibles:state.modules.bibles,otn:state.settings.popupNT}; const link=(b,c,v)=>`<p><a class="link" data-href="tw://bible.*?id=${b}.${c}.${v}">ref</a></p>`;
+  const bibles=state.modules.bibles.map(b=>b.id); const kjv=bibles.find(i=>/kjv\.ont/i.test(i)); const wy=bibles.find(i=>/wycliffe/i.test(i));
+  ok(!!kjv&&!!wy,'two Bibles for the test');
+  const hidden=()=>{const p=$('#popup'); return !p||p.classList.contains('hidden');};
+  const tapLink=async(b,c,v)=>{ PUI.sheet(link(b,c,v),{title:'Entry'}); await sl(300); const a=$('#pSheet a[data-href]'); {const te=new Event('touchstart',{bubbles:true}); te.touches=[]; te.changedTouches=[]; a.dispatchEvent(te);} a.dispatchEvent(new MouseEvent('mouseover',{bubbles:true})); await sl(700); click(a); await sl(900); };
+  // the NT Bible set in Options is the one that shows
+  state.settings.popupNT=wy; await tapLink(43,3,16);
+  ok(hidden(),'no hover pop-up from a finger tap'); ok(!$('#pSheet'),'the sheet is gone'); ok(state.ref.b===43&&state.ref.c===3&&state.ref.v===16,'John 3:16 is the active verse ('+JSON.stringify(state.ref)+')');
+  ok(views()[state.active].bible===wy,'it shows the default NT Bible ('+views()[state.active].bible+')');
+  // Automatic: the first Bible of the list that has the book
+  state.settings.popupNT=''; await tapLink(43,3,17); const first=state.modules.bibles.find(x=>true).id;
+  ok(views()[state.active].bible===first&&state.ref.v===17,'Automatic: the first Bible of the list ('+views()[state.active].bible+', expected '+first+')');
+  // no Bible at all for that testament: how to get Bibles
+  state.modules.bibles=[]; await tapLink(43,3,16); await sl(400);
+  ok(!!$('#modal .getmods'),'no Bible: "Where to get modules" opens'); $('#modal').classList.add('hidden'); state.modules.bibles=saved.bibles; state.settings.popupNT=saved.otn;
+  // the lemma line at the end of a Strong's entry
+  const orig=api.lookup; api.lookup=async(k,key)=>k==='strong'?{html:'<p class="g">δίδωμι <i>(didōmi)</i> — to give</p><p class="l">G1325 δίδωμι (didōmi) — verb</p>',subject:'δίδωμι',dict:'GBE',dictId:'x',id:1}:orig(k,key,arguments[2]);
+  const box=document.createElement('div'); document.body.appendChild(box); await PUI.dictCards(box,{strongs:['G1325'],word:''},{limit:1}); api.lookup=orig;
+  ok(/to give/.test(box.textContent)&&!/G1325 δίδωμι/.test(box.textContent),'the last line "G1325 δίδωμι (didōmi) — verb" is left out, the meaning stays'); box.remove();
+ });
  await T('start and lists',async()=>{
   PUI.clearPages(); PUI.closeSheet(); await sl(200);
   // the next start goes straight to the screen chosen last time

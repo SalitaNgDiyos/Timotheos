@@ -245,7 +245,7 @@
     const cards = []; const bid = activeBible(); const seen = new Set();
     for (const s of strongs) {
       const r = await api.lookup('strong', s, bid).catch(() => null);
-      if (r) cards.push({ k: `Strong's · ${s}`, head: lemmaOf(s, r), sub: r.subject || s, html: sanitize(r.html), dict: r.dict, id: r.dictId, tid: r.id, find: s });
+      if (r) cards.push({ k: `Strong's · ${s}`, head: lemmaOf(s, r), sub: r.subject || s, html: dropLemmaLine(sanitize(r.html), s), dict: r.dict, id: r.dictId, tid: r.id, find: s });
       else cards.push({ k: `Strong's · ${s}`, sub: s, html: '<p class="phint">No Strong\'s dictionary has this number. Import one (e.g. Strong\'s Greek / Hebrew) from More → Modules.</p>', find: s });
     }
     for (const m of morphs) { const r = await api.lookup('morph', m, bid).catch(() => null); if (r) cards.push({ k: 'Morphology', sub: m, html: sanitize(r.html), dict: r.dict, id: r.dictId, tid: r.id }); }
@@ -269,6 +269,19 @@
       if (e.target.closest('[data-find]')) { closeSheet(); return search({ q: c.find }); }
     };
     return cards;
+  }
+  /** the entry's last line "G1325 δίδωμι (didōmi) — verb" only repeats the number, the word and its sound that the card already shows: it is left out */
+  function dropLemmaLine(html, key) {
+    if (!/^[GH]\d+[a-z]?$/i.test(String(key || ''))) return html;
+    const d = document.createElement('div'); d.innerHTML = html; const k = String(key).toUpperCase();
+    const own = el => ![...el.children].some(c => /^(P|DIV|LI|TR|TABLE|UL|OL|H\d|BLOCKQUOTE)$/.test(c.tagName));
+    const lines = [...d.querySelectorAll('p, div, li, tr, span.lemline')].filter(own).filter(el => {
+      const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      return t.length < 160 && t.toUpperCase().startsWith(k) && /[Ͱ-Ͽἀ-῿֐-׿]/.test(t) && /[—–-]\s*\S/.test(t) && /\([^)]+\)/.test(t);
+    });
+    if (!lines.length) return html;
+    lines[lines.length - 1].remove();
+    return d.innerHTML;
   }
   function lemmaOf(key, r) {
     const d = document.createElement('div'); d.innerHTML = r.html; const t = (r.subject || '') + ' ' + (d.textContent || '').slice(0, 400);

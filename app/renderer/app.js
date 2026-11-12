@@ -1206,6 +1206,34 @@ async function getModules() {
 }
 const GET_MODS_LINK = '<a class="link" data-href="cmd:getModules">Where to get modules</a>';
 window.GET_MODS_LINK = GET_MODS_LINK;
+/* On a phone screen, a verse link tapped inside a dictionary pop-up, sheet or page (not in a Bible view) shows the normal Bible view with that
+   verse selected. The Bible is the default Old / New Testament Bible of Options → Modules; when that is "Automatic" (or does not have the
+   book), the first Bible of the list in the Bible view's name menu that has the book. With no Bible for that testament, "Where to get modules". */
+function phoneVerseLink(link) {
+  if (!document.documentElement.classList.contains('sk') || link.closest('.bv')) return false;
+  const href = link.dataset.href || '';
+  const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
+  const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
+  if (!/^tw:\/\/bible/i.test(href) || !id) return false;
+  if (bm && bm[1] && bm[1] !== '*' && resolveBibleSpec(bm[1])) return false;   // the link names a Bible that is installed: as before
+  phoneVerse(+id[1], +id[2], id[3] ? +id[3] : 1);
+  return true;
+}
+async function bibleForBook(b) {
+  const has = async bid => { const inf = await ensureInfo(bid); return !!(inf && inf.books && inf.books[b]); };
+  const pref = b >= 1 && b <= 39 ? state.settings.popupOT : b >= 40 && b <= 66 ? state.settings.popupNT : '';
+  if (pref && state.modules.bibles.some(x => x.id === pref) && await has(pref)) return pref;
+  for (const x of state.modules.bibles) if (await has(x.id)) return x.id;
+  return null;
+}
+async function phoneVerse(b, c, v) {
+  const P = window.PUI;
+  const bid = await bibleForBook(b);
+  if (P) { try { P.wordPopClose(); } catch (e) { /* none */ } try { P.closeSheet(); } catch (e) { /* none */ } try { P.clearPages(); } catch (e) { /* none */ } }
+  if (!bid) return getModules();
+  if (views()[state.active].bible !== bid) await useBible(bid);
+  return go({ b, c, v });
+}
 async function followLink(href) {
   if (!href) return;
   if (href === 'cmd:getModules') return getModules();
@@ -1314,7 +1342,7 @@ function wireUi() {
     const row = e.target.closest('.bv tr[data-v], .bv .pv[data-v]');
     if (row && !e.target.closest('button, input, select, textarea, .menu') && !String(window.getSelection()).trim()) selectVerse(+row.dataset.v, false);
     const link = e.target.closest('[data-href]');
-    if (link) { e.preventDefault(); followLink(link.dataset.href); return; }
+    if (link) { e.preventDefault(); if (phoneVerseLink(link)) return; followLink(link.dataset.href); return; }
     const t = popupTarget(e.target);
     if (t) { pin(t); return; }
   });
