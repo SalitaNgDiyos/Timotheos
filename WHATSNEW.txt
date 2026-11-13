@@ -1,3 +1,2 @@
-Timotheos 0.6.22
-- Check for updates now lists what is new in the update, written for every version.
-- (0.6.21) Phone: the information about a Bible is one tap away. Tap the (i) beside the Bible name in the reading options, or "About this Bible" at the top of the Bible list.
+Timotheos 0.6.23
+- Phone: the Back and Forward buttons at the top now remember the translation too. Going back shows the Bible you were reading in at that moment, not only the verse.

@@ -27,4 +27,12 @@
  const title=document.getElementById('lkpTitle').textContent; await sl(800);
  B.click(); await sl(2000); ok(on()===bibleId,'Back from the lookup shows the Bible again: '+on());
  F.click(); await sl(2000); ok(on()==='lib'&&document.getElementById('tab-lib').classList.contains('lookfeed')&&document.getElementById('lkpTitle').textContent===title,'Forward shows the same lookup entry again: '+document.getElementById('lkpTitle').textContent);
+ // the translation: Bible A, then Bible B on the same verse → Back shows Bible A again, Forward Bible B
+ [...document.querySelectorAll('#phonebar button')].find(b=>/^bv/.test(b.dataset.id)).click(); await sl(1200);
+ await go({b:43,c:3,v:16}); await sl(1500);
+ const bibles=(state.modules.bibles||[]).map(x=>x.id), A=views()[0].bible, Bb=bibles.find(x=>x!==A);
+ ok(!!Bb,'two Bibles are installed to switch between');
+ if(Bb){ await useBible(Bb); await sl(2200); ok(views()[0].bible===Bb,'the view now shows the other Bible');
+  B.click(); await sl(3000); ok(views()[0].bible===A&&state.ref.b===43&&state.ref.c===3,'Back shows the first Bible again on the same verse: '+views()[0].bible);
+  F.click(); await sl(3000); ok(views()[0].bible===Bb&&state.ref.b===43&&state.ref.c===3,'Forward shows the second Bible again: '+views()[0].bible); }
  console.log('RESULT '+out.join(' | '));})();

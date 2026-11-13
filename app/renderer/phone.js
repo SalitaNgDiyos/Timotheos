@@ -80,14 +80,14 @@
   const curTid = () => { const li = document.querySelector('#libTopics li.cur'); return li ? li.dataset.tid : null; };
   function snap() {
     const g = groups().find(x => holds(x, current)); if (!g || typeof state === 'undefined' || !state.nav || !state.nav.length) return null;
-    const tab = idOf(g); const s = { page: current, tab, ref: { b: state.ref.b, c: state.ref.c, v: state.ref.v } };
+    const tab = idOf(g); const s = { page: current, tab, ref: { b: state.ref.b, c: state.ref.c, v: state.ref.v }, bibles: (typeof views === 'function' ? views() : []).map(v => v.bible) };
     if (tab === 'lib' && window.TimotheosModules) {
       s.feed = window.TimotheosLookup ? TimotheosLookup.snapshot() : null;
       if (!s.feed) { s.lib = TimotheosModules.lib.cur; s.tid = curTid(); }
     }
     return s;
   }
-  const keyOf = s => [s.page, s.tab, s.ref.b + ':' + s.ref.c, s.lib, s.tid, s.feed ? s.feed.title + '/' + s.feed.html.length : ''].join('|');
+  const keyOf = s => [s.page, s.tab, s.ref.b + ':' + s.ref.c, (s.bibles || []).join(','), s.lib, s.tid, s.feed ? s.feed.title + '/' + s.feed.html.length : ''].join('|');
   function buttons() {
     const b = document.getElementById('gBack'), f = document.getElementById('gFwd'); if (!b) return;
     b.disabled = H.at <= 0 || H.busy; f.disabled = H.at >= H.list.length - 1 || H.busy;
@@ -105,7 +105,14 @@
     const n = H.at + d; if (H.busy || n < 0 || n >= H.list.length) return;
     H.busy = true; H.at = n; buttons(); const e = H.list[n];
     try {
-      if (e.ref.b !== state.ref.b || e.ref.c !== state.ref.c) await window.go({ b: e.ref.b, c: e.ref.c, v: e.ref.v });
+      // the translation belongs to the screen as much as the verse does: put each view's Bible back (kept: a Bible that is no longer installed)
+      let changed = false;
+      if (e.bibles && e.bibles.length && typeof views === 'function') {
+        const have = new Set(((state.modules && state.modules.bibles) || []).map(x => x.id));
+        const cur = views(); const vs = cur.map((v, i) => { const id = e.bibles[i]; if (!id || id === v.bible || !have.has(id)) return v; changed = true; const n = Object.assign({}, v, { bible: id }); delete n.label; return n; });
+        if (changed) { for (const id of e.bibles) if (have.has(id)) await ensureInfo(id); await setViews(vs); }
+      }
+      if (changed || e.ref.b !== state.ref.b || e.ref.c !== state.ref.c) await window.go({ b: e.ref.b, c: e.ref.c, v: e.ref.v });
       if (e.tab === 'lib') {
         if (e.feed) TimotheosLookup.restore(e.feed);
         else if (e.lib != null && (TimotheosModules.lib.cur !== e.lib || String(curTid()) !== String(e.tid))) await TimotheosModules.openBookModule(e.lib, e.tid == null ? undefined : (isNaN(+e.tid) ? e.tid : +e.tid), false);
