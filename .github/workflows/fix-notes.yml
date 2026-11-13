@@ -20,14 +20,15 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
+          set -x
           gh api "repos/$GITHUB_REPOSITORY/releases" --paginate -q '.[] | [.id, .name] | @tsv' > rel.tsv
           for f in release-notes/*.txt; do
             V=$(basename "$f" .txt)
             awk -F'\t' -v a="Timotheos_$V" -v b="Timotheos_$V (test build)" '$2==a || $2==b {print $1}' rel.tsv | while read -r id; do
               old=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" -q .body)
               tail=$(printf '%s\n' "$old" | grep -E '^(Build [0-9]+ of|Test build )' | tail -1 || true)
-              body=$(cat "$f"; [ -n "$tail" ] && printf '\n%s' "$tail")
+              body=$(cat "$f")
+              if [ -n "$tail" ]; then body="$body"$'\n\n'"$tail"; fi
               jq -n --arg b "$body" '{body:$b}' | gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$id" --input - -q .name
             done
           done
