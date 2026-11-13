@@ -24,7 +24,7 @@ Notes:
 - **Android**: the app also uses AndroidX Core KTX and the Kotlin standard library (Apache-2.0), the Tauri Android runtime
   (MIT or Apache-2.0) and the phone's own system web view and text-to-speech engine, which are not part of Timotheos. The
   Gradle build's own transitive packages are listed by Gradle at build time and are not reproduced here.
-- **Online services**: Timotheos runs no service of its own and needs none. Its "Download modules" window fetches,
+- **Online services**: Timotheos runs no service of its own and needs none. It also looks up the newest Timotheos release on GitHub (api.github.com) when it starts, unless the user turns that off, and when the user presses Check for updates; nothing about the user is sent. Its "Download modules" window fetches,
   only when the user asks, a list and a module file from the repository the user chose (the Timotheos catalog on GitHub,
   eBible.org, or an address the user added). Those sites and what they offer are not part of Timotheos and stay under
   their publishers' terms. Bible modules the user opens (theWord, e-Sword, USFM) are the user's own files and keep the

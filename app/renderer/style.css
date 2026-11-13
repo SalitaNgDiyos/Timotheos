@@ -525,3 +525,15 @@ html.sk .dlmods .dllist { max-height: 44vh; } html.sk .dlmods .dlget, html.sk .d
 /* Check for updates */
 .updates .upnew { font-weight: 600; } .updates .uperr { color: #b3261e; }
 .updates .upnotes { white-space: pre-wrap; max-height: 40vh; overflow: auto; font: inherit; font-size: .92em; margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: rgba(128,128,128,.12); }
+/* the quiet look at start-up found a newer version: a centred card (what is new; download and install, or ignore) */
+.updn { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.updn .updn-box { background: var(--card, #fff); color: var(--text, #222); border-radius: 22px; padding: 24px; width: min(420px, 100%); max-height: 90vh; overflow: auto; box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+.updn h3 { margin: 0; font-size: 22px; }
+.updn .updn-v { margin: 2px 0 12px; font-size: 13px; font-weight: 600; color: var(--accent, #8a5a12); }
+.updn h4 { margin: 0 0 4px; font-size: 13px; color: var(--muted, #777); font-weight: 600; }
+.updn .updn-list { margin: 0 0 16px 18px; padding: 0; line-height: 1.5; font-size: 14px; }
+.updn button { display: block; width: 100%; border: 0; border-radius: 14px; padding: 13px; font: 600 15px inherit; cursor: pointer; }
+.updn .updn-go { background: var(--accent, #8a5a12); color: var(--card, #fff); }
+.updn .updn-go:disabled { opacity: .55; }
+.updn .updn-no { background: none; color: var(--muted, #777); padding: 12px 0 0; font-size: 14px; }
+.updn #upState { margin: 8px 0; }

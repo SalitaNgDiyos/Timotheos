@@ -1,2 +1,3 @@
-Timotheos 0.6.27
-- A Tagalog Bible (for example AMB) now shows Tagalog book names: Juan, Mga Awit, Pahayag, ... An English Bible keeps the English names.
+Timotheos 0.6.28
+- When Timotheos starts it looks quietly for a newer version. If there is one, a card tells you what is new and offers Download and install, or Ignore. You can turn this off in Check for updates.
+- Phone: at the end of every chapter there is a card to go on to the next chapter, with the chapter before it and All chapters beneath.

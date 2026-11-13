@@ -650,6 +650,18 @@
   if(r){ click(r); await sl(1200); ok(shown(),'the row opens the Bible information'); hide(); await sl(300); }
   await closeMenus();
  });
+ await T('next chapter',async()=>{
+  await go({b:43,c:3,v:16}); await sl(1200); await closeMenus();
+  const card=()=>$('.bv.active .nextch .nc-card')||$('.nextch .nc-card');
+  let c=card(); ok(!!c&&/\b4\b/.test(c.textContent),'the end of the chapter has the card to the next chapter: '+(c?c.querySelector('b').textContent:'none'));
+  const pv=$('.nextch [data-nc="prev"]'); ok(!!pv&&/2/.test(pv.textContent),'the chapter before is under it: '+(pv?pv.textContent:'none'));
+  ok(!!$('.nextch [data-nc="all"]'),'All chapters is there');
+  await sl(1500); const pre=$('.nextch .nc-pv'); ok(!!pre&&pre.textContent.length>3,'the card shows the first words of the next chapter: '+(pre?pre.textContent:''));
+  if(c){ click(c); await sl(2000); ok(state.ref.b===43&&state.ref.c===4,'tapping it goes to chapter 4: '+state.ref.c); c=card(); ok(!!c&&/5/.test(c.textContent),'and the card now leads to chapter 5'); }
+  const p2=$('.nextch [data-nc="prev"]'); if(p2){ click(p2); await sl(2000); ok(state.ref.c===3,'the chapter before goes back to 3: '+state.ref.c); }
+  await go({b:66,c:22,v:1}); await sl(1500); ok(!$('.nextch .nc-card')&&/End of the Bible/.test(($('.nextch')||{}).textContent||''),'after the last chapter: End of the Bible');
+  await go({b:43,c:3,v:16}); await sl(800);
+ });
  await T('bible drop',async()=>{
   await go({b:43,c:3,v:16}); await sl(500); await closeMenus();
   let lab; if(SK==='a'){ SkinA.showChrome(true,false); await sl(250); lab=$('.a-chrome .lab em'); } else if(SK==='b') lab=$('.b-big [data-a="bible"]'); else lab=$('.c-rail [data-a="bible"]');

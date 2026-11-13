@@ -168,6 +168,11 @@
   <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
   <li><i>Panels → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
 </ul>
+<h3>New in 0.6.28</h3>
+<ul>
+<li><b>New version at start-up:</b> when Timotheos starts it looks quietly for a newer version. If there is one, a card tells you what is new and offers <b>Download and install</b> or <b>Ignore</b> (Ignore: that version is not offered again; a newer one is). Nothing shows when there is nothing new or there is no connection. You can turn this off with <i>Look for a new version when Timotheos starts</i> in the <i>Check for updates</i> window.</li>
+<li><b>Phone: next chapter.</b> At the end of every chapter there is a card to go on to the next chapter (with its first words), with the chapter before it and <b>All chapters</b> beneath.</li>
+</ul>
 <h3>New in 0.6.27</h3>
 <ul><li>A <b>Tagalog Bible</b> shows <b>Tagalog book names</b> (Juan, Mga Awit, Pahayag, ...). An English Bible keeps the English names.</li></ul>
 <h3>New in 0.6.26</h3>
@@ -212,7 +217,7 @@
 </ul>
 <h3>New in 0.6.11</h3>
 <ul>
-  <li><b>Check for updates:</b> <i>Help → Check for Updates…</i> (on the phone: <i>More → Help → Check for updates</i>, or the button in <i>About</i>) looks up the newest published release on GitHub and tells you if yours is older, with a button to its download page. It goes on the internet only when you press it, and installs nothing.</li>
+  <li><b>Check for updates:</b> <i>Help → Check for Updates…</i> (on the phone: <i>More → Help → Check for updates</i>, or the button in <i>About</i>) looks up the newest published release on GitHub and tells you if yours is older, with a button to its download page. It installs nothing by itself (since 0.6.28 it also looks quietly when Timotheos starts; see below).</li>
 </ul>
 <h3>New in 0.6.10</h3>
 <ul>
@@ -512,7 +517,7 @@
   <li><b>eBible.org</b>: Bibles in very many languages that their publishers allow to be shared. Type a language or a title to find one.</li>
   <li><b>Add a repository…</b>: paste the address of a catalog that another site publishes for Timotheos. <i>Remove this one</i> takes it out of the list again.</li>
 </ul>
-<p>Click <b>Download</b> beside a module. Timotheos fetches it, imports it and says when it is in your library. Timotheos uses the internet only in this window and only when you ask; nothing about you or your study is sent.</p>
+<p>Click <b>Download</b> beside a module. Timotheos fetches it, imports it and says when it is in your library. In this window Timotheos uses the internet only when you ask. (The only other time is the look for a new version of Timotheos itself, see <i>Check for updates</i>.) Nothing about you or your study is sent.</p>
 <p><b>Making a catalog.</b> A catalog is a small text file (JSON) on a web site with an <code>https</code> address: <code>{ "name": "…", "about": "…", "modules": [ { "title": "…", "url": "https://…/module.ont", "language": "…", "kind": "Bible", "description": "…", "licence": "…", "size": 1234567 } ] }</code>. Only <code>title</code> and <code>url</code> are needed. List only modules you have the right to share.</p>
 <h3>Where to get modules</h3>
 <p><i>File → Where to Get Modules…</i> opens this list with links you can click:</p>
@@ -702,7 +707,7 @@
 <p>Tap a verse reference inside a word pop-up or a dictionary entry and the pop-up closes and the Bible shows that verse, selected. The Bible is your default Old or New Testament Bible (<i>Options → Modules</i>); when that is on <i>The first open Bible</i>, it is the first Bible in the list of the Bible view's name menu that has the book. If no Bible has it, Timotheos shows where to get Bibles.</p>
 <h3>Download modules inside Timotheos</h3>
 <p><i>Modules → Download modules</i> lists modules you can fetch without leaving the app. Choose a <b>repository</b> at the top: <b>Timotheos</b> (from the author), <b>eBible.org</b> (Bibles in very many languages; type a language or a title to find one), or one you added with <b>Add a repository…</b>.</p>
-<p>Tap <b>Download</b> beside a module. Timotheos fetches it, imports it and says when it is in your library. A whole Bible is a few megabytes. Timotheos uses the internet only in this window and only when you ask.</p>
+<p>Tap <b>Download</b> beside a module. Timotheos fetches it, imports it and says when it is in your library. A whole Bible is a few megabytes. In this window Timotheos uses the internet only when you ask. (The only other time is the look for a new version of Timotheos itself.)</p>
 <h3>Where to get modules</h3>
 <p><i>Modules → Where to get modules</i> opens this list with links you can tap:</p>
 <ul>

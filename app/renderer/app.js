@@ -109,6 +109,7 @@ async function init() {
   api.onMenu(cmd => runCommand(cmd));
   TimotheosTitlebar.init();
   TimotheosProps.init();
+  setTimeout(() => { try { TimotheosUpdates.startup(); } catch (e) { /* the quiet look at start-up never gets in the way */ } }, 5000);
   if (window.TimotheosI18n) TimotheosI18n.apply(state.settings.lang || 'en');
   if (api.onExternalSync) api.onExternalSync(handleExternalSync);
 }
@@ -974,6 +975,38 @@ async function renderChapter(scroll, only) {
   TimotheosStudy.renderTree();
 }
 window.renderChapter = renderChapter;
+/** the chapter before (-1) or after (1) a chapter, over the books of the Bibles on screen; null at the ends */
+function adjChapter(b, c, d) {
+  const i = state.nav.findIndex(x => x.id === b); if (i < 0) return null;
+  const list = state.nav[i].chapterList, j = list.indexOf(c) + d;
+  if (j < 0) { const p = state.nav[i - 1]; return p ? { b: p.id, c: p.chapterList[p.chapterList.length - 1] } : null; }
+  if (j >= list.length) { const n = state.nav[i + 1]; return n ? { b: n.id, c: n.chapterList[0] } : null; }
+  return { b, c: list[j] };
+}
+const chapName = (b, c) => { const k = state.nav.find(x => x.id === b); return `${k ? k.name : (window.BOOK_ABBR || {})[b] || b} ${c}`; };
+/** phone: at the end of a chapter, a card to go on to the next one (with the first words of it), and the one before */
+function chapterFoot(i, b, c) {
+  if (!document.documentElement.classList.contains('sk')) return '';
+  const nx = adjChapter(b, c, 1), pv = adjChapter(b, c, -1);
+  return `<div class="nextch" data-pane="${i}">${nx
+    ? `<button type="button" class="nc-card" data-nc="next" data-b="${nx.b}" data-c="${nx.c}"><span class="nc-t"><small>NEXT CHAPTER</small><b>${esc(chapName(nx.b, nx.c))}</b><i class="nc-pv"></i></span><span class="nc-arr">›</span></button>`
+    : '<p class="nc-end">End of the Bible</p>'}
+    <div class="nc-sub">${pv ? `<button type="button" data-nc="prev" data-b="${pv.b}" data-c="${pv.c}">‹ ${esc(chapName(pv.b, pv.c))}</button><span>·</span>` : ''}<button type="button" data-nc="all">All chapters</button></div></div>`;
+}
+async function chapterFootPreview(sec, id, nx) {
+  const el = sec.querySelector('.nc-pv'); if (!el || !nx) return;
+  try {
+    const d = await api.chapter([id], nx.b, nx.c); const r = d.rows.find(x => x.cells[0] != null && x.v > 0); if (!r) return;
+    const t = String(r.cells[0]).replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+    if (el.isConnected && t) el.textContent = t.length > 56 ? t.slice(0, 55).replace(/\s\S*$/, '') + '…' : t;
+  } catch (e) { /* the card works without it */ }
+}
+document.addEventListener('click', e => {
+  const x = e.target.closest('.nextch [data-nc]'); if (!x) return;
+  if (x.dataset.nc === 'all') { if (window.PUI && PUI.goSheetGrid) PUI.goSheetGrid(); return; }
+  const pn = +x.closest('.nextch').dataset.pane; if (views()[pn]) state.active = pn;
+  go({ b: +x.dataset.b, c: +x.dataset.c, v: 1 });
+});
 async function renderPane(i, scroll, seq) {
   const v = views()[i]; const sec = panes()[i]; if (!v || !sec) return;
   const id = v.bible; const { b, c } = refOfView(i); const vv = refOfView(i).v;
@@ -1011,7 +1044,9 @@ async function renderPane(i, scroll, seq) {
     html += '</div></div>';
   }
   const t = sec.querySelector('.bvtext'); const keep = t.scrollTop;
-  t.innerHTML = html; t.dataset.layout = layout;
+  const foot = rows.length ? chapterFoot(i, b, c) : '';
+  t.innerHTML = html + foot; t.dataset.layout = layout;
+  if (foot) chapterFootPreview(sec, id, adjChapter(b, c, 1));
   if (show.tags) t.dataset.tags = '1'; else delete t.dataset.tags;
   applyPaneLook(sec, i);
   t.classList.toggle('colmode', !!show.columns);
@@ -1282,11 +1317,11 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.27')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.28')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
-    <tr><th>Updates</th><td><button type="button" class="pill" id="aboutUpdates">Check for updates</button> <span class="small">Looks up the newest release on GitHub, only when you press this.</span></td></tr>
+    <tr><th>Updates</th><td><button type="button" class="pill" id="aboutUpdates">Check for updates</button> <span class="small">Looks up the newest release on GitHub: when you press this, and quietly when Timotheos starts (you can turn that off there).</span></td></tr>
     <tr><th>Problem report</th><td><button type="button" class="pill" id="aboutReport">Copy problem report</button> <span class="small">The version, this device, how the Bible views are set, the last buttons used and any errors, as text to paste when you report a problem. Nothing is sent.</span></td></tr>
     <tr><th>Program folder</th><td><code class="sel">${esc(s.appDir || '')}</code></td></tr>
     <tr><th>Your data folder</th><td><code class="sel">${esc(s.userDataDir || '')}</code>${s.portable ? ' (portable mode)' : ''}</td></tr>

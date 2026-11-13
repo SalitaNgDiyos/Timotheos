@@ -258,3 +258,18 @@ html.sk select option, html.sk select optgroup { background-color: var(--p-surf)
 /* module information, one tap away: the (i) beside the Bible name in the reading sheet and the row in the Bible list */
 .pbi { display: inline-flex; align-items: center; gap: 8px; }
 .bvmenu .bvinfo { display: block; width: 100%; text-align: left; margin: 2px 0 6px; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--card); color: var(--text); font: 600 14px/1.2 inherit; }
+/* end of a chapter (phone): the card to the next chapter */
+.nextch { padding: 26px 18px 110px; }
+.nextch .nc-card { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--p-surf, rgba(128,128,128,.1)); border: 1px solid var(--p-line, rgba(128,128,128,.28)); border-radius: 20px; padding: 18px 20px; color: var(--p-ink, inherit); font: inherit; }
+.nextch .nc-t { flex: 1; min-width: 0; }
+.nextch .nc-t small { display: block; font: 600 11px var(--p-ui, sans-serif); letter-spacing: .18em; color: var(--p-acc, currentColor); }
+.nextch .nc-t b { display: block; font-weight: 700; font-size: 24px; line-height: 1.2; margin: 4px 0 2px; }
+.nextch .nc-pv { display: block; font-style: italic; font-size: 15px; line-height: 1.3; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nextch .nc-pv:empty { display: none; }
+.nextch .nc-arr { flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--p-acc, #6fd3b5); color: var(--p-onacc, #0d0f13); display: flex; align-items: center; justify-content: center; font: 600 24px var(--p-ui, sans-serif); }
+.nextch .nc-sub { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 14px; font: 400 14px var(--p-ui, sans-serif); color: var(--p-ink, inherit); opacity: .75; }
+.nextch .nc-sub button { background: none; border: 0; color: inherit; font: inherit; padding: 8px 6px; }
+.nextch .nc-end { text-align: center; opacity: .6; margin: 0; }
+html.sk .updn .updn-box { background: var(--p-sheet, var(--card)); color: var(--p-ink, var(--text)); }
+html.sk .updn .updn-go { background: var(--p-acc, var(--accent)); color: var(--p-onacc, #fff); }
+html.sk .updn .updn-v { color: var(--p-acc, var(--accent)); }

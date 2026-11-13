@@ -103,7 +103,7 @@ const TimotheosDownload = (() => {
     if (!rs.some(r => r.id === current)) current = 'timotheos';
     const cur = rs.find(r => r.id === current);
     return `<div class="dlmods">
-      <p class="small dlnote">Timotheos uses the internet only here, and only when you ask: to fetch the list of a repository and the module you choose. Nothing about you or your study is sent.</p>
+      <p class="small dlnote">Here Timotheos uses the internet only when you ask: to fetch the list of a repository and the module you choose. (The only other time is the look for a new version of Timotheos, see Check for updates.) Nothing about you or your study is sent.</p>
       <div class="dlbar"><label>Repository <select id="dlRepo">${rs.map(r => `<option value="${r.id}"${r.id === current ? ' selected' : ''}>${E(r.name)}</option>`).join('')}</select></label>
         <button type="button" id="dlAddBtn">Add a repository…</button>${cur.user ? '<button type="button" id="dlRemove">Remove this one</button>' : ''}</div>
       <div id="dlAdd" class="dladd hidden"><label>Address of a catalog (https://…) <input id="dlAddUrl" type="url" placeholder="https://example.org/catalog.json" autocomplete="off" spellcheck="false"></label>

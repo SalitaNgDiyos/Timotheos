@@ -2,7 +2,7 @@
  * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
 // "Check for updates": asks GitHub which release of Timotheos is the newest published one and compares its version with this one.
-// It runs only when the user asks (Help → Check for Updates, or the button in About). Nothing is installed and nothing is sent
+// It runs when the user asks (Help → Check for Updates, or the button in About) and, quietly, once when Timotheos starts (the user can turn that off in the Check for updates window). Nothing is installed and nothing is sent
 // except the request itself; a newer version is shown with "Download and install" (Windows, Android, Linux: the file is fetched here, checked against its SHA-256 fingerprint, then given to the installer) and a button that opens its download page.
 const TimotheosUpdates = (() => {
   const E = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -73,7 +73,7 @@ const TimotheosUpdates = (() => {
   async function check() {
     if (!net()) return TimotheosModules.messageBox('Check for updates', '<p>This build of Timotheos cannot go on the internet. Look for a newer version at <a class="link" data-href="' + PAGE + '">' + PAGE + '</a>.</p>');
     const me = here(); const withTest = !!(state.settings && state.settings.updTest); let result, html, btns = [{ label: 'Close', value: null, primary: true }];
-    const shell = h => `<div class="updates"><p>Installed: <b>Timotheos ${E(me)}</b></p>${h}<p><label><input type="checkbox" id="upTest"${withTest ? ' checked' : ''}> Include test builds</label></p><p class="small">Timotheos goes on the internet here only when you ask, to read the newest release on GitHub. Nothing is installed or sent.</p></div>`;
+    const shell = h => `<div class="updates"><p>Installed: <b>Timotheos ${E(me)}</b></p>${h}<p><label><input type="checkbox" id="upTest"${withTest ? ' checked' : ''}> Include test builds</label></p><p><label><input type="checkbox" id="upAuto"${(state.settings && state.settings.updAuto === false) ? '' : ' checked'}> Look for a new version when Timotheos starts</label></p><p class="small">Timotheos goes on the internet here only to read the newest release on GitHub: when you ask, and when it starts unless you turn that off. Nothing is installed or sent.</p></div>`;
     const p = TimotheosModules.modal('Check for updates', shell('<p id="upState">Looking for the newest version…</p>'), btns);
     try {
       result = await ask(withTest);
@@ -88,11 +88,46 @@ const TimotheosUpdates = (() => {
     if (box && !document.querySelector('#modal').classList.contains('hidden')) {
       box.innerHTML = shell(html).replace(/^<div class="updates">|<\/div>$/g, '');
       const tb = box.querySelector('#upTest'); if (tb) tb.onchange = async () => { await save({ updTest: tb.checked }); const c = document.querySelector('#modalBtns button'); if (c) c.click(); setTimeout(check, 150); };
+      const au = box.querySelector('#upAuto'); if (au) au.onchange = () => save({ updAuto: au.checked });
       const dobtn = box.querySelector('#upDo'); if (dobtn) dobtn.onclick = () => { dobtn.disabled = true; getAndInstall(result, fileFor(result)).finally(() => { if (dobtn.isConnected) dobtn.disabled = false; }); };
       const g = box.querySelector('#upGet'); if (g) g.onclick = () => api.openExternal(g.dataset.href);
     }
     await p;
   }
-  return { check, compare, read, fileFor };
+  /* ---- the quiet look at start-up: nothing is shown unless a newer version exists (and was not ignored) ---- */
+  const quiet = () => { try { const i = TimotheosHost.info(), r = env(); return !!(i.env && i.env.TIMOTHEOS_SCRIPT) && r.startup !== true; } catch (e) { return true; } };   // the test runs do not go looking
+  /** the lines of a release's notes that say what changed (not the build line GitHub adds) */
+  const noteLines = t => String(t || '').split(/\r?\n/).map(l => l.replace(/^\s*[-*•]\s*/, '').trim()).filter(l => l && !/^Timotheos \d/.test(l) && !/^(Test build|Build) \d/.test(l) && !/^Not a finished release/.test(l)).slice(0, 8);
+  function notice(r) {
+    if (document.getElementById('updNotice')) return;
+    const f = fileFor(r), canGet = !!(f && net()), lines = noteLines(r.notes);
+    const d = document.createElement('div'); d.id = 'updNotice'; d.className = 'updn'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'updnT');
+    d.innerHTML = `<div class="updn-box updates"><h3 id="updnT">A new version is ready</h3><div class="updn-v">Timotheos ${E(r.latest)}${r.test ? ' (test build)' : ''}</div>
+      ${lines.length ? `<h4>What is new</h4><ul class="updn-list">${lines.map(l => `<li>${E(l)}</li>`).join('')}</ul>` : ''}
+      <p id="upState" class="small"></p><div id="upProg"></div>
+      <button type="button" class="updn-go" id="updnGo">${canGet ? 'Download and install' : 'Open the download page'}</button>
+      <button type="button" class="updn-no" id="updnNo">Ignore</button></div>`;
+    document.body.appendChild(d);
+    const go = d.querySelector('#updnGo'), no = d.querySelector('#updnNo'); let busy = false;
+    const close = () => { document.removeEventListener('keydown', key, true); d.remove(); };
+    const key = e => { if (e.key === 'Escape' && !busy) { e.stopPropagation(); close(); } };   // Escape: not now (it asks again next time)
+    document.addEventListener('keydown', key, true);
+    no.onclick = async () => { if (busy) return; if (no.dataset.close) return close(); try { await save({ updIgnore: r.latest }); } catch (e) { /* kept for this run only */ } close(); };
+    go.onclick = () => {
+      if (!canGet) { api.openExternal(r.url); return close(); }
+      busy = true; go.disabled = true; no.textContent = 'Close'; no.dataset.close = '1'; no.disabled = true;
+      getAndInstall(r, f).finally(() => { busy = false; go.disabled = false; no.disabled = false; });
+    };
+    setTimeout(() => go.focus(), 30);
+  }
+  async function startup() {
+    const s = state.settings || {};
+    if (s.updAuto === false || !net() || quiet()) return;
+    let r; try { r = await ask(!!s.updTest); } catch (e) { return; }   // no connection, no release, ...: nothing to say
+    if (compare(r.latest, here()) <= 0) return;
+    if (s.updIgnore && compare(s.updIgnore, r.latest) >= 0) return;   // "Ignore": this version is not offered again (a newer one is)
+    notice(r);
+  }
+  return { check, compare, read, fileFor, startup, noteLines };
 })();
 window.TimotheosUpdates = TimotheosUpdates;
