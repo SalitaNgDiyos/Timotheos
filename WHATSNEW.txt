@@ -1,2 +1,2 @@
-Timotheos 0.6.24
-- New app icon: the gold sword on blue dragon scales, in the gold frame (phone, Windows and Linux).
+Timotheos 0.6.25
+- Phone: the app icon no longer has a dark border around it. The icon fills its whole space, with the gold frame as the edge.
