@@ -259,7 +259,9 @@ html.sk select option, html.sk select optgroup { background-color: var(--p-surf)
 .pbi { display: inline-flex; align-items: center; gap: 8px; }
 .bvmenu .bvinfo { display: block; width: 100%; text-align: left; margin: 2px 0 6px; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--card); color: var(--text); font: 600 14px/1.2 inherit; }
 /* end of a chapter (phone): the card to the next chapter */
-.nextch { padding: 26px 18px 110px; }
+.nextch { padding: 26px 18px 8px; }
+html.sk .bv .bvtext:has(.nextch) { padding-bottom: calc(min(var(--rd-bot, 150px), 84px) + var(--nav-h, 0px)) !important; }
+html.sk.psplitting .bv .bvtext:has(.nextch) { padding-bottom: 24px !important; }
 .nextch .nc-card { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--p-surf, rgba(128,128,128,.1)); border: 1px solid var(--p-line, rgba(128,128,128,.28)); border-radius: 20px; padding: 18px 20px; color: var(--p-ink, inherit); font: inherit; }
 .nextch .nc-t { flex: 1; min-width: 0; }
 .nextch .nc-t small { display: block; font: 600 11px var(--p-ui, sans-serif); letter-spacing: .18em; color: var(--p-acc, currentColor); }

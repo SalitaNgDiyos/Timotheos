@@ -4,7 +4,7 @@
   "license": "AGPL-3.0-or-later",
   "author": "Edmund P. Valdez",
   "repository": "https://github.com/SalitaNgDiyos/Timotheos",
-  "version": "0.6.29",
+  "version": "0.6.30",
   "description": "Timotheos – offline Bible study for theWord and e-Sword modules (Tauri 2: Windows, Linux, Android)",
   "scripts": {
     "build:web": "node scripts/build-web.mjs",

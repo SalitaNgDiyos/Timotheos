@@ -1,4 +1,5 @@
-Timotheos 0.6.29
+Timotheos 0.6.30
+- Phone: removed the large empty gap under the next-chapter card at the bottom of the Bible view.
 - Library: a dictionary with sub-topics shows them under their entry. In Bible Greek Definitions each Greek word now lists its G-numbers under it (they were not shown before).
 - When Timotheos starts it looks quietly for a newer version. If there is one, a card tells you what is new and offers Download and install, or Ignore. You can turn this off in Check for updates.
 - Phone: at the end of every chapter there is a card to go on to the next chapter, with the chapter before it and All chapters beneath.

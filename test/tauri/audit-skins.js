@@ -656,6 +656,7 @@
   let c=card(); ok(!!c&&/\b4$/.test(c.querySelector('b').textContent),'the end of the chapter has the card to the next chapter: '+(c?c.querySelector('b').textContent:'none'));
   const pv=$('.nextch [data-nc="prev"]'); ok(!!pv&&/2/.test(pv.textContent),'the chapter before is under it: '+(pv?pv.textContent:'none'));
   ok(!!$('.nextch [data-nc="all"]'),'All chapters is there');
+  { const t=$('.nextch').closest('.bvtext'); const pb=t?parseFloat(getComputedStyle(t).paddingBottom):999; ok(pb<=120+(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'))||0),'no large empty gap under the card (bottom padding '+pb+'px)'); }
   await sl(1500); const pre=$('.nextch .nc-pv'); ok(!!pre&&pre.textContent.length>3,'the card shows the first words of the next chapter: '+(pre?pre.textContent:''));
   if(c){ click(c); await sl(2000); ok(state.ref.b===43&&state.ref.c===4,'tapping it goes to chapter 4: '+state.ref.c); c=card(); ok(!!c&&/5/.test(c.textContent),'and the card now leads to chapter 5'); }
   const p2=$('.nextch [data-nc="prev"]'); if(p2){ click(p2); await sl(2000); ok(state.ref.c===3,'the chapter before goes back to 3: '+state.ref.c); }
