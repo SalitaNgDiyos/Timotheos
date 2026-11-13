@@ -284,7 +284,7 @@ function tagalogBook(b) {
 function isTagalogBible(m) {
   if (!m) return false;
   const lang = String((m.props && (m.props.lang || m.props.language)) || (m.cfg && (m.cfg.lang || m.cfg.language)) || '').trim().toLowerCase();
-  if (/^(tl|tgl|fil|tagalog|filipino)/.test(lang)) return true;
+  if (/^(tl|tgl|fil|flo|tagalog|filipino)/.test(lang)) return true;
   return /tagalog|filipino|\b(AMB|ADB|MBBTAG|ASND)\b|ang dating biblia|malayang biblia|magandang balita|ang biblia|ang salita ng diyos/i.test(`${m.title || ''} ${m.abbr || ''}`);
 }
 
