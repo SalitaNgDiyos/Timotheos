@@ -131,7 +131,10 @@ jobs:
           TAG="build-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
           V=$(node -p "require('./package.json').version")
           # the title is the files' own name with the version (Timotheos_0.6.17); the tag stays unique per build
-          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Timotheos_$V" --notes "Timotheos $V, build ${GITHUB_RUN_NUMBER} of ${GITHUB_SHA::7}" out/*
+          # "What is new" in Check for updates is WHATSNEW.txt: it must be written for every version (the build stops if it is not)
+          head -1 WHATSNEW.txt | grep -q "Timotheos $V" || { echo "WHATSNEW.txt must begin with: Timotheos $V"; exit 1; }
+          { cat WHATSNEW.txt; echo; echo "Build ${GITHUB_RUN_NUMBER} of ${GITHUB_SHA::7}"; } > notes.txt
+          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "Timotheos_$V" --notes-file notes.txt out/*
       - name: Keep the newest test build in the pre-release "test" (what Check for updates reads when "Include test builds" is on)
         # Only pushes to timotheos-tauri. The one pre-release is replaced each time. (A release made with the workflow's own token
         # does not start another build.)
@@ -140,8 +143,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           V=$(node -p "require('./package.json').version")
+          { cat WHATSNEW.txt; echo; echo "Test build ${V} of ${GITHUB_SHA::7}. Not a finished release: the files are replaced by the next test build."; } > notes.txt
           gh release delete test -R "$GITHUB_REPOSITORY" --cleanup-tag -y >/dev/null 2>&1 || true
-          gh release create test -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Timotheos_$V (test build)" --notes "Test build ${V} of ${GITHUB_SHA::7}. Not a finished release: the files are replaced by the next test build." out/*
+          gh release create test -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Timotheos_$V (test build)" --notes-file notes.txt out/*
 
   release:
     if: github.event_name == 'release'
