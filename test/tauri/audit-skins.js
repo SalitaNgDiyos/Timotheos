@@ -370,6 +370,14 @@
   delete window.TwBars; R.classList.remove('tw-edge'); R.style.removeProperty('--nav-h'); await sl(200); });
  // ---------- word pop-up: drag it anywhere ----------
  await T('word popup',async()=>{
+  { // the header: 'word - from G####, morph' (0.6.18); only the word when it has no Strong's number (0.6.19)
+   PUI.wordPop({word:'na nagsasabing',strongs:['G3004'],morphs:['V-PAP-NSM']}); await sl(500); let hb=$('#pWordPop .pwbar');
+   ok(!!hb&&hb.querySelector('b').textContent==='na nagsasabing'&&hb.querySelector('.pwk').textContent.trim()==='- from G3004, V-PAP-NSM','header reads “na nagsasabing - from G3004, V-PAP-NSM” ('+(hb&&hb.querySelector('.pwk')||{}).textContent+')');
+   const k=hb.querySelector('.pwk'), bb=hb.querySelector('b'), x=hb.querySelector('.pwx'); ok(k.scrollWidth<=k.clientWidth+1&&bb.scrollWidth<=bb.clientWidth+1&&k.getBoundingClientRect().right<=x.getBoundingClientRect().left+1,'it all fits beside the close button');
+   PUI.wordPop({word:'at ang nagsasalita',strongs:['G3004','G2532'],morphs:['V-PAP-NSM','CONJ']}); await sl(400); hb=$('#pWordPop .pwbar'); { const k2=hb.querySelector('.pwk'),b2=hb.querySelector('b'); ok(k2.scrollWidth<=k2.clientWidth+1&&k2.getBoundingClientRect().right<=hb.querySelector('.pwx').getBoundingClientRect().left+1&&hb.getBoundingClientRect().height<=64,'a long one goes onto a second line, nothing cut off ('+Math.round(hb.getBoundingClientRect().height)+'px)'); }
+   PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[]}); await sl(400); hb=$('#pWordPop .pwbar'); ok(hb.querySelector('.pwk').textContent.trim()==='- from G5485','no morph code: “- from G5485” with no comma');
+   PUI.wordPop({word:'grace',strongs:[],morphs:[]}); await sl(400); hb=$('#pWordPop .pwbar'); ok(!hb.querySelector('.pwk')&&!/from/.test(hb.textContent),'no Strong\'s number: only the word');
+   PUI.wordPopClose(); await sl(300); }
   if(SK==='b'){ PUI.wordPop({word:'grace',strongs:['G5485'],morphs:[],el:row(1)}); } else { row(1).scrollIntoView({block:'center'}); await sl(200); const w=row(1).querySelector('.word[data-strong]')||row(1).querySelector('.word'); tapAt(w,.5,.5); }
   await sl(1200); let pop=$('#pWordPop'); ok(!!pop,'the word pop-up opens'); if(!pop) return;
   let bar=pop.querySelector('.pwbar'); const r0=pop.getBoundingClientRect(), b=bar.getBoundingClientRect();

@@ -233,8 +233,9 @@ html.sk-a.psplitting .bv .bvtext .sk-ttl { position: sticky; top: 0; z-index: 6;
 .pwpop .pwbar { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; border-bottom: 1px solid var(--p-line); font: 600 15px var(--p-ui); position: relative; }
 .pwpop.moving .pwbar { cursor: grabbing; }
 .pwpop .pwgrip { position: absolute; left: 50%; top: 4px; width: 36px; height: 4px; margin-left: -18px; border-radius: 2px; background: var(--p-muted); opacity: .45; }
-.pwpop .pwbar b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pwpop .pwk { color: var(--p-acc); font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pwpop .pwbar .pwt { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 1px; }   /* "- from G####, morph" goes onto a second line when it does not fit beside the word */
+.pwpop .pwbar b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pwpop .pwk { color: var(--p-acc); font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; }
 .pwpop .pwk .pwfrom { color: var(--p-muted); font-weight: 400; }
 .pwpop .grow { flex: 1; }
 .pwpop .pwx { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--p-ink2); display: grid; place-items: center; flex: none; }
