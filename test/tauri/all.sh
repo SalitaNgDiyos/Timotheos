@@ -20,4 +20,5 @@ for t in ${TESTS:-features dock copy zoom titlebar views books text tools librar
   echo "== $t: $n ok $(echo "$r" | tr '|' '\n' | grep -E '✗|NO RESULT|ERROR' | cut -c1-200)"
 done
 echo "== unit: $(node test/unit/studybackup.test.js 2>&1 | tail -1)"
+echo "== unit: $(node test/unit/bigdict.test.js 2>&1 | tail -1)"
 echo "== licence: $(node scripts/check-licence.mjs | tail -3 | tr '\n' ' ')"

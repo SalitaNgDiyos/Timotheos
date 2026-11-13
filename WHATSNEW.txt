@@ -1,2 +1,2 @@
-Timotheos 0.6.25
-- Phone: the app icon no longer has a dark border around it. The icon fills its whole space, with the gold frame as the edge.
+Timotheos 0.6.26
+- Library: a big dictionary now lists all of its entries, in the order of the module, instead of only the first 500. The first entries of Bible Greek Definitions (Start here, Appendix, Unused Strong's numbers, ...) show again, and entries the module hides stay hidden.

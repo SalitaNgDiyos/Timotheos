@@ -134,6 +134,7 @@ function openTheWord(db, tabs, stub) {
   const hasOrig = tcols.map(c => c.toLowerCase()).includes('strong_orig_word');
   let fileSize = 0;
   try { fileSize = fs.statSync(stub.file).size; } catch (e) { /* ignore */ }
+  const WINDOW_AT = 300000;   // topics above this many are listed 500 at a time by id
   let _statsLoaded = false, hasWordIndex = false, hasSubjectIndex = false, approxTopics = 0, isHugeTopics = fileSize > 40 * 1024 * 1024;
   function ensureStats() {
     if (_statsLoaded) return;
@@ -143,7 +144,7 @@ function openTheWord(db, tabs, stub) {
       const maxIdRow = one(db, `select max(id) from ${tabs.topics}`);
       approxTopics = (maxIdRow && +maxIdRow[0] > 0) ? +maxIdRow[0] : 0;
       if (approxTopics > 10000) isHugeTopics = true;
-      mod.totalTopics = approxTopics;
+      mod.totalTopics = approxTopics > WINDOW_AT ? approxTopics : 0;   // only an enormous module is listed in part
       if (isHugeTopics && !hasWordIndex) {
         try {
           for (const idx of all(db, `pragma index_list("${tabs.topics}")`)) {
@@ -193,8 +194,10 @@ function openTheWord(db, tabs, stub) {
     ensureStats();
     const rList = getRefs();
     if (tabs.topics) {
-      if (isHugeTopics && !rList) {
-        // Large dictionary/book (e.g. 800+ MB Perseus Greek Analyses): return initial window via primary key without full-table scan/sort
+      if (isHugeTopics && !rList && approxTopics > WINDOW_AT) {
+        // Enormous dictionary/book (e.g. 800+ MB Perseus Greek Analyses): return initial window via primary key without full-table scan/sort.
+        // Anything smaller is listed whole, in the module's own order and without its hidden entries (a 170 MB, 29,000-entry dictionary
+        // used to show only its first 500 by id, which left out its first entries: Start here, Appendix, ...).
         topicList = all(db, `select id, pid, subject from ${tabs.topics} limit 500`).map(([id, pid, s]) => ({ id, pid: pid || 0, subject: str(s) }));
       } else {
         topicList = all(db, `select id, pid, subject from ${tabs.topics} order by pid, rel_order, id`).map(([id, pid, s]) => ({ id, pid: pid || 0, subject: str(s) }));
