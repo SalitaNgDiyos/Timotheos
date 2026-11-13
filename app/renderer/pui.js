@@ -312,7 +312,7 @@
     let el = $('#pWordPop'); const fresh = !el;
     if (!el) { el = document.createElement('div'); el.id = 'pWordPop'; el.className = 'pwpop'; document.body.appendChild(el); pushBack(fb => wordPopClose(fb), 'wordpop'); }
     const key = (w.strongs && w.strongs[0]) || w.word || '';
-    el.innerHTML = `<div class="pwbar" title="Drag to move"><span class="pwgrip"></span><b>${esc(w.word || key)}</b>${w.strongs && w.strongs[0] ? `<span class="pwk">${esc(w.strongs.join(' '))}</span>` : ''}<span class="grow"></span><button type="button" class="pwx" aria-label="Close">${ic('close', 18)}</button></div>
+    el.innerHTML = `<div class="pwbar" title="Drag to move"><span class="pwgrip"></span><b>${esc(w.word || key)}</b>${(() => { const sn = (w.strongs || []).filter(Boolean), mc = (w.morphs || []).filter(Boolean); return sn.length || mc.length ? `<span class="pwk"><span class="pwfrom">- from</span> ${esc(sn.join(' '))}${sn.length && mc.length ? ', ' : ''}${esc(mc.join(' '))}</span>` : ''; })()}<span class="grow"></span><button type="button" class="pwx" aria-label="Close">${ic('close', 18)}</button></div>
       <div class="pwbody"><div class="pcards"></div></div>
       <div class="pwft"><button type="button" class="pill" data-big>${ic('lexicon', 15)} Dictionary</button><button type="button" class="pill" data-find>${ic('search', 15)} Find ${esc(key)}</button></div>`;
     const cards = el.querySelector('.pcards');
