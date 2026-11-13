@@ -27,6 +27,7 @@
   function fillNav() {
     const p = P(); const d = $('.c-drawer.l'); if (!d) return;
     const GRP = { OT: 'Old Testament', NT: 'New Testament', AP: 'Apocrypha', APX: 'Other books' };
+    if (typeof isTlBible === 'function' && isTlBible((views()[state.active] || {}).bible)) Object.assign(GRP, TL_GRP);
     let body = '';
     if (navSeg === 'books') {
       openBook = openBook || state.ref.b; let g = null;

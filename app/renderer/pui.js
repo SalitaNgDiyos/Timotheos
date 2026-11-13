@@ -140,8 +140,9 @@
     const tx = sec.querySelector('.bvtext'); if (!tx || !root.classList.contains('sk')) return;
     const [b, c] = String(sec.dataset.ref || `${state.ref.b}.${state.ref.c}`).split('.').map(Number);
     const i = +sec.dataset.i || 0; const id = (views()[i] || {}).bible;
-    const k = bookOf(b); if (!k) return;
-    const kick = `${GRP[k.grp] || ''}${bibleAbbr(id) ? ' · ' + bibleAbbr(id) : ''}`;
+    const k0 = bookOf(b); if (!k0) return;
+    const k = (typeof navName === 'function' && navName(k0, id)) || k0;   // this pane's own Bible decides the book name
+    const kick = `${(typeof isTlBible === 'function' && isTlBible(id) && TL_GRP[k0.grp]) || GRP[k0.grp] || ''}${bibleAbbr(id) ? ' · ' + bibleAbbr(id) : ''}`;
     let t = tx.querySelector(':scope > .sk-ttl');
     const html = `<small data-ab="${esc(bibleAbbr(id) || '')}">${esc(kick)}</small><span>${esc(k.name)} ${c}</span><button type="button" class="sk-aa" aria-label="Text format for this Bible">${ic('text', 18)}</button>`;
     if (!t) { t = document.createElement('div'); t.className = 'sk-ttl'; tx.insertBefore(t, tx.firstChild); }
