@@ -19,6 +19,7 @@ for t in ${TESTS:-features dock copy zoom titlebar views books text tools librar
   n=$(echo "$r" | grep -o '✓' | wc -l)
   echo "== $t: $n ok $(echo "$r" | tr '|' '\n' | grep -E '✗|NO RESULT|ERROR' | cut -c1-200)"
 done
+echo "== tlnames: $(mkdir -p /tmp/claude-0/tlmods; sed "s/^lang=eng/lang=tgl/; s/^title=KJV plain (test)/title=Tagalog test/; s/^short.title=KJVp/short.title=TLG/; s/^id=tstplain/id=tsttl/" /home/claude/testmods/kjvplain.ont > /tmp/claude-0/tlmods/tagalog-test.ont; FOLDERS='["/home/claude/testmods","/tmp/claude-0/tlmods"]' EXTRA=',"openBibles":["tw:tagalog-test.ont"]' bash test/tauri/run.sh test/tauri/tlnames.js /tmp/claude-0/tl.png 3000 2>&1 | grep -o "✓" | wc -l) ok"
 echo "== unit: $(node test/unit/studybackup.test.js 2>&1 | tail -1)"
 echo "== unit: $(node test/unit/bigdict.test.js 2>&1 | tail -1)"
 echo "== licence: $(node scripts/check-licence.mjs | tail -3 | tr '\n' ' ')"

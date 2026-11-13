@@ -231,9 +231,10 @@ class Library {
 
   /** union of books/chapters across the given modules (for navigation) */
   async navigation(ids) {
-    const books = {};
+    const books = {}; let tl = null;   // the book names follow the first Bible: a Tagalog Bible shows Tagalog book names
     for (const id of ids) {
       let m; try { m = await this.bible(id); } catch (e) { continue; }
+      if (tl === null) tl = canon.isTagalogBible(m);
       for (const b in m.books) {
         const set = books[b] || (books[b] = new Set());
         m.books[b].forEach((n, i) => { if (n > 0) set.add(i + 1); });
@@ -241,7 +242,7 @@ class Library {
     }
     const mode = this.settings.apocryphaPlacement;
     return Object.keys(books).map(Number).filter(b => books[b].size).sort((a, b) => canon.orderKey(a, mode) - canon.orderKey(b, mode))
-      .map(b => { const list = [...books[b]].sort((x, y) => x - y); return { ...canon.book(b, mode), chapters: list[list.length - 1], chapterList: list }; });
+      .map(b => { const list = [...books[b]].sort((x, y) => x - y); return { ...(tl ? canon.tagalogBook(canon.book(b, mode)) : canon.book(b, mode)), chapters: list[list.length - 1], chapterList: list }; });
   }
 
   /* ---------------- book modules ---------------- */

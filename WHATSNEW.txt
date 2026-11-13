@@ -1,2 +1,2 @@
-Timotheos 0.6.26
-- Library: a big dictionary now lists all of its entries, in the order of the module, instead of only the first 500. The first entries of Bible Greek Definitions (Start here, Appendix, Unused Strong's numbers, ...) show again, and entries the module hides stay hidden.
+Timotheos 0.6.27
+- A Tagalog Bible (for example AMB) now shows Tagalog book names: Juan, Mga Awit, Pahayag, ... An English Bible keeps the English names.

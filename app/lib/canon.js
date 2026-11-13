@@ -177,9 +177,9 @@ const TAGALOG_NAMES = {
   9: ['1 Samuel', '1Sam'], 10: ['2 Samuel', '2Sam'], 11: ['1 Mga Hari', '1Hari', '1Ha'], 12: ['2 Mga Hari', '2Hari', '2Ha'],
   13: ['1 Mga Cronica', '1Cron', '1Cr'], 14: ['2 Mga Cronica', '2Cron', '2Cr'], 15: ['Ezra', 'Ezr'], 16: ['Nehemias', 'Neh'],
   17: ['Ester', 'Est'], 18: ['Job', 'Job'], 19: ['Mga Awit', 'Awit', 'Salmo', 'Mga Salmo'], 20: ['Mga Kawikaan', 'Kaw', 'Kawikaan'],
-  21: ['Eclesiastes', 'Ecl', 'Mangangaral'], 22: ['Awit ni Solomon', 'Awit ni Sol'], 23: ['Isaias', 'Isa'], 24: ['Jeremias', 'Jer'],
+  21: ['Eclesiastes', 'Ecl', 'Mangangaral'], 22: ['Awit ng mga Awit', 'Awit ng Awit', 'Awit ni Solomon', 'Awit ni Sol'], 23: ['Isaias', 'Isa'], 24: ['Jeremias', 'Jer'],
   25: ['Mga Panaghoy', 'Pan', 'Panaghoy'], 26: ['Ezekiel', 'Eze'], 27: ['Daniel', 'Dan'], 28: ['Oseas', 'Ose'],
-  29: ['Joel', 'Joe'], 30: ['Amos', 'Amo'], 31: ['Obadias', 'Oba'], 32: ['Jonas', 'Jon'],
+  29: ['Joel', 'Joe'], 30: ['Amos', 'Amo'], 31: ['Obadias', 'Oba', 'Abdias'], 32: ['Jonas', 'Jon'],
   33: ['Mikas', 'Mik'], 34: ['Nahum', 'Nah'], 35: ['Habakkuk', 'Hab'], 36: ['Zefanias', 'Zef', 'Sofonias'],
   37: ['Hagai', 'Hag'], 38: ['Zacarias', 'Zac'], 39: ['Malakias', 'Mal'],
   40: ['Mateo', 'Mat'], 41: ['Marcos', 'Mar'], 42: ['Lucas', 'Luc'], 43: ['Juan', 'Jn'],
@@ -275,7 +275,21 @@ function parseRef(s) {
   return normalizeRef({ b, c: m[2] ? +m[2] : 1, v: m[3] ? +m[3] : 1 });
 }
 
+/** the book as a Tagalog Bible names it (name and abbreviation in Tagalog; the English ones still work when typing a reference) */
+function tagalogBook(b) {
+  const t = TAGALOG_NAMES[b.id]; if (!t) return b;
+  return { ...b, name: t[0], abbr: t[1] || t[0], abbrs: [...new Set([t[1] || t[0], ...t.slice(2), ...(b.abbrs || [])])] };
+}
+/** does this Bible module say it is Tagalog (its language field, or its name)? */
+function isTagalogBible(m) {
+  if (!m) return false;
+  const lang = String((m.props && (m.props.lang || m.props.language)) || (m.cfg && (m.cfg.lang || m.cfg.language)) || '').trim().toLowerCase();
+  if (/^(tl|tgl|fil|tagalog|filipino)/.test(lang)) return true;
+  return /tagalog|filipino|\b(AMB|ADB|MBBTAG|ASND)\b|ang dating biblia|malayang biblia|magandang balita|ang biblia|ang salita ng diyos/i.test(`${m.title || ''} ${m.abbr || ''}`);
+}
+
 module.exports = {
+  tagalogBook, isTagalogBible,
   BOOKS, TAGALOG_NAMES, UBS_CODES, bookFromUbsCode, ORDER_CATHOLIC, ORDER_NETS, ORDER_ORTHODOX,
   setOrder, getOrder, book, orderKey, group, inScope,
   AP_1611, AP_OTHER, NAMES_1611, kjvChapters, ontLine,
