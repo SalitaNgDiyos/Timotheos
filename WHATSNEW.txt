@@ -1,2 +1,2 @@
-Timotheos 0.6.23
-- Phone: the Back and Forward buttons at the top now remember the translation too. Going back shows the Bible you were reading in at that moment, not only the verse.
+Timotheos 0.6.24
+- New app icon: the gold sword on blue dragon scales, in the gold frame (phone, Windows and Linux).
