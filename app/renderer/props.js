@@ -100,7 +100,7 @@
     try {
       const r = await api.modSave(id, dirty, html);
       cur.info = r.info; dirty = {}; aboutDirty = false;
-      await afterChange(id);
+      try { await afterChange(id); } catch (e) { console.warn('refresh after save', e); } // the file is saved; a failed refresh must not look like a failed save
       render(activePage());
       flashNote('Saved.' + (r.backup ? ' The original is kept as ' + r.backup.split(/[\\/]/).pop() + '.' : ''));
     } catch (e) { TimotheosModules.messageBox('Could not save', esc(e.message)); }

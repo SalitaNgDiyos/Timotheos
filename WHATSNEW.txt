@@ -1,4 +1,5 @@
-Timotheos 0.6.30
+Timotheos 0.6.31
+- Library: saving module details no longer reports "Could not save" when the file was saved but refreshing the list failed afterwards.
 - Phone: removed the large empty gap under the next-chapter card at the bottom of the Bible view.
 - Library: a dictionary with sub-topics shows them under their entry. In Bible Greek Definitions each Greek word now lists its G-numbers under it (they were not shown before).
 - When Timotheos starts it looks quietly for a newer version. If there is one, a card tells you what is new and offers Download and install, or Ignore. You can turn this off in Check for updates.
