@@ -641,6 +641,15 @@
  const fing=(el,type,x,y)=>{const e=new Event(type,{bubbles:true,cancelable:true}); const pt={clientX:x,clientY:y,identifier:7,target:el}; e.touches=type==='touchend'?[]:[pt]; e.changedTouches=[pt]; el.dispatchEvent(e);};
  const drag=async(el,dx,dy,o={})=>{const r=el.getBoundingClientRect(); const x=o.x!=null?o.x:r.left+r.width/2, y=o.y!=null?o.y:r.top+Math.min(r.height/2,60); const tg=o.on||el; fing(tg,'touchstart',x,y); for(let k=1;k<=6;k++){fing(tg,'touchmove',x+dx*k/6,y+dy*k/6); await sl(16);} fing(tg,'touchend',x+dx,y+dy); await sl(400);};
  const pdown=el=>{let e; try{e=new PointerEvent('pointerdown',{bubbles:true});}catch(x){e=new Event('pointerdown',{bubbles:true});} el.dispatchEvent(e);};
+ await T('bible info',async()=>{
+  await go({b:43,c:3,v:16}); await sl(500); await closeMenus();
+  const shown=()=>!$('#propsDlg').classList.contains('hidden'), hide=()=>$('#propsDlg').classList.add('hidden');
+  PUI.readingSheet(); await sl(400); const i1=$('#pSheet [data-x="info"]'); ok(!!i1&&i1.getBoundingClientRect().width>0,'reading options: the (i) beside the Bible name is there');
+  if(i1){ click(i1); await sl(1200); ok(shown()&&/Properties/.test($('#ppTitle').textContent),'the (i) opens the Bible information: '+$('#ppTitle').textContent); hide(); await sl(300); }
+  PUI.closeSheet(); await sl(300); PUI.chooseBible(); await sl(500); const r=$('.bvmenu .bvinfo'); ok(!!r&&r.getBoundingClientRect().width>0,'Bible list: the "About this Bible" row is there');
+  if(r){ click(r); await sl(1200); ok(shown(),'the row opens the Bible information'); hide(); await sl(300); }
+  await closeMenus();
+ });
  await T('bible drop',async()=>{
   await go({b:43,c:3,v:16}); await sl(500); await closeMenus();
   let lab; if(SK==='a'){ SkinA.showChrome(true,false); await sl(250); lab=$('.a-chrome .lab em'); } else if(SK==='b') lab=$('.b-big [data-a="bible"]'); else lab=$('.c-rail [data-a="bible"]');

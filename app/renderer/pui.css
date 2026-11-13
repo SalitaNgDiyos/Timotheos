@@ -255,3 +255,6 @@ html.sk #empty { padding: 128px 24px 24px; }
 html.sk select:not([multiple]):not([size]) { background-color: var(--p-surf); color: var(--p-ink); border-color: var(--p-line);
   background-image: linear-gradient(45deg, transparent 50%, var(--p-muted, var(--p-ink)) 50%), linear-gradient(135deg, var(--p-muted, var(--p-ink)) 50%, transparent 50%); }
 html.sk select option, html.sk select optgroup { background-color: var(--p-surf); color: var(--p-ink); }
+/* module information, one tap away: the (i) beside the Bible name in the reading sheet and the row in the Bible list */
+.pbi { display: inline-flex; align-items: center; gap: 8px; }
+.bvmenu .bvinfo { display: block; width: 100%; text-align: left; margin: 2px 0 6px; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--card); color: var(--text); font: 600 14px/1.2 inherit; }

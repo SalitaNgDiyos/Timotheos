@@ -450,7 +450,7 @@
     const iv = state.active;   // the view this sheet is for (kept: a tap elsewhere must not move it to the other Bible)
     const v = views()[state.active] || {}; const sh = Object.assign({}, state.settings.show, v.show || {});
     const tog = (k, l, i) => `<button type="button" class="tgl${sh[k] ? ' on' : ''}" data-show="${k}">${ic(i, 20)}<span>${l}</span></button>`;
-    const s = sheet(`<div class="prow"><span>Bible</span><button type="button" class="pchip" data-x="bible">${esc(bibleAbbr() || 'Choose')} ${ic('chevD', 14)}</button></div>
+    const s = sheet(`<div class="prow"><span>Bible</span><span class="pbi"><button type="button" class="pchip" data-x="bible">${esc(bibleAbbr() || 'Choose')} ${ic('chevD', 14)}</button><button type="button" class="pib" data-x="info" aria-label="About this Bible (module information)">${ic('info', 20)}</button></span></div>
       <div class="prow"><span>Text size</span><span class="stepper"><button type="button" class="pib" data-z="-1">${ic('textDown', 20)}</button><b>${Math.round((v.zoom || 1) * 100)}%</b><button type="button" class="pib" data-z="1">${ic('textUp', 20)}</button></span></div>
       <div class="prow pr3"><span>Margins</span><div class="pseg" data-rd="m">${RD.m.map((x, i) => `<button type="button" data-i="${i}" class="${rdGet().m === i ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>
       <div class="prow pr3"><span>Line height</span><div class="pseg" data-rd="l">${RD.l.map((x, i) => `<button type="button" data-i="${i}" class="${rdGet().l === i ? 'on' : ''}">${x[0]}</button>`).join('')}</div></div>

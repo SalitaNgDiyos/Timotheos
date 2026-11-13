@@ -4,7 +4,7 @@
 /* The settings of one Bible view: the ☰ menu (what the view shows), the name of the view (click to choose a Bible,
  * double-click to rename), colour pickers for the text and the active verse, the highlighter and the underline pen.
  * Everything here belongs to one view, so several views keep their own looks side by side. */
-/* global state, views, viewName, storeViews, ensurePanes, renderChapter, paneMenu, viewShow, effShow, toggleViewShow,
+/* global TimotheosProps, state, views, viewName, storeViews, ensurePanes, renderChapter, paneMenu, viewShow, effShow, toggleViewShow,
    setViewShowMany, setLineSpacing, setVerseNumbers, viewOptions, setViews, addView, ensureInfo, flashMsg, esc, TimotheosOptions,
    TimotheosStudy, TimotheosSpeech, TimotheosIcons, dupFile */
 (function () {
@@ -57,12 +57,14 @@
     const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); const f = dupFile(state.modules.bibles, b, lbl); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}${f ? ` <span class="dupf">· ${esc(f)}</span>` : ''}</span></button>`; }).join('');
     paneMenu(btn, `<div class="mh">Name of this view</div>
       <div class="bvname"><input type="text" class="bvnameinp" maxlength="40" value="${esc(viewName(i))}" placeholder="Name of this view" aria-label="Name of this Bible view"><button type="button" class="bvsave">Save</button><button type="button" class="bvreset" title="Back to the Bible's own abbreviation">Reset</button></div>
+      ${document.documentElement.classList.contains('sk') ? '<button type="button" class="bvinfo">About this Bible (module information)</button>' : ''}
       <div class="mh">Bible of this view</div><div class="bvlist">${list}</div>`, m => {
       m.classList.add('biblemenu'); openFor = btn;
       m.addEventListener('mouseenter', keepOpen); m.addEventListener('mouseleave', () => armClose(m));
       const inp = m.querySelector('.bvnameinp');
       const save = () => { setLabel(i, inp.value); m.remove(); openFor = null; };
       m.querySelector('.bvsave').onclick = save;
+      const bi = m.querySelector('.bvinfo'); if (bi) bi.onclick = () => { m.remove(); openFor = null; TimotheosProps.open(v.bible); };
       m.querySelector('.bvreset').onclick = () => { setLabel(i, ''); m.remove(); openFor = null; };
       inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') { m.remove(); openFor = null; } });
       m.querySelectorAll('[data-b]').forEach(b => b.onclick = async () => {
