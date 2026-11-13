@@ -1,0 +1,2 @@
+Timotheos 0.6.22
+- Check for updates now lists what is new in the update, written for every version.

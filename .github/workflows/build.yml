@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
   push:
     branches: ["**"]
+    paths-ignore: ["release-notes/**", "WHATSNEW.txt"]   # correcting notes alone does not rebuild (fix-notes.yml does that)
   release:
     types: [published]
 

@@ -1,0 +1,2 @@
+Timotheos 0.6.29
+- Library: a dictionary with sub-topics shows them under their entry. In Bible Greek Definitions each Greek word now lists its G-numbers under it (they were not shown before).

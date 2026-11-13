@@ -1,0 +1,2 @@
+Timotheos 0.6.32
+- A Bible whose language is written as "flo" (Filipino/Tagalog) shows Tagalog book names too.

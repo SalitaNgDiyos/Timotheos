@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Edmund P. Valdez
+# Corrects the "what is new" text of releases that were already built: release-notes/<version>.txt
+# replaces the notes of the release titled Timotheos_<version> (and of the test build, if it is that version).
+# The "Build N of commit" line at the end of the old notes is kept.
+name: Fix release notes
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+    paths: ["release-notes/**"]
+
+jobs:
+  notes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate -q '.[] | [.id, .name] | @tsv' > rel.tsv
+          for f in release-notes/*.txt; do
+            V=$(basename "$f" .txt)
+            awk -F'\t' -v a="Timotheos_$V" -v b="Timotheos_$V (test build)" '$2==a || $2==b {print $1}' rel.tsv | while read -r id; do
+              old=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" -q .body)
+              tail=$(printf '%s\n' "$old" | grep -E '^(Build [0-9]+ of|Test build )' | tail -1 || true)
+              body=$(cat "$f"; [ -n "$tail" ] && printf '\n%s' "$tail")
+              jq -n --arg b "$body" '{body:$b}' | gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$id" --input - -q .name
+            done
+          done

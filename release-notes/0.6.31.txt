@@ -1,0 +1,3 @@
+Timotheos 0.6.31
+- Library: saving module details no longer reports "Could not save" when the file was saved but refreshing the list failed afterwards.
+- Phone: removed the large empty gap under the next-chapter card at the bottom of the Bible view.
