@@ -4,9 +4,9 @@
 # The quiet look at start-up, against a stand-in for the GitHub release answer on this computer.
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 W=/tmp/claude-0/upsite2; rm -rf $W; mkdir -p $W; PORT=${PORT:-18767}
-head -c 5000 /dev/urandom > $W/Timotheos_9.9.9_x64-setup.exe
+head -c 5000 /dev/urandom > $W/Timotheos_9.9.9_amd64.deb; SD=$(sha256sum $W/Timotheos_9.9.9_amd64.deb | cut -d' ' -f1)
 cat > $W/latest.json <<J
-{"tag_name":"v9.9.9","name":"Timotheos_9.9.9","html_url":"https://github.com/SalitaNgDiyos/Timotheos/releases/tag/v9.9.9","body":"Timotheos 9.9.9\n- Next chapter cards\n- Tagalog book names\n\nBuild 5 of abcdef1","assets":[]}
+{"tag_name":"v9.9.9","name":"Timotheos_9.9.9","html_url":"https://github.com/SalitaNgDiyos/Timotheos/releases/tag/v9.9.9","body":"Timotheos 9.9.9\n- Next chapter cards\n- Tagalog book names\n\nBuild 5 of abcdef1","assets":[{"name":"Timotheos_9.9.9_amd64.deb","browser_download_url":"http://127.0.0.1:$PORT/Timotheos_9.9.9_amd64.deb","size":5000,"digest":"sha256:$SD"}]}
 J
 (cd $W && python3 -m http.server $PORT --bind 127.0.0.1 >/dev/null 2>&1) & S=$!
 sleep 0.6

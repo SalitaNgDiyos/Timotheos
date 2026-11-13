@@ -255,26 +255,25 @@ async function openBookModule(id, topicId, addHistory = true, anchor = null) {
 
 function renderTopicList(list, maxRender = 500) {
   const ul = $('#libTopics'); ul.innerHTML = '';
-  const slice = list.length > maxRender ? list.slice(0, maxRender) : list;
-  const kids = new Map(); for (const t of slice) { const k = t.pid || 0; (kids.get(k) || kids.set(k, []).get(k)).push(t); }
-  const ids = new Set(slice.map(t => t.id));
-  const add = (pid, depth) => {
-    for (const t of kids.get(pid) || []) {
-      const li = document.createElement('li'); li.dataset.tid = t.id; li.textContent = t.subject || '(untitled)';
-      li.style.paddingLeft = (6 + depth * 12) + 'px';
-      if (kids.has(t.id)) li.classList.add('parent');
-      li.onclick = () => showTopic(lib.cur, t.id);
-      ul.appendChild(li);
-      if (depth < 6) add(t.id, depth + 1);
-    }
+  // the page is counted in top entries (a topic with no parent, or whose parent is not in the list): each one is shown with everything below it
+  // (a Greek word with its G-numbers), so a big dictionary shows its sub-topics at once and not 12,000 entries further on
+  const ids = new Set(list.map(t => t.id));
+  const kids = new Map(); for (const t of list) if (t.pid && ids.has(t.pid)) (kids.get(t.pid) || kids.set(t.pid, []).get(t.pid)).push(t);
+  const roots = list.filter(t => !t.pid || !ids.has(t.pid));
+  const slice = roots.length > maxRender ? roots.slice(0, maxRender) : roots;
+  const add = (t, depth) => {
+    const li = document.createElement('li'); li.dataset.tid = t.id; li.textContent = t.subject || '(untitled)';
+    li.style.paddingLeft = (6 + Math.min(depth, 6) * 12) + 'px';
+    if (kids.has(t.id)) li.classList.add('parent');
+    li.onclick = () => showTopic(lib.cur, t.id);
+    ul.appendChild(li);
+    if (depth < 6) for (const k of kids.get(t.id) || []) add(k, depth + 1);
   };
-  add(0, 0);
-  for (const t of slice) if (t.pid && !ids.has(t.pid)) { const li = document.createElement('li'); li.dataset.tid = t.id; li.textContent = t.subject; li.onclick = () => showTopic(lib.cur, t.id); ul.appendChild(li); }
-  if (list.length > maxRender) {
+  for (const t of slice) add(t, 0);
+  if (roots.length > maxRender) {
     const more = document.createElement('li');
     more.className = 'hint';
-    more.style.cursor = 'pointer';
-    more.textContent = `Show next 500… (${(list.length - maxRender).toLocaleString()} more)`;
+    more.textContent = `Show next 500… (${(roots.length - maxRender).toLocaleString()} more)`;
     more.onclick = () => renderTopicList(list, maxRender + 500);
     ul.appendChild(more);
   }

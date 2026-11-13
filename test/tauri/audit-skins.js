@@ -653,7 +653,7 @@
  await T('next chapter',async()=>{
   await go({b:43,c:3,v:16}); await sl(1200); await closeMenus();
   const card=()=>$('.bv.active .nextch .nc-card')||$('.nextch .nc-card');
-  let c=card(); ok(!!c&&/\b4\b/.test(c.textContent),'the end of the chapter has the card to the next chapter: '+(c?c.querySelector('b').textContent:'none'));
+  let c=card(); ok(!!c&&/\b4$/.test(c.querySelector('b').textContent),'the end of the chapter has the card to the next chapter: '+(c?c.querySelector('b').textContent:'none'));
   const pv=$('.nextch [data-nc="prev"]'); ok(!!pv&&/2/.test(pv.textContent),'the chapter before is under it: '+(pv?pv.textContent:'none'));
   ok(!!$('.nextch [data-nc="all"]'),'All chapters is there');
   await sl(1500); const pre=$('.nextch .nc-pv'); ok(!!pre&&pre.textContent.length>3,'the card shows the first words of the next chapter: '+(pre?pre.textContent:''));

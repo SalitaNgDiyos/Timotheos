@@ -21,7 +21,7 @@
     ok(/newer version is available: 9\.9\.9/.test(t), 'a newer release is announced');
     ok(!!$('#upGet') && /^https:\/\//.test($('#upGet').dataset.href), 'with a button to its download page');
     ok(/Installed: Timotheos /.test($('.updates').textContent) && $('.updates').textContent.includes(me), 'the installed version is shown');
-    ok(/only when you ask/.test($('.updates').textContent), 'it says when the internet is used');
+    ok(/when you ask, and when it starts unless you turn that off/.test($('.updates').textContent), 'it says when the internet is used');
     ok(!/test build/.test(t) && !!$('#upTest') && !$('#upTest').checked, 'test builds are off to begin with: the answer is the published release');
     $('#upTest').checked = true; $('#upTest').dispatchEvent(new Event('change'));
     await sleep(500); ok(await until(() => $('#upTest') && $('#upTest').checked && /9\.9\.10/.test(($('#upState') || {}).textContent || '')), 'ticking "Include test builds" checks again');

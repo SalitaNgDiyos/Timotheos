@@ -24,12 +24,14 @@ const hover = (el, type) => el.dispatchEvent(new MouseEvent(type, { bubbles: tru
   const bb = secs()[1].querySelector('.bvbible');
   hover(bb, 'mouseover'); await sleep(450);
   ok(!!document.querySelector('.bvmenu.biblemenu'), 'hovering the label opens the Bible menu');
-  hover(bb, 'mouseout'); await sleep(250);
-  ok(!!document.querySelector('.bvmenu.biblemenu'), 'the menu is still there 250 ms after leaving the label');
-  const menu = document.querySelector('.bvmenu.biblemenu'); menu.dispatchEvent(new MouseEvent('mouseenter')); await sleep(800);
+  // (since 0.6.16 the menu goes the moment the mouse has left it: no delay; the menu sits right under the label, so going from one to the other keeps it)
+  const menu = document.querySelector('.bvmenu.biblemenu');
+  hover(bb, 'mouseout'); menu.dispatchEvent(new MouseEvent('mouseenter')); await sleep(250);
+  ok(!!document.querySelector('.bvmenu.biblemenu'), 'the menu is still there after the mouse went from the label onto it');
+  await sleep(800);
   ok(!!document.querySelector('.bvmenu.biblemenu'), 'it stays while the mouse is on the menu');
-  menu.dispatchEvent(new MouseEvent('mouseleave')); await sleep(900);
-  ok(!document.querySelector('.bvmenu.biblemenu'), 'it closes after the mouse has left both');
+  menu.dispatchEvent(new MouseEvent('mouseleave')); await sleep(150);
+  ok(!document.querySelector('.bvmenu.biblemenu'), 'it closes at once when the mouse has left both (no delay)');
   // 3. hamburger menu
   const first = secs()[0].querySelector('.bvside > button');
   ok(first && first.dataset.a === 'menu', 'the ☰ button is the first thing under the Bible name');

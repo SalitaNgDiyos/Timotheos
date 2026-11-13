@@ -3,7 +3,7 @@
 # Copyright (C) 2026 Edmund P. Valdez
 # all.sh — every UI suite against the Tauri build; prints how many checks passed and lists the failed ones
 cd "$(dirname "$(readlink -f "$0")")/../.."
-for t in ${TESTS:-features dock copy zoom titlebar views books text tools library v049 v061 v062 v063 v064 v065 v066 seed report download updates wordmenu logo fxkeep}; do
+for t in ${TESTS:-features dock copy zoom titlebar views books text tools library v049 v061 v062 v063 v064 v065 v066 seed report download updates wordmenu logo topictree fxkeep}; do
   case $t in
     fxkeep) r=$(bash test/tauri/fxkeep.sh 2>&1) ;;
     download) r=$(bash test/tauri/download.sh 2>&1) ;;
