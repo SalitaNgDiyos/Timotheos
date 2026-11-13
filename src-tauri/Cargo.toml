@@ -1,6 +1,6 @@
 [package]
 name = "timotheos"
-version = "0.6.18"
+version = "0.6.19"
 description = "Timotheos"
 license = "AGPL-3.0-or-later"
 authors = ["Edmund P. Valdez"]
