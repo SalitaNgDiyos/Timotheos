@@ -1,2 +1,2 @@
-Timotheos 0.6.38
-- Import: a small window shows the progress while modules are imported (which file, how many of how many, a bar and the seconds). When the import is done the same window shows the report. "Hide" puts it away; the import goes on.
+Timotheos 0.6.39
+- The Bible that comes with Timotheos, Ang Malayang Biblia (AMB), is the new edition (ambv.1.1.0.7). It is also the AMB offered in Download modules. An AMB you already imported stays as it is: import or download it again to get the new edition.
