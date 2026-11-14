@@ -116,7 +116,13 @@
     const chHead = $('#chapterHead');
     document.addEventListener('click', e => {
       const pill = e.target.closest('.navhdr1 .navpill'), ic = e.target.closest('.navhdr1 .navic');
-      if (pill) { e.stopPropagation(); openNavPopover('book', pill); return; }
+      if (pill) {
+        e.stopPropagation();
+        // the Bible view of this pill becomes the active one, so the list shows the book names of its own Bible
+        const g = pill.closest('.dgroup'), sv = g && (g.querySelector('.bv:not(.hidden)') || g.querySelector('.bv'));
+        if (sv && sv.dataset.i != null && typeof setActive === 'function') setActive(+sv.dataset.i);
+        openNavPopover('book', pill); return;
+      }
       if (!ic) return;
       const a = ic.dataset.nav;
       if (a === 'prevBook') stepBook(-1); else if (a === 'nextBook') stepBook(1);

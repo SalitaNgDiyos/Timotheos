@@ -1,2 +1,2 @@
-Timotheos 0.6.36
-- Downloads (updates and modules) no longer fail with "Dns Failed" until the app is restarted. When the phone cannot look up github.com (for example after a VPN was switched on or off while Timotheos was open), Timotheos tries again and then asks a public DNS service (Cloudflare 1.1.1.1, then Google 8.8.8.8) for the address. Only the name of the site is sent there.
+Timotheos 0.6.37
+- Computer: the book browser (the drop-down on a Bible view) lists the book names of that view's own Bible. Opening it on an English Bible no longer shows Tagalog names because a Tagalog Bible was the view clicked last.
