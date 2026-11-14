@@ -1,2 +1,2 @@
-Timotheos 0.6.39
-- The Bible that comes with Timotheos, Ang Malayang Biblia (AMB), is the new edition (ambv.1.1.0.7). It is also the AMB offered in Download modules. An AMB you already imported stays as it is: import or download it again to get the new edition.
+Timotheos 0.6.40
+- The Bible that comes with Timotheos, Ang Malayang Biblia (AMB), is updated again (ambv.1.1.0.7, newer copy): Mateo 1:1 now has its heading "Listahan ng mga Ninuno ni Jesus", and Mateo 1:17 is corrected. It is also the AMB offered in Download modules. An AMB you already imported stays as it is: import or download it again to get this copy.
