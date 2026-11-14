@@ -52,6 +52,7 @@ contextBridge.exposeInMainWorld('api', {
   findRefs: t => call('refs:find', t),
   exportSave: (name, fmt, data) => call('export:save', name, fmt, data),
   onBookSearchProgress: fn => ipcRenderer.on('bsearch:progress', (e, t) => fn(t)),
+  onImportProgress: fn => ipcRenderer.on('import:progress', (e, t) => fn(t)),
   bookTopic: (id, tid) => call('book:topic', id, tid),
   bookLookup: (id, key) => call('book:lookup', id, key),
   commentaries: (b, c, v) => call('cmt:verse', b, c, v),

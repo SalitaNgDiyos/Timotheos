@@ -111,8 +111,10 @@ async function inspect(file, settings) {
 /**
  * Import files into destRoot. Returns [{name, from, status: imported|updated|already|skipped, kind, format, title, reason, dest, studyData?}]
  */
-async function importFiles(paths, destRoot, settings = {}, userData = null) {
+async function importFiles(paths, destRoot, settings = {}, userData = null, onProgress = null) {
   const results = [];
+  // progress for the import window: { step, done, total, name } (done of total files); a pause lets the window draw it
+  const tell = async (step, done, total, name) => { if (!onProgress) return; try { onProgress({ step, done, total, name }); } catch (e) { /* no window */ } await new Promise(r => setTimeout(r, 0)); };
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'timotheos-import-'));
   const queue = [];
 
@@ -129,9 +131,10 @@ async function importFiles(paths, destRoot, settings = {}, userData = null) {
     for (const f of looseUsfms) handledLooseUsfm.add(f);
   }
 
-  for (const p of paths) {
+  for (const [pi, p] of paths.entries()) {
     if (handledLooseUsfm.has(p)) continue;
     const name = path.basename(p);
+    if (ARCHIVE.test(name)) await tell('unpack', pi, paths.length, name);
     if (/\.exe$/i.test(name)) { results.push({ name, from: p, status: 'skipped', reason: 'installer program – Timotheos does not run installers. Unpack the module file from it (or install it in e-Sword/theWord) and import the module file itself.' }); continue; }
     if (ARCHIVE.test(name)) {
       try {
@@ -166,7 +169,8 @@ async function importFiles(paths, destRoot, settings = {}, userData = null) {
     }
     queue.push({ file: p, from: p });
   }
-  for (const q of queue) {
+  for (const [qi, q] of queue.entries()) {
+    await tell('check', qi, queue.length, path.basename(q.file));
     const info = await inspect(q.file, settings);
     const r = { name: info.name, from: q.from, kind: info.kind, format: info.format, title: info.title, note: info.note };
     if (!info.ok) { results.push(Object.assign(r, { status: 'skipped', reason: info.reason })); continue; }
@@ -210,12 +214,14 @@ async function importFiles(paths, destRoot, settings = {}, userData = null) {
       }
       if (!linked) {
         if (fs.existsSync(linkDest)) { try { fs.unlinkSync(linkDest); } catch (_) {} }
+        await tell('copy', qi, queue.length, info.name);
         await fs.promises.copyFile(q.file, dest);
       }
     }
     results.push(Object.assign(r, { status, dest, studyData: info.studyData }));
   }
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* temp */ }
+  await tell('copied', queue.length, queue.length, '');
   return results;
 }
 

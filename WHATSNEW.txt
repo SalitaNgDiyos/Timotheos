@@ -1,2 +1,2 @@
-Timotheos 0.6.37
-- Computer: the book browser (the drop-down on a Bible view) lists the book names of that view's own Bible. Opening it on an English Bible no longer shows Tagalog names because a Tagalog Bible was the view clicked last.
+Timotheos 0.6.38
+- Import: a small window shows the progress while modules are imported (which file, how many of how many, a bar and the seconds). When the import is done the same window shows the report. "Hide" puts it away; the import goes on.

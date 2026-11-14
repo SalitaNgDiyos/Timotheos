@@ -166,6 +166,7 @@ const api = {
   bookOpen: id => call('book:open', id), bookAbout: id => call('book:about', id), bookTopics: id => call('book:topics', id), bookSearch: (id, q) => call('book:search', id, q),
   bookSearchAll: (q, o) => call('bsearch', q, o), clipRead: () => call('clip:read'), findRefs: t => call('refs:find', t), exportSave: (n, f, d) => call('export:save', n, f, d),
   onBookSearchProgress: fn => on('bsearch:progress', fn),
+  onImportProgress: fn => on('import:progress', fn),
   bookTopic: (id, t) => call('book:topic', id, t), bookLookup: (id, k) => call('book:lookup', id, k),
   commentaries: (b, c, v) => call('cmt:verse', b, c, v), commentaryMarks: (b, c) => call('cmt:marks', b, c),
   wordLookup: (w, f) => call('word:lookup', w, f), devotionsToday: (m, d) => call('dev:today', m, d),

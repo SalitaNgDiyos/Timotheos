@@ -537,3 +537,12 @@ html.sk .dlmods .dllist { max-height: 44vh; } html.sk .dlmods .dlget, html.sk .d
 .updn .updn-go:disabled { opacity: .55; }
 .updn .updn-no { background: none; color: var(--muted, #777); padding: 12px 0 0; font-size: 14px; }
 .updn #upState { margin: 8px 0; }
+
+/* import window: progress while modules are imported */
+.impprog { min-width: min(420px, 80vw); padding: 4px 2px 2px; }
+.impprog .ipbar { height: 10px; border-radius: 6px; background: var(--line, rgba(128,128,128,.25)); overflow: hidden; position: relative; }
+.impprog .ipbar i { display: block; height: 100%; width: 0; border-radius: 6px; background: var(--accent, #3a8); transition: width .3s ease; position: relative; overflow: hidden; }
+.impprog .ipbar i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); animation: ipshine 1.2s linear infinite; }
+@keyframes ipshine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.impprog .iptxt { margin: 12px 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.impprog .ipsub { margin: 0; opacity: .75; }

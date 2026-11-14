@@ -235,8 +235,12 @@ function openGuide(skin) {
 }
 
 async function doImport(paths) {
+  // the import window shows how far it is (import:progress)
+  const send = d => { try { if (win && !win.isDestroyed?.()) win.webContents.send('import:progress', d); } catch (e) { /* no window */ } };
+  send({ step: 'start', done: 0, total: paths.length, name: '' });
   lib.releaseUnder(MODULES_DIR());
-  const results = await importFiles(paths, MODULES_DIR(), settings, userData);
+  const results = await importFiles(paths, MODULES_DIR(), settings, userData, send);
+  send({ step: 'scan', done: results.length, total: results.length, name: '' });
   const list = await rescanAll();
   return { results, list };
 }
