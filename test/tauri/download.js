@@ -19,7 +19,7 @@
     ok($('#modalTitle').textContent === 'Download modules', 'its title is "Download modules"');
     const opts = $$('#dlRepo option').map(o => o.textContent);
     ok(opts.join('|') === 'Timotheos|eBible.org', 'two repositories to begin with: ' + opts.join(', '));
-    ok(/only here, and only when you ask/.test($('.dlnote').textContent), 'it says when the internet is used');
+    ok(/uses the internet only when you ask/.test($('.dlnote').textContent), 'it says when the internet is used');
     ok(await until(() => $('.dlrow')), 'the catalog of the Timotheos repository is listed');
     let rows = $$('.dlrow');
     ok(rows.length === 1 && /Catalog Bible/.test(rows[0].textContent), 'only entries with a title and an https address are listed (' + rows.length + ')');

@@ -236,9 +236,45 @@ fn net_url_ok(u: &str) -> bool {
     if p.scheme() == "https" && p.host_str().is_some() { return true; }
     cfg!(debug_assertions) && p.scheme() == "http" && p.host_str() == Some("127.0.0.1")
 }
+/// Names are looked up by the system first. When that fails (on Android a VPN switched on or off while Timotheos was open
+/// can leave the app unable to look names up until it is restarted), it waits a moment and tries again, and then asks a
+/// public DNS-over-HTTPS service by its number (Cloudflare 1.1.1.1, then Google 8.8.8.8), which needs no name lookup itself.
+struct NetResolver;
+fn doh_lookup(host: &str) -> Vec<std::net::IpAddr> {
+    let q: String = url::form_urlencoded::byte_serialize(host.as_bytes()).collect();
+    let agent = ureq::AgentBuilder::new().https_only(true).timeout_connect(std::time::Duration::from_secs(8))
+        .timeout_read(std::time::Duration::from_secs(10)).user_agent(concat!("Timotheos/", env!("CARGO_PKG_VERSION"))).build();
+    for base in ["https://1.1.1.1/dns-query", "https://8.8.8.8/resolve"] {
+        let r = agent.get(&format!("{base}?name={q}&type=A")).set("Accept", "application/dns-json").call();
+        let Ok(resp) = r else { continue };
+        let Ok(txt) = resp.into_string() else { continue };
+        let Ok(v) = serde_json::from_str::<Value>(&txt) else { continue };
+        let ips: Vec<std::net::IpAddr> = v["Answer"].as_array().map(|a| a.iter()
+            .filter(|x| x["type"].as_u64() == Some(1))
+            .filter_map(|x| x["data"].as_str().and_then(|d| d.parse().ok())).collect()).unwrap_or_default();
+        if !ips.is_empty() { return ips; }
+    }
+    Vec::new()
+}
+impl ureq::Resolver for NetResolver {
+    fn resolve(&self, netloc: &str) -> std::io::Result<Vec<std::net::SocketAddr>> {
+        use std::net::ToSocketAddrs;
+        let sys = || netloc.to_socket_addrs().map(|i| i.collect::<Vec<_>>());
+        if let Ok(a) = sys() { if !a.is_empty() { return Ok(a); } }
+        std::thread::sleep(std::time::Duration::from_millis(1200));
+        let first = match sys() { Ok(a) if !a.is_empty() => return Ok(a), Ok(_) => None, Err(e) => Some(e) };
+        let (host, port) = match netloc.rsplit_once(':') { Some((h, p)) => (h.trim_matches(|c| c == '[' || c == ']'), p.parse().unwrap_or(443)), None => (netloc, 443) };
+        if host.parse::<std::net::IpAddr>().is_err() {
+            let ips = doh_lookup(host);
+            if !ips.is_empty() { return Ok(ips.into_iter().map(|ip| std::net::SocketAddr::new(ip, port)).collect()); }
+        }
+        Err(first.unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no address for this name")))
+    }
+}
 fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
     let agent = ureq::AgentBuilder::new()
+        .resolver(NetResolver)
         .https_only(!cfg!(debug_assertions))
         .timeout_connect(std::time::Duration::from_secs(25))
         .timeout_read(std::time::Duration::from_secs(60))

@@ -1,4 +1,2 @@
-Timotheos 0.6.35
-- Each Bible view shows the book names in its own Bible's language: a Tagalog Bible says Mateo 10:1, an English one Matthew 10:1, side by side.
-- The chapter heading and the book list follow the Bible view you clicked last.
-- The program language no longer decides the book names; the Bible does.
+Timotheos 0.6.36
+- Downloads (updates and modules) no longer fail with "Dns Failed" until the app is restarted. When the phone cannot look up github.com (for example after a VPN was switched on or off while Timotheos was open), Timotheos tries again and then asks a public DNS service (Cloudflare 1.1.1.1, then Google 8.8.8.8) for the address. Only the name of the site is sent there.
