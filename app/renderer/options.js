@@ -510,7 +510,9 @@
     if ($('#uiLang')) {
       $('#uiLang').onchange = () => {
         save({ lang: $('#uiLang').value });
+        if (state.settings) state.settings.lang = $('#uiLang').value;
         if (window.TimotheosI18n) TimotheosI18n.apply($('#uiLang').value);
+        if (typeof langChanged === 'function') langChanged();   // book names follow the program language
       };
     }
     $('#fontText').onchange = () => set({ fontText: $('#fontText').value });

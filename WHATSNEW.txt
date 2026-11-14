@@ -1,3 +1,3 @@
-Timotheos 0.6.33
-- Book names follow the Bible you are reading: a Tagalog Bible shows Mateo, Juan, ... even when an English Bible is open in another view.
-- A Tagalog Bible shows "Bagong Testamento" and "Lumang Testamento" instead of New Testament and Old Testament.
+Timotheos 0.6.34
+- With Filipino chosen as the program language (Options), every Bible shows Tagalog book names (Mateo, Mga Awit, ...) and "Bagong Testamento" / "Lumang Testamento", also on the computer.
+- The groups of the book list are in Tagalog too then (Pentateuko / Kautusan, Mga Ebanghelyo at Mga Gawa, ...).

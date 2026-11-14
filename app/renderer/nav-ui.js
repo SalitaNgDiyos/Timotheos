@@ -24,6 +24,10 @@
     apoc:  { id: 'apoc',  icon: '🌟', label: 'Apocalypse / Prophecy',    short: 'Prophecy',  color: '#7a4298' },
   };
 
+  // Tagalog names of the groups, used when the book names are Tagalog (a Tagalog Bible, or Filipino as the program language)
+  const TL_CAT = { law: 'Pentateuko / Kautusan', hist: 'Mga Aklat ng Kasaysayan', poet: 'Mga Aklat ng Tula at Karunungan', maj: 'Mga Pangunahing Propeta',
+    min: 'Mga Menor na Propeta', deut: 'Deuterokanoniko / Apokripa', gosp: 'Mga Ebanghelyo at Mga Gawa', epist: 'Mga Sulat', apoc: 'Pahayag / Propesiya' };
+  const catLabel = cat => (typeof isTlBible === 'function' && isTlBible((views()[state.active] || {}).bible) && TL_CAT[cat.id]) || cat.label;
   function bookCategory(bId, grp) {
     if (grp === 'AP' || grp === 'APX' || bId >= 67) return CATEGORIES.deut;
     if (bId >= 1 && bId <= 5) return CATEGORIES.law;
@@ -270,7 +274,7 @@
       if (cat.id !== lastCat) {
         if (lastCat !== null) html += `</div>`;
         lastCat = cat.id;
-        html += `<div class="npcat-hdr" style="--cat-col:${cat.color}"><span>${cat.icon} ${esc(cat.label)}</span></div><div class="npbook-group ${tileStyle === 'tiles' ? 'tiles' : 'list'}">`;
+        html += `<div class="npcat-hdr" style="--cat-col:${cat.color}"><span>${cat.icon} ${esc(catLabel(cat))}</span></div><div class="npbook-group ${tileStyle === 'tiles' ? 'tiles' : 'list'}">`;
       }
       const isCur = x.id === activeBk.id;
       if (tileStyle === 'tiles') {
@@ -676,7 +680,7 @@
     document.querySelectorAll('#treeToolbar [data-tmode]').forEach(x => x.classList.toggle('on', x.dataset.tmode === tmode));
     const q = (($('#treeFilter') && $('#treeFilter').value) || '').trim().toLowerCase();
     const vMax = verseCountOf(state.ref.b, state.ref.c);
-    const key = `${tmode}|${q}|${state.ref.b}.${state.ref.c}:${vMax}|` + state.nav.map(b => b.id + ':' + b.chapterList.length).join(',');
+    const key = `${tmode}|${q}|${state.ref.b}.${state.ref.c}:${vMax}|` + state.nav.map(b => b.id + ':' + b.chapterList.length).join(',') + '|' + state.nav[0].name + '|' + catLabel(CATEGORIES.law);   // names change with the Bible / language
 
     if (!force && key === lastTreeKey) {
       syncTreeHighlight(box);
@@ -699,7 +703,7 @@
         if (cat.id !== lastCat) {
           if (lastCat !== null) html += `</div>`;
           lastCat = cat.id;
-          html += `<div class="tgrp-cat" style="--cat-col:${cat.color}"><span>${cat.icon} ${esc(cat.label)}</span></div><div class="ttile-grid">`;
+          html += `<div class="tgrp-cat" style="--cat-col:${cat.color}"><span>${cat.icon} ${esc(catLabel(cat))}</span></div><div class="ttile-grid">`;
         }
         html += `<button type="button" class="ttile ${bk.id === state.ref.b ? 'cur' : ''}" data-b="${bk.id}" style="--cat-col:${cat.color}" title="${esc(bk.name)} (${bk.chapterList.length} chapters)">${esc(bk.abbr)}</button>`;
       }
@@ -745,7 +749,7 @@
       const cat = bookCategory(bk.id, bk.grp);
       if (cat.id !== lastCat) {
         lastCat = cat.id;
-        html += `<div class="tgrp tgrp-cat" style="--cat-col:${cat.color}"><span>${cat.icon} ${esc(cat.label)}</span></div>`;
+        html += `<div class="tgrp tgrp-cat" style="--cat-col:${cat.color}"><span>${cat.icon} ${esc(catLabel(cat))}</span></div>`;
       }
       const isOpen = bk.id === state.ref.b || !!q;
       html += `
