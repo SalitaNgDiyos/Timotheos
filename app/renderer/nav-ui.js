@@ -24,7 +24,7 @@
     apoc:  { id: 'apoc',  icon: '🌟', label: 'Apocalypse / Prophecy',    short: 'Prophecy',  color: '#7a4298' },
   };
 
-  // Tagalog names of the groups, used when the book names are Tagalog (a Tagalog Bible, or Filipino as the program language)
+  // Tagalog names of the groups, used when the active Bible is Tagalog
   const TL_CAT = { law: 'Pentateuko / Kautusan', hist: 'Mga Aklat ng Kasaysayan', poet: 'Mga Aklat ng Tula at Karunungan', maj: 'Mga Pangunahing Propeta',
     min: 'Mga Menor na Propeta', deut: 'Deuterokanoniko / Apokripa', gosp: 'Mga Ebanghelyo at Mga Gawa', epist: 'Mga Sulat', apoc: 'Pahayag / Propesiya' };
   const catLabel = cat => (typeof isTlBible === 'function' && isTlBible((views()[state.active] || {}).bible) && TL_CAT[cat.id]) || cat.label;
@@ -808,8 +808,11 @@
     document.querySelectorAll('.navhdr1').forEach(h => {
       const cat1 = h.querySelector('.np-cat'), lbl = h.querySelector('.np-lbl'), hist = h.querySelector('[data-nav="hist"]');
       if (cat1) cat1.textContent = cat.icon;
-      if (lbl) lbl.textContent = `${bk.name} ${r.c}:${r.v || 1}`;
-      const sh = h.querySelector('.np-short'); if (sh) sh.textContent = `${bk.abbr || bk.name} ${r.c}:${r.v || 1}`;   // the short form is shown in a narrow panel, with the verse
+      // each Bible view shows the book in its own Bible's language (a Tagalog Bible: Mateo; an English one: Matthew)
+      const g = h.closest('.dgroup'), sv = g && (g.querySelector('.bv:not(.hidden)') || g.querySelector('.bv'));
+      const pb = (sv && typeof paneBook === 'function' && paneBook(bk.id, +sv.dataset.i || 0)) || bk;
+      if (lbl) lbl.textContent = `${pb.name} ${r.c}:${r.v || 1}`;
+      const sh = h.querySelector('.np-short'); if (sh) sh.textContent = `${pb.abbr || pb.name} ${r.c}:${r.v || 1}`;   // the short form is shown in a narrow panel, with the verse
       const bb = h.querySelector('[data-nav="back"]'), ff = h.querySelector('[data-nav="fwd"]');
       if (bb) bb.disabled = !(state.back && state.back.length);
       if (ff) ff.disabled = !(state.fwd && state.fwd.length);

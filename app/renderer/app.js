@@ -826,13 +826,15 @@ function viewOptions(i, btn) {
 
 /* ---------------- navigation ---------------- */
 /** book names in the language of a Bible: Tagalog for a Tagalog Bible, otherwise English */
-function navName(k, bible) { if (!k) return null; const L = k.tl && k.en ? ((uiFil() || (k.tlIds || []).includes(bible)) ? k.tl : k.en) : k; return L; }
+function navName(k, bible) { if (!k) return null; const L = k.tl && k.en ? ((k.tlIds || []).includes(bible) ? k.tl : k.en) : k; return L; }
 /** the program language changed: book names and headings follow it */
 async function langChanged() { navLang(); const dl = $('#refBooks'); if (dl) dl.innerHTML = state.nav.map(b => `<option value="${esc(b.name)} "></option>`).join(''); await go(state.ref, false); }
+/** the book (in its Bible's language) for pane i */
+function paneBook(b, i) { const k = (state.nav || []).find(x => x.id === b); return k ? navName(k, (views()[i] || {}).bible) || k : null; }
 /** state.nav names follow the active Bible */
 /** is this Bible Tagalog (so its book and testament names are shown in Tagalog)? */
-function isTlBible(id) { if (uiFil()) return true; const k = (state.nav || [])[0]; return !!(k && (k.tlIds || []).includes(id)); }
-/** Filipino chosen as the program language: every Bible shows Tagalog book names */
+function isTlBible(id) { const k = (state.nav || [])[0]; return !!(k && (k.tlIds || []).includes(id)); }
+/** Filipino as the program language (kept for reference; the book names follow each Bible's own language, not the program language) */
 function uiFil() { return (state.settings && state.settings.lang) === 'fil'; }
 const TL_GRP = { OT: 'Lumang Testamento', NT: 'Bagong Testamento' };
 function navLang() { const id = (views()[state.active] || {}).bible; for (const k of state.nav || []) { const L = navName(k, id); if (L && L !== k) Object.assign(k, L); } }
@@ -998,15 +1000,15 @@ function adjChapter(b, c, d) {
   if (j >= list.length) { const n = state.nav[i + 1]; return n ? { b: n.id, c: n.chapterList[0] } : null; }
   return { b, c: list[j] };
 }
-const chapName = (b, c) => { const k = state.nav.find(x => x.id === b); return `${k ? k.name : (window.BOOK_ABBR || {})[b] || b} ${c}`; };
+const chapName = (b, c, i = state.active) => { const k = paneBook(b, i); return `${k ? k.name : (window.BOOK_ABBR || {})[b] || b} ${c}`; };
 /** phone: at the end of a chapter, a card to go on to the next one (with the first words of it), and the one before */
 function chapterFoot(i, b, c) {
   if (!document.documentElement.classList.contains('sk')) return '';
   const nx = adjChapter(b, c, 1), pv = adjChapter(b, c, -1);
   return `<div class="nextch" data-pane="${i}">${nx
-    ? `<button type="button" class="nc-card" data-nc="next" data-b="${nx.b}" data-c="${nx.c}"><span class="nc-t"><small>NEXT CHAPTER</small><b>${esc(chapName(nx.b, nx.c))}</b><i class="nc-pv"></i></span><span class="nc-arr">›</span></button>`
+    ? `<button type="button" class="nc-card" data-nc="next" data-b="${nx.b}" data-c="${nx.c}"><span class="nc-t"><small>NEXT CHAPTER</small><b>${esc(chapName(nx.b, nx.c, i))}</b><i class="nc-pv"></i></span><span class="nc-arr">›</span></button>`
     : '<p class="nc-end">End of the Bible</p>'}
-    <div class="nc-sub">${pv ? `<button type="button" data-nc="prev" data-b="${pv.b}" data-c="${pv.c}">‹ ${esc(chapName(pv.b, pv.c))}</button><span>·</span>` : ''}<button type="button" data-nc="all">All chapters</button></div></div>`;
+    <div class="nc-sub">${pv ? `<button type="button" data-nc="prev" data-b="${pv.b}" data-c="${pv.c}">‹ ${esc(chapName(pv.b, pv.c, i))}</button><span>·</span>` : ''}<button type="button" data-nc="all">All chapters</button></div></div>`;
 }
 async function chapterFootPreview(sec, id, nx) {
   const el = sec.querySelector('.nc-pv'); if (!el || !nx) return;
@@ -1037,7 +1039,7 @@ async function renderPane(i, scroll, seq) {
   const cell = raw => TWRender.render(raw, inf || EMPTY_MOD, show, ctx);
   const drop = n => ap.chapNum === 'drop' && n === 1 ? `<span class="dropcap">${c}</span>` : '';
   const rows = data.rows.filter(r => r.cells[0] != null);
-  sec.querySelector('.bvref').textContent = v.linked ? '' : `${data.book.name} ${c}`;
+  sec.querySelector('.bvref').textContent = v.linked ? '' : `${(paneBook(b, i) || data.book).name} ${c}`;   // in this Bible's language
   sec.dataset.ref = `${b}.${c}`; sec.dataset.layout = layout;
   let html = '';
   if (!rows.length) html = `<p class="hint bvnone">${esc(data.book.name)} ${c} is not in ${esc(inf ? inf.abbr : 'this Bible')}.</p>`;
@@ -1332,7 +1334,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.34')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.35')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

@@ -1,3 +1,4 @@
-Timotheos 0.6.34
-- With Filipino chosen as the program language (Options), every Bible shows Tagalog book names (Mateo, Mga Awit, ...) and "Bagong Testamento" / "Lumang Testamento", also on the computer.
-- The groups of the book list are in Tagalog too then (Pentateuko / Kautusan, Mga Ebanghelyo at Mga Gawa, ...).
+Timotheos 0.6.35
+- Each Bible view shows the book names in its own Bible's language: a Tagalog Bible says Mateo 10:1, an English one Matthew 10:1, side by side.
+- The chapter heading and the book list follow the Bible view you clicked last.
+- The program language no longer decides the book names; the Bible does.
