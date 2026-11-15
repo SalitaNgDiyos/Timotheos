@@ -3,7 +3,11 @@
 package __PKG__
 
 import android.app.Activity
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.PowerManager
 import android.graphics.Color
 import android.net.Uri
 import android.provider.Settings
@@ -56,6 +60,14 @@ class MainActivity : TauriActivity() {
     webView.settings.displayZoomControls = false
     webView.addJavascriptInterface(Bars(), "TwBars")
     webView.addJavascriptInterface(Files(), "TwFiles")
+    webView.addJavascriptInterface(Speech(), "TwSpeech")
+    // what the reading service says goes to the page (window.__twTts), as long as the page is there
+    SpeechState.sink = { json -> runOnUiThread { web?.evaluateJavascript("window.__twTts && window.__twTts($json)", null) } }
+  }
+
+  override fun onDestroy() {
+    SpeechState.sink = null
+    super.onDestroy()
   }
 
   // Exports (topics, verse lists, reading plans): the page writes the file into the app's own "exports" folder and
@@ -118,6 +130,41 @@ class MainActivity : TauriActivity() {
           i.putExtra(Intent.EXTRA_TITLE, name)
           @Suppress("DEPRECATION") startActivityForResult(i, saveRequest)
         } catch (e: Exception) { pendingSave = null; saved("failed") }
+      }
+    }
+  }
+
+  // Reading aloud in the background: the playlist goes to SpeechService (a foreground service with its own speech engine, a
+  // media notification with lock-screen buttons and a wake lock), so it goes on with the screen off. The page keeps the
+  // verse marks and tops the playlist up. allowBackground() asks Android to leave the app out of battery optimisation.
+  inner class Speech {
+    @JavascriptInterface
+    fun start(json: String) {
+      runOnUiThread {
+        try {
+          if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7412)
+          SpeechService.begin(this@MainActivity, json)
+        } catch (e: Exception) { SpeechState.emit("{\"t\":\"err\",\"msg\":\"Could not start the reading service\"}") }
+      }
+    }
+    @JavascriptInterface fun append(json: String) { runOnUiThread { SpeechService.instance?.append(json) } }
+    @JavascriptInterface fun pause() { runOnUiThread { SpeechService.instance?.pause() } }
+    @JavascriptInterface fun resume() { runOnUiThread { SpeechService.instance?.resume() } }
+    @JavascriptInterface fun stop() { SpeechService.instance?.stopNow() }
+    @JavascriptInterface fun next() { runOnUiThread { SpeechService.instance?.skip(1) } }
+    @JavascriptInterface fun prev() { runOnUiThread { SpeechService.instance?.skip(-1) } }
+    @JavascriptInterface fun state(): String = "{\"playing\":" + SpeechState.playing + ",\"paused\":" + SpeechState.paused + ",\"idx\":" + SpeechState.index + ",\"total\":" + SpeechState.total + "}"
+    @JavascriptInterface fun snapshot(): String = SpeechState.snapshot
+    @JavascriptInterface
+    fun batteryOk(): Boolean = try { (getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName) } catch (e: Exception) { true }
+    @JavascriptInterface
+    fun allowBackground() {
+      runOnUiThread {
+        try { startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) }
+        catch (e: Exception) {
+          try { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) } catch (x: Exception) { /* no settings screen */ }
+        }
       }
     }
   }

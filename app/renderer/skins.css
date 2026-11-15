@@ -293,3 +293,8 @@ html.sk-c.psplitting .c-rail [data-a="aa"] { display: inline-grid; }
 /* Study Desk with two Bibles: the strip between them names the lower Bible like the rail names the top one */
 html.sk-c .pdiv { padding: 4px 16px 0 30px; gap: 10px; }
 html.sk-c .pd-ref { font: 400 22px/1 Literata, Georgia, serif; letter-spacing: -.01em; text-align: left; }
+
+/* while something is read aloud the player stays: it does not slide away when the text is scrolled, nor under a page */
+html.sk.tts-on.sk-baroff .a-caps, html.sk.tts-on.sk-baroff .c-dock { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+html.sk.tts-on.sk-baroff .b-tabs { transform: none; opacity: 1; pointer-events: auto; }
+html.sk-a.tts-on.pg-open .a-caps { display: flex; }

@@ -28,7 +28,8 @@ export function installAndroidSpeech() {
   })();
   const ev = (name, fn) => listen('tts://' + name, e => fn(e.payload || {}));
   ev('speech:start', p => { if (cur && !cur.id) cur.id = p.id; clearTimeout(watchdog); });
-  const end = err => p => { if (cur && cur.id && p.id === cur.id) finish(cur, err); };
+  const seen = new Map();   // ids heard before speak() answered with its own: a finish that arrives early still ends its piece
+  const end = err => p => { if (cur && cur.id && p.id === cur.id) finish(cur, err); else if (p.id) { seen.set(p.id, err); if (seen.size > 20) seen.delete(seen.keys().next().value); } };
   ev('speech:finish', end(false)); ev('speech:cancel', end(false)); ev('speech:interrupted', end(false)); ev('speech:error', end(true));
   const synth = {
     getVoices: () => voices,
@@ -41,7 +42,7 @@ export function installAndroidSpeech() {
       const limit = 20000 + (u.text.length * 120) / Math.max(0.3, u.rate || 1);
       clearTimeout(watchdog); watchdog = setTimeout(() => { if (cur === u) { invoke('plugin:tts|stop').catch(() => {}); finish(u, true); } }, limit);
       invoke('plugin:tts|speak', { payload: { text: u.text, language: u.voice ? null : (u.lang || null), voiceId: u.voice ? u.voice.voiceURI : null, rate: u.rate || 1, pitch: u.pitch || 1, volume: u.volume == null ? 1 : u.volume, queueMode: 'flush' } })
-        .then(r => { if (cur === u && !u.id && r && r.utteranceId) u.id = r.utteranceId; })
+        .then(r => { if (cur === u && !u.id && r && r.utteranceId) { u.id = r.utteranceId; if (seen.has(u.id)) { const e = seen.get(u.id); seen.delete(u.id); finish(u, e); } } })
         .catch(() => finish(u, true));
     },
     cancel() { const u = cur; invoke('plugin:tts|stop').catch(() => {}); if (u) setTimeout(() => finish(u, false), 0); },

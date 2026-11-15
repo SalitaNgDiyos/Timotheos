@@ -81,6 +81,7 @@ jobs:
           MA=$(find src-tauri/gen/android -name MainActivity.kt | head -1)
           echo "MainActivity: $MA"
           sed 's/__PKG__/org.timotheos.bible/' android/MainActivity.kt.tpl > "$MA"
+          sed 's/__PKG__/org.timotheos.bible/' android/SpeechService.kt.tpl > "$(dirname "$MA")/SpeechService.kt"
           # "Download modules" needs the permission to use the internet (the generated manifest has it; this makes sure)
           MF=src-tauri/gen/android/app/src/main/AndroidManifest.xml
           grep -q 'android.permission.INTERNET' "$MF" || sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MF"
@@ -89,6 +90,12 @@ jobs:
           grep -q 'REQUEST_INSTALL_PACKAGES' "$MF" || sed -i 's#<application#<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application#' "$MF"
           sed -i 's#</application>#    <provider android:name="org.timotheos.bible.UpdateFileProvider" android:authorities="${applicationId}.updates" android:exported="false" android:grantUriPermissions="true"><meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/update_paths" /></provider>\n    </application>#' "$MF"
           mkdir -p "$RES/xml"; printf '<?xml version="1.0" encoding="utf-8"?>\n<paths><cache-path name="updates" path="." /></paths>\n' > "$RES/xml/update_paths.xml"
+          # reading aloud with the screen off: a media foreground service, notification buttons, a wake lock, and the question about battery optimisation
+          for P in FOREGROUND_SERVICE FOREGROUND_SERVICE_MEDIA_PLAYBACK POST_NOTIFICATIONS WAKE_LOCK REQUEST_IGNORE_BATTERY_OPTIMIZATIONS; do
+            grep -q "android.permission.$P\"" "$MF" || sed -i "s#<application#<uses-permission android:name=\"android.permission.$P\" />\n    <application#" "$MF"
+          done
+          sed -i 's#</application>#    <service android:name="org.timotheos.bible.SpeechService" android:exported="false" android:foregroundServiceType="mediaPlayback" />\n    </application>#' "$MF"
+          grep -n 'SpeechService\|FOREGROUND_SERVICE\|WAKE_LOCK\|IGNORE_BATTERY\|POST_NOTIFICATIONS' "$MF"
           grep -n 'REQUEST_INSTALL_PACKAGES\|UpdateFileProvider' "$MF"
           G=src-tauri/gen/android/app/build.gradle.kts
           sed -i '0,/^dependencies {/s//dependencies {\n    implementation("androidx.core:core-ktx:1.13.1")/' "$G"

@@ -37,6 +37,7 @@
   function marks(on) { if (!on) document.querySelectorAll('.speaking').forEach(e => e.classList.remove('speaking')); }
   function stop() {
     run++; busy = false; ctl = { paused: false, jump: 0 };
+    if (ns) { ns = null; nativeCall('stop'); }
     try { speechSynthesis.cancel(); } catch (e) { /* none */ }
     marks(false); document.querySelectorAll('.ttsbtn.on').forEach(e => e.classList.remove('on'));
     const b = document.getElementById('ttsbar'); if (b) b.classList.add('hidden');
@@ -44,7 +45,7 @@
     emit('');
   }
   let lastLabel = '';
-  function emit(label) { if (label != null) lastLabel = label; window.dispatchEvent(new CustomEvent('tw-tts', { detail: { busy, paused: ctl.paused, label: lastLabel } })); }
+  function emit(label) { if (label != null) lastLabel = label; document.documentElement.classList.toggle('tts-on', busy); window.dispatchEvent(new CustomEvent('tw-tts', { detail: { busy, paused: ctl.paused, label: lastLabel } })); }
   function sayOne(text, v) {
     return new Promise(res => {
       const c = cfg(); const u = new SpeechSynthesisUtterance(text); u.voice = v; u.lang = v.lang;
@@ -69,6 +70,13 @@
       b.innerHTML = `<span class="ttslbl" id="ttsLbl"></span><button type="button" data-t="prev" title="Previous verse">${SVG.prev}</button><button type="button" data-t="pause" title="Pause / continue">${SVG.pause}</button><button type="button" data-t="next" title="Next verse">${SVG.next}</button><button type="button" data-t="stop" title="Stop reading">${SVG.stop}</button>`;
       b.addEventListener('click', e => {
         const t = e.target.closest('button'); if (!t) return;
+        if (ns) {   // Android: the service does the reading; the buttons only tell it
+          const k = t.dataset.t;
+          if (k === 'stop') stop();
+          else if (k === 'pause') { ctl.paused = !ctl.paused; t.innerHTML = ctl.paused ? SVG.play : SVG.pause; nativeCall(ctl.paused ? 'pause' : 'resume'); emit(); }
+          else nativeCall(k === 'next' ? 'next' : 'prev');
+          return;
+        }
         if (t.dataset.t === 'stop') stop();
         else if (t.dataset.t === 'pause') { ctl.paused = !ctl.paused; t.innerHTML = ctl.paused ? SVG.play : SVG.pause; if (ctl.paused) { try { speechSynthesis.cancel(); } catch (x) { /* none */ } } emit(); }
         else { ctl.jump = t.dataset.t === 'next' ? 1 : -1; try { speechSynthesis.cancel(); } catch (x) { /* none */ } }
@@ -133,6 +141,7 @@
     }
     const inf = state.infos.get((views()[i] || {}).bible) || {};
     const lang = c.lang || langOf(inf.lang);
+    if (nat()) return speakNative(i, mode, range, lang, btn);
     const my = ++run; busy = true; ctl = { paused: false, jump: 0 };
     if (btn) btn.classList.add('on', 'ttsbtn');
     try {
@@ -151,6 +160,153 @@
       }
     } finally { if (my === run) stop(); }
   }
+  /* ---- Android: the reading is done by a native foreground service (android/SpeechService.kt.tpl) ----
+   * The page hands over the verses of the chapter and of the chapters after it; the service speaks them one after another with
+   * the screen on or off, holds the audio and the CPU, and shows a notification player with previous / pause / next / stop.
+   * The page only marks the verse that is being read, turns to the next chapter with it, and keeps the playlist filled up. */
+  const nat = () => !!(window.TwSpeech && typeof window.TwSpeech.start === 'function');
+  const nativeCall = (fn, ...a) => { try { return window.TwSpeech[fn](...a); } catch (e) { return null; } };
+  const NAHEAD = 4;                 // chapters kept in the playlist after the one being read
+  let ns = null;                    // { kind, i, mode, loop, metas:[{b,c,v,lbl,el}], bibleId, last, starts, g, exhausted, want, cur, shown }
+  function nextRef(r) {
+    const k = state.nav.findIndex(x => x.id === r.b); if (k < 0) return null;
+    const bk = state.nav[k], j = bk.chapterList.indexOf(r.c) + 1;
+    if (j < bk.chapterList.length) return { b: bk.id, c: bk.chapterList[j] };
+    const n = state.nav[k + 1]; return n ? { b: n.id, c: n.chapterList[0] } : null;
+  }
+  /** the readable verses of a chapter, from the Bible's own text (no pane has to show it) */
+  async function chapPieces(bibleId, b, c, lo, hi) {
+    const d = await api.chapter([bibleId], b, c);
+    const inf = state.infos.get(bibleId) || { rules: [] };
+    const show = Object.assign({}, state.settings.show, { strongs: false, morph: false, footnotes: false });
+    const out = [];
+    for (const r of d.rows) {
+      if (r.cells[0] == null || r.v < 1 || r.v < lo || r.v > hi) continue;
+      const el = document.createElement('div');
+      el.innerHTML = TWRender.render(r.cells[0], inf, show, { fn: { n: 0 }, b });
+      const text = readable(el); if (text) out.push({ v: r.v, text, lbl: refName({ b, c, v: r.v }) });
+    }
+    return out;
+  }
+  /** add verses to the playlist: one group per verse (previous / next move by group), a piece per sentence-sized chunk */
+  function nAdd(s, list, ps, b, c) {
+    for (const p of ps) { s.g++; for (const t of chunks(p.text)) { s.metas.push({ b, c, v: p.v, lbl: p.lbl }); list.push({ t, g: s.g, l: p.lbl, r: `${b}.${c}.${p.v}` }); } }
+  }
+  async function showPiece(m) {
+    const s = ns; if (!s || !m) return;
+    bar(m.lbl);
+    if (m.el) { marks(false); if (m.el.isConnected) { m.el.classList.add('speaking'); m.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } return; }
+    // the view turns to the chapter being read when the reading goes on into the next one; a reader who went elsewhere is left alone
+    if (!s.shown || s.shown.b !== m.b || s.shown.c !== m.c) {
+      const cur = refOfView(s.i); s.shown = { b: m.b, c: m.c };
+      if (cur.b !== m.b || cur.c !== m.c) await goRef(s.i, { b: m.b, c: m.c, v: m.v });
+      if (ns !== s) return;
+    }
+    marks(false);
+    const root = paneTexts()[s.i]; const el = root && root.querySelector(`tr[data-v="${m.v}"], .pv[data-v="${m.v}"]`);
+    if (el) { el.classList.add('speaking'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  }
+  async function pump() {
+    const s = ns; if (!s || s.pumping) return; s.pumping = true;
+    try { let last = -1; while (ns === s && last !== s.want) { last = s.want; if (!document.hidden) await showPiece(s.metas[last]); } } finally { s.pumping = false; }
+  }
+  async function topUp() {
+    const s = ns; if (!s || s.kind !== 'view' || s.mode !== 'bible' || s.topping || s.exhausted) return;
+    s.topping = true;
+    try {
+      while (ns === s && !s.exhausted && s.starts.filter(x => x > s.cur).length < NAHEAD) {
+        const nx = nextRef(s.last); if (!nx) { s.exhausted = true; break; }
+        const ps = await chapPieces(s.bibleId, nx.b, nx.c, 1, Infinity);
+        if (ns !== s) return;
+        const list = []; s.starts.push(s.metas.length); nAdd(s, list, ps, nx.b, nx.c); s.last = nx;
+        if (list.length) nativeCall('append', JSON.stringify(list));
+      }
+    } catch (e) { /* what is queued goes on */ } finally { s.topping = false; }
+  }
+  function onNative(e) {
+    const s = ns; if (!s || !e) return;
+    if (e.t === 'piece') { s.cur = s.want = e.i; pump(); topUp(); }
+    else if (e.t === 'state') {
+      if (!e.playing && !e.paused) { stop(); return; }
+      ctl.paused = !!e.paused; const b = document.getElementById('ttsbar'); if (b) b.querySelector('[data-t="pause"]').innerHTML = ctl.paused ? SVG.play : SVG.pause; emit();
+    } else if (e.t === 'end') stop();
+    else if (e.t === 'err') { flash(e.msg || 'Reading aloud stopped'); stop(); }
+  }
+  /** Android keeps reading with the screen off; when the page is back it catches up with where the service is */
+  function nativeSync() {
+    if (!nat()) return;
+    let st; try { st = JSON.parse(window.TwSpeech.state()); } catch (e) { return; }
+    if (!ns) { if (st.playing || st.paused) reattach(); return; }
+    if (!st.playing && !st.paused) { stop(); return; }
+    ctl.paused = !!st.paused; ns.cur = ns.want = st.idx;
+    const m = ns.metas[st.idx]; if (m) bar(m.lbl); else emit();
+    pump(); topUp();
+  }
+  /** the page was rebuilt while the service kept reading: pick the reading up again */
+  function reattach() {
+    let snap, ctx = {};
+    try { snap = JSON.parse(window.TwSpeech.snapshot()); ctx = JSON.parse(snap.ctx || '{}'); } catch (e) { return; }
+    if (ctx.kind !== 'view' || !snap.pieces || !snap.pieces.length || !state.nav || !state.nav.length) { if (!ctx.kind || ctx.kind !== 'view') nativeCall('stop'); return; }
+    const metas = snap.pieces.map(p => { const a = String(p.r || '').split('.').map(Number); return { b: a[0], c: a[1], v: a[2], lbl: p.l }; });
+    const starts = []; metas.forEach((m, k) => { if (k === 0 || m.b !== metas[k - 1].b || m.c !== metas[k - 1].c) starts.push(k); });
+    const last = metas[metas.length - 1];
+    run++; busy = true; ctl = { paused: !!snap.paused, jump: 0 };
+    ns = { kind: 'view', i: Math.min(ctx.i || 0, Math.max(0, views().length - 1)), mode: ctx.mode || 'bible', loop: !!snap.loop, metas, bibleId: ctx.bibleId, last: { b: last.b, c: last.c },
+      starts, g: snap.pieces.reduce((a, p) => Math.max(a, p.g || 0), 0), exhausted: false, want: snap.idx, cur: snap.idx, shown: null };
+    window.__twTts = onNative;
+    const m = metas[snap.idx]; bar(m ? m.lbl : '');
+    pump(); topUp();
+  }
+  /** Battery saver and battery optimisation stop background apps; reading aloud asks once to be left out of it (the user answers in Android's own dialog) */
+  function batteryOk() { try { return !window.TwSpeech.batteryOk || window.TwSpeech.batteryOk(); } catch (e) { return true; } }
+  function askBackground(force) {
+    if (!nat() || batteryOk()) return;
+    let asked = false; try { asked = localStorage.getItem('tw-bgask') === '1'; } catch (e) { /* no storage */ }
+    if (asked && !force) return;
+    try { localStorage.setItem('tw-bgask', '1'); } catch (e) { /* fine */ }
+    setTimeout(() => nativeCall('allowBackground'), 700);
+  }
+  async function speakNative(i, mode, range, lang, btn) {
+    const v = await voiceFor(lang);
+    if (!v) return flash(`No voice for ${NAMES[lang] || lang} on this device – choose one in Options → Read aloud`);
+    const c = cfg(); const bibleId = (views()[i] || {}).bible;
+    if (range) await goRef(i, range.from);
+    const cur = range ? range.from : refOfView(i);
+    run++; busy = true; ctl = { paused: false, jump: 0 };
+    if (btn) btn.classList.add('on', 'ttsbtn');
+    const s = ns = { kind: 'view', i, mode, loop: mode !== 'bible', metas: [], bibleId, last: { b: cur.b, c: cur.c }, starts: [], g: 0, exhausted: false, want: 0, cur: 0, shown: { b: cur.b, c: cur.c } };
+    const payload = [];
+    try {
+      const addChap = async (b, c2, lo, hi) => { const ps = await chapPieces(bibleId, b, c2, lo, hi); s.starts.push(s.metas.length); nAdd(s, payload, ps, b, c2); };
+      if (range) {
+        let r = { b: range.from.b, c: range.from.c };
+        for (let n = 0; n < 200 && r; n++) { await addChap(r.b, r.c, sameCh(r, range.from) ? range.from.v : 1, sameCh(r, range.to) ? range.to.v : Infinity); if (sameCh(r, range.to)) break; r = nextRef(r); }
+      } else if (mode === 'chapter') await addChap(cur.b, cur.c, 1, Infinity);
+      else await addChap(cur.b, cur.c, cur.v || 1, Infinity);
+      if (ns !== s) return;                                   // stopped while the text was being fetched
+      if (!payload.length) { flash('Nothing to read here'); stop(); return; }
+      window.__twTts = onNative;
+      nativeCall('start', JSON.stringify({ pieces: payload, loop: s.loop, voice: v.voiceURI, lang: v.lang, rate: c.rate || 1, pitch: c.pitch || 1, volume: c.volume == null ? 1 : c.volume,
+        label: s.metas[0].lbl, start: 0, ctx: JSON.stringify({ kind: 'view', mode, i, bibleId }) }));
+      bar(s.metas[0].lbl); pump(); askBackground();
+      topUp();
+    } catch (e) { flash('Could not start reading aloud'); if (ns === s) stop(); }
+  }
+  async function speakTopicNative(pieces, lang, title, btn) {
+    const v = await voiceFor(lang);
+    if (!v) return flash(`No voice for ${NAMES[lang] || lang} on this device – choose one in Options → Read aloud`);
+    const c = cfg(); run++; busy = true; ctl = { paused: false, jump: 0 }; if (btn) btn.classList.add('on', 'ttsbtn');
+    const s = ns = { kind: 'topic', i: 0, mode: 'topic', loop: false, metas: [], g: 0, want: 0, cur: 0, starts: [], exhausted: true };
+    const payload = [];
+    for (const p of pieces) { const t = String(p.text || '').replace(/\s+/g, ' ').trim(); if (!t) continue; s.g++; for (const x of chunks(t)) { s.metas.push({ el: p.el, lbl: title }); payload.push({ t: x, g: s.g, l: title, r: '' }); } }
+    if (!payload.length) { stop(); return; }
+    window.__twTts = onNative;
+    nativeCall('start', JSON.stringify({ pieces: payload, loop: false, voice: v.voiceURI, lang: v.lang, rate: c.rate || 1, pitch: c.pitch || 1, volume: c.volume == null ? 1 : c.volume, label: title, start: 0, ctx: JSON.stringify({ kind: 'topic' }) }));
+    bar(title); pump(); askBackground();
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) nativeSync(); });
+  if (nat()) setTimeout(nativeSync, 3500);
+
   /** the open Library topic */
   async function speakTopic(btn) {
     const body = document.querySelector('#libBody'); if (!body || !body.textContent.trim()) return flash('Open a topic first');
@@ -158,6 +314,7 @@
     const m = (state.modules.books || []).find(b => b.id === TimotheosModules.lib.cur) || {};
     const blocks = [...body.querySelectorAll('h4, p, li, td')].filter(e => !e.querySelector('p, li, td') && readable(e));
     const pieces = blocks.length ? blocks.map(el => ({ text: readable(el), el })) : readable(body).split(/(?<=[.!?])\s+/).map(text => ({ text }));
+    if (nat()) return speakTopicNative(pieces, cfg().lang || langOf(m.lang), m.title || '', btn);
     const my = ++run; busy = true; ctl = { paused: false, jump: 0 }; if (btn) btn.classList.add('on', 'ttsbtn');
     try { await speakPieces(pieces, cfg().lang || langOf(m.lang), my, m.title || ''); } finally { if (my === run) stop(); }
   }
@@ -193,6 +350,7 @@
       <label class="ttsrow"><span>Volume</span><input type="range" id="ttsVol" min="0" max="1" step="0.05" value="${c.volume == null ? 1 : c.volume}"><b id="ttsVolV">${pct(c.volume == null ? 1 : c.volume)}</b></label>
       <label class="ttsrow"><span>Pitch</span><input type="range" id="ttsPitch" min="0.5" max="2" step="0.05" value="${c.pitch || 1}"><b id="ttsPitchV">${(c.pitch || 1).toFixed(2)}</b></label>
       <label class="ttsrow"><span>Tempo (speed)</span><input type="range" id="ttsRate" min="0.5" max="2" step="0.05" value="${c.rate || 1}"><b id="ttsRateV">${(c.rate || 1).toFixed(2)}</b></label>
+      ${nat() ? `<h4>Background playback</h4><p class="small">Reading aloud goes on with the screen locked or the app in the background, with the player in the notification. Battery saver can still stop a background app unless Android is told to leave Timotheos out of it.</p><div class="row"><button type="button" id="ttsBg">Allow background playback…</button><span class="small" id="ttsBgState">${batteryOk() ? 'Battery: no restriction for Timotheos ✓' : 'Battery: restricted – tap the button and choose Allow'}</span></div>` : ''}
       <h4>What to read</h4>
       <label class="ttsmode"><input type="radio" name="ttsMode" value="bible"${c.mode === 'bible' ? ' checked' : ''}> Read on, chapter after chapter, to the end of the Bible</label>
       <label class="ttsmode"><input type="radio" name="ttsMode" value="chapter"${c.mode === 'chapter' ? ' checked' : ''}> Repeat the whole chapter</label>
@@ -229,6 +387,7 @@
       else if (t.dataset.cur) { const r = { ...refOfView(state.active) }; set(t.dataset.cur, { b: r.b, c: r.c, v: r.v }); root.querySelector(t.dataset.cur === 'from' ? '#ttsFrom' : '#ttsTo').value = refTxt(r); }
       else if (t.id === 'ttsGo') { const o = document.getElementById('optionsDlg'); if (o) o.classList.add('hidden'); speakView(state.active, null); }
       else if (t.id === 'ttsStop') stop();
+      else if (t.id === 'ttsBg') { askBackground(true); setTimeout(() => { const st = root.querySelector('#ttsBgState'); if (st) st.textContent = batteryOk() ? 'Battery: no restriction for Timotheos ✓' : 'Battery: restricted – tap the button and choose Allow'; }, 4000); }
     };
   }
   /** the old "Read Aloud: Voices…" menu entry: the settings page */
@@ -236,5 +395,5 @@
   /** the player's buttons, for the phone screens' own players: 'prev' | 'pause' | 'next' | 'stop' */
   function control(t) { const b = document.getElementById('ttsbar'); const x = b && b.querySelector(`[data-t="${t}"]`); if (x) x.click(); else if (t === 'stop') stop(); }
   function setCfg(k, v) { const n = cfg(); n[k] = v; store(n); emit(); }
-  window.TimotheosSpeech = { speakView, speakTopic, voicesDialog, fillOptions, stop, isSpeaking: () => busy, isPaused: () => ctl.paused, label: () => lastLabel, langOf, control, cfg, setCfg, voices, NAMES, sample, have };
+  window.TimotheosSpeech = { askBackground, speakView, speakTopic, voicesDialog, fillOptions, stop, isSpeaking: () => busy, isPaused: () => ctl.paused, label: () => lastLabel, langOf, control, cfg, setCfg, voices, NAMES, sample, have };
 })();
