@@ -894,8 +894,23 @@ function updateHistoryButtons() {
   if (f) { f.disabled = !state.fwd.length; f.title = state.fwd.length ? 'Forward to ' + refName(state.fwd[state.fwd.length - 1]) + ' (Alt+→)' : 'Forward (Alt+→)'; }
 }
 function refName(r) { const bk = state.nav.find(x => x.id === r.b); return `${bk ? bk.abbr : (window.BOOK_ABBR || {})[r.b] || r.b} ${r.c}:${r.v}`; }
+/** the books (and chapters) of the active Bible only: a New Testament module shows no Old Testament, in the tree, the book lists and the book / chapter buttons */
+function navList() {
+  const act = (views()[state.active] || {}).bible, all = state.nav || [];
+  if (!act) return all;
+  const out = [];
+  for (const k of all) {
+    if (!k.has) { out.push(k); continue; }
+    const ch = k.has[act]; if (!ch || !ch.length) continue;
+    out.push(ch.length === k.chapterList.length ? k : Object.assign(Object.create(k), { chapterList: ch, chapters: ch[ch.length - 1] }));
+  }
+  return out.length ? out : all;
+}
+window.navList = navList;
 function stepBook(d) {
-  const i = state.nav.findIndex(x => x.id === state.ref.b); const n = state.nav[i + d];
+  const L = navList(); let i = L.findIndex(x => x.id === state.ref.b);
+  if (i < 0) { const o = (state.nav || []).findIndex(x => x.id === state.ref.b); i = d > 0 ? L.findIndex(x => (state.nav || []).indexOf(x) > o) - 1 : L.length; }   // the book is not in this Bible: go to the nearest one that is
+  const n = L[i + d];
   if (n) go({ b: n.id, c: n.chapterList[0], v: 1 });
 }
 const centerOn = () => state.settings.centerActive !== false;
@@ -968,11 +983,11 @@ function wireSwipe() {
 }
 
 function step(d) {
-  const i = state.nav.findIndex(x => x.id === state.ref.b); if (i < 0) return;
-  let b = state.nav[i]; const list = b.chapterList; const j = list.indexOf(state.ref.c) + d;
+  const L = navList(); const i = L.findIndex(x => x.id === state.ref.b); if (i < 0) return;
+  let b = L[i]; const list = b.chapterList; const j = list.indexOf(state.ref.c) + d;
   let c;
-  if (j < 0) { const p = state.nav[i - 1]; if (!p) return; b = p; c = p.chapterList[p.chapterList.length - 1]; }
-  else if (j >= list.length) { const n = state.nav[i + 1]; if (!n) return; b = n; c = n.chapterList[0]; }
+  if (j < 0) { const p = L[i - 1]; if (!p) return; b = p; c = p.chapterList[p.chapterList.length - 1]; }
+  else if (j >= list.length) { const n = L[i + 1]; if (!n) return; b = n; c = n.chapterList[0]; }
   else c = list[j];
   go({ b: b.id, c, v: 1 });
 }
@@ -1334,7 +1349,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.46')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.47')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

@@ -100,8 +100,8 @@
 
   /* ======================================================================= Design 1: Interactive Header & 3-Step Popover */
   /** the verse browser bar (book pill, step arrows, history) that sits in the header of every Bible view */
-  const NAV_STEPS = [['prevBook', 'prevBook', 'Previous book (Ctrl+←)'], ['back', 'back', 'Back to the previous passage (Alt+←)'], ['prevVerse', 'up', 'Previous verse (↑)'],
-    ['nextVerse', 'down', 'Next verse (↓)'], ['fwd', 'forward', 'Forward to the next passage (Alt+→)'], ['nextBook', 'nextBook', 'Next book (Ctrl+→)'], ['hist', 'history', 'Recent passage history (Back / Forward list)']];
+  const NAV_STEPS = [['prevBook', 'prevBook', 'Previous book (Ctrl+←)'], ['prevChap', 'prevChap', 'Previous chapter'], ['back', 'back', 'Back to the previous passage (Alt+←)'], ['prevVerse', 'up', 'Previous verse (↑)'],
+    ['nextVerse', 'down', 'Next verse (↓)'], ['fwd', 'forward', 'Forward to the next passage (Alt+→)'], ['nextChap', 'nextChap', 'Next chapter'], ['nextBook', 'nextBook', 'Next book (Ctrl+→)'], ['hist', 'history', 'Recent passage history (Back / Forward list)']];
   function barHtml() {
     return `<span class="navhdr1"><button type="button" class="navpill" title="Browse books, chapters and verses (mouse wheel steps the book)"><span class="np-cat">📜</span><span class="np-lbl">Genesis</span><span class="np-short">Gen</span><span class="np-caret">▾</span></button><span class="navsteps">${NAV_STEPS.map(([a, ic, t]) => `<button type="button" class="dbtn navic" data-nav="${a}" title="${t}" aria-label="${t}">${TimotheosIcons.icon(ic, 14)}</button>`).join('')}</span></span>`;
   }
@@ -126,6 +126,7 @@
       if (!ic) return;
       const a = ic.dataset.nav;
       if (a === 'prevBook') stepBook(-1); else if (a === 'nextBook') stepBook(1);
+      else if (a === 'prevChap') step(-1); else if (a === 'nextChap') step(1);
       else if (a === 'back') historyGo(-1); else if (a === 'fwd') historyGo(1);
       else if (a === 'prevVerse') stepVerse(-1); else if (a === 'nextVerse') stepVerse(1);
       else if (a === 'hist') { e.stopPropagation(); openHistoryMenu(ic); }
@@ -188,7 +189,7 @@
     if (!pop) return;
     const layout = (state.settings && state.settings.navPopLayout) || 'cascade'; // 'cascade' | 'columns'
     const tileStyle = (state.settings && state.settings.navBookStyle) || 'tiles'; // 'tiles' | 'list'
-    const bk = state.nav.find(x => x.id === popState.selB) || state.nav[0];
+    const NL = navList(), bk = NL.find(x => x.id === popState.selB) || NL[0];
     if (!bk) return;
     if (!bk.chapterList.includes(popState.selC)) popState.selC = bk.chapterList[0] || 1;
     const vMax = verseCountOf(bk.id, popState.selC);
@@ -268,7 +269,7 @@
     const q = (popState.filter || '').trim().toLowerCase();
     let html = '';
     let lastCat = null;
-    const filtered = state.nav.filter(x => {
+    const filtered = NL.filter(x => {
       if (!q) return true;
       return x.name.toLowerCase().includes(q) || (x.abbr || '').toLowerCase().includes(q) || (x.abbrs || []).some(a => a.toLowerCase().startsWith(q));
     });
@@ -365,7 +366,7 @@
     pop.querySelectorAll('[data-b]').forEach(bt => {
       bt.onclick = () => {
         popState.selB = +bt.dataset.b;
-        const nb = state.nav.find(x => x.id === popState.selB) || state.nav[0];
+        const nb = navList().find(x => x.id === popState.selB) || navList()[0];
         popState.selC = nb.chapterList[0] || 1;
         popState.filter = '';
         if (nb.chapterList.length === 1) {
@@ -377,7 +378,7 @@
         drawNavPopover();
       };
       bt.ondblclick = () => {
-        const nb = state.nav.find(x => x.id === +bt.dataset.b) || state.nav[0];
+        const nb = navList().find(x => x.id === +bt.dataset.b) || navList()[0];
         go({ b: nb.id, c: nb.chapterList[0] || 1, v: 1 });
         closeNavPopover();
       };
@@ -686,7 +687,7 @@
     document.querySelectorAll('#treeToolbar [data-tmode]').forEach(x => x.classList.toggle('on', x.dataset.tmode === tmode));
     const q = (($('#treeFilter') && $('#treeFilter').value) || '').trim().toLowerCase();
     const vMax = verseCountOf(state.ref.b, state.ref.c);
-    const key = `${tmode}|${q}|${state.ref.b}.${state.ref.c}:${vMax}|` + state.nav.map(b => b.id + ':' + b.chapterList.length).join(',') + '|' + state.nav[0].name + '|' + catLabel(CATEGORIES.law);   // names change with the Bible / language
+    const key = `${tmode}|${q}|${state.ref.b}.${state.ref.c}:${vMax}|` + navList().map(b => b.id + ':' + b.chapterList.length).join(',') + '|' + state.nav[0].name + '|' + catLabel(CATEGORIES.law);   // names change with the Bible / language
 
     if (!force && key === lastTreeKey) {
       syncTreeHighlight(box);
@@ -694,13 +695,13 @@
     }
     lastTreeKey = key;
 
-    const filtered = state.nav.filter(x => {
+    const filtered = navList().filter(x => {
       if (!q) return true;
       return x.name.toLowerCase().includes(q) || (x.abbr || '').toLowerCase().includes(q) || (x.abbrs || []).some(a => a.toLowerCase().startsWith(q));
     });
 
     if (tmode === 'tiles') {
-      const curBk = state.nav.find(x => x.id === state.ref.b) || state.nav[0];
+      const curBk = navList().find(x => x.id === state.ref.b) || navList()[0];
       const curCat = bookCategory(curBk.id, curBk.grp);
       let html = `<div class="ttiles-wrap">`;
       let lastCat = null;

@@ -11,6 +11,8 @@ const ICONS = {
   down: '<path d="M6 9l6 6 6-6"/>',
   prevBook: '<path d="M6 6v12M18 18l-8-6 8-6z"/>',
   nextBook: '<path d="M18 6v12M6 6l8 6-8 6z"/>',
+  prevChap: '<path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>',
+  nextChap: '<path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   pin: '<path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/>',
   outline: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',

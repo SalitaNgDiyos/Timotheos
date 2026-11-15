@@ -235,6 +235,7 @@ class Library {
   /** union of books/chapters across the given modules (for navigation) */
   async navigation(ids) {
     const books = {}; let tl = null;   // the book names follow the first Bible: a Tagalog Bible shows Tagalog book names
+    const has = {};                    // book -> { Bible id -> its chapters }
     const tlIds = [];                  // every Tagalog Bible among them, so each pane can show its own Bible's names
     for (const id of ids) {
       let m; try { m = await this.bible(id); } catch (e) { continue; }
@@ -242,13 +243,15 @@ class Library {
       if (tl === null) tl = isTl;
       for (const b in m.books) {
         const set = books[b] || (books[b] = new Set());
-        m.books[b].forEach((n, i) => { if (n > 0) set.add(i + 1); });
+        const own = (has[b] = has[b] || {})[id] = [];   // the chapters this Bible itself has, for the lists of a view that shows only this Bible
+        m.books[b].forEach((n, i) => { if (n > 0) { set.add(i + 1); own.push(i + 1); } });
+        if (!own.length) delete has[b][id];
       }
     }
     const mode = this.settings.apocryphaPlacement;
     return Object.keys(books).map(Number).filter(b => books[b].size).sort((a, b) => canon.orderKey(a, mode) - canon.orderKey(b, mode))
       .map(b => { const list = [...books[b]].sort((x, y) => x - y); const en = canon.book(b, mode), t = canon.tagalogBook(en);
-        return { ...(tl ? t : en), chapters: list[list.length - 1], chapterList: list,
+        return { ...(tl ? t : en), chapters: list[list.length - 1], chapterList: list, has: has[b] || {},
           en: { name: en.name, abbr: en.abbr, abbrs: en.abbrs }, tl: { name: t.name, abbr: t.abbr, abbrs: t.abbrs }, tlIds }; });
   }
 

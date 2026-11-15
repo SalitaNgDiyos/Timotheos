@@ -632,12 +632,12 @@ function wireContextMenu() {
 /* ======================================================================= Bible tree (sidebar) */
 function renderTree() {
   if (window.TimotheosNav) return TimotheosNav.renderEnhancedTree(false);
-  const sig = state.nav.map(b => b.id + ':' + b.chapterList.length).join(',');
+  const NL = navList(), sig = NL.map(b => b.id + ':' + b.chapterList.length).join(',');
   const box = $('#bibleTree');
   if (sig !== study.treeSig) {
     study.treeSig = sig;
     let html = ''; let grp = null;
-    for (const bk of state.nav) {
+    for (const bk of NL) {
       if (bk.grp !== grp) { grp = bk.grp; html += `<div class="tgrp">${esc({ OT: 'Old Testament', AP: 'Apocrypha', APX: 'Other books', NT: 'New Testament' }[grp] || grp)}</div>`; }
       html += `<details data-b="${bk.id}"><summary>${esc(bk.name)}</summary><div class="chgrid">${bk.chapterList.map(c => `<button data-b="${bk.id}" data-c="${c}">${c}</button>`).join('')}</div></details>`;
     }

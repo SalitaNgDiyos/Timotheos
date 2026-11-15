@@ -31,7 +31,7 @@
     let body = '';
     if (navSeg === 'books') {
       openBook = openBook || state.ref.b; let g = null;
-      body = '<div class="ptree">' + (state.nav || []).map(b => { const head = b.grp !== g ? `<div class="tg">${p.esc(GRP[b.grp] || b.grp)}</div>` : ''; g = b.grp;
+      body = '<div class="ptree">' + navList().map(b => { const head = b.grp !== g ? `<div class="tg">${p.esc(GRP[b.grp] || b.grp)}</div>` : ''; g = b.grp;
         return head + `<button type="button" class="bk${b.id === openBook ? ' open' : ''}" data-b="${b.id}">${p.esc(b.name)} <small>${b.chapterList.length}</small></button>` + (b.id === openBook ? `<div class="cg">${b.chapterList.map(c => `<button type="button" data-c="${c}" class="${b.id === state.ref.b && c === state.ref.c ? 'hl' : ''}">${c}</button>`).join('')}</div>` : ''); }).join('') + '</div>';
     } else if (navSeg === 'history') {
       const seen = new Set(); const rows = [];
@@ -128,7 +128,7 @@
         const r = localRef(t);
         h += `<div class="pgo">${r ? `<div class="pg2">Go to</div><button type="button" class="pr hl" data-go="${r.b}.${r.c}.${r.v}">${p.ic('pin', 18)}<span>${p.esc(p.rn(r))}</span><small>Go</small></button>` : ''}</div>`;
         if (!r && /\d/.test(t)) api.parseRef(t).then(x => { if (my !== palSeq || !x || !x.b) return; const g = body.querySelector('.pgo'); if (g) g.innerHTML = `<div class="pg2">Go to</div><button type="button" class="pr hl" data-go="${x.b}.${x.c || 1}.${x.v || 1}">${p.ic('pin', 18)}<span>${p.esc(p.rn({ b: x.b, c: x.c || 1, v: x.v || 1 }))}</span><small>Go</small></button>`; }).catch(() => {});
-        const bks = (state.nav || []).filter(b => b.name.toLowerCase().startsWith(t.toLowerCase())).slice(0, 3);
+        const bks = navList().filter(b => b.name.toLowerCase().startsWith(t.toLowerCase())).slice(0, 3);
         if (bks.length && !r) h += `<div class="pg2">Books of the Bible</div>${bks.map(b => `<button type="button" class="pr" data-go="${b.id}.1.1">${p.ic('book', 18)}<span>${p.esc(b.name)}</span><small>${b.chapterList.length} ch</small></button>`).join('')}`;
         h += '<div class="pg2v"></div><div class="pg2b">' + (t.length >= 3 && !r ? '<div class="pg2">Books</div><p class="phint bsprog">Searching the books…</p>' : '') + '</div>';
       }

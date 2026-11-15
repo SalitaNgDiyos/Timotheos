@@ -376,10 +376,10 @@
   }
 
   /* ================================================================ Go to: book → chapter (→ verse) */
-  function books(filter) { return (state.nav || []).filter(b => !filter || filter === 'all' || b.grp === filter || (filter === 'AP' && b.grp === 'APX')); }
+  function books(filter) { return navList().filter(b => !filter || filter === 'all' || b.grp === filter || (filter === 'AP' && b.grp === 'APX')); }
   /** Quiet Reader: a grid of book names, then the chapters */
   function goSheetGrid() {
-    const groups = [...new Set((state.nav || []).map(b => b.grp))]; const hasAp = groups.some(g => g === 'AP' || g === 'APX');
+    const groups = [...new Set(navList().map(b => b.grp))]; const hasAp = groups.some(g => g === 'AP' || g === 'APX');
     const cur = bookOf(state.ref.b);
     const s = sheet(`<div class="pseg" data-seg>${[['OT', 'Old Testament'], ['all', 'All'], ['NT', 'New'], ...(hasAp ? [['AP', 'Apocrypha']] : [])].map(([k, l]) => `<button type="button" data-f="${k}" class="${k === 'all' ? 'on' : ''}">${l}</button>`).join('')}</div><div class="gbody"></div>`, { title: 'Go to <em>Book · Chapter · Verse</em>', cls: 'go tall' });
     const body = s.querySelector('.gbody'); let f = 'all', selB = 0, selC = 0;
@@ -406,14 +406,14 @@
   function goSheetList() {
     const s = sheet(`<label class="pfield">${ic('search', 18)}<input id="pRefQ" type="text" placeholder="Type a reference — Ps 23, Jn 3:16" autocomplete="off" spellcheck="false" enterkeyhint="go"></label>
       ${recents().length ? `<h4 class="sec">Recent ${ic('history', 16)}</h4><div class="pchips">${recents().map(r => `<button type="button" class="pchip" data-go="${r.b}.${r.c}.${r.v || 1}">${esc(rn({ b: r.b, c: r.c, v: r.v || 1 }))}</button>`).join('')}</div>` : ''}
-      <h4 class="sec">Books <span>${[...new Set((state.nav || []).map(b => GRP[b.grp] && b.grp))].filter(Boolean).map(g => ({ OT: 'OT', NT: 'NT', AP: 'Apocrypha', APX: 'Other' }[g])).join(' · ')}</span></h4><div class="gbody"></div>`, { cls: 'go tall' });
+      <h4 class="sec">Books <span>${[...new Set(navList().map(b => GRP[b.grp] && b.grp))].filter(Boolean).map(g => ({ OT: 'OT', NT: 'NT', AP: 'Apocrypha', APX: 'Other' }[g])).join(' · ')}</span></h4><div class="gbody"></div>`, { cls: 'go tall' });
     const body = s.querySelector('.gbody'); let selB = 0;
-    const showBooks = () => { body.innerHTML = `<div class="rows">${(state.nav || []).map(b => `<button type="button" class="prr${b.id === state.ref.b ? ' hl' : ''}" data-b="${b.id}">${ic('book', 18)}<span>${esc(b.name)}</span><small>${b.chapterList.length} chapter${b.chapterList.length === 1 ? '' : 's'}</small></button>`).join('')}</div>`; };
+    const showBooks = () => { body.innerHTML = `<div class="rows">${navList().map(b => `<button type="button" class="prr${b.id === state.ref.b ? ' hl' : ''}" data-b="${b.id}">${ic('book', 18)}<span>${esc(b.name)}</span><small>${b.chapterList.length} chapter${b.chapterList.length === 1 ? '' : 's'}</small></button>`).join('')}</div>`; };
     const showCh = b => { const k = bookOf(b); selB = b; body.innerHTML = `<div class="rows"><button type="button" class="prr hl" data-backb>${ic('book', 18)}<span>${esc(k.name)}</span><small>choose a chapter</small></button></div><div class="cgrid">${k.chapterList.map(c => `<button type="button" data-c="${c}" class="${b === state.ref.b && c === state.ref.c ? 'hl' : ''}">${c}</button>`).join('')}</div>`; };
     showBooks();
     const q = s.querySelector('#pRefQ');
     q.onkeydown = async e => { if (e.key !== 'Enter') return; e.preventDefault(); const r = await api.parseRef(q.value).catch(() => null); if (r && r.b) { closeSheet(); go({ b: r.b, c: r.c || 1, v: r.v || 1 }); } else flash('Not a reference: ' + q.value); };
-    q.oninput = () => { const t = q.value.trim().toLowerCase(); if (!t || /\d/.test(t)) return showBooks(); body.innerHTML = `<div class="rows">${(state.nav || []).filter(b => b.name.toLowerCase().startsWith(t) || (b.abbrs || []).some(a => a.toLowerCase().startsWith(t))).map(b => `<button type="button" class="prr" data-b="${b.id}">${ic('book', 18)}<span>${esc(b.name)}</span><small>${b.chapterList.length} chapters</small></button>`).join('') || '<p class="phint">No book starts with that.</p>'}</div>`; };
+    q.oninput = () => { const t = q.value.trim().toLowerCase(); if (!t || /\d/.test(t)) return showBooks(); body.innerHTML = `<div class="rows">${navList().filter(b => b.name.toLowerCase().startsWith(t) || (b.abbrs || []).some(a => a.toLowerCase().startsWith(t))).map(b => `<button type="button" class="prr" data-b="${b.id}">${ic('book', 18)}<span>${esc(b.name)}</span><small>${b.chapterList.length} chapters</small></button>`).join('') || '<p class="phint">No book starts with that.</p>'}</div>`; };
     s.addEventListener('click', e => {
       const g = e.target.closest('[data-go]'); if (g) { closeSheet(); return go(parseKey(g.dataset.go)); }
       if (e.target.closest('[data-backb]')) return showBooks();
