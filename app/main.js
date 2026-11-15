@@ -317,7 +317,8 @@ app.whenReady().then(async () => {
       title: 'Import theWord or e-Sword modules', properties: ['openFile', 'multiSelections'],
       // one line per kind of module, so the drop-down of the dialog is a vertical list
       filters: [
-        { name: 'All supported modules', extensions: ['ont', 'ot', 'nt', 'twm', 'twzip', 'zip', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml'] },
+        { name: 'All supported modules', extensions: ['ont', 'ot', 'nt', 'twm', 'twzip', 'zip', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml', 'mybible'] },
+        { name: 'MySword modules', extensions: ['mybible'] },
         { name: 'theWord Bibles', extensions: ['ont', 'ot', 'nt'] },
         { name: 'theWord books, commentaries, dictionaries', extensions: ['twm'] },
         { name: 'theWord packages', extensions: ['twzip', 'zip'] },

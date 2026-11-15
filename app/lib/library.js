@@ -3,8 +3,9 @@
 'use strict';
 // Scans module folders, keeps loaded modules, answers chapter/search/lookup requests.
 //   Bibles:        theWord .ont/.ot/.nt, theWord book modules holding Bible text (.gbk.twm),
-//                  e-Sword .bblx/.bbli
+//                  e-Sword .bblx/.bbli, MySword .bbl.mybible
 //   Book modules:  theWord .twm (dictionary, commentary, book, map, devotional),
+//                  MySword .cmt/.dct/.bok/.jor.mybible,
 //                  e-Sword .cmtx/.cmti .dctx/.dcti .lexx/.lexi .topx/.topi .refx/.refi .devx/.devi .mapx/.mapi .harx/.hari .notx .jnlx
 //   Cross-refs:    theWord .xrefs.twm sets
 //   Overlays:      theWord .hdgs.twm (headings) and .prgs.twm (paragraphs) sets
@@ -14,6 +15,7 @@ const path = require('path');
 const theword = require('./theword');
 const esword = require('./esword');
 const twbook = require('./twbook');
+const mysword = require('./mysword');
 const usfm = require('./usfm');
 const bookmod = require('./bookmod');
 const canon = require('./canon');
@@ -21,9 +23,9 @@ const search = require('./search');
 const { linkHtml } = require('./refs');
 const { Overlays } = require('./overlays');
 
-const BIBLE_EXT = /\.(ont|ot|nt|bblx|bbli)$/i;
+const BIBLE_EXT = /\.(ont|ot|nt|bblx|bbli|bbl\.mybible)$/i;
 const ENCRYPTED_EXT = /\.(ontx|otx|ntx)$/i;
-const BOOK_EXT = /\.(twm|cmtx|cmti|dctx|dcti|topx|topi|refx|refi|devx|devi|lexx|lexi|mapx|mapi|harx|hari|notx|jnlx)$/i;
+const BOOK_EXT = /\.(twm|cmtx|cmti|dctx|dcti|topx|topi|refx|refi|devx|devi|lexx|lexi|mapx|mapi|harx|hari|notx|jnlx|(cmt|dct|bok|book|jor)\.mybible)$/i;
 const OVERLAY_TWM = /\.(hdgs|prgs)\.twm$/i;
 const SKIP_TWM = /\.(lyts|vsls|bhls|rdp|layouts?)\.twm$/i;
 
@@ -105,7 +107,7 @@ class Library {
         const low = itemName.toLowerCase();
         // the same module in two folders (e.g. theWord's folder and Timotheos's imports): keep the first
         const dupKey = low;
-        if (BIBLE_EXT.test(low)) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: path.extname(low), linkFile: viaLink }); }
+        if (BIBLE_EXT.test(low)) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: /\.bbl\.mybible$/.test(low) ? '.bbl.mybible' : path.extname(low), linkFile: viaLink }); }
         else if (usfm.isUsfmFile(low)) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: ".usfm", linkFile: viaLink }); }
         else if (usfm.isUsfxFile(low) || (low.endsWith(".xml") && usfm.probeXml(p))) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: ".usfx", linkFile: viaLink }); }
         else if (ENCRYPTED_EXT.test(low)) continue;
@@ -135,7 +137,7 @@ class Library {
   addBook(file, name, linkFile = null) {
     const id = 'bm:' + name;
     const c = this.cache[this.cacheKey(file)];
-    this.books.set(id, { id, file, name, linkFile, kind: (c && c.kind) || bookmod.guessKind(name) || 'book', format: /\.twm$/i.test(name) ? 'theWord' : 'e-Sword', mod: null });
+    this.books.set(id, { id, file, name, linkFile, kind: (c && c.kind) || bookmod.guessKind(name) || 'book', format: /\.twm$/i.test(name) ? 'theWord' : /\.mybible$/i.test(name) ? 'MySword' : 'e-Sword', mod: null });
   }
 
   bookInfo(b) {
@@ -165,7 +167,7 @@ class Library {
     return {
       bibles: this.entries.map(e => {
         const m = this.bibles.get(this._bibleId(e));
-        return { id: this._bibleId(e), name: e.name, file: e.file, abbr: m ? m.abbr : e.name.replace(/\.[^.]+$/, ''), title: m ? m.title : '', loaded: !!m, format: /^es:/.test(this._bibleId(e)) ? 'e-Sword' : /^usfm:/.test(this._bibleId(e)) ? 'USFM' : /^usfx:/.test(this._bibleId(e)) ? 'USFX' : 'theWord', imported: !!(e.linkFile || this.extraFolders.some(f => e.file.startsWith(f))) };
+        return { id: this._bibleId(e), name: e.name, file: e.file, abbr: m ? m.abbr : e.name.replace(/(\.bbl)?\.[^.]+$/, ''), title: m ? m.title : '', loaded: !!m, format: /^es:/.test(this._bibleId(e)) ? 'e-Sword' : /^my:/.test(this._bibleId(e)) ? 'MySword' : /^usfm:/.test(this._bibleId(e)) ? 'USFM' : /^usfx:/.test(this._bibleId(e)) ? 'USFX' : 'theWord', imported: !!(e.linkFile || this.extraFolders.some(f => e.file.startsWith(f))) };
       }),
       books: [...this.books.values()].map(b => this.bookInfo(b)),
       dicts: [...this.books.values()].filter(b => b.kind === 'dictionary').map(b => this.bookInfo(b)),
@@ -175,7 +177,7 @@ class Library {
     };
   }
 
-  _bibleId(e) { return (e.ext === '.bblx' || e.ext === '.bbli' ? 'es:' : e.ext === '.gbk.twm' ? 'bk:' : e.ext === '.usfm' ? 'usfm:' : e.ext === '.usfx' ? 'usfx:' : 'tw:') + e.name; }
+  _bibleId(e) { return (e.ext === '.bblx' || e.ext === '.bbli' ? 'es:' : e.ext === '.bbl.mybible' ? 'my:' : e.ext === '.gbk.twm' ? 'bk:' : e.ext === '.usfm' ? 'usfm:' : e.ext === '.usfx' ? 'usfx:' : 'tw:') + e.name; }
 
   /** Bibles that are shown in a view stay loaded; the others are let go when nobody has used them for a while (RAM) */
   _openIds() { return new Set([...(this.settings.openBibles || []), ...((this.settings.views || []).map(v => v && v.bible))]); }
@@ -191,6 +193,7 @@ class Library {
     const e = this.entries.find(x => this._bibleId(x) === id);
     if (!e) throw new Error('Module not found: ' + id);
     const m = (e.ext === '.bblx' || e.ext === '.bbli') ? await esword.load(e.file, this.settings.eswordBookMap || {})
+      : e.ext === '.bbl.mybible' ? await mysword.load(e.file, this.settings.eswordBookMap || {})
       : e.ext === '.gbk.twm' ? await twbook.load(e.file) : e.ext === '.usfm' ? usfm.loadUsfm(e.file) : e.ext === '.usfx' ? usfm.loadUsfx(e.file) : theword.load(e.file);
     m.id = id;
     this.bibles.set(id, m);

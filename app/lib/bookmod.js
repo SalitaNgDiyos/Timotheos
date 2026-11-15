@@ -75,6 +75,9 @@ function toHtml(body, hint, fontOpts) {
 /** quick type guess from the file name (used before a module is opened) */
 function guessKind(name) {
   const n = name.toLowerCase();
+  if (/\.dct\.mybible$/.test(n)) return 'dictionary';
+  if (/\.cmt\.mybible$/.test(n)) return 'commentary';
+  if (/\.(bok|book|jor)\.mybible$/.test(n)) return 'book';
   if (/\.dct\.twm$|\.dct[xi]$|\.lex[xi]$/.test(n)) return 'dictionary';
   if (/\.cmt\.twm$|\.cmt[xi]$|\.notx$/.test(n)) return 'commentary';
   if (/\.dev\.twm$|\.dev[xi]$/.test(n)) return 'devotional';
@@ -86,12 +89,13 @@ function guessKind(name) {
 
 async function open(file) {
   const base = path.basename(file);
-  const stub = { id: 'bm:' + base, file, name: base, kind: guessKind(base) || 'book', format: /\.twm$/i.test(base) ? 'theWord' : 'e-Sword', title: base, abbr: base.replace(/\..*$/, '') };
+  const stub = { id: 'bm:' + base, file, name: base, kind: guessKind(base) || 'book', format: /\.twm$/i.test(base) ? 'theWord' : /\.mybible$/i.test(base) ? 'MySword' : 'e-Sword', title: base, abbr: base.replace(/\..*$/, '') };
   const head = Buffer.alloc(16); const fd = fs.openSync(file, 'r'); fs.readSync(fd, head, 0, 16, 0); fs.closeSync(fd);
   if (head.toString('latin1', 0, 15) !== 'SQLite format 3') return locked(stub, 'not a readable database – the module is encrypted or in an unknown format');
   const db = openDb(file); // read from disk, not copied into memory
   const tabs = tableMap(db);
   try {
+    if (/\.mybible$/i.test(base)) return openMySword(db, tabs, stub);
     if (tabs.config && (tabs.topics || tabs.content || tabs.bible_refs || tabs.rel_refs || tabs.plan || tabs.readings)) return openTheWord(db, tabs, stub);
     if (tabs.details || tabs.versecommentary || tabs.chaptercommentary || tabs.bookcommentary || tabs.dictionary || tabs.lexicon || tabs.topics || tabs.topic || tabs.reference || tabs.devotions || tabs.devotion || tabs.graphics || tabs.maps || tabs.map || tabs.harmony || tabs.harmonies || tabs.versenotes || tabs.chapternotes || tabs.booknotes || tabs.journal) return openESword(db, tabs, stub);
   } catch (e) { db.close(); throw e; }
@@ -713,6 +717,112 @@ function openESword(db, tabs, stub) {
     }
   }
   return Object.assign(mod, { locked: false, topics: () => items.map(({ id, pid, subject }) => ({ id, pid, subject })), topic, forVerse, verseMarks, lookup, findWord, today, searchTopics, texts, close() { try { db.close(); } catch (e) { /* closed */ } } });
+}
+
+/* ------------------------------------------------------------------ MySword (.cmt/.dct/.bok/.jor.mybible) */
+// Commentary(Book, Chapter, FromVerse, ToVerse, Data) is documented. The dictionary, book and journal layouts are not, so their
+// columns are found by name (title-like and text-like), falling back to the longest-text column.
+function openMySword(db, tabs, stub) {
+  const details = {};
+  if (tabs.details) {
+    const r = db.exec(`select * from "${tabs.details}" limit 1`)[0];
+    if (r) r.columns.forEach((c, i) => { details[c.toLowerCase()] = r.values[0][i]; });
+  }
+  const kind = stub.kind;
+  const skip = new Set(['details', 'android_metadata', 'sqlite_sequence', 'relativeorder', 'wordnanc']);
+  const content = Object.keys(tabs).filter(t => !skip.has(t) && !t.startsWith('sqlite_'));
+  const mod = Object.assign(stub, {
+    format: 'MySword', kind, cfg: details,
+    title: str(details.description || details.title || stub.title), abbr: str(details.abbreviation || stub.abbr),
+    about: details.comments ? toHtml(str(details.comments)) : '',
+    rtl: details.righttoleft == 1, isStrong: false, greek: false, hebrew: false, isMorph: false, hasVerseSync: kind === 'commentary',
+  });
+  if (!details.description && !details.title) mod.title = stub.name.replace(/\.[^.]+$/, '');
+  const bookMap = esw.bookMap();
+  let items = [], byKey = null;
+  const fail = why => { db.close(); return locked(mod, why); };
+
+  if (kind === 'commentary') {
+    const t = tabs.commentary || content[0];
+    if (!t) return fail('no Commentary table');
+    const cols = columns(db, t);
+    const cB = pick(cols, ['book']), cC = pick(cols, ['chapter']), cF = pick(cols, ['fromverse', 'verse']), cT = pick(cols, ['toverse']);
+    const cD = pick(cols, ['data', 'comments', 'commentary', 'text']);
+    if (!cB || !cD) return fail(`unexpected MySword commentary layout (${cols.join(', ')})`);
+    const sel = [cB, cC || '0', cF || '0', cT || cF || '0'].join(', ');
+    for (const [rowid, b, c, f, e] of all(db, `select rowid, ${sel} from "${t}"`)) {
+      const [bb, cc] = c ? esw.mapChapter(b, c, bookMap) : [bookMap[b] || b, 0];
+      const ref = { b: bb, c: cc, f: c ? (f || 0) : 0, c2: cc, e: c && f ? (e || f) : 0 };
+      items.push({ id: 'y' + rowid, pid: 0, subject: refLabel(bb, ref.c, ref.f, ref.c2, ref.e), ref, table: t, rowid, col: cD });
+    }
+    items.sort((x, y) => canon.orderKey(x.ref.b) - canon.orderKey(y.ref.b) || x.ref.c - y.ref.c || x.ref.f - y.ref.f);
+  } else {
+    const t = (kind === 'dictionary' ? tabs.dictionary : null) || content.find(n => /dict|book|journal|content|topic/.test(n)) || content[0];
+    if (!t) return fail('no readable content table');
+    const cols = columns(db, t);
+    let cTitle = pick(cols, ['title', 'chapter', 'name', 'word', 'subject', 'topic', 'heading', 'date']);
+    let cText = pick(cols, ['data', 'content', 'text', 'body', 'notes', 'comments', 'definition']);
+    if (!cText || cText === cTitle) {   // longest text column
+      let best = null, bl = -1;
+      for (const c of cols) { if (c === cTitle) continue; const r = one(db, `select max(length("${c}")) from "${t}"`); if (r && r[0] > bl) { bl = r[0]; best = c; } }
+      cText = best;
+    }
+    if (!cTitle) cTitle = cols.find(c => c !== cText) || null;
+    if (!cText) return fail(`unexpected MySword table layout (${cols.join(', ')})`);
+    items = all(db, `select rowid, ${cTitle ? '"' + cTitle + '"' : 'rowid'} from "${t}"`).map(([rowid, ttl]) => ({
+      id: 'r' + rowid, pid: 0, subject: str(ttl).trim() || `Entry ${rowid}`, table: t, rowid, col: cText }));
+    if (kind === 'dictionary') {
+      const strongish = items.filter(i => /^[GH]\d+[a-z]?$/i.test(i.subject)).length;
+      if (items.length && strongish > items.length * 0.5) { mod.isStrong = true; mod.greek = items.some(i => /^G\d/i.test(i.subject)); mod.hebrew = items.some(i => /^H\d/i.test(i.subject)); }
+      mod.isMorph = /morph|rmac|robinson|packard|parsing/i.test(mod.title + ' ' + stub.name);
+    }
+    byKey = new Map();
+    for (const it of items) { const k = it.subject.toLowerCase(); if (!byKey.has(k)) byKey.set(k, it); }
+  }
+  const byId = new Map(items.map(i => [i.id, i]));
+  const raw = it => { const r = one(db, `select "${it.col}" from "${it.table}" where rowid = ?`, [it.rowid]); return r && r[0] != null ? str(r[0]) : ''; };
+  function topic(id) { const it = byId.get(id); if (!it) return null; return { id, subject: it.subject, html: esw.htmlish(raw(it)) }; }
+  function forVerse(b, c, v) {
+    if (kind !== 'commentary') return null;
+    let best = null, rank = 9, span = 1e9;
+    for (const it of items) {
+      const r = it.ref; if (r.b !== b) continue;
+      let lv;
+      if (r.c === 0) lv = 3;
+      else if (r.f === 0) { if (r.c !== c) continue; lv = 2; }
+      else { if (r.c !== c || v < r.f || v > r.e) continue; lv = r.f === v && r.e === v ? 0 : 1; }
+      const sp = r.e - r.f;
+      if (lv < rank || (lv === rank && sp < span)) { best = it; rank = lv; span = sp; }
+    }
+    return best ? { id: best.id, subject: best.subject, level: ['verse', 'passage', 'chapter', 'book'][rank] } : null;
+  }
+  function verseMarks(b, c) {
+    const s = new Set();
+    if (kind === 'commentary') for (const it of items) { const r = it.ref; if (r.b === b && r.c === c && r.f > 0) for (let v = r.f; v <= Math.min(r.e, 200); v++) s.add(v); }
+    return s;
+  }
+  function lookup(key) {
+    if (!byKey) return null;
+    const keys = [key];
+    const m = /^([GH])0*(\d+)([a-z]?)$/i.exec(key);
+    if (m) { const L = m[1].toUpperCase(); keys.push(L + m[2] + m[3], L + m[2], L + m[2].padStart(4, '0'), L + m[2].padStart(5, '0')); }
+    for (const k of keys) { const it = byKey.get(k.toLowerCase()); if (it) return topic(it.id); }
+    return null;
+  }
+  function findWord(w, fuzzy) {
+    if (!byKey || !w) return [];
+    const it = byKey.get(w.toLowerCase());
+    if (it) return [{ id: it.id, subject: it.subject, exact: true }];
+    if (!fuzzy) return [];
+    const stem = stemOf(w);
+    return items.filter(i => stemOf(i.subject.split(/[\s,(]/)[0]) === stem).slice(0, 8).map(i => ({ id: i.id, subject: i.subject, exact: false }));
+  }
+  function searchTopics(q, limit = 300) {
+    const l = q.toLowerCase();
+    return items.filter(i => i.subject.toLowerCase().includes(l)).sort((a, b) => b.subject.toLowerCase().startsWith(l) - a.subject.toLowerCase().startsWith(l)).slice(0, limit).map(({ id, pid, subject }) => ({ id, pid, subject }));
+  }
+  function* texts() { for (const it of items) { let t = ''; try { t = plain(esw.htmlish(raw(it))); } catch (e) { /* unreadable */ } yield { id: it.id, subject: it.subject, text: t }; } }
+  return Object.assign(mod, { locked: false, topics: () => items.map(({ id, pid, subject }) => ({ id, pid, subject })), topic, forVerse, verseMarks, lookup, findWord, today: () => [], searchTopics, texts, close() { try { db.close(); } catch (e) { /* closed */ } } });
 }
 
 /** very small English/Tagalog-agnostic stemmer for "fuzzy" topic matching */

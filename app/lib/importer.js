@@ -11,6 +11,7 @@ const path = require('path');
 const os = require('os');
 const zip = require('./zip');
 const theword = require('./theword');
+const mysword = require('./mysword');
 const esword = require('./esword');
 const twbook = require('./twbook');
 const bookmod = require('./bookmod');
@@ -22,6 +23,8 @@ const TW_LOCKED = /\.(ontx|otx|ntx)$/i;
 const TW_BOOK = /\.twm$/i;
 const ES_BIBLE = /\.(bblx|bbli)$/i;
 const ES_BOOK = /\.(cmtx|cmti|dctx|dcti|topx|topi|refx|refi|devx|devi|lexx|lexi|mapx|mapi|harx|hari|notx|jnlx)$/i;
+const MY_BIBLE = /\.bbl\.mybible$/i;
+const MY_BOOK = /\.(cmt|dct|bok|book|jor)\.mybible$/i; // MySword; a plain .mybible is the app's own notes file and is not a module
 const ES_OTHER = /\.(bbl|cmt|dct|top|dev|map|lex|har)$/i; // pre-version-9 e-Sword types
 const USFM_BIBLE = /\.(usfm|sfm|ptx)$/i;
 const USFX_BIBLE = /\.(usfx|usfx\.xml|xml)$/i;
@@ -55,7 +58,7 @@ function filesAreSame(f1, f2) {
 }
 
 function isModuleName(n) {
-  return TW_BIBLE.test(n) || TW_LOCKED.test(n) || TW_BOOK.test(n) || ES_BIBLE.test(n) || ES_BOOK.test(n) || ES_OTHER.test(n) || USFM_BIBLE.test(n) || USFX_BIBLE.test(n);
+  return TW_BIBLE.test(n) || TW_LOCKED.test(n) || TW_BOOK.test(n) || ES_BIBLE.test(n) || ES_BOOK.test(n) || MY_BIBLE.test(n) || MY_BOOK.test(n) || ES_OTHER.test(n) || USFM_BIBLE.test(n) || USFX_BIBLE.test(n);
 }
 
 /** what kind of module is this file, and can Timotheos open it? (does not copy) */
@@ -64,12 +67,15 @@ async function inspect(file, settings) {
   const fmt = /\.twm$|\.(ont|ot|nt)x?$/i.test(name) ? 'theWord'
     : USFM_BIBLE.test(name) || /\.usfm\.zip$/i.test(name) ? 'USFM'
     : USFX_BIBLE.test(name) || /\.usfx\.zip$/i.test(name) ? 'USFX'
+    : /\.mybible$/i.test(name) ? 'MySword'
     : 'e-Sword';
   const r = { file, name, format: fmt, kind: '', title: '', ok: false, reason: '' };
   try {
     if (TW_LOCKED.test(name)) { r.kind = 'Bible'; r.reason = 'encrypted theWord Bible – it opens only in theWord'; return r; }
     if (TW_BIBLE.test(name)) { const m = theword.load(file); Object.assign(r, { kind: 'Bible', title: m.title, ok: true }); return r; }
     if (ES_BIBLE.test(name)) { const m = await esword.load(file, (settings && settings.eswordBookMap) || {}); Object.assign(r, { kind: 'Bible', title: m.title, ok: true, note: (m.warnings || []).join('; ') }); if (m.close) m.close(); return r; }
+    if (MY_BIBLE.test(name)) { const m = await mysword.load(file, (settings && settings.eswordBookMap) || {}); Object.assign(r, { kind: 'Bible', title: m.title, ok: true, note: (m.warnings || []).join('; ') }); if (m.close) m.close(); return r; }
+    if (/\.mybible$/i.test(name) && !MY_BOOK.test(name)) { r.kind = 'MySword notes'; r.reason = 'a plain .mybible file is MySword\'s personal notes, not a module'; return r; }
     if (USFM_BIBLE.test(name) || /\.usfm\.zip$/i.test(name)) {
       const m = usfm.loadUsfm(file);
       Object.assign(r, { format: 'USFM', kind: 'Bible', title: m.title, ok: true });
@@ -95,7 +101,7 @@ async function inspect(file, settings) {
     }
     if (/\.(lyts|bhls)\.twm$/i.test(name)) { r.kind = 'theWord settings/data file'; r.reason = 'layouts and highlight files from theWord are not modules Timotheos uses'; return r; }
     if (/\.gbk\.twm$/i.test(name) && await twbook.probe(file).catch(() => false)) { const m = await twbook.load(file); Object.assign(r, { kind: 'Bible text (book module)', title: m.title, ok: true }); if (m.close) m.close(); return r; }
-    if (TW_BOOK.test(name) || ES_BOOK.test(name)) {
+    if (TW_BOOK.test(name) || ES_BOOK.test(name) || MY_BOOK.test(name)) {
       const m = await bookmod.open(file);
       Object.assign(r, { kind: m.kind, title: m.title || name });
       if (m.locked) r.reason = m.reason; else r.ok = true;

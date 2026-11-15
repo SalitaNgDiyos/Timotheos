@@ -1,0 +1,4 @@
+Timotheos 0.6.41
+- New: MySword modules (from mysword.info) can now be read. Bibles (.bbl.mybible) with Strong's numbers, footnotes and verse rules, commentaries (.cmt.mybible), dictionaries (.dct.mybible, including Strong's dictionaries), books (.bok.mybible) and journals (.jor.mybible). Add a folder that holds them (desktop) or choose them with Import. MySword modules are shown read-only: Timotheos does not change .mybible files.
+- On the phone, Import opens Android's file chooser: browse to your MySword folder (for example mysword/bibles) and select the modules there. Timotheos copies them into its own folder. Android does not let an app read another app's folder directly, so a folder cannot be added on the phone.
+- MySword's dictionaries, books and journals have no published layout; Timotheos finds their columns by name. If one of yours shows as unreadable, please send the problem report.

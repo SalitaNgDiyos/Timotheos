@@ -152,6 +152,7 @@ async function read(file) {
   const base = { file, name: path.basename(file), size: st.size, ext: k.ext, backup: fs.existsSync(file + BACKUP) ? file + BACKUP : null };
   let writable = true; try { fs.accessSync(file, fs.constants.W_OK); } catch (e) { writable = false; }
   if (k.type === 'locked') return Object.assign(base, { format: 'theWord', editable: false, reason: 'an encrypted theWord Bible – it opens only in theWord', fields: [], extra: [], about: '' });
+  if (k.ext === 'mybible') return Object.assign(base, { format: 'MySword', editable: false, reason: 'MySword modules are shown read-only – Timotheos does not change .mybible files', fields: [], extra: [], about: '' });
   const tooLargeToEdit = st.size > MAX_BYTES;
   if (tooLargeToEdit && k.type !== 'twm' && k.type !== 'esword') return Object.assign(base, { format: '?', editable: false, reason: 'the file is too large for Timotheos to edit', fields: [], extra: [], about: '' });
   let out;
