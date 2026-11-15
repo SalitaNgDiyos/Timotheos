@@ -1,3 +1,2 @@
-Timotheos 0.6.47
-- Previous chapter and Next chapter buttons added to the pane header toolbar, next to the previous/next book buttons.
-- The book lists now follow the active Bible. If the active module is New Testament only, the Old Testament books no longer appear in the Bible tree, the book picker, or when stepping between books; chapters follow the module too. Switch back to a full Bible and they return.
+Timotheos 0.6.48
+- Fixed: the book button in a Bible view header (for example "Philippians 1:1") did nothing in 0.6.47. It opens the book / chapter / verse picker again.

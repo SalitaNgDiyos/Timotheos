@@ -269,7 +269,7 @@
     const q = (popState.filter || '').trim().toLowerCase();
     let html = '';
     let lastCat = null;
-    const filtered = NL.filter(x => {
+    const filtered = navList().filter(x => {
       if (!q) return true;
       return x.name.toLowerCase().includes(q) || (x.abbr || '').toLowerCase().includes(q) || (x.abbrs || []).some(a => a.toLowerCase().startsWith(q));
     });

@@ -1,0 +1,2 @@
+Timotheos 0.6.48
+- Fixed: the book button in a Bible view header (for example "Philippians 1:1") did nothing in 0.6.47. It opens the book / chapter / verse picker again.
