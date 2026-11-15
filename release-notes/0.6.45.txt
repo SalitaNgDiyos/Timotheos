@@ -1,0 +1,2 @@
+Timotheos 0.6.45
+- Copy verses: the "Between verses" template now understands %v, %c and %b. They give the verse that follows the separator, so " %v" puts the verse numbers between the verses. Before, they were copied as the letters "%v".

@@ -1,3 +1,2 @@
-Timotheos 0.6.44
-- Dictionary topic lists are now in alphabetical order. Some modules are stored in raw character order, which put every lowercase word after Z and every entry that starts with punctuation before A. Webster's 1913 Dictionary, for example, had 159 words such as "wain", "wires" and "women" after "Zythum" and 238 entries such as 'Em and -able before "A". Capitals, accents and a leading apostrophe or hyphen are now ignored when ordering, so 'Em is under E and -able under A.
-- Strong's and morphology dictionaries and other numbered lists keep the module's own order.
+Timotheos 0.6.45
+- Copy verses: the "Between verses" template now understands %v, %c and %b. They give the verse that follows the separator, so " %v" puts the verse numbers between the verses. Before, they were copied as the letters "%v".

@@ -384,7 +384,7 @@ async function buildCopy(from, to, fmt, limit) {
     const vs = await verseText(id, ch.b, ch.c, ch.v1, ch.v2);
     if (fmt.chapter && chs.length > 1) { const t = fill(fmt.chapter, { b: ch.b, c: ch.c }); text += t; if (!limit || shown < limit) html += `<b>${esc(t).replace(/\n/g, '<br>')}</b>`; }
     for (const x of vs) {
-      const sep = first ? '' : fill(fmt.sep || '', { b: ch.b }); first = false;
+      const sep = first ? '' : fill(fmt.sep || '', { b: ch.b, c: ch.c, v: x.v, T: '' }); first = false;
       text += sep + fill(fmt.verse, { b: ch.b, c: ch.c, v: x.v, T: x.text });
       count++;
       if (limit && shown >= limit) continue;
@@ -433,7 +433,7 @@ async function copyDialog(range) {
         <details id="cpCustom"><summary>Templates</summary><div class="grid2">
           <label>Header <input id="cpHeader"></label><label>Footer <input id="cpFooter"></label>
           <label>Each verse <input id="cpVerse"></label><label>Between verses <input id="cpSep"></label>
-          <label>Before each chapter <input id="cpChapter"></label><span class="small">%r range · %t Bible · %b book · %c chapter · %v verse · %T verse text · %n new line</span></div></details>
+          <label>Before each chapter <input id="cpChapter"></label><span class="small">%r range · %t Bible · %b book · %c chapter · %v verse · %T verse text · %n new line · (between verses %b %c %v mean the verse that follows)</span></div></details>
       </section>
     </div>
     <div id="cvSplit" class="cvsplit" title="Drag up or down to give more room to the settings or to the preview"></div>
