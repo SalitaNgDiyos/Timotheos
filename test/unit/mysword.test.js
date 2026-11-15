@@ -65,6 +65,19 @@ const mk = (f, sql) => { const d = new DatabaseSync(f); d.exec(sql); d.close(); 
   const j = await bookmod.open(jor);
   ok(!j.locked && j.topics().length === 1 && j.topic(j.topics()[0].id).html.includes('wrote'), 'journal opens without Details table');
   j.close();
+  // the layout real MySword books use: a journal table with relativeorder/hidden, an FTS index, a data table, CustomCSS
+  const bok2 = path.join(dir, 'R.bok.mybible');
+  mk(bok2, `create table details(title text, abbreviation text, description text, customcss text);
+    create table journal(rowid integer primary key autoincrement, id text, title text, date datetime, tags text, content text, relativeorder int default 0, hidden int default 0);
+    create table data(rowid integer primary key autoincrement, id text, description text, content blob);
+    create virtual table journalFTS using fts3(title, content);
+    insert into details values('Real Layout','RL','Real layout book','.v{vertical-align: super;}');
+    insert into journal(id,title,content,relativeorder,hidden) values('b','Beta','<span class="v">1</span> second',2,0),('a','Alpha','first',1,0),('z','Zeta','secret',3,1);
+    insert into journalFTS values('Beta','second');`);
+  const r2 = await bookmod.open(bok2);
+  ok(!r2.locked && r2.title === 'Real Layout' && r2.topics().map(t => t.subject).join() === 'Alpha,Beta', 'relativeorder kept, hidden skipped: ' + r2.topics().map(t => t.subject));
+  ok(/class="v" style="vertical-align: super;"/.test(r2.topic(r2.topics()[1].id).html), 'CustomCSS applied');
+  r2.close();
   // encrypted / not sqlite
   const bad = path.join(dir, 'X.bbl.mybible'); fs.writeFileSync(bad, 'not a database at all');
   let err = ''; try { await mysword.load(bad); } catch (e) { err = e.message; } ok(/not a MySword/.test(err), 'non-sqlite refused');

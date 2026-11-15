@@ -730,10 +730,10 @@ function openMySword(db, tabs, stub) {
   }
   const kind = stub.kind;
   const skip = new Set(['details', 'android_metadata', 'sqlite_sequence', 'relativeorder', 'wordnanc']);
-  const content = Object.keys(tabs).filter(t => !skip.has(t) && !t.startsWith('sqlite_'));
+  const content = Object.keys(tabs).filter(t => !skip.has(t) && !t.startsWith('sqlite_') && !/fts/.test(t));
   const mod = Object.assign(stub, {
     format: 'MySword', kind, cfg: details,
-    title: str(details.description || details.title || stub.title), abbr: str(details.abbreviation || stub.abbr),
+    title: str(details.title || details.description || stub.title), abbr: str(details.abbreviation || stub.abbr),
     about: details.comments ? toHtml(str(details.comments)) : '',
     rtl: details.righttoleft == 1, isStrong: false, greek: false, hebrew: false, isMorph: false, hasVerseSync: kind === 'commentary',
   });
@@ -769,7 +769,9 @@ function openMySword(db, tabs, stub) {
     }
     if (!cTitle) cTitle = cols.find(c => c !== cText) || null;
     if (!cText) return fail(`unexpected MySword table layout (${cols.join(', ')})`);
-    items = all(db, `select rowid, ${cTitle ? '"' + cTitle + '"' : 'rowid'} from "${t}"`).map(([rowid, ttl]) => ({
+    // MySword books and journals keep their order in relativeorder and can hide entries
+    const cOrd = pick(cols, ['relativeorder']), cHid = pick(cols, ['hidden']);
+    items = all(db, `select rowid, ${cTitle ? '"' + cTitle + '"' : 'rowid'} from "${t}"${cHid ? ` where coalesce("${cHid}", 0) = 0` : ''} order by ${cOrd ? `"${cOrd}", ` : ''}rowid`).map(([rowid, ttl]) => ({
       id: 'r' + rowid, pid: 0, subject: str(ttl).trim() || `Entry ${rowid}`, table: t, rowid, col: cText }));
     if (kind === 'dictionary') {
       const strongish = items.filter(i => /^[GH]\d+[a-z]?$/i.test(i.subject)).length;
@@ -781,7 +783,15 @@ function openMySword(db, tabs, stub) {
   }
   const byId = new Map(items.map(i => [i.id, i]));
   const raw = it => { const r = one(db, `select "${it.col}" from "${it.table}" where rowid = ?`, [it.rowid]); return r && r[0] != null ? str(r[0]) : ''; };
-  function topic(id) { const it = byId.get(id); if (!it) return null; return { id, subject: it.subject, html: esw.htmlish(raw(it)) }; }
+  // Details.CustomCSS: simple ".name{...}" rules become style attributes (the viewer removes <style> blocks)
+  const cssMap = {};
+  for (const m of str(details.customcss).matchAll(/\.([\w-]+)\s*\{([^}]*)\}/g)) cssMap[m[1]] = (cssMap[m[1]] || '') + m[2].trim().replace(/"/g, "'");
+  const withCss = html => !Object.keys(cssMap).length ? html : html.replace(/<(\w+)([^>]*?)\sclass\s*=\s*(['"])([^'"]*)\3([^>]*)>/g, (all, tag, a, q, cls, b) => {
+    const st = cls.split(/\s+/).map(c => cssMap[c]).filter(Boolean).join(';');
+    if (!st || /\sstyle\s*=/.test(a + b)) return all;
+    return `<${tag}${a} class="${cls}" style="${st}"${b}>`;
+  });
+  function topic(id) { const it = byId.get(id); if (!it) return null; return { id, subject: it.subject, html: withCss(esw.htmlish(raw(it))) }; }
   function forVerse(b, c, v) {
     if (kind !== 'commentary') return null;
     let best = null, rank = 9, span = 1e9;
