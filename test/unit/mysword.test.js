@@ -78,6 +78,13 @@ const mk = (f, sql) => { const d = new DatabaseSync(f); d.exec(sql); d.close(); 
   ok(!r2.locked && r2.title === 'Real Layout' && r2.topics().map(t => t.subject).join() === 'Alpha,Beta', 'relativeorder kept, hidden skipped: ' + r2.topics().map(t => t.subject));
   ok(/class="v" style="vertical-align: super;"/.test(r2.topic(r2.topics()[1].id).html), 'CustomCSS applied');
   r2.close();
+  // dictionary order: raw character order puts lowercase words after Z and punctuation first
+  const dct2 = path.join(dir, 'W.dct.mybible');
+  mk(dct2, `create table Details(Description text); create table Dictionary(word text, data text); insert into Details values('Alpha order');
+    insert into Dictionary values('Zebra','z'),('apple','a'),('-able','x'),('''Em','e'),('Banana','b'),('wain','w'),('Wain','W');`);
+  const w2 = await bookmod.open(dct2);
+  ok(w2.topics().map(t => t.subject).join() === "-able,apple,Banana,'Em,Wain,wain,Zebra", 'dictionary in alphabetical order: ' + w2.topics().map(t => t.subject));
+  w2.close();
   // encrypted / not sqlite
   const bad = path.join(dir, 'X.bbl.mybible'); fs.writeFileSync(bad, 'not a database at all');
   let err = ''; try { await mysword.load(bad); } catch (e) { err = e.message; } ok(/not a MySword/.test(err), 'non-sqlite refused');

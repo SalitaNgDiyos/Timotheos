@@ -1,7 +1,3 @@
-Timotheos 0.6.43
-- Reading aloud on the phone is rebuilt. It is now done by a background service, not by the page, so it no longer stops and starts verse by verse: the next verses are queued ahead and there are no gaps or cut-offs between them.
-- It keeps going when the screen is locked or the app is in the background. A player with previous verse, pause, next verse and stop shows in the notification and on the lock screen. (The first time, Android asks to allow notifications.)
-- The player in the app stays on screen the whole time something is being read, even when the text is scrolled (it used to slide away).
-- Battery saver: the first time you read aloud, Android asks whether Timotheos may run in the background without battery restrictions; choose Allow. The same button is in Options → Read aloud → Background playback. Some phones (Xiaomi/Redmi, for example) also have their own per-app battery setting that only you can change: Settings → Apps → Timotheos → Battery saver → No restrictions.
-- When you open the app again while it is reading, it picks up where the reading is, marks the verse and shows the player.
-- The next chapters (four ahead) are lined up in advance, so reading on into the next chapter also works with the screen off.
+Timotheos 0.6.44
+- Dictionary topic lists are now in alphabetical order. Some modules are stored in raw character order, which put every lowercase word after Z and every entry that starts with punctuation before A. Webster's 1913 Dictionary, for example, had 159 words such as "wain", "wires" and "women" after "Zythum" and 238 entries such as 'Em and -able before "A". Capitals, accents and a leading apostrophe or hyphen are now ignored when ordering, so 'Em is under E and -able under A.
+- Strong's and morphology dictionaries and other numbered lists keep the module's own order.

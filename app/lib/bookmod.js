@@ -612,6 +612,7 @@ function openESword(db, tabs, stub) {
         mod.greek = items.some(i => /^G\d/i.test(i.subject)); mod.hebrew = items.some(i => /^H\d/i.test(i.subject));
       }
       mod.isMorph = /morph|rmac|robinson|packard|parsing/i.test(mod.title + ' ' + stub.name);
+      if (!mod.isStrong && !mod.isMorph) alphaSort(items);
     }
     byKey = new Map();
     for (const it of items) { const k = it.subject.trim().toLowerCase(); if (!byKey.has(k)) byKey.set(k, it); }
@@ -777,6 +778,7 @@ function openMySword(db, tabs, stub) {
       const strongish = items.filter(i => /^[GH]\d+[a-z]?$/i.test(i.subject)).length;
       if (items.length && strongish > items.length * 0.5) { mod.isStrong = true; mod.greek = items.some(i => /^G\d/i.test(i.subject)); mod.hebrew = items.some(i => /^H\d/i.test(i.subject)); }
       mod.isMorph = /morph|rmac|robinson|packard|parsing/i.test(mod.title + ' ' + stub.name);
+      if (!mod.isStrong && !mod.isMorph) alphaSort(items);
     }
     byKey = new Map();
     for (const it of items) { const k = it.subject.toLowerCase(); if (!byKey.has(k)) byKey.set(k, it); }
@@ -833,6 +835,17 @@ function openMySword(db, tabs, stub) {
   }
   function* texts() { for (const it of items) { let t = ''; try { t = plain(esw.htmlish(raw(it))); } catch (e) { /* unreadable */ } yield { id: it.id, subject: it.subject, text: t }; } }
   return Object.assign(mod, { locked: false, topics: () => items.map(({ id, pid, subject }) => ({ id, pid, subject })), topic, forVerse, verseMarks, lookup, findWord, today: () => [], searchTopics, texts, close() { try { db.close(); } catch (e) { /* closed */ } } });
+}
+
+/** The order a dictionary is read in: ignoring capitals, accents and the punctuation a headword starts with ('Em and -able go
+ *  under E and A, "wain" next to "Wain"). Some modules are stored in raw character order, which puts every lowercase word after Z. */
+function alphaSort(items) {
+  if (items.length < 2) return;
+  const letter = items.filter(i => /^[^\p{L}\p{N}]*\p{L}/u.test(i.subject)).length;
+  if (letter < items.length * 0.9) return;      // numbered or coded entries (Strong's, chapters) keep the module's own order
+  const key = new Map();
+  for (const i of items) key.set(i, i.subject.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^[^\p{L}\p{N}]+/u, ''));
+  items.sort((a, b) => { const x = key.get(a), y = key.get(b); return x < y ? -1 : x > y ? 1 : (a.subject < b.subject ? -1 : a.subject > b.subject ? 1 : 0); });
 }
 
 /** very small English/Tagalog-agnostic stemmer for "fuzzy" topic matching */
