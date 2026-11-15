@@ -384,13 +384,16 @@ async function buildCopy(from, to, fmt, limit) {
     const vs = await verseText(id, ch.b, ch.c, ch.v1, ch.v2);
     if (fmt.chapter && chs.length > 1) { const t = fill(fmt.chapter, { b: ch.b, c: ch.c }); text += t; if (!limit || shown < limit) html += `<b>${esc(t).replace(/\n/g, '<br>')}</b>`; }
     for (const x of vs) {
-      const sep = first ? '' : fill(fmt.sep || '', { b: ch.b, c: ch.c, v: x.v, T: '' }); first = false;
+      const sep = first ? '' : fill(fmt.sep || '', { b: ch.b, c: ch.c, v: x.v, T: '' });
+      // in the rich (HTML) copy the verse number of the separator is raised; plain text cannot raise it
+      const sepHtml = first ? '' : esc(fill(fmt.sep || '', { b: ch.b, c: ch.c, v: '\u0002' + x.v + '\u0003', T: '' })).replace(/\n/g, '<br>').replace(/\u0002/g, '<sup>').replace(/\u0003/g, '</sup>');
+      first = false;
       text += sep + fill(fmt.verse, { b: ch.b, c: ch.c, v: x.v, T: x.text });
       count++;
       if (limit && shown >= limit) continue;
       shown++;
       const hl = fill(fmt.verse.replace('%T', '\u0001'), { b: ch.b, c: ch.c, v: x.v, T: '' }).split('\u0001');
-      html += esc(sep).replace(/\n/g, '<br>') + `<span>${hl[0] ? '<b>' + esc(hl[0]) + '</b>' : ''}${x.html}${esc(hl[1] || '')}</span>`;
+      html += sepHtml + `<span>${hl[0] ? '<b>' + esc(hl[0]) + '</b>' : ''}${x.html}${esc(hl[1] || '')}</span>`;
     }
   }
   const footer = (single && fmt.noRefSingle) ? '' : fill(fmt.footer || '', {});
