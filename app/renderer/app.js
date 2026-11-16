@@ -757,7 +757,7 @@ function decorateFootnotes(root, v, show) {
     const vv = (f.closest('[data-v]') || {}).dataset?.v;
     items.push(`<li data-gov="${vv}"><b>${esc(f.textContent || '')}</b> <span class="small">${vv}</span> ${TWRender.render(f.dataset.note || '', { rules: [] }, Object.assign({}, show, { footnotes: false }))}</li>`);
   }
-  if (v.fnList && items.length) root.insertAdjacentHTML('beforeend', `<section class="fnlist"><h4>Footnotes</h4><ol>${items.join('')}</ol></section>`);
+  if (v.fnList && items.length) { const fl = `<section class="fnlist"><h4>Footnotes</h4><ol>${items.join('')}</ol></section>`, nc = root.querySelector(':scope > .nextch'); if (nc) nc.insertAdjacentHTML('beforebegin', fl); else root.insertAdjacentHTML('beforeend', fl); }   // phone: the next-chapter card stays last, after the footnotes
 }
 function showLemmas(root) {
   root.querySelectorAll('[data-lemma]:not(sup)').forEach(w => w.insertAdjacentHTML('afterend', `<sup class="lemma" data-lemma="${esc(w.dataset.lemma)}">${esc(w.dataset.lemma)}</sup>`));
@@ -1349,7 +1349,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.48')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.49')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
