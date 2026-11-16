@@ -706,7 +706,7 @@ function openESword(db, tabs, stub) {
   }
   function today(month, day) { return items.filter(i => i.md && +i.md[0] === month && +i.md[1] === day).map(i => ({ id: i.id, subject: i.subject })); }
   function searchTopics(q, limit = 300) {
-    ensureStats(); const l = q.toLowerCase(); return items.filter(i => i.subject.toLowerCase().includes(l)).sort((a, b) => (b.subject.toLowerCase().startsWith(l)) - (a.subject.toLowerCase().startsWith(l))).slice(0, limit).map(({ id, pid, subject }) => ({ id, pid, subject })); }
+    const l = q.toLowerCase(); return items.filter(i => i.subject.toLowerCase().includes(l)).sort((a, b) => (b.subject.toLowerCase().startsWith(l)) - (a.subject.toLowerCase().startsWith(l))).slice(0, limit).map(({ id, pid, subject }) => ({ id, pid, subject })); }
   function* texts() {
     for (const it of items) {
       let t = '';

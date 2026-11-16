@@ -1,0 +1,2 @@
+Timotheos 0.6.50
+- Fixed: typing in the topic filter of an e-Sword dictionary (such as Webster's 1913) did nothing. The list now narrows as you type.
