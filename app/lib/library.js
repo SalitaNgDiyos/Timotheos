@@ -136,12 +136,12 @@ class Library {
     return this.list();
   }
 
-  /** "My Encyclopedia": the user's notes by topic, a dictionary without a file (lib/notebook.js) */
+  /** "My Learnings": the user's notes by topic, a dictionary without a file (lib/notebook.js) */
   setNotebook(getNotes) { this.getNotes = getNotes; this.addNotebook(); }
   addNotebook() {
     if (!this.getNotes) return;
     const id = notebook.NOTEBOOK_ID;
-    this.books.set(id, { id, file: '', name: 'My Encyclopedia', linkFile: null, kind: 'dictionary', format: 'Timotheos', mod: notebook.makeModule(this.getNotes), notebook: true, keep: true });
+    this.books.set(id, { id, file: '', name: 'My Learnings', linkFile: null, kind: 'dictionary', format: 'Timotheos', mod: notebook.makeModule(this.getNotes), notebook: true, keep: true });
   }
   addBook(file, name, linkFile = null) {
     const id = 'bm:' + name;
@@ -405,7 +405,7 @@ class Library {
     return null;
   }
   fileOf(id) {
-    if (id === notebook.NOTEBOOK_ID) throw new Error('My Encyclopedia is made from your notes; it has no file of its own.');
+    if (id === notebook.NOTEBOOK_ID) throw new Error('My Learnings is made from your notes; it has no file of its own.');
     if (this.books.has(id)) return this.books.get(id).file;
     const e = this.entries.find(x => this._bibleId(x) === id);
     if (!e) throw new Error('Module not found: ' + id);

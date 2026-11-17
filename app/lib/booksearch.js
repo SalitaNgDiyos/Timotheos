@@ -173,7 +173,7 @@ const CACHE = new Map(); let cacheChars = 0; const CAP = 24e6;
 function* textsOf(id, m, info, file) {
   const c = CACHE.get(id);
   if (c && c.file === file) { CACHE.delete(id); CACHE.set(id, c); yield* c.items; return; }
-  if (info.user || m.user || m.notebook) { yield* m.texts(); return; }   // your own modules and My Encyclopedia: always fresh
+  if (info.user || m.user || m.notebook) { yield* m.texts(); return; }   // your own modules and My Learnings: always fresh
   const items = []; let chars = 0;
   for (const t of m.texts()) { items.push({ id: t.id, subject: t.subject, text: t.text }); chars += (t.text || '').length + (t.subject || '').length; yield t; }
   if (chars > CAP) return;                                        // read to the end: keep it

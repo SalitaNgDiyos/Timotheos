@@ -252,13 +252,13 @@ async function exportNotesToCommentary(notesObj, destFile, opts = {}) {
 }
 
 /**
- * "My Encyclopedia" as a theWord dictionary (.dct.twm): one entry per topic, each with its notes
+ * "My Learnings" as a theWord dictionary (.dct.twm): one entry per topic, each with its notes
  * (statement, verse, explanation) in Bible order.
  */
 async function exportNotebookToDictionary(notesObj, destFile, opts = {}) {
   const groups = notebook.group(notesObj);
-  const title = opts.title || 'My Encyclopedia';
-  const abbr = opts.abbr || 'MyEnc';
+  const title = opts.title || 'My Learnings';
+  const abbr = opts.abbr || 'MyLearn';
   const today = new Date().toISOString().slice(0, 10);
   if (fs.existsSync(destFile)) fs.unlinkSync(destFile);
   await withDb(destFile, db => {
@@ -267,8 +267,8 @@ async function exportNotebookToDictionary(notesObj, destFile, opts = {}) {
     db.run('CREATE INDEX idx_topics_subject ON topics(subject)');
     db.run('CREATE TABLE content (topic_id INTEGER PRIMARY KEY, data BLOB, data2 BLOB)');
     const cfg = [
-      ['id', 'timotheos_encyclopedia_' + Date.now().toString(36)], ['type', '1'], ['title', title], ['abbrev', abbr],
-      ['description', opts.description || 'A topical encyclopedia made from verse notes in Timotheos'], ['author', opts.author || ''], ['user', '1'],
+      ['id', 'timotheos_learnings_' + Date.now().toString(36)], ['type', '1'], ['title', title], ['abbrev', abbr],
+      ['description', opts.description || 'Learnings by topic, made from verse notes in Timotheos'], ['author', opts.author || ''], ['user', '1'],
       ['content.type', 'rtf'], ['schema.version', '1'], ['version.major', '1'], ['version.minor', '0'], ['version.date', today],
     ];
     const stC = db.prepare('INSERT INTO config(name, value) VALUES (?, ?)');

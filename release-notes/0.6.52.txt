@@ -1,0 +1,2 @@
+Timotheos 0.6.52
+- "My Encyclopedia" is now called "My Learnings": the dictionary in your Library made from your notes, its buttons in My notes, and its dictionary export (.dct.twm).

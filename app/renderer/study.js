@@ -242,7 +242,7 @@ function showNotes(p) {
   }
 }
 /* A note has three levels (0.6.51): Topic (a short name, level 1), Statement (one sentence that sums it up, level 2) and
-   Explanation (what was learned from the verse, level 3). Notes with a topic make up "My Encyclopedia" (lib/notebook.js). */
+   Explanation (what was learned from the verse, level 3). Notes with a topic make up "My Learnings" (lib/notebook.js). */
 const topicNorm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 /** every topic used so far, with how many notes it has, alphabetical */
 function noteTopics() {
@@ -277,7 +277,7 @@ async function editNote(k, draft) {
     <div class="nlev"><b>Explanation</b> <span class="small">what you learned from this verse</span></div>
     <div class="row tight noted"><button type="button" data-cmd="bold"><b>B</b></button><button type="button" data-cmd="italic"><i>I</i></button><button type="button" data-cmd="underline"><u>U</u></button><button type="button" data-cmd="insertUnorderedList">• List</button></div>
     <div id="noteEd" class="noteed" contenteditable="true">${cur.html}</div>
-    <p class="small">Notes with the same topic are gathered in <b>My Encyclopedia</b> (Library → Dictionaries). Bible references you type (e.g. Rom 5:8) become links.</p></div>`;
+    <p class="small">Notes with the same topic are gathered in <b>My Learnings</b> (Library → Dictionaries). Bible references you type (e.g. Rom 5:8) become links.</p></div>`;
   const p = TimotheosModules.modal(`My note on ${refName(r)}`, html, [was ? { label: 'Delete note', value: 'del' } : null, { label: 'Cancel', value: null }, { label: 'Save', value: 'save', primary: true }].filter(Boolean));
   setTimeout(() => {
     document.querySelectorAll('.noted button').forEach(bt => { bt.onmousedown = e => { e.preventDefault(); document.execCommand(bt.dataset.cmd); }; });
@@ -769,10 +769,10 @@ function ask(title, label, value = '') {
 function renderNotesList(body) {
   const all = Object.entries(study.ud.notes || {}).map(([k, n]) => ({ k, r: parseKey(k), n })).sort((a, b) => orderOf(a.r.b) - orderOf(b.r.b) || a.r.c - b.r.c || a.r.v - b.r.v);
   const view = study.notesView === 'verse' ? 'verse' : 'topic';
-  body.innerHTML = `<p class="small">Your notes on verses, each with a <b>Topic</b>, a <b>Statement</b> and an <b>Explanation</b>. Add one from the menu of a verse. Notes with a topic make up <b>My Encyclopedia</b>, a dictionary in your Library.</p>
+  body.innerHTML = `<p class="small">Your notes on verses, each with a <b>Topic</b>, a <b>Statement</b> and an <b>Explanation</b>. Add one from the menu of a verse. Notes with a topic make up <b>My Learnings</b>, a dictionary in your Library.</p>
     <div class="row tight nbar"><span class="seg2"><button type="button" data-view="topic" class="${view === 'topic' ? 'on' : ''}">By topic</button><button type="button" data-view="verse" class="${view === 'verse' ? 'on' : ''}">By verse</button></span>
       <input id="nFilter" type="search" placeholder="Filter: a topic or a statement" value="${esc(study.notesQ || '')}" autocomplete="off"></div>
-    ${all.length ? `<div class="row tight nbtns"><button type="button" id="openEncBtn" title="Open My Encyclopedia, the dictionary made from your notes">Open My Encyclopedia</button><button type="button" id="exportEncBtn" title="Save your notes, by topic, as a theWord dictionary (.dct.twm)">Export as a dictionary (.dct.twm)…</button><button type="button" id="exportNotesCmtBtn" title="Save all your personal verse notes as a standard theWord commentary module (.cmt.twm)">Export as a commentary (.cmt.twm)…</button></div>` : ''}
+    ${all.length ? `<div class="row tight nbtns"><button type="button" id="openEncBtn" title="Open My Learnings, the dictionary made from your notes">Open My Learnings</button><button type="button" id="exportEncBtn" title="Save your notes, by topic, as a theWord dictionary (.dct.twm)">Export as a dictionary (.dct.twm)…</button><button type="button" id="exportNotesCmtBtn" title="Save all your personal verse notes as a standard theWord commentary module (.cmt.twm)">Export as a commentary (.cmt.twm)…</button></div>` : ''}
     <div id="nItems"></div>`;
   const items = body.querySelector('#nItems');
   const textOf = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
@@ -800,12 +800,12 @@ function renderNotesList(body) {
   draw();
   const f = body.querySelector('#nFilter'); f.oninput = () => { study.notesQ = f.value; draw(); };
   body.querySelectorAll('[data-view]').forEach(bt => { bt.onclick = () => { study.notesView = bt.dataset.view; renderNotesList(body); }; });
-  const oe = $('#openEncBtn'); if (oe) oe.onclick = () => TimotheosModules.openBookModule('nb:My Encyclopedia');
+  const oe = $('#openEncBtn'); if (oe) oe.onclick = () => TimotheosModules.openBookModule('nb:My Learnings');
   const ee = $('#exportEncBtn');
   if (ee) ee.onclick = async () => {
     const n = noteTopics().length;
     if (!n) return TimotheosModules.messageBox('Export as a dictionary', '<p>None of your notes has a topic yet. Give a note a topic (Edit) and it becomes an entry of the dictionary.</p>');
-    const res = await TimotheosModules.modal('Export My Encyclopedia as a theWord dictionary (.dct.twm)', `<div class="grid2"><label>Title <input id="edTitle" value="My Encyclopedia"></label><label>Abbreviation <input id="edAbbr" value="MyEnc"></label></div><p class="small">${n} topic${n === 1 ? '' : 's'}. Each topic becomes one entry, with its statements, verses and explanations. Notes without a topic are left out.</p>`, [{ label: 'Cancel', value: null }, { label: 'Choose where…', value: 'file' }, { label: 'Save in my modules', value: 'lib', primary: true }]);
+    const res = await TimotheosModules.modal('Export My Learnings as a theWord dictionary (.dct.twm)', `<div class="grid2"><label>Title <input id="edTitle" value="My Learnings"></label><label>Abbreviation <input id="edAbbr" value="MyLearn"></label></div><p class="small">${n} topic${n === 1 ? '' : 's'}. Each topic becomes one entry, with its statements, verses and explanations. Notes without a topic are left out.</p>`, [{ label: 'Cancel', value: null }, { label: 'Choose where…', value: 'file' }, { label: 'Save in my modules', value: 'lib', primary: true }]);
     if (!res) return;
     try {
       const out = await api.userModExportNotebook({ title: $('#edTitle').value.trim(), abbr: $('#edAbbr').value.trim(), saveDialog: res === 'file' });

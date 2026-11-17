@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Edmund P. Valdez
-// a verse note asks for Topic, Statement and Explanation; My notes lists them by topic with a filter; My Encyclopedia is a dictionary of them
+// a verse note asks for Topic, Statement and Explanation; My notes lists them by topic with a filter; My Learnings is a dictionary of them
 (async () => {
   const sleep = ms => new Promise(r => setTimeout(r, ms)); const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m);
   const S = TimotheosStudy.study, modal = () => !document.querySelector('#modal').classList.contains('hidden');
@@ -51,15 +51,15 @@
   body.querySelector('[data-view="verse"]').click(); await sleep(100);
   ok(body.querySelectorAll('.nlist li').length === 4 && body.querySelector('.ntag'), 'by verse, with the topic as a tag');
   body.querySelector('[data-view="topic"]').click(); await sleep(100);
-  // 3. My Encyclopedia in the Library
+  // 3. My Learnings in the Library
   await sleep(500);
-  const d = (state.allModules.dicts || state.modules.dicts || []).find(x => x.id === 'nb:My Encyclopedia');
-  ok(!!d, 'My Encyclopedia is listed with the dictionaries');
-  const tops = await api.bookTopics('nb:My Encyclopedia');
+  const d = (state.allModules.dicts || state.modules.dicts || []).find(x => x.id === 'nb:My Learnings');
+  ok(!!d, 'My Learnings is listed with the dictionaries');
+  const tops = await api.bookTopics('nb:My Learnings');
   ok(tops.map(x => x.subject).join('|') === 'Faith|Love', 'its topics: ' + tops.map(x => x.subject).join('|'));
-  const pg = await api.bookTopic('nb:My Encyclopedia', tops[1].id);
+  const pg = await api.bookTopic('nb:My Learnings', tops[1].id);
   ok(/God loved the world first/.test(pg.html) && /God is love/.test(pg.html) && /John 3:16/.test(pg.html), 'a topic page shows its statements and verses');
-  const sr = await api.bookSearch('nb:My Encyclopedia', 'substance');
+  const sr = await api.bookSearch('nb:My Learnings', 'substance');
   ok(sr.length === 1 && /^Faith: /.test(sr[0].subject), 'searching a statement finds its topic');
   body.querySelector('#openEncBtn').click(); await sleep(1200);
   console.log('RESULT ' + out.join(' | '));

@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later
  * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
-// "My Encyclopedia": the user's verse notes gathered by their topic, shown as a dictionary that is always up to date.
+// "My Learnings": the user's verse notes gathered by their topic, shown as a dictionary that is always up to date.
 // A note is kept per verse in the study data:  notes{"b.c.v": {topic, stmt, html, t}}
 //   topic  level 1, a short name ("Faith", "Holy Spirit")
 //   stmt   level 2, one sentence that sums the note up
 //   html   level 3, the explanation (what was learned from the verse)
-// Notes made before 0.6.51 have no topic; they are left out of the encyclopedia until they get one.
+// Notes made before 0.6.51 have no topic; they are left out of My Learnings until they get one.
 const canon = require('./canon');
 
 const E = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -44,9 +44,9 @@ function makeModule(getNotes) {
   const groups = () => group(getNotes() || {});
   const find = id => groups().find(g => g.id === id);
   const mod = {
-    locked: false, kind: 'dictionary', format: 'Timotheos', title: 'My Encyclopedia', abbr: 'MyEnc', user: false, notebook: true,
+    locked: false, kind: 'dictionary', format: 'Timotheos', title: 'My Learnings', abbr: 'MyLearn', user: false, notebook: true,
     description: 'Your verse notes, gathered by topic. It grows as you add notes with a topic.',
-    author: '', about: '<p><b>My Encyclopedia</b> is made from your own verse notes. Each topic lists the notes you gave it: the short statement, the verse, and your explanation.</p><p>Add to it by writing a note on a verse (Topic, Statement, Explanation). To share it, use <b>Export as a dictionary (.dct.twm)</b> in My notes.</p>',
+    author: '', about: '<p><b>My Learnings</b> is made from your own verse notes. Each topic lists the notes you gave it: the short statement, the verse, and your explanation.</p><p>Add to it by writing a note on a verse (Topic, Statement, Explanation). To share it, use <b>Export as a dictionary (.dct.twm)</b> in My notes.</p>',
     get totalTopics() { return groups().length; },
     topics: () => groups().map(g => ({ id: g.id, pid: 0, subject: g.topic })),
     topic(id) { const g = find(id); return g ? { id, subject: g.topic, html: topicHtml(g) } : null; },
@@ -71,4 +71,4 @@ function makeModule(getNotes) {
   return mod;
 }
 
-module.exports = { group, topicHtml, makeModule, norm, plain, NOTEBOOK_ID: 'nb:My Encyclopedia' };
+module.exports = { group, topicHtml, makeModule, norm, plain, NOTEBOOK_ID: 'nb:My Learnings' };

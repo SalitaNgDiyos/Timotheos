@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later
  * Copyright (C) 2026 Edmund P. Valdez */
 'use strict';
-// node test/unit/notebook.test.js — notes with Topic / Statement / Explanation become "My Encyclopedia" (a live dictionary) and export as a .dct.twm
+// node test/unit/notebook.test.js — notes with Topic / Statement / Explanation become "My Learnings" (a live dictionary) and export as a .dct.twm
 const assert = require('assert'), fs = require('fs'), os = require('os'), path = require('path');
 const notebook = require('../../app/lib/notebook'), usermod = require('../../app/lib/usermod'), bookmod = require('../../app/lib/bookmod');
 const { Library } = require('../../app/lib/library');
@@ -34,7 +34,7 @@ let n = 0; const ok = (c, m) => { assert.ok(c, m); n++; };
   const lib = new Library({ moduleFolders: [dir] }, {});
   lib.setNotebook(() => cur); await lib.scan();
   const L = lib.list(); const d = L.dicts.find(x => x.id === notebook.NOTEBOOK_ID);
-  ok(d && d.title === 'My Encyclopedia' && d.totalTopics === 4 && d.notebook && !d.imported, 'listed as a dictionary: ' + JSON.stringify(d));
+  ok(d && d.title === 'My Learnings' && d.totalTopics === 4 && d.notebook && !d.imported, 'listed as a dictionary: ' + JSON.stringify(d));
   ok((await lib.bookTopics(notebook.NOTEBOOK_ID)).length === 4 && (await lib.bookSearch(notebook.NOTEBOOK_ID, 'shep')).length === 1, 'opened through the library');
   assert.throws(() => lib.fileOf(notebook.NOTEBOOK_ID)); n++;
   lib.release(''); lib.releaseUnder(dir); ok((await lib.bookTopics(notebook.NOTEBOOK_ID)).length === 4, 'releasing files leaves it alone');
