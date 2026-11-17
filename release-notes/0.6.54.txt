@@ -1,0 +1,6 @@
+Timotheos 0.6.54
+- Linux updates are now seamless. "Download and install" downloads the update, checks it, installs it and starts Timotheos again by itself.
+  - Installed from the .deb: you are asked for your administrator password once (the system's own prompt), then Timotheos restarts. It no longer just opens the folder, where some systems opened the .deb in a text editor.
+  - Running the AppImage: the AppImage file is replaced in place and Timotheos restarts, with no password.
+  - If your system has no password prompt (pkexec), the folder with the downloaded file opens as before.
+- If the install fails, the reason from the package tool is shown instead of a blank error.

@@ -26,10 +26,11 @@ const TimotheosUpdates = (() => {
     const assets = (Array.isArray(r.assets) ? r.assets : []).map(a => ({ name: String(a.name || ''), url: String(a.browser_download_url || ''), size: +a.size || 0, sha256: /^sha256:([0-9a-f]{64})$/i.test(a.digest || '') ? RegExp.$1.toLowerCase() : '' })).filter(a => a.name && /^https?:\/\//.test(a.url));
     return { latest: v, url, notes: String(r.body || '').trim(), name: r.name || r.tag_name, assets };
   }
-  /** the file of a release that suits this system: the Windows setup, the Android APK, the Linux .deb */
+  /** the file of a release that suits this system: the Windows setup, the Android APK, the Linux AppImage (when this one runs as an AppImage) or .deb */
   function fileFor(r) {
     const os = (window.TimotheosHost && TimotheosHost.info() || {}).platform;
-    const want = os === 'win32' ? /_x64-setup\.exe$/i : os === 'android' ? /\.apk$/i : os === 'linux' ? /\.deb$/i : null;
+    const appImage = !!(window.TimotheosHost && TimotheosHost.info() || {}).appImage;   // started from an AppImage: that file is replaced; otherwise the .deb is installed
+    const want = os === 'win32' ? /_x64-setup\.exe$/i : os === 'android' ? /\.apk$/i : os === 'linux' ? (appImage ? /\.AppImage$/i : /\.deb$/i) : null;
     return want ? (r.assets || []).find(a => want.test(a.name)) || null : null;
   }
   const mb = n => (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB';
@@ -52,6 +53,8 @@ const TimotheosUpdates = (() => {
     box.innerHTML = '';
     say({
       started: (window.TimotheosHost && TimotheosHost.isAndroid) ? 'Android\'s installer is open. Tap <b>Install</b> there to finish updating Timotheos.' : 'The installer is starting. Timotheos will close so that it can be replaced.',
+      restarting: 'The new version is installed. Timotheos is restarting…',
+      cancelled: 'Nothing was installed: the administrator password was not given. Press <b>Download and install</b> to try again.',
       folder: 'Downloaded and checked. The folder with the file is open: install it with your package tool (for the .deb: <code>sudo apt install ./' + E(f.name) + '</code>).',
       permission: 'Android first needs your permission to let Timotheos install apps. Turn <b>Allow from this source</b> on in the screen that opened, come back here, and press <b>Download and install</b> again.',
       failed: 'The installer could not be started.'

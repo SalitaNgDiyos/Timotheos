@@ -194,7 +194,7 @@ fn host_info(app: tauri::AppHandle) -> Value {
     let os = if cfg!(target_os = "android") { "android" } else if cfg!(target_os = "windows") { "win32" } else if cfg!(target_os = "macos") { "darwin" } else { "linux" };
     let fwd = |s: String| s.replace('\\', "/");
     let (data, exe, home, tmp) = (fwd(data), fwd(exe), fwd(home), fwd(tmp));
-    json!({ "dataDir": data, "exeDir": exe, "home": home, "tmp": tmp, "platform": os, "version": env!("CARGO_PKG_VERSION"),
+    json!({ "dataDir": data, "exeDir": exe, "home": home, "tmp": tmp, "platform": os, "appImage": std::env::var("APPIMAGE").ok().filter(|x| !x.is_empty()), "version": env!("CARGO_PKG_VERSION"),
             "env": { "TIMOTHEOS_SCRIPT": std::env::var("TIMOTHEOS_SCRIPT").ok(), "TIMOTHEOS_MODULES": std::env::var("TIMOTHEOS_MODULES").ok(), "TIMOTHEOS_PORTABLE_DIR": std::env::var("TIMOTHEOS_PORTABLE_DIR").ok(),
                       "TIMOTHEOS_WAIT": std::env::var("TIMOTHEOS_WAIT").ok(), "TIMOTHEOS_REPOS": std::env::var("TIMOTHEOS_REPOS").ok() } })
 }
@@ -352,9 +352,9 @@ fn net_sha256(app: tauri::AppHandle, path: String) -> Result<String, String> {
     loop { let n = rd.read(&mut buf).map_err(|e| e.to_string())?; if n == 0 { break; } h.update(&buf[..n]); }
     Ok(h.finalize().iter().map(|b| format!("{:02x}", b)).collect())
 }
-/// Start the downloaded installer (Windows: the setup program, and Timotheos closes so that it can be replaced) or show the
-/// downloaded file in its folder (Linux). Android installs through its own screen (TwFiles.install in the activity).
-#[tauri::command]
+/// Start the downloaded installer. Windows: the setup program (Timotheos closes so it can be replaced). Linux: installed in place
+/// and Timotheos starts again by itself (see linux_update). Android installs through its own screen (TwFiles.install in the activity).
+#[tauri::command(async)]
 fn update_run(app: tauri::AppHandle, path: String) -> Result<String, String> {
     let f = tmp_download(&app, &path)?;
     let name = f.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default();
@@ -363,11 +363,73 @@ fn update_run(app: tauri::AppHandle, path: String) -> Result<String, String> {
         std::process::Command::new(&f).spawn().map_err(|e| format!("The installer could not be started: {e}"))?;
         Ok("started".into())
     } else if cfg!(target_os = "linux") {
+        linux_update(&f, &name)
+    } else { Err("This system installs updates in another way.".into()) }
+}
+
+/// Start `exe` again in a couple of seconds, from a process that outlives this one (the old Timotheos has closed by then).
+/// What the old AppImage put into the environment (paths inside its own mount) is taken out, so the new one starts clean.
+#[cfg(target_os = "linux")]
+fn relaunch(exe: &std::path::Path) -> Result<(), String> {
+    let mut c = std::process::Command::new("sh");
+    c.args(["-c", "nohup sh -c 'sleep 2.5; exec \"$0\"' \"$1\" >/dev/null 2>&1 &", "x"]).arg(exe)
+        .stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+    if let Ok(dir) = std::env::var("APPDIR") {
+        for (k, v) in std::env::vars() {
+            if !dir.is_empty() && v.contains(&dir) {
+                let kept: Vec<&str> = v.split(':').filter(|x| !x.contains(&dir)).collect();
+                if kept.is_empty() || !v.contains(':') { c.env_remove(&k); } else { c.env(&k, kept.join(":")); }
+            }
+        }
+        for k in ["APPDIR", "APPIMAGE", "ARGV0", "OWD"] { c.env_remove(k); }
+    }
+    c.spawn().map(|_| ()).map_err(|e| format!("Timotheos could not be started again: {e}"))
+}
+
+/// Linux: an AppImage replaces the file it runs from; a .deb is installed with the system's package tool after the administrator
+/// password is asked for (pkexec). Then Timotheos starts again by itself. Answers "restarting", "cancelled" or "folder" (nothing
+/// installable here: the folder with the file is shown instead).
+#[cfg(target_os = "linux")]
+fn linux_update(f: &std::path::Path, name: &str) -> Result<String, String> {
+    use std::os::unix::fs::PermissionsExt;
+    let show_folder = || -> Result<String, String> {
         let d = f.parent().map(|p| p.to_path_buf()).unwrap_or_default();
         std::process::Command::new("xdg-open").arg(&d).spawn().map_err(|e| format!("The folder could not be opened: {e}"))?;
         Ok("folder".into())
-    } else { Err("This system installs updates in another way.".into()) }
+    };
+    if name.ends_with(".appimage") {
+        let target = match std::env::var("APPIMAGE") { Ok(t) if !t.is_empty() => PathBuf::from(t), _ => return show_folder() };
+        let side = PathBuf::from(format!("{}.update", target.to_string_lossy()));
+        fs::copy(f, &side).map_err(|e| format!("The new version could not be saved next to {}: {e}", target.display()))?;
+        let r = fs::set_permissions(&side, fs::Permissions::from_mode(0o755)).and_then(|_| fs::rename(&side, &target));
+        if let Err(e) = r { let _ = fs::remove_file(&side); return Err(format!("The AppImage {} could not be replaced: {e}", target.display())); }
+        relaunch(&target)?;
+        Ok("restarting".into())
+    } else if name.ends_with(".deb") {
+        let has = |t: &str| std::env::var("PATH").unwrap_or_default().split(':').any(|d| std::path::Path::new(d).join(t).is_file());
+        if !has("pkexec") || !has("apt-get") { return show_folder(); }
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let exe = PathBuf::from(exe.to_string_lossy().trim_end_matches(" (deleted)").to_string());
+        let out = std::process::Command::new("pkexec")
+            .args(["env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "install", "-y", "--allow-downgrades"]).arg(f)
+            .stdin(std::process::Stdio::null()).output().map_err(|e| format!("The installer could not be started: {e}"))?;
+        match out.status.code() {
+            Some(0) => {}
+            Some(126) | Some(127) => return Ok("cancelled".into()),   // pkexec: the password was not given / not allowed
+            _ => {
+                let t = String::from_utf8_lossy(&out.stderr); let t = t.trim();
+                let tail: Vec<&str> = t.lines().rev().take(4).collect::<Vec<_>>().into_iter().rev().collect();
+                return Err(format!("The package tool said: {}", if tail.is_empty() { "it did not finish".to_string() } else { tail.join(" ") }));
+            }
+        }
+        // the installed program (the old file may be gone now): /usr/bin/<same name> when there is one
+        let again = exe.file_name().map(|n| PathBuf::from("/usr/bin").join(n)).filter(|p| p.is_file()).unwrap_or(exe);
+        relaunch(&again)?;
+        Ok("restarting".into())
+    } else { show_folder() }
 }
+#[cfg(not(target_os = "linux"))]
+fn linux_update(_f: &std::path::Path, _name: &str) -> Result<String, String> { Err("This system installs updates in another way.".into()) }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
