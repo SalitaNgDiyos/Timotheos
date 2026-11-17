@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld('api', {
   userModMoveTopic: (id, tid, d) => call('usermod:moveTopic', id, tid, d),
   userModDeleteTopic: (id, tid) => call('usermod:deleteTopic', id, tid),
   userModExportNotes: opts => call('usermod:exportNotes', opts),
+  userModExportNotebook: opts => call('usermod:exportNotebook', opts),
   // [D4] theWord study exports
   exportVsls: (name, lists) => call('twstudy:exportVsls', name, lists),
   exportRdp: plan => call('twstudy:exportRdp', plan),

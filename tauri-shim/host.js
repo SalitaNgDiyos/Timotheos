@@ -176,7 +176,7 @@ const api = {
   modProps: id => call('mod:props', id), modSave: (id, c, a) => call('mod:save', id, c, a), modCompress: (id, o) => call('mod:compress', id, o), modRestore: id => call('mod:restore', id),
   userModCreate: o => call('usermod:create', o), userModSaveCmt: (id, r, h) => call('usermod:saveCmt', id, r, h), userModSaveTopic: (id, t) => call('usermod:saveTopic', id, t),
   userModRenameTopic: (id, t, s) => call('usermod:renameTopic', id, t, s), userModMoveTopic: (id, t, d) => call('usermod:moveTopic', id, t, d), userModDeleteTopic: (id, t) => call('usermod:deleteTopic', id, t),
-  userModExportNotes: o => call('usermod:exportNotes', o), exportVsls: (n, l) => call('twstudy:exportVsls', n, l), exportRdp: p => call('twstudy:exportRdp', p),
+  userModExportNotes: o => call('usermod:exportNotes', o), userModExportNotebook: o => call('usermod:exportNotebook', o), exportVsls: (n, l) => call('twstudy:exportVsls', n, l), exportRdp: p => call('twstudy:exportRdp', p),
   setTitleBar: async () => ({}),   // the buttons of the window are drawn in the page and take the colours of the skin by themselves
   appCmd: (cmd, arg) => call('app:cmd', cmd, arg),
   onMenu: fn => on('menu', fn), syncOut: p => call('sync:out', p), onExternalSync: fn => on('external:sync', fn),

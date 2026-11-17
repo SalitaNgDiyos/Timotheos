@@ -11,6 +11,7 @@
 //   Overlays:      theWord .hdgs.twm (headings) and .prgs.twm (paragraphs) sets
 // Folders whose name starts with "-" or "." are skipped (theWord's convention).
 const fs = require('fs');
+const notebook = require('./notebook');
 const path = require('path');
 const theword = require('./theword');
 const esword = require('./esword');
@@ -130,10 +131,18 @@ class Library {
       if (this.probeCache[key]) this.entries.push({ file: bk.file, name: bk.name, ext: '.gbk.twm', linkFile: bk.linkFile || null });
       else this.addBook(bk.file, bk.name, bk.linkFile || null);
     }
+    this.addNotebook();
     await this.overlays.load(this.overlayFiles);
     return this.list();
   }
 
+  /** "My Encyclopedia": the user's notes by topic, a dictionary without a file (lib/notebook.js) */
+  setNotebook(getNotes) { this.getNotes = getNotes; this.addNotebook(); }
+  addNotebook() {
+    if (!this.getNotes) return;
+    const id = notebook.NOTEBOOK_ID;
+    this.books.set(id, { id, file: '', name: 'My Encyclopedia', linkFile: null, kind: 'dictionary', format: 'Timotheos', mod: notebook.makeModule(this.getNotes), notebook: true, keep: true });
+  }
   addBook(file, name, linkFile = null) {
     const id = 'bm:' + name;
     const c = this.cache[this.cacheKey(file)];
@@ -150,7 +159,8 @@ class Library {
       user: m ? !!m.user : false, hasVerseSync: m ? !!m.hasVerseSync : b.kind === 'commentary', totalTopics: m ? (m.totalTopics || 0) : 0,
       author: m ? m.author || '' : '', description: m ? m.description || '' : '',
       lang: m && m.cfg ? String(m.cfg.lang || m.cfg.language || '') : '',
-      imported: !!(b.linkFile || this.extraFolders.some(f => b.file.startsWith(f))),
+      notebook: !!b.notebook,
+      imported: !b.notebook && !!(b.linkFile || this.extraFolders.some(f => b.file.startsWith(f))),
     };
   }
 
@@ -395,6 +405,7 @@ class Library {
     return null;
   }
   fileOf(id) {
+    if (id === notebook.NOTEBOOK_ID) throw new Error('My Encyclopedia is made from your notes; it has no file of its own.');
     if (this.books.has(id)) return this.books.get(id).file;
     const e = this.entries.find(x => this._bibleId(x) === id);
     if (!e) throw new Error('Module not found: ' + id);
@@ -405,12 +416,12 @@ class Library {
   releaseUnder(dir) {
     const inDir = f => path.resolve(f).toLowerCase().startsWith(path.resolve(dir).toLowerCase() + path.sep);
     for (const [id, m] of this.bibles) if (m.file && inDir(m.file)) { if (m.close) m.close(); this.bibles.delete(id); }
-    for (const b of this.books.values()) if (b.mod && inDir(b.file)) { b.mod.close(); b.mod = null; }
+    for (const b of this.books.values()) if (b.mod && b.file && inDir(b.file)) { b.mod.close(); b.mod = null; }
   }
   /** forget a module (closing it) – used before deleting or modifying a module file */
   release(file) {
     for (const [id, m] of this.bibles) if (m.file === file) { if (m.close) m.close(); this.bibles.delete(id); }
-    for (const b of this.books.values()) if (b.file === file && b.mod) { b.mod.close(); b.mod = null; delete this.cache[this.cacheKey(file)]; }
+    for (const b of this.books.values()) if (file && b.file === file && b.mod) { b.mod.close(); b.mod = null; delete this.cache[this.cacheKey(file)]; }
   }
 }
 

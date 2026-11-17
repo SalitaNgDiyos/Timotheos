@@ -260,6 +260,7 @@ app.whenReady().then(async () => {
   lib.setHidden(settings.hiddenModules || []);
   xrefs = new Xrefs(USER_XREFS());
   userData = new UserData(path.join(app.getPath('userData'), 'my-study-data.json'));
+  lib.setNotebook(() => userData.get().notes);   // My Encyclopedia (lib/notebook.js)
   await rescanAll();
 
   handle('settings:get', () => Object.assign({}, settings, { portable: process.env.TIMOTHEOS_IS_PORTABLE === '1', userDataDir: app.getPath('userData'), appDir: app.isPackaged ? path.dirname(process.execPath) : app.getAppPath(), version: app.getVersion() }));
@@ -416,6 +417,17 @@ app.whenReady().then(async () => {
     if (!dest) return null;
     lib.release(dest);
     const res = await usermod.exportNotesToCommentary(userData.get().notes, dest, opts);
+    const list = await rescanAll();
+    return { ...res, id: 'bm:' + path.basename(dest), list };
+  });
+  handle('usermod:exportNotebook', async (opts = {}) => {
+    const dir = path.join(MODULES_DIR(), 'theWord');
+    fs.mkdirSync(dir, { recursive: true });
+    const safe = ((opts.title || 'My Encyclopedia').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'My Encyclopedia') + '.dct.twm';
+    const dest = opts.saveDialog ? (await dialog.showSaveDialog(win, { defaultPath: safe, filters: [{ name: 'theWord Dictionary (.dct.twm)', extensions: ['dct.twm', 'twm'] }] })).filePath : path.join(dir, safe);
+    if (!dest) return null;
+    lib.release(dest);
+    const res = await usermod.exportNotebookToDictionary(userData.get().notes, dest, opts);
     const list = await rescanAll();
     return { ...res, id: 'bm:' + path.basename(dest), list };
   });

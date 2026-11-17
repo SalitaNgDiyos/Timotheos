@@ -1,0 +1,6 @@
+Timotheos 0.6.51
+- Verse notes now have three parts: a Topic (a short name such as Faith or Holy Spirit), a Statement (one sentence that sums up the note) and the Explanation (what you learned from the verse). The Topic box suggests the topics you have already used.
+- My Encyclopedia: a new dictionary in your Library, made from your notes and always up to date. Each topic lists its statements, the verses and your explanations. Its Filter box finds a topic or a statement.
+- My notes can be shown By topic (A to Z, like a dictionary) or By verse, with a filter for a topic or a statement.
+- Export My Encyclopedia as a theWord dictionary (.dct.twm) to share it. The commentary export (.cmt.twm) now includes each note's topic and statement.
+- Notes made before this version stay as they are (listed under "Without a topic") until you give them a topic.

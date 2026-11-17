@@ -60,7 +60,7 @@
     else if (drawerTool === 'library') { p.libraryInto(box); box.addEventListener('click', e => { if (e.target.closest('.mod')) closeAll(); }, true); }
     else if (drawerTool === 'note') {
       const k = `${ref.b}.${ref.c}.${ref.v}`; const n = ((window.TimotheosStudy.study.ud || {}).notes || {})[k];
-      box.innerHTML = `${n ? `<article class="pcard"><div class="psrc"><span>${p.esc(p.rn(ref))}</span></div><div class="pbody entry">${n.html}</div></article>` : `<p class="phint">No note on ${p.esc(p.rn(ref))} yet.</p>`}<div class="pills"><button type="button" class="pill gold" data-editnote>${p.ic('edit', 16)} ${n ? 'Edit the note' : 'Write a note'}</button><button type="button" class="pill" data-allnotes>${p.ic('note', 16)} All my notes</button></div>`;
+      box.innerHTML = `${n ? `<article class="pcard"><div class="psrc"><span>${p.esc(p.rn(ref))}</span></div><div class="pbody entry">${n.topic ? `<p><b>${p.esc(n.topic)}</b>${n.stmt ? ` — <i>${p.esc(n.stmt)}</i>` : ''}</p>` : ''}${n.html}</div></article>` : `<p class="phint">No note on ${p.esc(p.rn(ref))} yet.</p>`}<div class="pills"><button type="button" class="pill gold" data-editnote>${p.ic('edit', 16)} ${n ? 'Edit the note' : 'Write a note'}</button><button type="button" class="pill" data-allnotes>${p.ic('note', 16)} All my notes</button></div>`;
     } else {
       // the words of this verse that carry Strong's numbers (or the tapped word)
       const row = document.querySelector(`.bv.active .pv[data-v="${ref.v}"], .bv .pv[data-v="${ref.v}"]`);

@@ -11,6 +11,8 @@ const path = require('path');
 const { sqljs } = require('./dict');
 const { htmlToRtf } = require('./modprops');
 const canon = require('./canon');
+const notebook = require('./notebook');
+const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function atomicWrite(file, data) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -229,7 +231,8 @@ async function exportNotesToCommentary(notesObj, destFile, opts = {}) {
 
     const entries = Object.entries(notesObj || {}).map(([k, n]) => {
       const [b, c, v] = k.split('.').map(Number);
-      return { b, c, v, html: (n && n.html) || '' };
+      const head = n && n.topic ? `<p><b>${esc(n.topic)}</b>${n.stmt ? ' – ' + esc(n.stmt) : ''}</p>` : '';   // topic and statement (0.6.51) go first
+      return { b, c, v, html: head + ((n && n.html) || '') };
     }).filter(x => x.b && x.c && x.v && x.html.trim()).sort((a, b) => a.b - b.b || a.c - b.c || a.v - b.v);
 
     const stT = db.prepare('INSERT INTO topics(id, pid, subject, rel_order, content_type) VALUES (?, 0, ?, ?, ?)');
@@ -248,4 +251,40 @@ async function exportNotesToCommentary(notesObj, destFile, opts = {}) {
   return { file: destFile, count, title, abbr };
 }
 
-module.exports = { createModule, saveCommentaryEntry, saveTopic, renameTopic, moveTopic, deleteTopic, exportNotesToCommentary };
+/**
+ * "My Encyclopedia" as a theWord dictionary (.dct.twm): one entry per topic, each with its notes
+ * (statement, verse, explanation) in Bible order.
+ */
+async function exportNotebookToDictionary(notesObj, destFile, opts = {}) {
+  const groups = notebook.group(notesObj);
+  const title = opts.title || 'My Encyclopedia';
+  const abbr = opts.abbr || 'MyEnc';
+  const today = new Date().toISOString().slice(0, 10);
+  if (fs.existsSync(destFile)) fs.unlinkSync(destFile);
+  await withDb(destFile, db => {
+    db.run('CREATE TABLE config (name TEXT PRIMARY KEY, value TEXT)');
+    db.run('CREATE TABLE topics (id INTEGER PRIMARY KEY, pid INTEGER DEFAULT 0, subject TEXT, rel_order INTEGER, content_type TEXT)');
+    db.run('CREATE INDEX idx_topics_subject ON topics(subject)');
+    db.run('CREATE TABLE content (topic_id INTEGER PRIMARY KEY, data BLOB, data2 BLOB)');
+    const cfg = [
+      ['id', 'timotheos_encyclopedia_' + Date.now().toString(36)], ['type', '1'], ['title', title], ['abbrev', abbr],
+      ['description', opts.description || 'A topical encyclopedia made from verse notes in Timotheos'], ['author', opts.author || ''], ['user', '1'],
+      ['content.type', 'rtf'], ['schema.version', '1'], ['version.major', '1'], ['version.minor', '0'], ['version.date', today],
+    ];
+    const stC = db.prepare('INSERT INTO config(name, value) VALUES (?, ?)');
+    for (const [k, v] of cfg) stC.run([k, v]);
+    stC.free();
+    const stT = db.prepare('INSERT INTO topics(id, pid, subject, rel_order, content_type) VALUES (?, 0, ?, ?, ?)');
+    const stD = db.prepare('INSERT INTO content(topic_id, data, data2) VALUES (?, ?, NULL)');
+    groups.forEach((g, i) => {
+      const tid = i + 1;
+      const html = g.items.map(it => `<p><b>${esc(it.stmt || it.ref)}</b></p><p><i>${esc(it.ref)}</i></p>${it.html || ''}`).join('<p></p>');
+      stT.run([tid, g.topic, tid * 10, 'rtf']);
+      stD.run([tid, htmlToRtf(html)]);
+    });
+    stT.free(); stD.free();
+  });
+  return { file: destFile, count: groups.length, notes: groups.reduce((n, g) => n + g.items.length, 0), title, abbr };
+}
+
+module.exports = { exportNotebookToDictionary, createModule, saveCommentaryEntry, saveTopic, renameTopic, moveTopic, deleteTopic, exportNotesToCommentary };
