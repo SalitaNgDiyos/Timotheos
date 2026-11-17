@@ -231,7 +231,8 @@ async function exportNotesToCommentary(notesObj, destFile, opts = {}) {
 
     const entries = Object.entries(notesObj || {}).map(([k, n]) => {
       const [b, c, v] = k.split('.').map(Number);
-      const head = n && n.topic ? `<p><b>${esc(n.topic)}</b>${n.stmt ? ' – ' + esc(n.stmt) : ''}</p>` : '';   // topic and statement (0.6.51) go first
+      const sb = n ? notebook.subsOf(n) : [];
+      const head = n && n.topic ? `<p><b>${esc(n.topic)}</b>${sb.length ? ' – ' + esc(sb.join(', ')) : ''}</p>` : '';   // topic and subtopics go first
       return { b, c, v, html: head + ((n && n.html) || '') };
     }).filter(x => x.b && x.c && x.v && x.html.trim()).sort((a, b) => a.b - b.b || a.c - b.c || a.v - b.v);
 
@@ -274,17 +275,17 @@ async function exportNotebookToDictionary(notesObj, destFile, opts = {}) {
     const stC = db.prepare('INSERT INTO config(name, value) VALUES (?, ?)');
     for (const [k, v] of cfg) stC.run([k, v]);
     stC.free();
-    const stT = db.prepare('INSERT INTO topics(id, pid, subject, rel_order, content_type) VALUES (?, 0, ?, ?, ?)');
+    const stT = db.prepare('INSERT INTO topics(id, pid, subject, rel_order, content_type) VALUES (?, ?, ?, ?, ?)');
     const stD = db.prepare('INSERT INTO content(topic_id, data, data2) VALUES (?, ?, NULL)');
-    groups.forEach((g, i) => {
-      const tid = i + 1;
-      const html = g.items.map(it => `<p><b>${esc(it.stmt || it.ref)}</b></p><p><i>${esc(it.ref)}</i></p>${it.html || ''}`).join('<p></p>');
-      stT.run([tid, g.topic, tid * 10, 'rtf']);
-      stD.run([tid, htmlToRtf(html)]);
-    });
+    let tid = 0, ord = 0;
+    for (const g of groups) {   // a topic, then its subtopics as its children
+      const top = ++tid; stT.run([top, 0, g.topic, (ord += 10), 'rtf']);
+      stD.run([top, htmlToRtf(notebook.topicHtml(g))]);
+      for (const sg of g.subs) { const id = ++tid; stT.run([id, top, sg.sub, (ord += 10), 'rtf']); stD.run([id, htmlToRtf(notebook.subHtml(g, sg))]); }
+    }
     stT.free(); stD.free();
   });
-  return { file: destFile, count: groups.length, notes: groups.reduce((n, g) => n + g.items.length, 0), title, abbr };
+  return { file: destFile, count: groups.length, subs: groups.reduce((n, g) => n + g.subs.length, 0), notes: groups.reduce((n, g) => n + g.items.length, 0), title, abbr };
 }
 
 module.exports = { exportNotebookToDictionary, createModule, saveCommentaryEntry, saveTopic, renameTopic, moveTopic, deleteTopic, exportNotesToCommentary };

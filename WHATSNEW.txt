@@ -1,2 +1,6 @@
-Timotheos 0.6.52
-- "My Encyclopedia" is now called "My Learnings": the dictionary in your Library made from your notes, its buttons in My notes, and its dictionary export (.dct.twm).
+Timotheos 0.6.53
+- Notes: the "Statement" box is now "Subtopic". A note has a Topic, up to 4 Subtopics and the Explanation. The "+ Add a subtopic" button (lower right of the subtopics) adds up to 3 more, and each extra one has an × to remove it.
+- Everything is connected: when you type a topic on any verse, the subtopics you used under it before appear as buttons ("Earlier under Love: Faith, Giving, God") and as suggestions in the Subtopic boxes. Typing the same name in another case keeps the first spelling.
+- My Learnings now lists each topic with its subtopics under it (Love > Faith, Love > Hope). A subtopic page gathers the notes of every verse you wrote under it. The filter finds topics and subtopics.
+- My notes (By topic) shows each topic with its subtopics and the verses under each one. The dictionary export (.dct.twm) has the subtopics as entries under their topic.
+- Notes written in 0.6.51/0.6.52 keep working: their statement becomes the first subtopic.

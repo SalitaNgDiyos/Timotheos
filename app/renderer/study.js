@@ -233,17 +233,20 @@ function showNotes(p) {
   const notes = study.ud.notes || {}; const { b, c, layout, root } = p;
   for (const k in notes) {
     const r = parseKey(k); if (r.b !== b || r.c !== c) continue;
-    const n = notes[k], head = n.topic ? `${n.topic}${n.stmt ? ': ' + n.stmt : ''}` : (n.stmt || '');
+    const n = notes[k], sb = noteSubs(n), head = n.topic ? `${n.topic}${sb.length ? ': ' + sb.join(', ') : ''}` : sb.join(', ');
     const plain = (head ? head + ' — ' : '') + (n.html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     const pv = root.querySelector(`.pv[data-v="${r.v}"]`); if (!pv) continue;
     // in the flowing text a note is a mark, and (while My notes is on) a short line of it that opens the note
-    const inl = (n.topic ? `<b class="ntopic">${esc(n.topic)}</b> ` : '') + (n.stmt ? `<i class="nstmt">${esc(n.stmt)}</i> ` : '') + (n.html || '').replace(/<\/?(p|div|br|h\d|ul|ol|li|blockquote)\b[^>]*>/gi, ' ').replace(/\s+/g, ' ').trim();
+    const inl = (n.topic ? `<b class="ntopic">${esc(n.topic)}</b> ` : '') + (sb.length ? `<i class="nstmt">${esc(sb.join(' · '))}</i> ` : '') + (n.html || '').replace(/<\/?(p|div|br|h\d|ul|ol|li|blockquote)\b[^>]*>/gi, ' ').replace(/\s+/g, ' ').trim();
     verseEnd(pv, `<span class="noteicon" data-note="${k}" title="My note: ${esc(plain.slice(0, 200))}">✎</span>${state.settings.show.notes && inl ? `<span class="unote inl" data-note="${k}" title="Click to edit">${inl}</span>` : ''}`);
   }
 }
-/* A note has three levels (0.6.51): Topic (a short name, level 1), Statement (one sentence that sums it up, level 2) and
-   Explanation (what was learned from the verse, level 3). Notes with a topic make up "My Learnings" (lib/notebook.js). */
+/* A note has three levels: Topic (a short name, level 1), up to four Subtopics (level 2) and the Explanation (what was learned
+   from the verse, level 3). Notes with a topic make up "My Learnings" (lib/notebook.js); the topics and subtopics used in any
+   note are offered again in every other note, so the notebook grows over time. */
 const topicNorm = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+/** the subtopics of a note; the "statement" of 0.6.51 / 0.6.52 notes counts as the first one */
+const noteSubs = n => { const raw = Array.isArray(n && n.subs) && n.subs.length ? n.subs : (n && n.stmt ? [n.stmt] : []); const seen = new Set(), o = []; for (const x of raw) { const t = String(x || '').replace(/\s+/g, ' ').trim(); if (t && !seen.has(topicNorm(t))) { seen.add(topicNorm(t)); o.push(t); } } return o.slice(0, 4); };
 /** every topic used so far, with how many notes it has, alphabetical */
 function noteTopics() {
   const by = new Map();
@@ -254,49 +257,82 @@ function noteTopics() {
   }
   return [...by.values()].sort((a, z) => topicNorm(a.topic).localeCompare(topicNorm(z.topic)));
 }
-/** the topic as it will be kept: an existing topic keeps its spelling; a new one starts with a capital */
-function cleanTopic(t) {
-  t = String(t || '').replace(/[^\p{L}\p{N}\s'’\-]/gu, ' ').replace(/\s+/g, ' ').trim();
-  if (!t) return '';
-  const old = noteTopics().find(x => topicNorm(x.topic) === topicNorm(t));
-  return old ? old.topic : t.charAt(0).toLocaleUpperCase() + t.slice(1);
+/** the subtopics already used under a topic, most used first: [{ sub, n }] (but not the note being edited) */
+function topicSubs(topic, exceptKey) {
+  const tk = topicNorm(topic), by = new Map(); if (!tk) return [];
+  for (const [k, n] of Object.entries(study.ud.notes || {})) {
+    if (k === exceptKey || !n || topicNorm(n.topic) !== tk) continue;
+    for (const sub of noteSubs(n)) { const sk = topicNorm(sub), x = by.get(sk); if (x) { x.n++; if ((n.t || 0) >= x.t) { x.t = n.t || 0; x.sub = sub; } } else by.set(sk, { sub, n: 1, t: n.t || 0 }); }
+  }
+  return [...by.values()].sort((a, z) => z.n - a.n || topicNorm(a.sub).localeCompare(topicNorm(z.sub)));
 }
-const TOPIC_WORDS = 4, TOPIC_LEN = 40, STMT_LEN = 200;
+const cap = t => t ? t.charAt(0).toLocaleUpperCase() + t.slice(1) : t;
+/** the text as it will be kept: letters, numbers, spaces and - ' only; an existing spelling is kept, a new one starts with a capital */
+function cleanName(t, known) {
+  t = String(t || '').replace(/[^\p{L}\p{N}\s'’\-]/gu, ' ').replace(/\s+/g, ' ').trim(); if (!t) return '';
+  const old = (known || []).find(x => topicNorm(x) === topicNorm(t));
+  return old || cap(t);
+}
+const cleanTopic = t => cleanName(t, noteTopics().map(x => x.topic));
+const TOPIC_WORDS = 4, TOPIC_LEN = 40, SUB_WORDS = 5, SUB_LEN = 60, MAX_SUBS = 4;
 async function editNote(k, draft) {
   const r = parseKey(k); const was = study.ud.notes[k] || null;
-  const cur = draft || { topic: (was && was.topic) || '', stmt: (was && was.stmt) || '', html: (was && was.html) || '' };
+  const cur = draft || { topic: (was && was.topic) || '', subs: noteSubs(was), html: (was && was.html) || '' };
+  if (!cur.subs.length) cur.subs = [''];
   const legacy = !!(was && !was.topic);   // a note from before topics: it may be saved without one
   const tops = noteTopics();
+  const subBox = (v, i) => `<div class="nsub"><input class="nSub" maxlength="${SUB_LEN}" autocomplete="off" list="nSubList" value="${esc(v)}" placeholder="Subtopic${i ? ' ' + (i + 1) : ''}">${i ? '<button type="button" class="nsubx" title="Remove this subtopic" aria-label="Remove this subtopic">×</button>' : ''}</div>`;
   const html = `<div class="nform">
     ${draft && draft.err ? `<p class="nerr" role="alert">${esc(draft.err)}</p>` : ''}
-    <label class="field nlev"><span><b>Topic</b> <span class="small">a short name, e.g. Faith, Grace, Holy Spirit</span></span>
+    <label class="field nlev"><span><b>Topic</b> <span class="small">the main subject, a short name: Love, Faith, Holy Spirit</span></span>
       <input id="nTopic" maxlength="${TOPIC_LEN}" list="nTopicList" autocomplete="off" value="${esc(cur.topic)}" placeholder="Topic"></label>
     <datalist id="nTopicList">${tops.map(x => `<option value="${esc(x.topic)}">${x.n} note${x.n === 1 ? '' : 's'}</option>`).join('')}</datalist>
-    <label class="field nlev"><span><b>Statement</b> <span class="small">one sentence that sums up this note</span></span>
-      <input id="nStmt" maxlength="${STMT_LEN}" autocomplete="off" value="${esc(cur.stmt)}" placeholder="Statement"></label>
+    <datalist id="nSubList"></datalist>
+    <div class="nlev"><b>Subtopic</b> <span class="small">what this verse says about the topic, e.g. Faith under Love</span></div>
+    <div id="nPrev" class="nprev"></div>
+    <div id="nSubs">${cur.subs.map(subBox).join('')}</div>
+    <div class="nsubadd"><button type="button" id="nAddSub">+ Add a subtopic</button></div>
     <div class="nlev"><b>Explanation</b> <span class="small">what you learned from this verse</span></div>
     <div class="row tight noted"><button type="button" data-cmd="bold"><b>B</b></button><button type="button" data-cmd="italic"><i>I</i></button><button type="button" data-cmd="underline"><u>U</u></button><button type="button" data-cmd="insertUnorderedList">• List</button></div>
     <div id="noteEd" class="noteed" contenteditable="true">${cur.html}</div>
-    <p class="small">Notes with the same topic are gathered in <b>My Learnings</b> (Library → Dictionaries). Bible references you type (e.g. Rom 5:8) become links.</p></div>`;
+    <p class="small">Notes with the same topic are gathered in <b>My Learnings</b> (Library → Dictionaries), with their subtopics. Bible references you type (e.g. Rom 5:8) become links.</p></div>`;
   const p = TimotheosModules.modal(`My note on ${refName(r)}`, html, [was ? { label: 'Delete note', value: 'del' } : null, { label: 'Cancel', value: null }, { label: 'Save', value: 'save', primary: true }].filter(Boolean));
   setTimeout(() => {
     document.querySelectorAll('.noted button').forEach(bt => { bt.onmousedown = e => { e.preventDefault(); document.execCommand(bt.dataset.cmd); }; });
-    const t = $('#nTopic'), st = $('#nStmt');
-    if (t) t.oninput = () => { const w = t.value.trim().split(/\s+/); if (w.length > TOPIC_WORDS) t.value = w.slice(0, TOPIC_WORDS).join(' '); };
-    const first = draft && draft.focus ? $(draft.focus) : !cur.topic ? t : !cur.stmt ? st : $('#noteEd');
+    const t = $('#nTopic'), box = $('#nSubs'), add = $('#nAddSub'), prev = $('#nPrev'), dl = $('#nSubList');
+    const subs = () => [...box.querySelectorAll('.nSub')];
+    const limit = (el, n) => { const w = el.value.trim().split(/\s+/); if (w.length > n) el.value = w.slice(0, n).join(' '); };
+    const refresh = () => {   // the subtopics used before under this topic, to pick again
+      const used = new Set(subs().map(x => topicNorm(x.value))), all = topicSubs(t.value, k);
+      dl.innerHTML = all.map(x => `<option value="${esc(x.sub)}"></option>`).join('');
+      const L = all.filter(x => !used.has(topicNorm(x.sub)));
+      prev.innerHTML = all.length ? `<span class="small">Earlier under <b>${esc(cleanTopic(t.value))}</b>:</span> ${L.map(x => `<button type="button" class="nchip" data-sub="${esc(x.sub)}" title="${x.n} note${x.n === 1 ? '' : 's'}">${esc(x.sub)} <small>${x.n}</small></button>`).join('') || '<span class="small">all added</span>'}` : '';
+      add.hidden = subs().length >= MAX_SUBS;
+    };
+    const bind = el => { el.oninput = () => { limit(el, SUB_WORDS); refresh(); }; const x = el.parentNode.querySelector('.nsubx'); if (x) x.onclick = () => { el.parentNode.remove(); refresh(); }; };
+    const addBox = v => { if (subs().length >= MAX_SUBS) return null; const d = document.createElement('div'); d.innerHTML = subBox(v || '', subs().length); box.appendChild(d.firstChild); const el = subs().pop(); bind(el); refresh(); return el; };
+    subs().forEach(bind);
+    add.onclick = () => { const el = addBox(''); if (el) el.focus(); };
+    prev.onclick = e => { const c = e.target.closest('.nchip'); if (!c) return; let el = subs().find(x => !x.value.trim()) || addBox(''); if (!el) return; el.value = c.dataset.sub; refresh(); const n = subs().find(x => !x.value.trim()); (n || $('#noteEd')).focus(); };
+    t.oninput = () => { limit(t, TOPIC_WORDS); refresh(); };
+    t.onchange = refresh;
+    refresh();
+    const first = draft && draft.focus ? $(draft.focus) : !cur.topic ? t : !cur.subs.some(x => x) ? subs()[0] : $('#noteEd');
     if (first) { first.focus(); if (first.id === 'noteEd') { const s = window.getSelection(); s.selectAllChildren(first); s.collapseToEnd(); } }
   }, 40);
   const res = await p;
   if (res === 'del') delete study.ud.notes[k];
   else if (res === 'save') {
     const ed = $('#noteEd'); const clean = sanitizeNote(ed ? ed.innerHTML : '');
-    const topic = cleanTopic(($('#nTopic') || {}).value), stmt = String(($('#nStmt') || {}).value || '').replace(/\s+/g, ' ').trim();
+    const topic = cleanTopic(($('#nTopic') || {}).value);
+    const known = topicSubs(topic, k).map(x => x.sub), seen = new Set(), subs = [];
+    for (const el of document.querySelectorAll('#nSubs .nSub')) { const v = cleanName(el.value, known.concat(subs)); if (v && !seen.has(topicNorm(v))) { seen.add(topicNorm(v)); subs.push(v); } }
     const body = !!clean.replace(/<[^>]*>|&nbsp;|\s/g, '');
-    const again = (err, focus) => editNote(k, { topic: ($('#nTopic') || {}).value || '', stmt, html: clean, err, focus });
-    if (!topic && !stmt && !body) delete study.ud.notes[k];                       // all empty: no note
-    else if (!topic && !legacy) return again('Give the note a topic, a short name such as Faith or Holy Spirit.', '#nTopic');
-    else if (topic && !stmt) return again('Write a statement: one sentence that sums up this note.', '#nStmt');
-    else study.ud.notes[k] = Object.assign({ html: clean, t: Date.now() }, topic ? { topic, stmt } : stmt ? { stmt } : {});
+    const again = (err, focus) => editNote(k, { topic: ($('#nTopic') || {}).value || '', subs: [...document.querySelectorAll('#nSubs .nSub')].map(x => x.value), html: clean, err, focus });
+    if (!topic && !subs.length && !body) delete study.ud.notes[k];                       // all empty: no note
+    else if (!topic && !legacy) return again('Give the note a topic: the main subject, such as Love or Faith.', '#nTopic');
+    else if (topic && !subs.length) return again('Add a subtopic: what this verse says about the topic.', '#nSubs .nSub');
+    else study.ud.notes[k] = Object.assign({ html: clean, t: Date.now() }, topic ? { topic, subs, stmt: subs[0] } : subs.length ? { subs, stmt: subs[0] } : {});
   } else return;
   saveUD('notes', true); renderChapter(); if (study.seg === 'notes') renderStudy();
 }
@@ -765,23 +801,24 @@ function ask(title, label, value = '') {
   return p.then(r => (r === 'ok' ? ($('#askInput').value || '').trim() : null));
 }
 
-/* My notes: by topic (an index like a dictionary: the topics A–Z, each with its statements) or by verse; the box filters both */
+/* My notes: by topic (an index like a dictionary: the topics A–Z, each with its subtopics) or by verse; the box filters both */
 function renderNotesList(body) {
   const all = Object.entries(study.ud.notes || {}).map(([k, n]) => ({ k, r: parseKey(k), n })).sort((a, b) => orderOf(a.r.b) - orderOf(b.r.b) || a.r.c - b.r.c || a.r.v - b.r.v);
   const view = study.notesView === 'verse' ? 'verse' : 'topic';
-  body.innerHTML = `<p class="small">Your notes on verses, each with a <b>Topic</b>, a <b>Statement</b> and an <b>Explanation</b>. Add one from the menu of a verse. Notes with a topic make up <b>My Learnings</b>, a dictionary in your Library.</p>
+  body.innerHTML = `<p class="small">Your notes on verses, each with a <b>Topic</b>, <b>Subtopics</b> and an <b>Explanation</b>. Add one from the menu of a verse. Notes with a topic make up <b>My Learnings</b>, a dictionary in your Library.</p>
     <div class="row tight nbar"><span class="seg2"><button type="button" data-view="topic" class="${view === 'topic' ? 'on' : ''}">By topic</button><button type="button" data-view="verse" class="${view === 'verse' ? 'on' : ''}">By verse</button></span>
-      <input id="nFilter" type="search" placeholder="Filter: a topic or a statement" value="${esc(study.notesQ || '')}" autocomplete="off"></div>
+      <input id="nFilter" type="search" placeholder="Filter: a topic or a subtopic" value="${esc(study.notesQ || '')}" autocomplete="off"></div>
     ${all.length ? `<div class="row tight nbtns"><button type="button" id="openEncBtn" title="Open My Learnings, the dictionary made from your notes">Open My Learnings</button><button type="button" id="exportEncBtn" title="Save your notes, by topic, as a theWord dictionary (.dct.twm)">Export as a dictionary (.dct.twm)…</button><button type="button" id="exportNotesCmtBtn" title="Save all your personal verse notes as a standard theWord commentary module (.cmt.twm)">Export as a commentary (.cmt.twm)…</button></div>` : ''}
     <div id="nItems"></div>`;
   const items = body.querySelector('#nItems');
   const textOf = h => String(h || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-  const row = x => `<li><div class="vlh"><a data-go="${x.k}">${esc(refName(x.r))}</a>${view === 'verse' && x.n.topic ? ` <span class="ntag">${esc(x.n.topic)}</span>` : ''}<span class="grow"></span><button data-ed="${x.k}">Edit</button></div>${x.n.stmt ? `<div class="nstmt">${esc(x.n.stmt)}</div>` : ''}${textOf(x.n.html) ? `<div class="lookup">${x.n.html}</div>` : ''}</li>`;
+  const tag = x => x.n.topic ? ` <span class="ntag">${esc(x.n.topic)}</span>` : '';
+  const row = (x, withTags) => { const sb = noteSubs(x.n); return `<li><div class="vlh"><a data-go="${x.k}">${esc(refName(x.r))}</a>${withTags ? tag(x) : ''}<span class="grow"></span><button data-ed="${x.k}">Edit</button></div>${withTags && sb.length ? `<div class="nstmt">${esc(sb.join(' · '))}</div>` : ''}${textOf(x.n.html) ? `<div class="lookup">${x.n.html}</div>` : ''}</li>`; };
   const draw = () => {
     const q = topicNorm(study.notesQ || ''), has = (t) => !q || topicNorm(t).includes(q);
     if (view === 'verse') {
-      const L = all.filter(x => has(refName(x.r)) || has(x.n.topic) || has(x.n.stmt) || has(textOf(x.n.html)));
-      items.innerHTML = `<ul class="nlist">${L.map(row).join('') || `<li class="hint">${all.length ? 'No note matches.' : 'No notes yet.'}</li>`}</ul>`;
+      const L = all.filter(x => has(refName(x.r)) || has(x.n.topic) || noteSubs(x.n).some(has) || has(textOf(x.n.html)));
+      items.innerHTML = `<ul class="nlist">${L.map(x => row(x, true)).join('') || `<li class="hint">${all.length ? 'No note matches.' : 'No notes yet.'}</li>`}</ul>`;
       return;
     }
     const groups = new Map();
@@ -791,11 +828,21 @@ function renderNotesList(body) {
       const g = groups.get(key); g.L.push(x); if (x.n.topic && (x.n.t || 0) >= (g.t || 0)) { g.t = x.n.t || 0; g.topic = x.n.topic; }
     }
     const G = [...groups.entries()].sort((a, z) => a[0].localeCompare(z[0])).map(([key, g]) => {
-      const named = key !== '￿';
-      const L = !q || (named && has(g.topic)) ? g.L : g.L.filter(x => has(x.n.stmt) || has(textOf(x.n.html)) || has(refName(x.r)));
-      return L.length ? `<section class="ntopicgrp"><h4>${named ? esc(g.topic) : 'Without a topic'} <span class="small">${L.length}</span></h4><ul class="nlist">${L.map(row).join('')}</ul></section>` : '';
+      const named = key !== '￿', topicHit = named && has(g.topic);
+      const bySub = new Map(), bare = [];   // the subtopics of the topic, each with its notes (a note with 2 subtopics is under both)
+      for (const x of g.L) {
+        const subs = noteSubs(x.n); if (!subs.length) { bare.push(x); continue; }
+        for (const sub of subs) { const sk = topicNorm(sub); if (!bySub.has(sk)) bySub.set(sk, { sub, L: [] }); bySub.get(sk).L.push(x); }
+      }
+      const S = [...bySub.entries()].sort((a, z) => a[0].localeCompare(z[0])).map(([sk, sg]) => {
+        const L = !q || topicHit || has(sg.sub) ? sg.L : sg.L.filter(x => has(textOf(x.n.html)) || has(refName(x.r)));
+        return L.length ? `<h5 class="nsubh">${esc(sg.sub)} <span class="small">${L.length}</span></h5><ul class="nlist">${L.map(x => row(x, false)).join('')}</ul>` : '';
+      }).join('');
+      const B = (!q || topicHit ? bare : bare.filter(x => has(textOf(x.n.html)) || has(refName(x.r)))).map(x => row(x, false)).join('');
+      if (!S && !B) return '';
+      return `<section class="ntopicgrp"><h4>${named ? esc(g.topic) : 'Without a topic'} <span class="small">${g.L.length}</span></h4>${S}${B ? `${S ? '<h5 class="nsubh">Notes</h5>' : ''}<ul class="nlist">${B}</ul>` : ''}</section>`;
     }).join('');
-    items.innerHTML = G || `<p class="hint">${all.length ? 'No topic or statement matches.' : 'No notes yet.'}</p>`;
+    items.innerHTML = G || `<p class="hint">${all.length ? 'No topic or subtopic matches.' : 'No notes yet.'}</p>`;
   };
   draw();
   const f = body.querySelector('#nFilter'); f.oninput = () => { study.notesQ = f.value; draw(); };
@@ -805,7 +852,7 @@ function renderNotesList(body) {
   if (ee) ee.onclick = async () => {
     const n = noteTopics().length;
     if (!n) return TimotheosModules.messageBox('Export as a dictionary', '<p>None of your notes has a topic yet. Give a note a topic (Edit) and it becomes an entry of the dictionary.</p>');
-    const res = await TimotheosModules.modal('Export My Learnings as a theWord dictionary (.dct.twm)', `<div class="grid2"><label>Title <input id="edTitle" value="My Learnings"></label><label>Abbreviation <input id="edAbbr" value="MyLearn"></label></div><p class="small">${n} topic${n === 1 ? '' : 's'}. Each topic becomes one entry, with its statements, verses and explanations. Notes without a topic are left out.</p>`, [{ label: 'Cancel', value: null }, { label: 'Choose where…', value: 'file' }, { label: 'Save in my modules', value: 'lib', primary: true }]);
+    const res = await TimotheosModules.modal('Export My Learnings as a theWord dictionary (.dct.twm)', `<div class="grid2"><label>Title <input id="edTitle" value="My Learnings"></label><label>Abbreviation <input id="edAbbr" value="MyLearn"></label></div><p class="small">${n} topic${n === 1 ? '' : 's'}. Each topic becomes one entry, with its subtopics as entries under it, and their verses and explanations. Notes without a topic are left out.</p>`, [{ label: 'Cancel', value: null }, { label: 'Choose where…', value: 'file' }, { label: 'Save in my modules', value: 'lib', primary: true }]);
     if (!res) return;
     try {
       const out = await api.userModExportNotebook({ title: $('#edTitle').value.trim(), abbr: $('#edAbbr').value.trim(), saveDialog: res === 'file' });
@@ -937,4 +984,4 @@ function showKeys() {
   setTimeout(() => { const b = $('#editKeysFromHelp'); if (b) b.onclick = () => { $('#modal').classList.add('hidden'); TimotheosOptions.open('keys'); }; }, 30);
 }
 
-window.TimotheosStudy = { backupStudy, restoreStudy, highlight, selectionTarget, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, flash, verseText, study };
+window.TimotheosStudy = { backupStudy, restoreStudy, highlight, selectionTarget, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, noteSubs, flash, verseText, study };
