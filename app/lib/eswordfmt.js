@@ -397,6 +397,35 @@ function v11(s, notes, inline) {
   return linkUnderscoreRefs(h);
 }
 
+
+// e-Sword 10 (RTF) Bibles write Strong's numbers and morphology after a word as superscript runs:
+//   word{\cf15\super G3739}{\cf11\super R-NSM}
+// After the RTF is converted these are <span style="vertical-align:super…"> runs. Turn each word with
+// its numbers / morphology into the same hoverable markup the HTML (e-Sword 11) modules get, so the
+// morphology is recognised (pop-up, M switch, intralinear view).
+const SUPER_RUN = '<span style="vertical-align:super;font-size:75%(?:;color:#[0-9a-fA-F]{3,6})?">';
+const STRONG_RUN = SUPER_RUN + '((?:<a class="strong" data-strong="[GH]\\d{1,5}">[^<]*</a>)+)</span>';
+const MORPH_RUN = SUPER_RUN.replace('(?:;color:#[0-9a-fA-F]{3,6})?', '') + '([A-Z][A-Za-z0-9+]*(?:[-:+][A-Za-z0-9+]+)*)</span>';
+const MORPH_CODE = /^[A-Z][A-Za-z0-9+]{0,8}(?:[-:+][A-Za-z0-9+]{1,8})*$/;
+const STRONG_IN_RUN = /data-strong="([GH]\d{1,5})"/g;
+function tagRtfWords(html) {
+  const re = new RegExp('<span>([^<]*)</span>((?:' + STRONG_RUN + ')+)((?:' + MORPH_RUN + ')*)', 'g');
+  const morphRe = new RegExp(MORPH_RUN, 'g');
+  html = html.replace(re, (m, word, strongs, _inner, morphs) => {
+    const st = [...strongs.matchAll(STRONG_IN_RUN)].map(x => x[1]);
+    const mo = [...morphs.matchAll(morphRe)].map(x => x[1]).filter(c => MORPH_CODE.test(c));
+    if (!st.length) return m;
+    const lead = /^\s*/.exec(word)[0], bare = word.slice(lead.length);
+    const punct = /^(.*?)([,.;:!?·"”’)\]\u0387\u037E]*)$/.exec(bare);
+    const attrs = ` data-strong="${escA(st.join(' '))}"` + (mo.length ? ` data-morph="${escA(mo.join(' '))}"` : '');
+    return lead + `<span class="word"${attrs}>${punct[1]}</span>${punct[2]}`
+      + st.map(x => `<sup class="strong" data-strong="${escA(x)}">${escT(x)}</sup>`).join('')
+      + mo.map(x => `<sup class="morph" data-morph="${escA(x)}">${escT(x)}</sup>`).join('');
+  });
+  // morphology that follows something other than a plain word: still make it a morph mark
+  return html.replace(new RegExp(MORPH_RUN, 'g'), (m, c) => MORPH_CODE.test(c) && /-/.test(c) ? `<sup class="morph" data-morph="${escA(c)}">${escT(c)}</sup>` : m);
+}
+
 /** e-Sword verse/entry text (either generation) -> HTML */
 function eswordToHtml(s, notes, inline) {
   if (!s) return '';
@@ -405,8 +434,8 @@ function eswordToHtml(s, notes, inline) {
     let html = rtfToHtml(/^\s*\{\\rtf/.test(s) ? s : '{' + s + '}', { colors: { 15: '#c00000', 6: '#7a7a7a' }, fragmentFonts: { 1: 'windows-1253', 2: 'windows-1255' }, inline: !!inline });
     html = linkUnderscoreRefs(html);
     // older modules show Strong's numbers as plain (superscript) text: make them hoverable
-    html = html.replace(/\b([GH])(\d{1,5})\b/g, (m, l, n) => `<a class="strong" data-strong="${l}${n}">${l}${n}</a>`);
-    return html;
+    html = html.replace(/(?<![A-Za-z])([GH])(\d{1,5})(?!\d)/g, (m, l, n) => `<a class="strong" data-strong="${l}${n}">${l}${n}</a>`);
+    return tagRtfWords(html);
   }
   if (/<[a-z/][^>]*>/i.test(s)) return v11(s, notes, inline);
   return formatPlainTextTopic(s, inline);

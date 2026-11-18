@@ -1,0 +1,3 @@
+Timotheos 0.6.63
+- Morphology in e-Sword Bibles: Bibles in the older e-Sword format (.bblx) that write the Strong's number and the morphology code after each word (for example the Septuagint deuterocanonical books, Tobit) now show the morphology. The M switch, the word pop-up and the Intralinear View recognise the codes, including Packard codes such as N2-NSF and RA-GSM, and a word with two Strong's numbers.
+- User Guide updated.
