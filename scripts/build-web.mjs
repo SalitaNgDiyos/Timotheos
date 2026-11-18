@@ -15,7 +15,7 @@ fs.mkdirSync(dist, { recursive: true });
 const shim = f => path.join(root, 'tauri-shim', f);
 await build({
   entryPoints: [shim('worker-entry.js')], outfile: path.join(dist, 'worker.js'), bundle: true, format: 'iife', platform: 'browser', target: 'es2020',
-  alias: { fs: shim('fs.js'), os: shim('os.js'), zlib: shim('zlib.js'), electron: shim('electron.js'), 'node:sqlite': shim('sqlite.js'), path: 'pathe', 'node:path': 'pathe' },
+  alias: { fs: shim('fs.js'), os: shim('os.js'), zlib: shim('zlib.js'), crypto: shim('empty.js'), electron: shim('electron.js'), 'node:sqlite': shim('sqlite.js'), path: 'pathe', 'node:path': 'pathe' },
   inject: [shim('inject.js')], define: { __dirname: '"/app"', global: 'globalThis' }, logLevel: 'warning', minify: false,
 });
 await build({
@@ -23,6 +23,8 @@ await build({
 });
 fs.cpSync(path.join(root, 'app', 'renderer'), dist, { recursive: true });
 fs.copyFileSync(shim('host.css'), path.join(dist, 'host.css'));
+// the archive reader: 7-Zip as WebAssembly (lib/archive.js fetches it next to worker.js)
+fs.copyFileSync(path.join(root, 'node_modules', '7z-wasm', '7zz.wasm'), path.join(dist, '7zz.wasm'));
 // the licence texts travel with the program (AGPL-3.0-or-later; shown in About → Legal)
 fs.mkdirSync(path.join(dist, 'legal'), { recursive: true });
 for (const f of ['LICENSE', 'THIRD-PARTY-LICENSES.md', 'NOTICE']) fs.copyFileSync(path.join(root, f), path.join(dist, 'legal', f.replace(/\.md$/, '') + '.txt'));

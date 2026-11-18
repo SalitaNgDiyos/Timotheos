@@ -168,7 +168,8 @@
   <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
   <li><i>Panels → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
 </ul>
-<h3>New in 0.6.55 – 0.6.61</h3>
+<h3>New in 0.6.55 – 0.6.62</h3>
+<ul><li><b>Archives and compressed files (0.6.62).</b> <code>.7z</code>, <code>.rar</code>, <code>.tar</code>, <code>.tar.gz</code>/<code>.tgz</code>, <code>.tar.bz2</code>, <code>.tar.xz</code>, <code>.tar.zst</code> and single <code>.gz</code>, <code>.bz2</code>, <code>.xz</code>, <code>.zst</code> files open in Import (and by drag and drop), with a password box for protected ones, archives in your modules folders unpack at start, and a compressed study backup can be restored. See <a href="#modules">Modules</a>, <i>Archives and compressed files</i>.</li></ul>
 <ul>
   <li><b>Drag the text to scroll it (0.6.58, hand buttons 0.6.59).</b> Every text panel has its own <b>hand button</b>. It is off at first, so dragging selects text as usual.
     <ol>
@@ -654,6 +655,22 @@
 <p>theWord books written with <b>RichView</b> (many user-made commentaries and books) are shown with their formatting: bold and italic, colours, centred paragraphs, links, pictures and tables. They are read only.</p>
 <p><b>Encrypted or locked modules are not opened.</b> This covers theWord <code>.ontx</code>/<code>.otx</code>/<code>.ntx</code>, locked <code>.twm</code> modules and encrypted e-Sword modules. Their licences forbid getting around that protection, so Timotheos names them and skips them.</p>
 <p>Not supported yet: e-Sword harmonies, graphics and notes files, and theWord reading-plan modules.</p>
+<h3>Archives and compressed files</h3>
+<p>Modules often come packed. Timotheos opens these directly, so you do not need to unpack anything first:</p>
+<ul>
+  <li><b>Archives:</b> <code>.zip</code>, <code>.twzip</code>, <code>.7z</code>, <code>.rar</code>, <code>.tar</code>, and tar files compressed with gzip, bzip2, xz or zstd (<code>.tar.gz</code> or <code>.tgz</code>, <code>.tar.bz2</code>, <code>.tar.xz</code>, <code>.tar.zst</code>).</li>
+  <li><b>One compressed file:</b> <code>.gz</code>, <code>.bz2</code>, <code>.xz</code>, <code>.zst</code> (for example <code>MyBible.bbl.mybible.gz</code>).</li>
+  <li>Timotheos looks at what is inside the file, not only at its name, so a file with the wrong ending still opens if it really is an archive.</li>
+</ul>
+<ol>
+  <li>Use <i>File → Import Modules…</i> (<kbd>Ctrl+I</kbd>) and choose the archive (the file chooser has an <i>Archives and compressed files</i> line), or drag the archive onto the window.</li>
+  <li>Timotheos opens it, finds the theWord, e-Sword, MySword, USFM and USFX modules inside (an archive inside an archive is opened too, up to 3 levels), and imports them. The results window lists what was added and what was skipped, and why.</li>
+  <li><b>Protected archives:</b> a box <i>Password needed</i> appears. Type the password and click <b>Open</b>. If it is wrong the box comes back (3 tries); <b>Skip this archive</b> leaves it out. The password is used once and is not saved.</li>
+  <li><b>Archives in a modules folder:</b> an archive that you leave in one of your modules folders is unpacked by itself a few seconds after Timotheos starts, and a short message tells you how many modules it added. Each archive is unpacked once, and again only if the file changes. A protected archive is not opened this way: import it with <i>Import</i> to type its password.</li>
+  <li>Your archive is never changed or deleted: Timotheos copies the modules out of it.</li>
+</ol>
+<p><b>Study backup.</b> <i>File → Restore My Study…</i> also accepts a backup that you compressed (for example <code>.zip</code> or <code>.gz</code>): it uses the <code>.json</code> backup inside.</p>
+<div class="tip"><b>Limits.</b> An archive may unpack to at most about 800 MB. The unpacked files are held in memory while Timotheos works, so a very large pack is slow. RAR files are read only (Timotheos cannot make them). Archives that contain no module Timotheos can read are listed as <i>Not imported</i>.</div>
 <h3>MySword modules</h3>
 <p>Modules from MySword (<code>mysword.info</code>) are read directly: Bibles (with Strong's numbers, footnotes and verse rules), commentaries, dictionaries (including Strong's dictionaries), books and journals. They are shown read-only; Timotheos never changes a <code>.mybible</code> file.</p>
 <ol>
@@ -829,6 +846,8 @@
 </section>
 
 <section id="p-modules"><h2>Modules</h2>
+<h3>Archives on the phone</h3>
+<p>The same archives open on the phone: <code>.zip</code>, <code>.7z</code>, <code>.rar</code>, <code>.tar</code>, <code>.tar.gz</code>/<code>.tgz</code>, <code>.tar.bz2</code>, <code>.tar.xz</code>, <code>.tar.zst</code> and single <code>.gz</code>, <code>.bz2</code>, <code>.xz</code>, <code>.zst</code> files. In <i>Modules → Import modules</i> choose the archive in Android's file chooser (if the chooser greys it out, switch it to show all files). A protected archive asks for its password in a box. The password is not saved.</p>
 <h3>MySword modules on the phone</h3>
 <ol>
   <li>Open <i>Modules → Import modules</i>. Android's file chooser opens.</li>

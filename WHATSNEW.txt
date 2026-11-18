@@ -1,5 +1,7 @@
-Timotheos 0.6.61
-- The word pop-up button in each Bible view now shows the Greek capital omega with the Hebrew aleph (Ωא) instead of a dictionary icon.
-- The drag-to-scroll hand is now the last button at the far right of the Commentary and Library toolbars.
-- Bible search, Book search and My Study have no toolbar, so their drag-to-scroll switch is now a check box in Options > Layout & toolbar (the small hand rows above their text are gone).
+Timotheos 0.6.62
+- Archives and compressed files: Import (and drag and drop) now opens .7z, .rar, .tar, .tar.gz/.tgz, .tar.bz2, .tar.xz, .tar.zst and single .gz, .bz2, .xz, .zst files, as well as .zip and .twzip. Timotheos looks at what is inside, not only at the name. An archive inside an archive is opened too (3 levels).
+- Protected archives (zip, 7z, rar) ask for the password in a box; a wrong password asks again. The password is not saved.
+- Archives left in a modules folder are unpacked once, a few seconds after Timotheos starts; the archive itself is never changed or deleted.
+- A compressed study backup (.zip, .gz, .7z ...) can be restored.
+- Uses 7-Zip built for WebAssembly (LGPL with the unRAR restriction) and fzstd (MIT); added to the licence list.
 - User Guide updated.

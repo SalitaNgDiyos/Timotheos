@@ -67,8 +67,26 @@ function impStart(quiet) {
   clearInterval(imp.timer); imp.timer = setInterval(() => { if (imp.last) impShow(); }, 500);   // the seconds keep counting while a big file is copied
 }
 function impEnd() { imp.on = false; clearInterval(imp.timer); imp.timer = null; if ($('#modalBody .impprog')) $('#modal').classList.add('hidden'); }
+// archives found in a modules folder are unpacked at start: say so, and show the new modules
+if (window.api && api.onAutoImport) api.onAutoImport(async d => {
+  try { state.infos.clear(); await refreshModules(d.list); } catch (e) { /* the list stays as it was */ }
+  const bits = [];
+  if (d.added) bits.push(`${d.added} module${d.added === 1 ? '' : 's'} added from ${d.archives} archive${d.archives === 1 ? '' : 's'} in your modules folders`);
+  if (d.protectedN) bits.push(`${d.protectedN} protected archive${d.protectedN === 1 ? ' needs' : 's need'} a password: import ${d.protectedN === 1 ? 'it' : 'them'} with Import to enter it`);
+  if (!bits.length && d.archives) bits.push(`${d.archives} archive${d.archives === 1 ? '' : 's'} in your modules folders had no module Timotheos can read`);
+  if (bits.length && window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(bits.join('. '));
+});
 if (window.api && api.onImportProgress) api.onImportProgress(d => { if (!imp.on) return; imp.last = d; impShow(); });
 
+/** the password box for a protected archive: the password, or null */
+async function archivePassword(name, wrong) {
+  const html = `<p>The archive <b>${esc(name)}</b> is protected by a password.${wrong ? ' <span class="bad">The password you typed was wrong.</span>' : ''}</p>
+    <label class="field">Password <input id="arcPw" type="password" autocomplete="off" spellcheck="false"></label>
+    <p class="small">The password is only used to open this archive now. It is not saved.</p>`;
+  const v = await modal('Password needed', html, [{ label: 'Skip this archive', value: null }, { label: 'Open', value: 'ok', primary: true }]);
+  const pw = (document.querySelector('#modalBody #arcPw') || {}).value || '';
+  return v === 'ok' && pw ? pw : null;
+}
 async function importModules(paths, quiet) {
   let r;
   impStart(quiet);
@@ -76,13 +94,27 @@ async function importModules(paths, quiet) {
   catch (e) { impEnd(); return messageBox('Import failed', esc(e.message)); }
   impEnd();
   if (!r) return;
+  // protected archives: ask for each password, then import those again (up to 3 tries each)
+  for (let round = 0; round < 3 && !quiet; round++) {
+    const need = r.results.filter(x => x.status === 'password' && x.from);
+    if (!need.length) break;
+    const pw = {};
+    for (const x of need) { const v = await archivePassword(x.name, x.wrong); if (v) pw[x.from] = v; }
+    const retry = Object.keys(pw); if (!retry.length) break;
+    impStart(false);
+    let r2; try { r2 = await api.importFiles(retry, { passwords: pw }); } catch (e) { impEnd(); break; }
+    impEnd();
+    if (!r2) break;
+    const done = new Set(retry);
+    r = { results: r.results.filter(x => !(x.status === 'password' && done.has(x.from))).concat(r2.results), list: r2.list };
+  }
   state.infos.clear();
   if (r.results && r.results.some(x => x.studyData) && window.TimotheosStudy) {
     TimotheosStudy.study.ud = await api.userData();
   }
   await refreshModules(r.list);
   if (quiet) return r;   // the caller says what happened itself (Download modules)
-  const label = { imported: 'Imported', updated: 'Updated', already: 'Already in library', skipped: 'Not imported' };
+  const label = { imported: 'Imported', updated: 'Updated', already: 'Already in library', skipped: 'Not imported', password: 'Needs a password' };
   const rows = r.results.map(x => `<tr class="st-${x.status}"><td>${esc(label[x.status] || x.status)}</td><td><b>${esc(x.title || x.name)}</b><div class="small">${esc(x.name)}${x.from && x.from.includes('›') ? ' · from ' + esc(x.from.split(' › ')[0]) : ''}</div></td><td>${esc(x.format || '')} ${esc(x.kind || '')}</td><td class="small">${esc(x.reason || x.note || '')}</td></tr>`).join('');
   const n = r.results.filter(x => x.status === 'imported' || x.status === 'updated').length;
   messageBox(`Import: ${n} module${n === 1 ? '' : 's'} added`, `<table class="imp"><thead><tr><th>Result</th><th>Module</th><th>Type</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>`, true);

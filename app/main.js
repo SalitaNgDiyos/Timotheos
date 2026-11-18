@@ -109,6 +109,41 @@ async function rescanAll() {
   return l;
 }
 
+/** archives left in a modules folder are unpacked at start (the archive itself stays where it is); each one once, until it changes */
+async function scanArchiveFolders() {
+  const archive = require('./lib/archive');
+  const seen = Object.assign({}, settings.archiveSeen || {});
+  const todo = [];
+  for (const dir of [...new Set([...(settings.moduleFolders || []), MODULES_DIR()])]) {
+    let names = []; try { names = fs.readdirSync(dir); } catch (e) { continue; }
+    for (const n of names) {
+      if (!archive.isArchiveName(n)) continue;
+      const f = path.join(dir, n); let st; try { st = fs.statSync(f); } catch (e) { continue; }
+      if (!st.isFile()) continue;
+      const sig = st.size + ':' + Math.round(st.mtimeMs);
+      if (seen[f] !== sig) todo.push({ f, sig });
+    }
+  }
+  if (!todo.length) return;
+  const results = await importFiles(todo.map(t => t.f), MODULES_DIR(), settings, userData, null, {});
+  for (const t of todo) seen[t.f] = t.sig;
+  settings.archiveSeen = seen; saveSettings();
+  const list = await rescanAll();
+  const added = results.filter(r => r.status === 'imported' || r.status === 'updated').length;
+  const protectedN = results.filter(r => r.status === 'password').length;
+  try { if (win && !win.isDestroyed?.()) win.webContents.send('import:auto', { list, added, archives: todo.length, protectedN, results }); } catch (e) { /* no window */ }
+}
+
+/** the text of a study backup: the .json file itself, or the .json inside a compressed file or archive */
+async function backupText(file) {
+  const archive = require('./lib/archive');
+  if (!archive.isArchiveName(path.basename(file))) return fs.readFileSync(file, 'utf8');
+  let ents; try { ents = await archive.unpack(fs.readFileSync(file), path.basename(file), {}); } catch (e) { throw new Error(e.code === 'PASSWORD' || e.code === 'BADPASSWORD' ? 'This backup is in a password-protected archive. Unpack it first, then restore the .json file.' : 'This compressed backup could not be opened: ' + e.message); }
+  const j = ents.find(e => /\.json$/i.test(e.name) && !/(^|\/)\._/.test(e.name));
+  if (!j) throw new Error('There is no .json study backup inside this archive.');
+  return j.data.toString('utf8');
+}
+
 function resolveWindowBounds(saved, defW, defH, minW, minH) {
   const s = Object.assign({ width: defW, height: defH, maximized: false, fullScreen: false }, saved || {});
   const width = Math.max(minW, Math.round(+s.width || defW));
@@ -234,12 +269,12 @@ function openGuide(skin) {
   guideWin.on('closed', () => { guideWin = null; });
 }
 
-async function doImport(paths) {
+async function doImport(paths, opts) {
   // the import window shows how far it is (import:progress)
   const send = d => { try { if (win && !win.isDestroyed?.()) win.webContents.send('import:progress', d); } catch (e) { /* no window */ } };
   send({ step: 'start', done: 0, total: paths.length, name: '' });
   lib.releaseUnder(MODULES_DIR());
-  const results = await importFiles(paths, MODULES_DIR(), settings, userData, send);
+  const results = await importFiles(paths, MODULES_DIR(), settings, userData, send, opts || {});
   send({ step: 'scan', done: results.length, total: results.length, name: '' });
   const list = await rescanAll();
   return { results, list };
@@ -318,11 +353,12 @@ app.whenReady().then(async () => {
       title: 'Import theWord or e-Sword modules', properties: ['openFile', 'multiSelections'],
       // one line per kind of module, so the drop-down of the dialog is a vertical list
       filters: [
-        { name: 'All supported modules', extensions: ['ont', 'ot', 'nt', 'twm', 'twzip', 'zip', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml', 'mybible'] },
+        { name: 'All supported modules', extensions: ['ont', 'ot', 'nt', 'twm', 'twzip', 'zip', '7z', 'rar', 'tar', 'tgz', 'gz', 'bz2', 'xz', 'zst', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml', 'mybible'] },
         { name: 'MySword modules', extensions: ['mybible'] },
         { name: 'theWord Bibles', extensions: ['ont', 'ot', 'nt'] },
         { name: 'theWord books, commentaries, dictionaries', extensions: ['twm'] },
         { name: 'theWord packages', extensions: ['twzip', 'zip'] },
+        { name: 'Archives and compressed files (.zip .7z .rar .tar .tgz .gz .bz2 .xz .zst)', extensions: ['zip', 'twzip', '7z', 'rar', 'tar', 'tgz', 'gz', 'bz2', 'xz', 'zst', 'tbz2', 'txz', 'tzst', 'lzma'] },
         { name: 'e-Sword Bibles', extensions: ['bblx', 'bbli'] },
         { name: 'e-Sword commentaries', extensions: ['cmtx', 'cmti'] },
         { name: 'e-Sword dictionaries', extensions: ['dctx', 'dcti'] },
@@ -338,7 +374,7 @@ app.whenReady().then(async () => {
     if (r.canceled || !r.filePaths.length) return null;
     return doImport(r.filePaths);
   });
-  handle('modules:import', paths => doImport(paths || []));
+  handle('modules:import', (paths, opts) => doImport(paths || [], opts));
   handle('modules:removeImported', async file => {
     const root = path.resolve(MODULES_DIR());
     const lf = lib.linkFileOf && lib.linkFileOf(file);
@@ -496,14 +532,14 @@ app.whenReady().then(async () => {
   });
   handle('study:restoreRead', async () => {
     const sb = require('./lib/studybackup');
-    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Timotheos study backup (.json)', extensions: ['json'] }, { name: 'All files', extensions: ['*'] }] });
+    const r = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: 'Timotheos study backup (.json, or zipped: .zip .7z .gz .xz …)', extensions: ['json', 'zip', '7z', 'rar', 'tar', 'tgz', 'gz', 'bz2', 'xz', 'zst'] }, { name: 'All files', extensions: ['*'] }] });
     if (r.canceled || !r.filePaths || !r.filePaths[0]) return null;
-    const b = sb.read(fs.readFileSync(r.filePaths[0], 'utf8'));
+    const b = sb.read(await backupText(r.filePaths[0]));
     return { path: r.filePaths[0], made: b.made, counts: b.counts, here: sb.counts(userData.get()) };
   });
   handle('study:restoreApply', async (file, mode) => {
     const sb = require('./lib/studybackup');
-    const b = sb.read(fs.readFileSync(String(file), 'utf8'));
+    const b = sb.read(await backupText(String(file)));
     const cur = userData.get();
     const keep = userData.file.replace(/\.json$/, '') + '.before-restore-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
     try { fs.writeFileSync(keep, JSON.stringify(cur)); } catch (e) { throw new Error('The study data here could not be set aside first, so nothing was restored.'); }
@@ -589,6 +625,7 @@ app.whenReady().then(async () => {
   } catch (_) {}
 
   createWindow();
+  setTimeout(() => { scanArchiveFolders().catch(() => { /* later */ }); }, 4000);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 

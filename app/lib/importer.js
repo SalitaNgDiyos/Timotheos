@@ -3,13 +3,13 @@
 'use strict';
 // "Import modules…": checks each chosen file, copies usable modules into Timotheos's own module
 // folder (<userData>/modules/theWord, /e-Sword, /USFM, or /USFX) and reports what happened to every file.
-// Archives (.zip, .twzip) are unpacked; multi-file USFM archives (e.g. eBible.org *_usfm.zip) are
+// Archives (.zip .twzip .7z .rar .tar .tar.gz .tgz .tar.bz2 .tar.xz .tar.zst and single .gz .bz2 .xz .zst) are unpacked; multi-file USFM archives (e.g. eBible.org *_usfm.zip) are
 // bundled into a single consolidated .usfm Bible module. Verse lists (.vsls.twm) and reading plans
 // (.rdp.twm) can also be imported into user study data. Encrypted modules and installer programs are refused.
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const zip = require('./zip');
+const archive = require('./archive');
 const theword = require('./theword');
 const mysword = require('./mysword');
 const esword = require('./esword');
@@ -28,7 +28,11 @@ const MY_BOOK = /\.(cmt|dct|bok|book|jor)\.mybible$/i; // MySword; a plain .mybi
 const ES_OTHER = /\.(bbl|cmt|dct|top|dev|map|lex|har)$/i; // pre-version-9 e-Sword types
 const USFM_BIBLE = /\.(usfm|sfm|ptx)$/i;
 const USFX_BIBLE = /\.(usfx|usfx\.xml|xml)$/i;
-const ARCHIVE = /\.(zip|twzip)$/i;
+const ARCHIVE = archive.NAME_RE;   // .zip .twzip .7z .rar .tar .tar.gz .tgz .tar.bz2 .tar.xz .tar.zst .gz .bz2 .xz .zst … (lib/archive.js)
+/** the archive's name without its archive ending(s): Bible.usfm.tar.gz -> Bible.usfm */
+const archBase = n => n.replace(/\.(tar\.(gz|bz2|xz|zst|lz)|tgz|tbz2?|txz|tzst|tlz|taz|zip|twzip|7z|rar|tar|gz|bz2|xz|zst|lzma|lz)$/i, '');
+/** junk that rides along in archives made on a Mac */
+const junk = n => /(^|\/)(__MACOSX|\.DS_Store)(\/|$)|(^|\/)\._[^/]*$/.test(n);
 
 function filesAreSame(f1, f2) {
   try {
@@ -117,7 +121,7 @@ async function inspect(file, settings) {
 /**
  * Import files into destRoot. Returns [{name, from, status: imported|updated|already|skipped, kind, format, title, reason, dest, studyData?}]
  */
-async function importFiles(paths, destRoot, settings = {}, userData = null, onProgress = null) {
+async function importFiles(paths, destRoot, settings = {}, userData = null, onProgress = null, opts = {}) {
   const results = [];
   // progress for the import window: { step, done, total, name } (done of total files); a pause lets the window draw it
   const tell = async (step, done, total, name) => { if (!onProgress) return; try { onProgress({ step, done, total, name }); } catch (e) { /* no window */ } await new Promise(r => setTimeout(r, 0)); };
@@ -145,32 +149,34 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
     if (ARCHIVE.test(name)) {
       try {
         const buf = fs.readFileSync(p);
-        const allEnts = zip.entries(buf).filter(e => !e.name.endsWith('/'));
+        const pw = (opts.passwords || {})[p];
+        const allEnts = (await archive.unpack(buf, name, { password: pw })).filter(e => !e.name.endsWith('/') && !junk(e.name));
         const usfmEnts = allEnts.filter(e => USFM_BIBLE.test(path.basename(e.name)));
         if (usfmEnts.length >= 1) {
           // Bundle all USFM book files inside the archive into a single <archiveBase>.usfm Bible
-          const baseTitle = name.replace(/[_-]?usfm\.(zip|twzip)$/i, '').replace(/\.(zip|twzip)$/i, '');
+          const baseTitle = archBase(name).replace(/[_-]?usfm$/i, '');
           const outFile = path.join(tmp, baseTitle + '.usfm');
-          const texts = usfmEnts.map(e => zip.extract(buf, e).toString('utf8'));
+          const texts = usfmEnts.map(e => e.data.toString('utf8'));
           usfm.bundleUsfmTexts(texts, outFile, baseTitle.replace(/[_-]+/g, ' '));
           queue.push({ file: outFile, from: `${name} (${usfmEnts.length} USFM file${usfmEnts.length > 1 ? 's' : ''})` });
         }
         const otherEnts = allEnts.filter(e => !USFM_BIBLE.test(path.basename(e.name)) && isModuleName(path.basename(e.name)));
         if (!usfmEnts.length && !otherEnts.length) {
-          results.push({ name, from: p, status: 'skipped', reason: 'the archive contains no theWord, e-Sword, USFM, or USFX module' });
+          results.push({ name, from: p, status: 'skipped', reason: 'the archive contains no theWord, e-Sword, MySword, USFM, or USFX module' });
           continue;
         }
         for (const e of otherEnts) {
           let base = path.basename(e.name);
-          if (/\.xml$/i.test(base) && !/\.usfx$/i.test(base)) {
-            const zBase = name.replace(/[_-]?usfx\.(zip|twzip)$/i, '').replace(/\.(zip|twzip)$/i, '');
-            base = zBase + '.usfx';
-          }
+          if (/\.xml$/i.test(base) && !/\.usfx$/i.test(base)) base = archBase(name).replace(/[_-]?usfx$/i, '') + '.usfx';
           const out = path.join(tmp, base);
-          try { fs.writeFileSync(out, zip.extract(buf, e)); queue.push({ file: out, from: `${name} › ${e.name}` }); }
+          try { fs.writeFileSync(out, e.data); queue.push({ file: out, from: `${name} › ${e.name}` }); }
           catch (err) { results.push({ name: path.basename(e.name), from: name, status: 'skipped', reason: 'could not unpack: ' + err.message }); }
         }
-      } catch (err) { results.push({ name, from: p, status: 'skipped', reason: 'could not read archive: ' + err.message }); }
+      } catch (err) {
+        // a protected archive waits for its password (the window asks for it and imports again)
+        if (err.code === 'PASSWORD' || err.code === 'BADPASSWORD') results.push({ name, from: p, status: 'password', wrong: err.code === 'BADPASSWORD', reason: err.code === 'BADPASSWORD' ? 'the password is wrong' : 'the archive is protected by a password' });
+        else results.push({ name, from: p, status: 'skipped', reason: 'could not read archive: ' + err.message });
+      }
       continue;
     }
     queue.push({ file: p, from: p });
