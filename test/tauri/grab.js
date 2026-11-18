@@ -16,7 +16,7 @@
   const bv = sc.closest('.bv'); const hb = bv.querySelector('.bvgrab');
   ok(!!hb && !hb.classList.contains('on'), 'each Bible view has a hand button in its left bar, off at first');
   ok(!document.querySelector('#grabScroll'), 'the Options checkbox is gone');
-  ok(['cmt', 'lib', 'search', 'bsearch', 'study'].every(k => document.querySelector('[data-grab="' + k + '"]')), 'hand buttons in commentary, library, Bible search, Book search and My Study');
+  ok(['cmt', 'lib'].every(k => document.querySelector('[data-grab="' + k + '"]')) && ['search', 'bsearch', 'study'].every(k => document.querySelector('[data-grabopt="' + k + '"]')) && !document.querySelector('.grabrow'), 'hand buttons in commentary and library, check boxes in Options for Bible search, Book search and My Study');
   ok(sc.scrollHeight > sc.clientHeight + 50, 'the view can scroll (' + sc.scrollHeight + ' > ' + sc.clientHeight + ')');
   sc._prog = Date.now() + 100000;   // keep the verse-follow quiet while testing
   const dOff = await drag(-120); ok(dOff === 0, 'hand OFF: a left drag does not scroll (' + dOff + ')');
@@ -32,7 +32,8 @@
   const dm = await (async () => { const s0 = sc.scrollTop; ev('mousedown', x, y, { button: 1, buttons: 4 }); for (let i = 1; i <= 4; i++) ev('mousemove', x, y - 25 * i, { buttons: 4 }); ev('mouseup', x, y - 100, { buttons: 0, button: 1 }); await sleep(60); return sc.scrollTop - s0; })();
   ok(dm > 60, 'middle-button drag scrolls (' + dm + ')');
   hb.click(); await sleep(100); const d4 = await drag(-100); ok(d4 === 0 && !hb.classList.contains('on'), 'clicking the hand again turns it off (' + d4 + ')');
-  for (const k of ['cmt', 'lib', 'search', 'bsearch', 'study']) { const b = document.querySelector('[data-grab="' + k + '"]'); b.click(); await sleep(50); const a = b.classList.contains('on') && state.settings.grab[k] === true; b.click(); await sleep(50); ok(a && !b.classList.contains('on') && state.settings.grab[k] === false, 'hand toggles on and off in ' + k); }
+  for (const k of ['cmt', 'lib']) { const b = document.querySelector('[data-grab="' + k + '"]'); const bar = b.parentElement; const kids = [...bar.children].filter(c => c.offsetParent); b.click(); await sleep(50); const a = b.classList.contains('on') && state.settings.grab[k] === true; b.click(); await sleep(50); ok(a && !b.classList.contains('on') && state.settings.grab[k] === false, 'hand toggles on and off in ' + k); ok(kids[kids.length - 1] === b && b.getBoundingClientRect().right >= bar.getBoundingClientRect().right - 12, k + ': the hand is the last button, at the far right (' + Math.round(b.getBoundingClientRect().right) + ' vs ' + Math.round(bar.getBoundingClientRect().right) + ')'); }
+  for (const k of ['search', 'bsearch', 'study']) { const c = document.querySelector('[data-grabopt="' + k + '"]'); c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); await sleep(50); const a = state.settings.grab[k] === true && TimotheosGrab.isOn({ key: k }); c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })); await sleep(50); ok(a && state.settings.grab[k] === false, 'Options check box switches drag-scroll for ' + k); }
   // a plain click still selects a verse
   const pv = sc.querySelector('.pv[data-v="3"]'); const q = pv.getClientRects()[0];
   if (q && q.top > r.top && q.bottom < r.bottom) { ev('mousedown', q.left + 30, q.top + 8); ev('mouseup', q.left + 30, q.top + 8); ev('click', q.left + 30, q.top + 8, { buttons: 0 }); await sleep(200); ok(state.ref.v === 3, 'a plain click still selects its verse'); }

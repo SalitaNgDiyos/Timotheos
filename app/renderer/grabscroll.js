@@ -3,7 +3,8 @@
 'use strict';
 // Grab-and-drag scrolling (desktop). Every text panel has its own hand button (off at first, remembered):
 //  Bible views: the hand in the left icon bar of each view (views()[i].grab).
-//  Commentary, Library, Bible search, Book search, My Study: the hand in the panel's top row (settings.grab[key]).
+//  Commentary and Library: the hand at the far right of the toolbar. Bible search, Book search and My Study have no toolbar:
+//  a check box in Options → Layout & toolbar (settings.grab[key]).
 // While a panel's hand is on, hold the left mouse button on its text and drag to scroll it.
 //  - Shift + drag selects text as usual; a plain click behaves as before.
 //  - The middle mouse button drags in every panel, even with the hand off.
@@ -38,6 +39,7 @@
     });
     for (const [key, sel] of AREAS) {
       const on = isOn({ key });
+      document.querySelectorAll(`[data-grabopt="${key}"]`).forEach(c => { c.checked = on; });
       document.querySelectorAll(`[data-grab="${key}"]`).forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
       document.querySelectorAll(sel).forEach(el => el.classList.toggle('grabon', on));
     }
@@ -56,6 +58,8 @@
     const k = b.dataset.grab;
     if (k === 'v') { const bv = b.closest('.bv'); if (bv) toggle({ key: 'v', i: +bv.dataset.i }); } else toggle({ key: k });
   }, true);
+  // the check boxes in Options (panels that have no toolbar for a hand button)
+  addEventListener('change', e => { const c = e.target && e.target.closest && e.target.closest('[data-grabopt]'); if (c && c.checked !== isOn({ key: c.dataset.grabopt })) toggle({ key: c.dataset.grabopt }); }, true);
   addEventListener('mousedown', e => {
     st = null;
     if (!ready() || e.defaultPrevented || e.ctrlKey || e.altKey || e.metaKey) return;

@@ -862,5 +862,5 @@ select option, select optgroup { background-color: var(--card); color: var(--tex
 .grabon { cursor: grab; }
 body.grabbing, body.grabbing * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
 .grabbtn.on, .bvside .bvgrab.on { background: color-mix(in srgb, var(--cap-bible, var(--accent)) 24%, transparent); color: var(--heading, var(--text)); }
-.grabrow { display: flex; align-items: center; gap: 6px; padding: 2px 8px 0; }
-.grabrow .status { flex: 1; min-width: 0; margin: 0; }
+.libbar .grabright, .cmtbar .grabright { margin-left: 4px; }
+.bvside .wpglyph { font: 700 14px/1 'Gentium Plus', 'Noto Serif', 'DejaVu Serif', serif; letter-spacing: -1.5px; white-space: nowrap; }

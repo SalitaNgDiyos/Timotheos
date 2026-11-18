@@ -1,0 +1,5 @@
+Timotheos 0.6.61
+- The word pop-up button in each Bible view now shows the Greek capital omega with the Hebrew aleph (Ωא) instead of a dictionary icon.
+- The drag-to-scroll hand is now the last button at the far right of the Commentary and Library toolbars.
+- Bible search, Book search and My Study have no toolbar, so their drag-to-scroll switch is now a check box in Options > Layout & toolbar (the small hand rows above their text are gone).
+- User Guide updated.
