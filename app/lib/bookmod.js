@@ -89,6 +89,7 @@ function guessKind(name) {
 
 async function open(file) {
   const base = path.basename(file);
+  if (/\.conf$/i.test(base)) return require('./swordbook').open(file);   // SWORD commentary, dictionary or general book
   const stub = { id: 'bm:' + base, file, name: base, kind: guessKind(base) || 'book', format: /\.twm$/i.test(base) ? 'theWord' : /\.mybible$/i.test(base) ? 'MySword' : 'e-Sword', title: base, abbr: base.replace(/\..*$/, '') };
   const head = Buffer.alloc(16); const fd = fs.openSync(file, 'r'); fs.readSync(fd, head, 0, 16, 0); fs.closeSync(fd);
   if (head.toString('latin1', 0, 15) !== 'SQLite format 3') return locked(stub, 'not a readable database – the module is encrypted or in an unknown format');
@@ -856,4 +857,4 @@ function stemOf(w) {
   return s;
 }
 
-module.exports = { open, guessKind, stemOf, refLabel };
+module.exports = { open, guessKind, stemOf, refLabel, plain };

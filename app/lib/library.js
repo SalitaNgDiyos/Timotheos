@@ -96,10 +96,11 @@ class Library {
         for (const it of items) {
           if (it.isDirectory() || !/\.conf$/i.test(it.name)) continue;
           const cp = path.join(dir, it.name); if (seen.has(cp)) continue; seen.add(cp);
-          const pr = sword.probe(cp); if (!pr.ok || pr.kind !== 'Bible') continue;
-          const dupKey = (it.name.replace(/\.conf$/i, '') + '.sword').toLowerCase();
+          const pr = sword.probe(cp); if (!pr.ok) continue;
+          const dupKey = (it.name.replace(/\.conf$/i, '') + (pr.kind === 'Bible' ? '.sword' : '.swordbook')).toLowerCase();
           if (seenNames.has(dupKey)) continue; seenNames.add(dupKey);
-          this.entries.push({ file: cp, name: it.name.replace(/\.conf$/i, ''), ext: '.sword' });
+          if (pr.kind === 'Bible') this.entries.push({ file: cp, name: it.name.replace(/\.conf$/i, ''), ext: '.sword' });
+          else this.addBook(cp, it.name, null, pr.kind);   // commentary, dictionary or general book (lib/swordbook.js)
         }
         return;
       }
@@ -156,10 +157,10 @@ class Library {
     const id = notebook.NOTEBOOK_ID;
     this.books.set(id, { id, file: '', name: 'My Learnings', linkFile: null, kind: 'dictionary', format: 'Timotheos', mod: notebook.makeModule(this.getNotes), notebook: true, keep: true });
   }
-  addBook(file, name, linkFile = null) {
+  addBook(file, name, linkFile = null, swordKind = '') {
     const id = 'bm:' + name;
     const c = this.cache[this.cacheKey(file)];
-    this.books.set(id, { id, file, name, linkFile, kind: (c && c.kind) || bookmod.guessKind(name) || 'book', format: /\.twm$/i.test(name) ? 'theWord' : /\.mybible$/i.test(name) ? 'MySword' : 'e-Sword', mod: null });
+    this.books.set(id, { id, file, name, linkFile, kind: swordKind || (c && c.kind) || bookmod.guessKind(name) || 'book', format: /\.conf$/i.test(name) ? 'SWORD' : /\.twm$/i.test(name) ? 'theWord' : /\.mybible$/i.test(name) ? 'MySword' : 'e-Sword', mod: null });
   }
 
   bookInfo(b) {

@@ -14,6 +14,7 @@ const CANONS = require('./sword_canons.json');
 
 const BIBLE_DRIVERS = /^(ztext4?|rawtext4?)$/i;
 const OTHER_DRIVERS = { zcom: 'commentary', zcom4: 'commentary', rawcom: 'commentary', rawcom4: 'commentary', zld: 'dictionary', rawld: 'dictionary', rawld4: 'dictionary', rawgenbook: 'book' };
+const VERSE_DRIVERS = /^(ztext4?|rawtext4?|zcom4?|rawcom4?)$/i;
 
 // ---- OSIS book ids -> Timotheos book numbers -----------------------------------------
 const OSIS66 = ['Gen', 'Exod', 'Lev', 'Num', 'Deut', 'Josh', 'Judg', 'Ruth', '1Sam', '2Sam', '1Kgs', '2Kgs', '1Chr', '2Chr', 'Ezra', 'Neh', 'Esth', 'Job', 'Ps', 'Prov', 'Eccl', 'Song', 'Isa', 'Jer', 'Lam', 'Ezek', 'Dan', 'Hos', 'Joel', 'Amos', 'Obad', 'Jonah', 'Mic', 'Nah', 'Hab', 'Zeph', 'Hag', 'Zech', 'Mal',
@@ -58,13 +59,9 @@ function probe(confFile) {
   if ('CipherKey' in c.kv) { r.locked = true; r.reason = 'this module is locked (CipherKey) – the publisher sells or gives out an unlock key, and Timotheos does not open locked SWORD modules'; return r; }
   if (!r.driver) { r.reason = 'the .conf names no module type (ModDrv)'; return r; }
   if (!r.kind) { r.reason = 'the SWORD module type "' + r.driver + '" is not supported'; return r; }
-  if (r.kind === 'Bible') {
-    const ct = (c.kv.CompressType || 'ZIP').toUpperCase();
-    if (/^ztext/.test(d) && ct === 'LZSS') { r.reason = 'this module uses the old LZSS compression, which Timotheos does not read'; return r; }
-    r.ok = true; return r;
-  }
-  r.reason = 'SWORD ' + r.kind + ' modules are not supported yet';
-  return r;
+  const ct = (c.kv.CompressType || 'ZIP').toUpperCase();
+  if (/^z/.test(d) && ct === 'LZSS') { r.reason = 'this module uses the old LZSS compression, which Timotheos does not read'; return r; }
+  r.ok = true; return r;
 }
 
 // ---- reading the data files ----------------------------------------------------------
@@ -112,7 +109,7 @@ const morphOf = s => String(s || '').split(/\s+/).filter(Boolean).map(t => t.rep
 const lemmaOf = s => { const m = /(?:^|\s)lemma(?:\.[^:\s]*)?:(\S+)/.exec(String(s || '')); return m ? m[1] : ''; };
 
 /** OSIS and ThML are read together: both are tag soup around the verse text; they differ in the tags they use */
-function markupToHtml(raw, src) {
+function markupToHtml(raw, src, o = {}) {
   const out = []; const stack = []; let wojOpen = 0; const info = { strongs: false };
   const text = t => { t = unent(t); if (t) out.push(escT(t)); };
   const closeTo = (name) => { for (let i = stack.length - 1; i >= 0; i--) if (stack[i].tag === name) { const it = stack[i]; stack.length = i; return it; } return null; };
@@ -132,7 +129,7 @@ function markupToHtml(raw, src) {
     switch (tag) {
       case 'w': open(it => {
         const inner = out.splice(it.start).join('');
-        const lem = attr(rest, 'lemma'), mor = attr(rest, 'morph');
+        const lem = (attr(rest, 'lemma') + ' ' + attr(rest, 'savlm')).trim(), mor = attr(rest, 'morph');
         const st = strongsOf(lem).concat(strongsOf(attr(rest, 'strong')));
         if (st.length) info.strongs = true;
         out.push(renderTaggedWord(inner, st.join(' '), morphOf(mor).join(' '), lemmaOf(lem)));
@@ -143,6 +140,12 @@ function markupToHtml(raw, src) {
         out.push(`<sup class="fn${x ? ' xref' : ''}" data-note="${escA(inner)}">${x ? 'x' : 'f'}</sup>`);
       }); break;
       case 'reference': open(it => { const inner = out.splice(it.start).join(''); out.push(link(osisRef(attr(rest, 'osisRef')), inner)); }); break;
+      case 'ref': open(it => {
+        const inner = out.splice(it.start).join(''); const tg = attr(rest, 'target'), osis = attr(rest, 'osisRef');
+        out.push(osis ? link(osisRef(osis), inner) : (tg && o.refTarget && o.refTarget(tg, inner)) || inner);
+      }); break;
+      case 'orth': out.push('<b>'); open(() => out.push('</b>')); break;
+      case 'pron': case 'orig': out.push('<i>'); open(() => out.push('</i>')); break;
       case 'scripref': open(it => { const inner = out.splice(it.start).join(''); out.push(link(canon.parseRef(attr(rest, 'passage') || attr(rest, 'osisRef')), inner)); }); break;
       case 'q': {
         const jesus = /jesus|christ/i.test(attr(rest, 'who'));
@@ -157,7 +160,7 @@ function markupToHtml(raw, src) {
         break;
       case 'divinename': out.push('<span class="sc">'); open(() => out.push('</span>')); break;
       case 'hi': case 'emphasis': case 'i': case 'em': case 'foreign': {
-        const t = attr(rest, 'type').toLowerCase();
+        const t = (attr(rest, 'type') || attr(rest, 'rend')).toLowerCase();
         if (/bold/.test(t) || tag === 'b') { out.push('<b>'); open(() => out.push('</b>')); }
         else if (/small-?caps|sc/.test(t)) { out.push('<span class="sc">'); open(() => out.push('</span>')); }
         else if (tag === 'foreign' || /italic|emphasis|^$/.test(t) || tag === 'i' || tag === 'em') { out.push('<i>'); open(() => out.push('</i>')); }
@@ -215,11 +218,32 @@ function gbfToHtml(raw) {
   return { html: out.join('').replace(/(<br>\s*)+$/, '').replace(/^(\s*<br>)+/, ''), strongs };
 }
 const plainToHtml = raw => ({ html: escT(unent(String(raw))).replace(/\r?\n/g, '<br>'), strongs: false });
-function toHtml(raw, srcType) {
+function toHtml(raw, srcType, o) {
   const t = (srcType || 'Plain').toUpperCase();
   if (t === 'GBF') return gbfToHtml(raw);
-  if (t === 'PLAIN') return plainToHtml(raw);
-  return markupToHtml(raw, t); // OSIS, ThML, TEI
+  if (t === 'PLAIN' && !/^\s*<[A-Za-z][^>]*>/.test(raw)) return plainToHtml(raw);   // a module that says Plain but holds tags (Strong's Hebrew) is read as markup
+  return markupToHtml(raw, t, o); // OSIS, ThML, TEI
+}
+
+/** SWORD pads some bzip2 blocks with zero bytes after the end of the stream, which the unpacker refuses: cut the block where the stream ends
+ *  (the end-of-stream marker 0x177245385090 and a 32-bit CRC, not byte aligned, in the last bytes of the block) */
+function bz2Trim(buf) {
+  let e = buf.length; while (e > 0 && buf[e - 1] === 0) e--;   // SWORD fills the rest of the block with zero bytes
+  const n = buf.length, from = Math.max(0, e - 24);
+  for (let p = Math.min(n - 1, e); p >= from; p--) {
+    for (let sh = 0; sh < 8; sh++) {
+      // bits of the 48-bit marker starting sh bits into byte p
+      let v = 0n; for (let k = 0; k < 7; k++) v = (v << 8n) | BigInt(buf[p + k] || 0);
+      const marker = (v >> BigInt(56 - sh - 48)) & 0xFFFFFFFFFFFFn;
+      if (marker === 0x177245385090n) { const bits = (p * 8 + sh) + 48 + 32; return buf.subarray(0, Math.ceil(bits / 8)); }
+    }
+  }
+  return buf;
+}
+async function unpackBlock(raw, compress) {
+  const archive = require('./archive');
+  const es = await archive.unpack(compress === 'XZ' ? raw : bz2Trim(raw), compress === 'XZ' ? 'b.xz' : 'b.bz2');
+  return es[0] ? es[0].data : null;
 }
 
 // ---- versification -------------------------------------------------------------------
@@ -229,7 +253,8 @@ const canonTotal = (sys, t) => 2 + (CANONS[sys][t] || []).reduce((a, [, cs]) => 
 function load(confFile, opts = {}) {
   const pr = probe(confFile);
   if (pr.locked) throw new Error(pr.reason);
-  if (!pr.ok) throw new Error(pr.reason || 'not a SWORD Bible');
+  if (!pr.ok) throw new Error(pr.reason || 'not a SWORD module');
+  if (!VERSE_DRIVERS.test(pr.driver) || (pr.kind !== 'Bible' && !opts.core)) throw new Error('not a SWORD Bible');
   const conf = pr.conf, kv = conf.kv;
   const root = path.dirname(path.dirname(confFile));
   const driver = pr.driver.toLowerCase();
@@ -237,7 +262,7 @@ function load(confFile, opts = {}) {
   const compress = (kv.CompressType || 'ZIP').toUpperCase();
   const blockType = (kv.BlockType || 'BOOK').toUpperCase();
   const bl = blockType === 'CHAPTER' ? 'c' : blockType === 'VERSE' ? 'v' : 'b';
-  const compressed = /^ztext/.test(driver);
+  const compressed = /^z/.test(driver);
   const wide = /4$/.test(driver);
   const srcType = kv.SourceType || 'Plain';
   const enc = /latin|8859-1|cp1252|windows-1252/i.test(kv.Encoding || '') ? 'latin1' : 'utf8';
@@ -257,13 +282,24 @@ function load(confFile, opts = {}) {
   }
   if (!T.ot && !T.nt) { files.forEach(f => f.close()); throw new Error('the module\'s data files are missing (looked in ' + dataDir + ')'); }
 
+  // the driver name says how wide a verse record is, but some modules do not keep to it (the Matthew Henry zCom4 uses 10-byte records):
+  // the size that makes the index fit a numbering system wins
+  const sizes = compressed ? (wide ? [12, 10] : [10, 12]) : (wide ? [8, 6] : [6, 8]);
+  const gapOf = sy => ['ot', 'nt'].reduce((a, t) => a == null || !T[t] ? a : (() => { const d = canonTotal(sy, t) - T[t].records; return d < 0 || d > 2 ? null : a + d; })(), 0);
+  for (const rs of sizes) {
+    for (const t of Object.keys(T)) { T[t].recSize = rs; T[t].records = Math.floor(T[t].v.size / rs); T[t].vbuf = null; }
+    if (CANON_KEYS.some(sy => gapOf(sy) != null)) break;
+    if (rs === sizes[sizes.length - 1]) for (const t of Object.keys(T)) { T[t].recSize = sizes[0]; T[t].records = Math.floor(T[t].v.size / sizes[0]); T[t].vbuf = null; }
+  }
   // which numbering system? the .conf names it; the size of the verse index confirms it
   const declared = String(kv.Versification || 'KJV').toLowerCase();
   let sys = CANON_ALIAS[declared] || null;
-  const fits = s => ['ot', 'nt'].every(t => !T[t] || canonTotal(s, t) === T[t].records);
+  // the verse index may stop a record or two before the end of the numbering (some modules end that way)
+  const gap = s => ['ot', 'nt'].reduce((a, t) => a == null || !T[t] ? a : (() => { const d = canonTotal(s, t) - T[t].records; return d < 0 || d > 2 ? null : a + d; })(), 0);
+  const fits = s => gap(s) != null;
   let note = '';
   if (!sys || !fits(sys)) {
-    const alt = CANON_KEYS.find(fits);
+    const alt = CANON_KEYS.filter(fits).sort((a, b) => gap(a) - gap(b))[0];
     if (alt) { note = (sys ? `the .conf says "${kv.Versification}" but the verse index fits "${alt}"` : `numbering "${kv.Versification}" is not known; the verse index fits "${alt}"`); sys = alt; }
     else { note = `numbering "${kv.Versification || 'KJV'}" could not be matched exactly; the King James numbering is used, so some verses may be missing or out of place`; sys = sys || 'kjv'; }
   }
@@ -306,25 +342,49 @@ function load(confFile, opts = {}) {
     if (data) { blockCache.set(key, data); if (blockCache.size > 6) blockCache.delete(blockCache.keys().next().value); }
     return data;
   };
+  // the verse index is read once (a few hundred KB): reading it a record at a time is slow where file reads are slow
+  const rec = (o, idx) => { if (!o.vbuf) o.vbuf = o.v.read(0, o.v.size); return o.vbuf ? o.vbuf.subarray(idx * o.recSize, (idx + 1) * o.recSize) : null; };
   const getRaw = (t, idx) => {
     const o = T[t]; if (!o || idx < 0 || idx >= o.records) return null;
-    const r = o.v.read(idx * o.recSize, o.recSize); if (!r) return null;
+    const r = rec(o, idx); if (!r) return null;
     let buf;
     if (compressed) {
-      const n = r.readUInt32LE(0), start = r.readUInt32LE(4), len = wide ? r.readUInt32LE(8) : r.readUInt16LE(8);
+      const n = r.readUInt32LE(0), start = r.readUInt32LE(4), len = o.recSize > 10 ? r.readUInt32LE(8) : r.readUInt16LE(8);
       const blk = block(t, n); if (!blk || start + len > blk.length) return null;
       buf = blk.subarray(start, start + len);
     } else {
-      const start = r.readUInt32LE(0), len = wide ? r.readUInt32LE(4) : r.readUInt16LE(4);
+      const start = r.readUInt32LE(0), len = o.recSize > 6 ? r.readUInt32LE(4) : r.readUInt16LE(4);
       if (!len) return null; buf = o.z.read(start, len);
     }
     return buf && buf.length ? decodeText(buf, enc) : null;
+  };
+  /** which stored text a verse slot points at (slots that share one text show the same commentary); null when empty */
+  const recKey = (t, idx) => {
+    const o = T[t]; if (!o || idx < 0 || idx >= o.records) return null;
+    const r = rec(o, idx); if (!r) return null;
+    if (compressed) { const len = o.recSize > 10 ? r.readUInt32LE(8) : r.readUInt16LE(8); return len ? r.readUInt32LE(0) + ':' + r.readUInt32LE(4) + ':' + len : null; }
+    const len = o.recSize > 6 ? r.readUInt32LE(4) : r.readUInt16LE(4); return len ? r.readUInt32LE(0) + ':' + len : null;
   };
   const verseIndex = (b, c, v) => {
     const w = where.get(b); if (!w || c < 1 || c > w.counts.length || v < 1 || v > w.counts[c - 1]) return null;
     let before = 0; for (let i = 0; i < c - 1; i++) before += w.counts[i];
     return { t: w.t, idx: w.start + 1 + c + before + (v - 1) };
   };
+
+  // bzip2 / xz blocks cannot be unpacked one at a time without waiting, so they are all unpacked here
+  const prepare = async () => {
+    if (!compressed || compress === 'ZIP') return;
+    for (const t of Object.keys(T)) {
+      const n = Math.floor(T[t].s.size / 12);
+      for (let i = 0; i < n; i++) {
+        const rec = blockRec(t, i); if (!rec) continue;
+        const raw = T[t].z.read(rec.off, rec.size); if (!raw) continue;
+        try { const d = await unpackBlock(raw, compress); if (d) preDone.set(t + ':' + i, d); } catch (e) { /* block stays unreadable */ }
+      }
+    }
+  };
+  const core = { conf, kv, T, books, where, sys, warnings, getRaw, recKey, verseIndex, srcType, files, compressed, compress, enc, root, dataDir, driver, pr, prepare: null };
+  if (opts.core) { core.prepare = prepare; return core; }
 
   const lang = (kv.Lang || '').split('-')[0];
   const mod = {
@@ -353,21 +413,9 @@ function load(confFile, opts = {}) {
       }
     },
   };
-  // bzip2 / xz blocks cannot be unpacked one at a time without waiting, so they are all unpacked here
-  mod.prepare = async () => {
-    if (!compressed || compress === 'ZIP') return;
-    const archive = require('./archive'); const ext = compress === 'XZ' ? 'xz' : 'bz2';
-    for (const t of Object.keys(T)) {
-      const n = Math.floor(T[t].s.size / 12);
-      for (let i = 0; i < n; i++) {
-        const rec = blockRec(t, i); if (!rec) continue;
-        const raw = T[t].z.read(rec.off, rec.size); if (!raw) continue;
-        try { const es = await archive.unpack(raw, 'b.' + ext); if (es[0]) preDone.set(t + ':' + i, es[0].data); } catch (e) { /* block stays unreadable */ }
-      }
-    }
-  };
+  mod.prepare = prepare;
   return mod;
 }
 async function loadAsync(confFile, opts) { const m = load(confFile, opts); await m.prepare(); return m; }
 
-module.exports = { parseConf, probe, load: loadAsync, loadSync: load, toHtml, markupToHtml, gbfToHtml, osisRef, BIBLE_DRIVERS, OTHER_DRIVERS, CANONS };
+module.exports = { parseConf, probe, load: loadAsync, loadCore: (f) => { const c = load(f, { core: true }); return c.prepare().then(() => c); }, rtfText, unpackBlock, findFile, RandomFile, decodeText, loadSync: load, toHtml, markupToHtml, gbfToHtml, osisRef, BIBLE_DRIVERS, OTHER_DRIVERS, CANONS };

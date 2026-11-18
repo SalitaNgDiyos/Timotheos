@@ -153,6 +153,21 @@ async function read(file) {
   let writable = true; try { fs.accessSync(file, fs.constants.W_OK); } catch (e) { writable = false; }
   if (k.type === 'locked') return Object.assign(base, { format: 'theWord', editable: false, reason: 'an encrypted theWord Bible – it opens only in theWord', fields: [], extra: [], about: '' });
   if (k.ext === 'mybible') return Object.assign(base, { format: 'MySword', editable: false, reason: 'MySword modules are shown read-only – Timotheos does not change .mybible files', fields: [], extra: [], about: '' });
+  if (k.ext === 'conf') {   // a SWORD module: its .conf is the description, shown read-only
+    const sw = require('./sword'); const pr = sw.probe(file); const kv = (pr.conf && pr.conf.kv) || {};
+    return Object.assign(base, {
+      format: 'SWORD', kind: pr.kind || 'module', editable: false, reason: 'SWORD modules are shown read-only – Timotheos does not change them',
+      fields: [
+        { key: 'title', label: 'Title', value: kv.Description || pr.name || '' }, { key: 'abbrev', label: 'Module name', value: pr.name || '' },
+        { key: 'lang', label: 'Language', value: kv.Lang || '' }, { key: 'type', label: 'Module type', value: pr.driver + (kv.SourceType ? ' (' + kv.SourceType + ')' : '') },
+        { key: 'numbering', label: 'Verse numbering', value: kv.Versification || (pr.kind === 'Bible' || pr.kind === 'commentary' ? 'KJV' : '') },
+        { key: 'copyright', label: 'Copyright', value: kv.Copyright || '' }, { key: 'licence', label: 'Licence', value: kv.DistributionLicense || '' },
+        { key: 'version', label: 'Version', value: kv.Version || '' },
+      ].filter(f => f.value),
+      extra: Object.entries(kv).filter(([n]) => !/^(Description|Lang|ModDrv|SourceType|Versification|Copyright|DistributionLicense|Version|About|DataPath)$/.test(n)).map(([n, v]) => ({ key: n, value: v })),
+      about: sw.rtfText(kv.About).replace(/\n/g, '<br>'), aboutStyle: 'html', compressed: false, encoding: 'utf8', rules: 0, canCompact: false, canZlib: false,
+    });
+  }
   const tooLargeToEdit = st.size > MAX_BYTES;
   if (tooLargeToEdit && k.type !== 'twm' && k.type !== 'esword') return Object.assign(base, { format: '?', editable: false, reason: 'the file is too large for Timotheos to edit', fields: [], extra: [], about: '' });
   let out;

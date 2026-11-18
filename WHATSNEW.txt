@@ -1,6 +1,6 @@
-Timotheos 0.6.64
-- SWORD Bibles: Bibles from The SWORD Project (CrossWire) open in Timotheos. Import the Raw ZIP package you download from crosswire.org (File > Import Modules, or drag it onto the window). The zText, zText4, RawText and RawText4 types are read, compressed with zlib, bzip2 or xz, with Strong's numbers, morphology, footnotes, cross-references and the words of Jesus.
-- Locked SWORD modules (CipherKey) and very old LZSS modules are skipped with a clear message.
-- Bibles whose verse numbering differs from the King James numbering show their own numbers, with a note under the module list.
-- SWORD commentaries, dictionaries, general books and a download list inside Timotheos are not in this version yet.
+Timotheos 0.6.65
+- SWORD commentaries, dictionaries and general books: the CrossWire packages for these now import too (File > Import Modules, or drag them onto the window). Commentaries show in the Commentary panel for the verse you read; dictionaries and lexicons, including Strong's Greek and Hebrew, work in the Library and in the word pop-up; general books show as a book with its sections.
+- Tested against real SWORD modules (KJV with Strong's, Luther, Matthew Henry, Treasury of David, Nave's Topical Bible, Strong's dictionaries) and against modules written by SWORD's own programs in all its numbering systems and compressions.
+- SWORD Bibles: a module whose verse index stops a record or two early, or whose record size differs from its driver name, is now read correctly; Strong's numbers written as savlm are recognised.
+- A SWORD module's .conf shows in its properties (read only).
 - User Guide updated.
