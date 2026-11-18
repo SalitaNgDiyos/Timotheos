@@ -1,0 +1,2 @@
+Timotheos 0.6.57
+- Linux: text no longer turns blurry while scrolling (dictionary entries, Bible views, side panels). Timotheos now starts WebKitGTK with software compositing, which keeps the text sharp. If you ever want the old behaviour, start it with WEBKIT_DISABLE_COMPOSITING_MODE=0.

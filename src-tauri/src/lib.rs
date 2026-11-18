@@ -433,6 +433,12 @@ fn linux_update(_f: &std::path::Path, _name: &str) -> Result<String, String> { E
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Linux: WebKitGTK's GPU compositing shows soft, blurred text while scrolling. Software compositing keeps it sharp.
+    // Set before any web view exists; a value the user already set (even "0") is respected.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
+    }
     let builder = tauri::Builder::default();
     #[cfg(target_os = "android")]
     let builder = builder.plugin(tauri_plugin_tts::init());

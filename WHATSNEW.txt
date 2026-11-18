@@ -1,2 +1,2 @@
-Timotheos 0.6.56
-- User Guide: added step-by-step instructions for importing your Firefox themes as skins (Skin > Import themes from my Firefox...), which was missing.
+Timotheos 0.6.57
+- Linux: text no longer turns blurry while scrolling (dictionary entries, Bible views, side panels). Timotheos now starts WebKitGTK with software compositing, which keeps the text sharp. If you ever want the old behaviour, start it with WEBKIT_DISABLE_COMPOSITING_MODE=0.
