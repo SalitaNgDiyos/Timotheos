@@ -168,7 +168,7 @@
   <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
   <li><i>Panels → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
 </ul>
-<h3>New in 0.6.55 – 0.6.59</h3>
+<h3>New in 0.6.55 – 0.6.60</h3>
 <ul>
   <li><b>Drag the text to scroll it (0.6.58, hand buttons 0.6.59).</b> Every text panel has its own <b>hand button</b>. It is off at first, so dragging selects text as usual.
     <ol>
@@ -184,6 +184,17 @@
       <li>The <b>middle mouse button</b> drags the text in every panel, even when its hand is off.</li>
       <li>Dragging does not select a verse or follow a link; the click that ends a drag is ignored.</li>
       <li>The Bible tree and the Options pages have no hand button.</li>
+    </ul></li>
+  <li><b>Word pop-ups per Bible view (0.6.60).</b> Each Bible view has a <b>word pop-up button</b> (the little dictionary) in its left icon bar, under the hand. It controls the pop-up that shows the morphology and the dictionary entry of a tagged word (a word with a Strong's number or a morphology code).
+    <ol>
+      <li><b>At first it is off.</b> Point at a word and nothing opens by itself.</li>
+      <li>To see the pop-up once, <b>hold <kbd>Shift</kbd> and point at the word</b>. If the mouse is already resting on the word, press <kbd>Shift</kbd> and the pop-up opens.</li>
+      <li>To have the pop-up open by itself in that view, click the button: it lights up. Click it again to turn it off.</li>
+    </ol>
+    <ul>
+      <li>Each view has its own button, and each remembers its setting when you close Timotheos.</li>
+      <li>The button's tooltip (rest the mouse on it) says whether it is on or off and how Shift works.</li>
+      <li>It controls only these word pop-ups. Footnote and cross-reference pop-ups and the verse-link previews open as before.</li>
     </ul></li>
   <li><b>A click anywhere in a verse selects it (0.6.58).</b> Not only the words and the verse number: the blank space after a verse, the end of a short line and the gaps between lines choose the nearest verse of the same paragraph. Links, buttons and the next-chapter bar keep their own clicks.</li>
   <li><b>Linux: sharp text while scrolling (0.6.57).</b> Text no longer turns blurry when you scroll a dictionary entry, a Bible view or a side panel. Timotheos now starts the Linux web engine with software compositing. To get the old way back, start it with <code>WEBKIT_DISABLE_COMPOSITING_MODE=0 timotheos</code>.</li>
@@ -392,7 +403,7 @@
 
 <section id="words"><h2>Words, dictionaries and commentaries</h2>
 <ul>
-  <li><b>Word popups</b>: rest the mouse on a tagged word, a Strong's number or a morphology code. The popup shows the <b>morphology first</b>, then the dictionary entry for the Strong's number.
+  <li><b>Word popups</b>: in a Bible view they are off at first: hold <kbd>Shift</kbd> and point at a tagged word (or click the view's word pop-up button to have them open by themselves). Otherwise rest the mouse on a tagged word, a Strong's number or a morphology code. The popup shows the <b>morphology first</b>, then the dictionary entry for the Strong's number.
     <ul>
       <li>Drag the popup's <b>bottom-right corner</b> to make it bigger or smaller; Timotheos remembers the size.</li>
       <li>Click the word to keep the entry in the <b>Lookup</b> panel.</li>
