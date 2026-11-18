@@ -82,7 +82,7 @@
 
 <section id="start"><h2>Getting started</h2>
 <ol>
-  <li>Install Timotheos with its installer (Windows) or its package (Linux) and start it. On Windows, SmartScreen may warn the first time because the program is not code-signed: choose <i>More info → Run anyway</i>.</li>
+  <li>Install Timotheos with its installer (Windows) or its package (Linux: a <code>.deb</code>, or the <code>.AppImage</code>) and start it. On Windows, SmartScreen may warn the first time because the program is not code-signed: choose <i>More info → Run anyway</i>.</li>
   <li>Timotheos comes with one Bible, <i>Ang Malayang Biblia</i> (New Testament). Bring in your own modules in either of two ways:
     <ul>
       <li><b>Import</b> (toolbar, <i>File → Import Modules…</i>, <kbd>Ctrl+I</kbd>), or drag module files onto the window. Timotheos checks each file and copies the ones it can use into its own library. A report then says, for every file, what it was recognised as, or why it was not imported. <code>.zip</code> and theWord <code>.twzip</code> files are unpacked.</li>
@@ -167,6 +167,25 @@
   <li><b>Intralinear View</b> (<kbd>Alt+I</kbd>) puts each tagged word over its original Greek or Hebrew word, a transliteration, the Strong's number, the morphology and the lemma. Where the Bible gives no lemma, the original word comes from your Strong's dictionary.</li>
   <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
   <li><i>Panels → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
+</ul>
+<h3>New in 0.6.41 – 0.6.54</h3>
+<p>These are the changes since 0.6.40, with the steps to use them.</p>
+<ul>
+  <li><b>Previous and next chapter buttons (0.6.47).</b> In the header of every Bible view, next to the previous/next book buttons, there are now <i>Previous chapter</i> and <i>Next chapter</i> buttons. Click one to move that view one chapter back or forward. At the first chapter of a book it goes to the last chapter of the book before it.</li>
+  <li><b>Book lists follow the Bible (0.6.47, 0.6.48).</b> If the active Bible is a New Testament only module, the Old Testament books no longer appear in the Bible tree, the book picker or when stepping between books; chapters follow the module too. Switch to a full Bible and they come back. Click the book name in a view's header (for example <i>Philippians 1:1</i>) to open the Book / Chapter / Verse picker.</li>
+  <li><b>Notes with Topic, Subtopics and Explanation, and My Learnings (0.6.51 – 0.6.53).</b> See <a href="#study">Study</a> for the steps.</li>
+  <li><b>Linux updates install and restart by themselves (0.6.54).</b> In <i>Help → Check for Updates…</i> click <i>Download and install</i>.
+    <ul>
+      <li><b>.deb install:</b> Timotheos asks for your password in the system's own window, installs the new version and restarts. If you cancel the password window, nothing is changed.</li>
+      <li><b>AppImage:</b> Timotheos replaces its own file and restarts. No password is needed.</li>
+      <li>If the system has no <code>pkexec</code> or <code>apt-get</code>, the folder with the downloaded file opens and you install it yourself (<code>sudo apt install ./Timotheos_….deb</code>).</li>
+      <li>This begins with the version after you have installed 0.6.54 by hand once.</li>
+    </ul></li>
+  <li><b>Copy verses (0.6.45, 0.6.46).</b> In <i>Templates → Between verses</i>, <code>%v</code> (also <code>%c</code> and <code>%b</code>) now gives the verse that follows the separator, so <code> %v</code> puts the verse number between the verses. The numbers are superscript in the preview and in a formatted copy; a plain-text paste cannot show superscript, so there they stay ordinary digits. On the phone the splitter between the settings and the preview is now a neutral line and handle.</li>
+  <li><b>Dictionary topic lists are alphabetical (0.6.44).</b> Capitals, accents and a leading apostrophe or hyphen are ignored when ordering, so <i>'Em</i> is under E. Strong's and other numbered lists keep the module's own order.</li>
+  <li><b>Typing in a dictionary's Filter box (0.6.50)</b> narrows an e-Sword dictionary (such as Webster's 1913) as you type; before, it did nothing.</li>
+  <li><b>MySword modules (0.6.41, 0.6.42).</b> See <a href="#modules">Modules</a>.</li>
+  <li><b>Phone:</b> background reading aloud (0.6.43) and the Next chapter card after the footnotes (0.6.49). See the phone guide.</li>
 </ul>
 <h3>New in 0.6.40</h3>
 <ul><li>The bundled <b>Ang Malayang Biblia</b> is updated again (heading at Mateo 1:1, Mateo 1:17 corrected). Import or download it again to get it.</li></ul>
@@ -400,12 +419,35 @@
       <li>Open its commentaries.</li>
       <li>Search for the word or its Strong's number.</li>
     </ul></li>
-  <li><b>Notes</b>: references you type in a note (e.g. <code>Rom 5:8</code>) become links. With <kbd>N</kbd> on, notes show under their verse.</li>
+  <li><b>Notes</b> (Topic, Subtopics, Explanation). Every note you write grows a notebook of the subjects of Scripture, called <b>My Learnings</b>. To write a note:
+    <ol>
+      <li>Right-click the verse and choose <i>Note</i>.</li>
+      <li><b>Topic</b>: type the main subject, up to 4 words (for example <i>Love</i> or <i>Holy Spirit</i>). Topics you used before are offered as you type, and as small chips under the box: click one to use it. Spelling, capitals and accents do not matter: <i>love</i> and <i>Love</i> are the same topic.</li>
+      <li><b>Subtopic</b>: type a short heading, up to 5 words, for the idea of this note (for example <i>Faith</i> or <i>Grace</i>). Subtopics you already used under this topic are offered, so the same subtopic is spelled the same way every time.</li>
+      <li>Want more than one? Click <b>Add a subtopic</b> at the lower right of the subtopic boxes. You can have up to 4 subtopics in one note. The little <b>×</b> beside a box removes it.</li>
+      <li><b>Explanation</b>: write what you learned from the verse. References you type here (e.g. <code>Rom 5:8</code>) become links.</li>
+      <li>Click <b>Save</b>. The Topic and at least one Subtopic are required.</li>
+    </ol>
+    <p>Everything is connected through the whole Bible. If you write a note on John 3:16 with the topic <i>Love</i> and the subtopic <i>Faith</i>, then later write another note on Romans 5:8 under <i>Love</i>, the form shows you the subtopics you used before under <i>Love</i>, and My Learnings gathers both verses under the same topic. With <kbd>N</kbd> on, notes show under their verse. Notes you wrote before 0.6.51 keep working: an old one-line statement counts as the first subtopic, and a note without a topic stays a plain note until you give it one.</p></li>
+  <li><b>My Learnings</b> (the notebook made from your notes):
+    <ol>
+      <li>Open <i>Panels → Library</i> (or <i>My Study → Notes → Open My Learnings</i>). My Learnings is listed among your dictionaries, marked <i>from your notes</i>.</li>
+      <li>The topic list is alphabetical. Each topic has its subtopics under it.</li>
+      <li>Type in the <b>Filter</b> box to narrow the list. It matches topic names first and subtopics next, and a subtopic is shown as <i>Topic › Subtopic</i>.</li>
+      <li>Click a topic: you see every subtopic with, under each, the verses you wrote about (click a verse to go there) and your explanations. Click a subtopic to see only its notes.</li>
+      <li>It is always up to date. There is no file to delete or reimport; remove or change a note and the entry changes with it. If you have no notes with a topic yet, it is empty.</li>
+    </ol></li>
   <li><b>Bookmarks</b>: <kbd>Ctrl+Shift+1</kbd> … <kbd>0</kbd> sets bookmark 1–0 at the current verse; <kbd>Ctrl+1</kbd> … <kbd>0</kbd> jumps to it.</li>
   <li><b>My Study</b> panel:
     <ul>
       <li><i>Verse lists</i>: named lists. <kbd>Ctrl+L</kbd> adds the current verse; you can reorder, sort and copy a list.</li>
-      <li><i>Notes</i>: all your notes.</li>
+      <li><i>Notes</i>: all your notes. Switch between <b>By topic</b> (grouped as Topic, then Subtopic) and <b>By verse</b> (in Bible order). The <b>filter</b> box narrows either list. Buttons at the top:
+        <ul>
+          <li><b>Open My Learnings</b>: the notebook as a dictionary (see above).</li>
+          <li><b>Export as a dictionary (.dct.twm)…</b>: saves My Learnings as a theWord dictionary file that you can keep, share or open in theWord. Each topic has its subtopics under it.</li>
+          <li><b>Export as a commentary (.cmt.twm)…</b>: saves your notes verse by verse as a theWord commentary. Each note begins with its topic and subtopics.</li>
+        </ul>
+        Choose where to save in the window that opens, then give the file a name. These are copies: your notes stay where they are.</li>
       <li><i>Bookmarks</i>.</li>
       <li><i>Reading</i>: today's readings and devotionals, plus reading plans.
         <ul>
@@ -568,6 +610,13 @@
 <p>theWord books written with <b>RichView</b> (many user-made commentaries and books) are shown with their formatting: bold and italic, colours, centred paragraphs, links, pictures and tables. They are read only.</p>
 <p><b>Encrypted or locked modules are not opened.</b> This covers theWord <code>.ontx</code>/<code>.otx</code>/<code>.ntx</code>, locked <code>.twm</code> modules and encrypted e-Sword modules. Their licences forbid getting around that protection, so Timotheos names them and skips them.</p>
 <p>Not supported yet: e-Sword harmonies, graphics and notes files, and theWord reading-plan modules.</p>
+<h3>MySword modules</h3>
+<p>Modules from MySword (<code>mysword.info</code>) are read directly: Bibles (with Strong's numbers, footnotes and verse rules), commentaries, dictionaries (including Strong's dictionaries), books and journals. They are shown read-only; Timotheos never changes a <code>.mybible</code> file.</p>
+<ol>
+  <li>Open <i>Options → Modules</i> and click <b>Add folder…</b> (<kbd>Ctrl+O</kbd>), then choose the folder that holds your MySword files (for example <code>mysword/bibles</code>), or drag the files onto the window (File → Import Modules…, <kbd>Ctrl+I</kbd>) to copy them in.</li>
+  <li>The modules appear in the Library and the Bible list. A MySword book shows its chapters in the book's own order and with its own styling (raised small verse numbers); entries the module marks as hidden are left out.</li>
+</ol>
+<div class="tip">MySword's dictionaries, books and journals have no published layout, so Timotheos finds their columns by name. If one of yours shows as unreadable, send the problem report from <i>Help</i>.</div>
 <h3>Module properties</h3>
 <p>Open a module's properties with <b>ⓘ</b> on the Library bar, or with the small <b>ⓘ</b> that appears when you rest the mouse on a module in the <b>Bibles</b> or <b>Modules</b> panel.</p>
 <ul>
@@ -705,7 +754,15 @@
       <li><i>This view</i>: font, heading font, text colour, active verse colour, the highlighter and underline pens, moving with the other view, verse numbers and About this Bible.</li>
     </ul></li>
   <li>The text flows in paragraphs. A new line or paragraph starts only where the Bible module puts one.</li>
-  <li><b>Read aloud</b> reads from the selected verse and goes on into the next chapter. Its settings choose a voice for each language, the speed, and whether to repeat a chapter or a range of verses. The voices are the ones your phone has.</li>
+  <li><b>Read aloud</b> reads from the selected verse and goes on into the next chapter. Its settings choose a voice for each language, the speed, and whether to repeat a chapter or a range of verses. The voices are the ones your phone has.
+    <ul>
+      <li><b>It keeps going in the background.</b> A background service reads, so it carries on when the screen is locked or you are in another app. The next verses are lined up ahead, so there are no gaps between them, and the next four chapters are lined up too.</li>
+      <li><b>Player in the notification and on the lock screen:</b> previous verse, pause, next verse and stop. The first time, Android asks to allow notifications: choose Allow.</li>
+      <li><b>Battery saver:</b> the first time you read aloud, Android asks whether Timotheos may run without battery restrictions: choose Allow. Later, find the same button in <i>Options → Read aloud → Background playback</i>. Xiaomi/Redmi phones also have their own setting that only you can change: <i>Settings → Apps → Timotheos → Battery saver → No restrictions</i>.</li>
+      <li>Open the app again while it is reading and it shows the player and marks the verse being read.</li>
+    </ul></li>
+  <li><b>Next chapter</b>: at the end of a chapter, a <i>Next chapter</i> card comes after the footnotes. Tap it to go on (or swipe).</li>
+  <li><b>Chapter buttons:</b> the capsule (Quiet Reader) and the reading bar have previous and next chapter buttons. If the Bible is New Testament only, the Old Testament books are not offered.</li>
   <li>The Apocrypha sits between Malachi and Matthew, as in the 1611 King James Bible. <i>Options → Modules → Place the Apocrypha</i> moves it after Revelation.</li>
 </ul>
 </section>
@@ -728,6 +785,13 @@
 </section>
 
 <section id="p-modules"><h2>Modules</h2>
+<h3>MySword modules on the phone</h3>
+<ol>
+  <li>Open <i>Modules → Import modules</i>. Android's file chooser opens.</li>
+  <li>Browse to your MySword folder (for example <code>mysword/bibles</code>) and select the <code>.mybible</code> files.</li>
+  <li>Timotheos copies them into its own folder and tells you what it imported. A folder cannot be added on the phone, because Android does not let an app read another app's folder.</li>
+</ol>
+<p>They are read-only. Dictionary topic lists are in alphabetical order, and typing in a dictionary's Filter box narrows the list.</p>
 <h3>A verse in a dictionary entry</h3>
 <p>Tap a verse reference inside a word pop-up or a dictionary entry and the pop-up closes and the Bible shows that verse, selected. The Bible is your default Old or New Testament Bible (<i>Options → Modules</i>); when that is on <i>The first open Bible</i>, it is the first Bible in the list of the Bible view's name menu that has the book. If no Bible has it, Timotheos shows where to get Bibles.</p>
 <h3>Download modules inside Timotheos</h3>
@@ -752,6 +816,16 @@
 <tr><td>MySword</td><td>Bibles, commentaries, dictionaries, books, journals (read only)</td><td><code>.bbl.mybible</code> <code>.cmt.mybible</code> <code>.dct.mybible</code> <code>.bok.mybible</code> <code>.jor.mybible</code></td></tr>
 <tr><td>e-Sword</td><td>Commentaries, dictionaries, lexicons, topics, books, devotionals</td><td><code>.cmtx</code> <code>.dctx</code> <code>.lexx</code> <code>.topx</code> <code>.refx</code> <code>.devx</code> (and the <code>…i</code> forms)</td></tr></table>
 <p><b>Encrypted or locked modules are not opened.</b> Their licences forbid getting around that protection.</p>
+</section>
+
+<section id="p-notes"><h2>Notes and My Learnings</h2>
+<ol>
+  <li>Hold a verse (or tap it, in Clear Tabs) and tap <b>Note</b>.</li>
+  <li><b>Topic</b>: the main subject, up to 4 words. Topics you used before show as chips under the box and as suggestions: tap one to use it.</li>
+  <li><b>Subtopic</b>: a short heading, up to 5 words. Tap <b>Add a subtopic</b> (lower right) for up to 4 in one note; the <b>×</b> removes one. Subtopics you used under this topic before are suggested.</li>
+  <li><b>Explanation</b>: what you learned from the verse. Then <b>Save</b>. The Topic and at least one Subtopic are required.</li>
+</ol>
+<p>Notes with the same topic are gathered across the whole Bible. Open <b>My Learnings</b> from <i>Study → Notes → Open My Learnings</i> or from the Library, among your dictionaries. In <i>Study → Notes</i> switch between <b>By topic</b> and <b>By verse</b> and use the filter box. <i>Export as a dictionary</i> and <i>Export as a commentary</i> save your notes as theWord files where you choose.</p>
 </section>
 
 <section id="p-about"><h2>About</h2>

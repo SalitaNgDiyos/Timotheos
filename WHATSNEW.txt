@@ -1,6 +1,10 @@
-Timotheos 0.6.54
-- Linux updates are now seamless. "Download and install" downloads the update, checks it, installs it and starts Timotheos again by itself.
-  - Installed from the .deb: you are asked for your administrator password once (the system's own prompt), then Timotheos restarts. It no longer just opens the folder, where some systems opened the .deb in a text editor.
-  - Running the AppImage: the AppImage file is replaced in place and Timotheos restarts, with no password.
-  - If your system has no password prompt (pkexec), the folder with the downloaded file opens as before.
-- If the install fails, the reason from the package tool is shown instead of a blank error.
+Timotheos 0.6.55
+- The User Guide is brought up to date, desktop and phone, with step-by-step instructions for everything added since 0.6.40:
+  - Notes with Topic, Subtopics and Explanation, My Learnings, the By topic / By verse list, and the dictionary and commentary exports.
+  - MySword modules (desktop folder, phone Import).
+  - Previous / next chapter buttons and book lists that follow the active Bible.
+  - Copy verses %v and superscript numbers.
+  - Alphabetical dictionary lists and the dictionary Filter box.
+  - Linux self-update (.deb with password, AppImage in place).
+  - Phone: reading aloud in the background, notification player, battery setting, and the Next chapter card.
+- Getting started now mentions the .deb and the .AppImage.

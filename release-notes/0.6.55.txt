@@ -1,0 +1,10 @@
+Timotheos 0.6.55
+- The User Guide is brought up to date, desktop and phone, with step-by-step instructions for everything added since 0.6.40:
+  - Notes with Topic, Subtopics and Explanation, My Learnings, the By topic / By verse list, and the dictionary and commentary exports.
+  - MySword modules (desktop folder, phone Import).
+  - Previous / next chapter buttons and book lists that follow the active Bible.
+  - Copy verses %v and superscript numbers.
+  - Alphabetical dictionary lists and the dictionary Filter box.
+  - Linux self-update (.deb with password, AppImage in place).
+  - Phone: reading aloud in the background, notification player, battery setting, and the Next chapter card.
+- Getting started now mentions the .deb and the .AppImage.
