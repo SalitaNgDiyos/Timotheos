@@ -858,6 +858,9 @@ select option, select optgroup { background-color: var(--card); color: var(--tex
   #tab-lib .libside { padding: 6px 6px 2px; }
 }
 
-/* grab-and-drag scrolling (grabscroll.js) */
-html:not(.phone) .bv .bvtext, html:not(.phone) #cmtBody, html:not(.phone) #libFeed, html:not(.phone) #libBody { cursor: default; }
+/* grab-and-drag scrolling (grabscroll.js): the hand buttons, the cursor while a panel's hand is on */
+.grabon { cursor: grab; }
 body.grabbing, body.grabbing * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
+.grabbtn.on, .bvside .bvgrab.on { background: color-mix(in srgb, var(--cap-bible, var(--accent)) 24%, transparent); color: var(--heading, var(--text)); }
+.grabrow { display: flex; align-items: center; gap: 6px; padding: 2px 8px 0; }
+.grabrow .status { flex: 1; min-width: 0; margin: 0; }

@@ -139,6 +139,7 @@
         <button id="cmtPrevBtn" class="lbtn cstep" type="button" data-icon="prev" data-icon-size="14" title="Previous commentary with a note" aria-label="Previous commentary"></button>
         <button id="cmtNextBtn" class="lbtn cstep" type="button" data-icon="next" data-icon-size="14" title="Next commentary with a note" aria-label="Next commentary"></button>
       </div>
+      <button type="button" class="lbtn grabbtn" data-grab="cmt" data-icon="hand" data-icon-size="15" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text; the middle button always drags)" aria-label="Drag to scroll" aria-pressed="false"></button>
       <span class="grow"></span>
       <div id="cmtViewSw" class="cviewsw" title="Switch between reading a single commentary or all matching commentaries stacked on one page">
         <button id="cmtModeSingle" type="button" data-cmode="single" class="on" title="Single Commentary View">Single</button>
@@ -151,6 +152,7 @@
   <div class="tab libtab" id="tab-lib">
     <div class="libbar">
       <button id="libSideBtn" class="lbtn on" data-icon="sidebar" data-icon-size="16" title="Show or hide the list of topics" aria-label="Topic list"></button>
+      <button type="button" class="lbtn grabbtn" data-grab="lib" data-icon="hand" data-icon-size="15" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text; the middle button always drags)" aria-label="Drag to scroll" aria-pressed="false"></button>
       <select id="libMod" title="Module"></select>
       <span class="lsep"></span>
       <button id="libBack" class="lbtn" data-icon="back" data-icon-size="16" title="Back to the topic you read before" aria-label="Back"></button>
@@ -217,7 +219,7 @@
       </details>
     </form>
     <div class="searchout">
-      <div id="searchStatus" class="status"></div>
+      <div class="grabrow"><button type="button" class="lbtn grabbtn" data-grab="search" data-icon="hand" data-icon-size="15" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text; the middle button always drags)" aria-label="Drag to scroll" aria-pressed="false"></button><div id="searchStatus" class="status"></div></div>
       <div id="searchTabs" class="seg hidden"><button data-st="res" class="active">Verses</button><button data-st="books">By book</button><button data-st="stats">Statistics</button><span class="grow"></span><button id="searchToList" title="Add all found verses to the current verse list">+ List</button><button id="searchCopy" title="Copy all found verses">Copy</button></div>
       <ol id="searchResults" class="results"></ol>
       <div id="searchBooks" class="hidden"></div>
@@ -231,11 +233,12 @@
       <div class="row tight"><select id="bsScope" title="Which modules to search"></select><button type="button" id="bsSets" class="icon" title="Module sets: choose modules and save them under a name">Sets…</button></div>
       <div class="row tight bsopts"><label><input type="checkbox" id="bsWhole"> Whole words</label><label><input type="checkbox" id="bsAccents"> Match accents</label><label><input type="checkbox" id="bsRegex"> Regex</label></div>
     </form>
-    <div id="bsStatus" class="status"></div>
+    <div class="grabrow"><button type="button" class="lbtn grabbtn" data-grab="bsearch" data-icon="hand" data-icon-size="15" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text; the middle button always drags)" aria-label="Drag to scroll" aria-pressed="false"></button><div id="bsStatus" class="status"></div></div>
     <ol id="bsResults" class="bsresults"></ol>
   </div>
   <div class="tab" id="tab-study">
     <div class="seg" id="studySeg"><button data-s="lists" class="active">Verse lists</button><button data-s="notes">Notes</button><button data-s="marks">Bookmarks</button><button data-s="plans">Reading</button></div>
+    <div class="grabrow"><button type="button" class="lbtn grabbtn" data-grab="study" data-icon="hand" data-icon-size="15" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text; the middle button always drags)" aria-label="Drag to scroll" aria-pressed="false"></button><span class="small">Drag to scroll</span></div>
     <div id="studyBody"></div>
   </div>
 </div>
@@ -329,7 +332,6 @@
           </div>
           <div class="orow"><span class="olbl">Spacing</span><select id="density"><option value="comfy">Comfortable</option><option value="compact">Compact</option></select></div>
           <div class="orow"><label><input type="checkbox" id="showStatus"> Show the status bar</label></div>
-          <div class="orow"><label title="Hold the left mouse button on the text and drag up or down to scroll it. Hold Shift to select text instead. The middle mouse button always drags."><input type="checkbox" id="grabScroll"> Drag the text to scroll it (hold Shift to select text)</label></div>
           <div class="orow"><label title="The active verse is lit and kept in the vertical middle of every Bible view that moves together; scrolling a view makes the verse in its middle the active verse"><input type="checkbox" id="centerActive"> Keep the active verse in the middle of the Bible views</label></div>
         </section>
         <section class="optpage hidden" data-o="mods">

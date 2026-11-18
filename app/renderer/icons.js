@@ -4,6 +4,7 @@
 /* Line icons drawn for Timotheos (24×24, stroke = currentColor). Original artwork, no third-party icon set. */
 const ICONS = {
   back: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+  hand: '<path d="M8 13V6.5a1.5 1.5 0 013 0V11M11 11V4.5a1.5 1.5 0 013 0V11M14 11V5.5a1.5 1.5 0 013 0V13M17 9.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-1.5a6 6 0 01-4.7-2.3L4.4 14.6a1.6 1.6 0 012.4-2L8 14"/>',
   forward: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   prev: '<path d="M15 18l-6-6 6-6"/>',
   next: '<path d="M9 6l6 6-6 6"/>',

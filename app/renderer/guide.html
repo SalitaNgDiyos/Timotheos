@@ -168,14 +168,22 @@
   <li><i>View → Side by side</i> (<kbd>Ctrl+H</kbd>) or <i>One under another</i> (<kbd>Ctrl+J</kbd>) arranges the views.</li>
   <li><i>Panels → Mark differences</i> compares the first view with the others (those that move together) word by word.</li>
 </ul>
-<h3>New in 0.6.55 – 0.6.58</h3>
+<h3>New in 0.6.55 – 0.6.59</h3>
 <ul>
-  <li><b>Drag the text to scroll it (0.6.58).</b> Hold the left mouse button on the text of a Bible view, a commentary, a Library entry, search results, My Study or the Bible tree, and drag up or down: the text follows your hand. Left and right works too when the text is wider than the panel.
+  <li><b>Drag the text to scroll it (0.6.58, hand buttons 0.6.59).</b> Every text panel has its own <b>hand button</b>. It is off at first, so dragging selects text as usual.
+    <ol>
+      <li><b>Bible view:</b> the hand is in the left icon bar of the view, under the sync (chain) button.</li>
+      <li><b>Commentary, Library, Bible search, Book search and My Study:</b> the hand is in the top row of the panel (in Bible search, Book search and My Study it sits just above the text).</li>
+      <li>Click the hand: it lights up and the pointer over that panel's text becomes an open hand.</li>
+      <li>Hold the left mouse button on the text and drag up or down (or sideways when the text is wider than the panel): the text follows your hand.</li>
+      <li>Click the hand again to turn it off.</li>
+    </ol>
     <ul>
-      <li>To <b>select text</b> (to copy it), hold <kbd>Shift</kbd> while you drag. A plain click, a double-click on a word and a click on a link or button work as before.</li>
-      <li>The <b>middle mouse button</b> drags the text too, always.</li>
+      <li>Each panel (and each Bible view) has its own hand, and each one remembers if it is on when you close Timotheos.</li>
+      <li>While a hand is on, hold <kbd>Shift</kbd> and drag to <b>select text</b> (to copy it). A plain click, a double-click on a word and a click on a link or button work as before.</li>
+      <li>The <b>middle mouse button</b> drags the text in every panel, even when its hand is off.</li>
       <li>Dragging does not select a verse or follow a link; the click that ends a drag is ignored.</li>
-      <li>Turn it off in <i>Options → Layout &amp; toolbar</i> (the box <i>Drag the text to scroll it</i>) if you prefer to select text by dragging; the middle button keeps working.</li>
+      <li>The Bible tree and the Options pages have no hand button.</li>
     </ul></li>
   <li><b>A click anywhere in a verse selects it (0.6.58).</b> Not only the words and the verse number: the blank space after a verse, the end of a short line and the gaps between lines choose the nearest verse of the same paragraph. Links, buttons and the next-chapter bar keep their own clicks.</li>
   <li><b>Linux: sharp text while scrolling (0.6.57).</b> Text no longer turns blurry when you scroll a dictionary entry, a Bible view or a side panel. Timotheos now starts the Linux web engine with software compositing. To get the old way back, start it with <code>WEBKIT_DISABLE_COMPOSITING_MODE=0 timotheos</code>.</li>

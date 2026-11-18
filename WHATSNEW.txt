@@ -1,5 +1,6 @@
-Timotheos 0.6.58
-- Desktop: drag the text to scroll it. Hold the left mouse button on a Bible view, commentary, library entry, search results, My Study or the Bible tree and drag; hold Shift to select text instead; the middle mouse button always drags. Option: Options > Layout & toolbar > "Drag the text to scroll it".
-- Desktop: a click anywhere in a verse selects it, including the blank space after it and between its lines.
-- Linux: text no longer turns blurry while scrolling (software compositing is now the default; WEBKIT_DISABLE_COMPOSITING_MODE=0 restores the old way). This was in 0.6.57.
-- User Guide updated for all of the above.
+Timotheos 0.6.59
+- Drag to scroll now has a hand button in every text panel instead of an Options box: in the left icon bar of each Bible view, and in the top row of Commentary and Library, and just above the text in Bible search, Book search and My Study.
+- Each hand is off at first, is lit when on (the pointer over the text becomes an open hand), and is remembered per panel and per Bible view.
+- Shift + drag still selects text while a hand is on; the middle mouse button drags in every panel even when its hand is off.
+- The "Drag the text to scroll it" box in Options (0.6.58) is removed.
+- User Guide updated.

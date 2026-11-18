@@ -1,0 +1,6 @@
+Timotheos 0.6.59
+- Drag to scroll now has a hand button in every text panel instead of an Options box: in the left icon bar of each Bible view, and in the top row of Commentary and Library, and just above the text in Bible search, Book search and My Study.
+- Each hand is off at first, is lit when on (the pointer over the text becomes an open hand), and is remembered per panel and per Bible view.
+- Shift + drag still selects text while a hand is on; the middle mouse button drags in every panel even when its hand is off.
+- The "Drag the text to scroll it" box in Options (0.6.58) is removed.
+- User Guide updated.
