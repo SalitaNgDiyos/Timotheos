@@ -1,2 +1,5 @@
-Timotheos 0.6.57
-- Linux: text no longer turns blurry while scrolling (dictionary entries, Bible views, side panels). Timotheos now starts WebKitGTK with software compositing, which keeps the text sharp. If you ever want the old behaviour, start it with WEBKIT_DISABLE_COMPOSITING_MODE=0.
+Timotheos 0.6.58
+- Desktop: drag the text to scroll it. Hold the left mouse button on a Bible view, commentary, library entry, search results, My Study or the Bible tree and drag; hold Shift to select text instead; the middle mouse button always drags. Option: Options > Layout & toolbar > "Drag the text to scroll it".
+- Desktop: a click anywhere in a verse selects it, including the blank space after it and between its lines.
+- Linux: text no longer turns blurry while scrolling (software compositing is now the default; WEBKIT_DISABLE_COMPOSITING_MODE=0 restores the old way). This was in 0.6.57.
+- User Guide updated for all of the above.

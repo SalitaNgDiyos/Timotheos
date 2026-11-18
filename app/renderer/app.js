@@ -926,6 +926,24 @@ function centerVerse(t, v, smooth = true) {
 }
 window.centerVerse = centerVerse;
 /** select verse v in the active view and in every view that moves with it: lit in all of them and centred in all of them */
+/** a click on blank space inside the text of a Bible view (the gap after a verse, the end of a short line, the space between lines)
+ *  finds the verse whose text is nearest to the click on the same line, or just above/below it */
+function verseNear(e) {
+  const t = e.target; if (!t || !t.closest) return null;
+  const col = t.closest('.bv .pcol, .bv .paraview'); if (!col) return null;
+  if (t.closest('button, a, input, select, textarea, .menu, .nextch, .fnlist, .heading, sup.vnum, [data-href], [data-find]')) return null;
+  const x = e.clientX, y = e.clientY; let best = null, bd = 1e9;
+  for (const el of col.querySelectorAll('.pv[data-v]')) {
+    for (const r of el.getClientRects()) {
+      if (!r.width || !r.height) continue;
+      const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+      const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+      const d = dy * 3 + dx;   // the same line counts more than the same column
+      if (dy <= 14 && d < bd) { bd = d; best = el; }
+    }
+  }
+  return best;
+}
 function selectVerse(v, scroll = true, skipPane = -1) {
   const texts = paneTexts();
   const el = (texts[state.active] || $('#grid')).querySelector(`[data-v="${v}"]`);
@@ -1349,7 +1367,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.57')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.58')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
@@ -1408,13 +1426,16 @@ function wireUi() {
   $('#apPlacement').onchange = async () => { await api.setSettings({ apocryphaPlacement: $('#apPlacement').value }); state.settings.apocryphaPlacement = $('#apPlacement').value; await rebuildNav(); await go(state.ref, false); };
   $('#importBtn2').onclick = () => TimotheosModules.importModules();
   $('#resetPanelSkins').onclick = () => TimotheosPanelSkin.resetAll();
+  $('#grabScroll').checked = state.settings.grabScroll !== false;
+  $('#grabScroll').onchange = () => save({ grabScroll: $('#grabScroll').checked });
   $('#centerActive').checked = centerOn();
   $('#centerActive').onchange = () => { save({ centerActive: $('#centerActive').checked }); ensurePanes(); renderChapter(true); };
   document.addEventListener('click', e => {
     const fl = e.target.closest('[data-find]');
     if (fl) { e.preventDefault(); $('#popup').classList.add('hidden'); TimotheosSearch.find((/^[GH]\d/i.test(fl.dataset.find) ? '' : 'm/ ') + fl.dataset.find); return; }
     // a click anywhere in a verse (on a word, a number or the blank space) makes it the active verse
-    const row = e.target.closest('.bv tr[data-v], .bv .pv[data-v]');
+    let row = e.target.closest('.bv tr[data-v], .bv .pv[data-v]');
+    if (!row) row = verseNear(e);   // the blank space between and beside the verses belongs to the nearest verse
     if (row && !e.target.closest('button, input, select, textarea, .menu') && !String(window.getSelection()).trim()) selectVerse(+row.dataset.v, false);
     const link = e.target.closest('[data-href]');
     if (link) { e.preventDefault(); if (phoneVerseLink(link)) return; followLink(link.dataset.href); return; }

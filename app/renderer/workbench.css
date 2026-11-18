@@ -857,3 +857,7 @@ select option, select optgroup { background-color: var(--card); color: var(--tex
   #tab-lib .lsplitter { display: none; }
   #tab-lib .libside { padding: 6px 6px 2px; }
 }
+
+/* grab-and-drag scrolling (grabscroll.js) */
+html:not(.phone) .bv .bvtext, html:not(.phone) #cmtBody, html:not(.phone) #libFeed, html:not(.phone) #libBody { cursor: default; }
+body.grabbing, body.grabbing * { cursor: grabbing !important; user-select: none !important; -webkit-user-select: none !important; }
