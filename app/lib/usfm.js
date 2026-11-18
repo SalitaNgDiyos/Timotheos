@@ -778,4 +778,8 @@ module.exports = {
   parseUsfmTexts,
   parseUsfxXml,
   bundleUsfmTexts,
+  renderTaggedWord,
+  normStrong,
+  escT,
+  escA,
 };

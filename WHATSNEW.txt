@@ -1,3 +1,6 @@
-Timotheos 0.6.63
-- Morphology in e-Sword Bibles: Bibles in the older e-Sword format (.bblx) that write the Strong's number and the morphology code after each word (for example the Septuagint deuterocanonical books, Tobit) now show the morphology. The M switch, the word pop-up and the Intralinear View recognise the codes, including Packard codes such as N2-NSF and RA-GSM, and a word with two Strong's numbers.
+Timotheos 0.6.64
+- SWORD Bibles: Bibles from The SWORD Project (CrossWire) open in Timotheos. Import the Raw ZIP package you download from crosswire.org (File > Import Modules, or drag it onto the window). The zText, zText4, RawText and RawText4 types are read, compressed with zlib, bzip2 or xz, with Strong's numbers, morphology, footnotes, cross-references and the words of Jesus.
+- Locked SWORD modules (CipherKey) and very old LZSS modules are skipped with a clear message.
+- Bibles whose verse numbering differs from the King James numbering show their own numbers, with a note under the module list.
+- SWORD commentaries, dictionaries, general books and a download list inside Timotheos are not in this version yet.
 - User Guide updated.

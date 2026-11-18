@@ -45,6 +45,8 @@ for n in NPM:
     lic = j.get('license')
     if n == '7z-wasm': lic = 'LGPL-2.1-or-later with the unRAR restriction (7-Zip 24, built for WebAssembly)'
     add('npm package', n, j['version'], lic, rep, texts(d))
+add('data (verse counts)', 'PySword canons', '0.2.8', 'MIT', 'https://github.com/crosswire-community/pysword (tables derived from The SWORD Project canon headers; see scripts/gen-sword-canons.py)',
+    [('LICENSE', open(os.path.join(root, 'scripts', 'pysword-LICENSE.txt'), encoding='utf-8').read().strip())])
 head = open(os.path.join(root, 'scripts', 'third-party-head.md'), encoding='utf-8').read()
 with open(os.path.join(root, 'THIRD-PARTY-LICENSES.md'), 'w', encoding='utf-8') as f:
     f.write(head.rstrip() + '\n\n## Packages built into Timotheos\n\n| Kind | Name | Version | Licence (as declared) | Source |\n|---|---|---|---|---|\n')

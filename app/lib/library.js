@@ -18,6 +18,7 @@ const esword = require('./esword');
 const twbook = require('./twbook');
 const mysword = require('./mysword');
 const usfm = require('./usfm');
+const sword = require('./sword');
 const bookmod = require('./bookmod');
 const canon = require('./canon');
 const search = require('./search');
@@ -88,6 +89,18 @@ class Library {
         const dname = path.basename(dir);
         const dupKey = (dname + ".usfm").toLowerCase();
         if (!seenNames.has(dupKey)) { seenNames.add(dupKey); this.entries.push({ file: dir, name: dname, ext: ".usfm" }); }
+        return;
+      }
+      // a SWORD module folder: mods.d/<name>.conf (Bibles are listed here; the other SWORD types follow in later versions)
+      if (path.basename(dir).toLowerCase() === 'mods.d') {
+        for (const it of items) {
+          if (it.isDirectory() || !/\.conf$/i.test(it.name)) continue;
+          const cp = path.join(dir, it.name); if (seen.has(cp)) continue; seen.add(cp);
+          const pr = sword.probe(cp); if (!pr.ok || pr.kind !== 'Bible') continue;
+          const dupKey = (it.name.replace(/\.conf$/i, '') + '.sword').toLowerCase();
+          if (seenNames.has(dupKey)) continue; seenNames.add(dupKey);
+          this.entries.push({ file: cp, name: it.name.replace(/\.conf$/i, ''), ext: '.sword' });
+        }
         return;
       }
       for (const it of items) {
@@ -177,7 +190,7 @@ class Library {
     return {
       bibles: this.entries.map(e => {
         const m = this.bibles.get(this._bibleId(e));
-        return { id: this._bibleId(e), name: e.name, file: e.file, abbr: m ? m.abbr : e.name.replace(/(\.bbl)?\.[^.]+$/, ''), title: m ? m.title : '', loaded: !!m, format: /^es:/.test(this._bibleId(e)) ? 'e-Sword' : /^my:/.test(this._bibleId(e)) ? 'MySword' : /^usfm:/.test(this._bibleId(e)) ? 'USFM' : /^usfx:/.test(this._bibleId(e)) ? 'USFX' : 'theWord', imported: !!(e.linkFile || this.extraFolders.some(f => e.file.startsWith(f))) };
+        return { id: this._bibleId(e), name: e.name, file: e.file, abbr: m ? m.abbr : e.name.replace(/(\.bbl)?\.[^.]+$/, ''), title: m ? m.title : '', loaded: !!m, format: /^es:/.test(this._bibleId(e)) ? 'e-Sword' : /^my:/.test(this._bibleId(e)) ? 'MySword' : /^sw:/.test(this._bibleId(e)) ? 'SWORD' : /^usfm:/.test(this._bibleId(e)) ? 'USFM' : /^usfx:/.test(this._bibleId(e)) ? 'USFX' : 'theWord', imported: !!(e.linkFile || this.extraFolders.some(f => e.file.startsWith(f))) };
       }),
       books: [...this.books.values()].map(b => this.bookInfo(b)),
       dicts: [...this.books.values()].filter(b => b.kind === 'dictionary').map(b => this.bookInfo(b)),
@@ -187,7 +200,7 @@ class Library {
     };
   }
 
-  _bibleId(e) { return (e.ext === '.bblx' || e.ext === '.bbli' ? 'es:' : e.ext === '.bbl.mybible' ? 'my:' : e.ext === '.gbk.twm' ? 'bk:' : e.ext === '.usfm' ? 'usfm:' : e.ext === '.usfx' ? 'usfx:' : 'tw:') + e.name; }
+  _bibleId(e) { return (e.ext === '.bblx' || e.ext === '.bbli' ? 'es:' : e.ext === '.bbl.mybible' ? 'my:' : e.ext === '.gbk.twm' ? 'bk:' : e.ext === '.sword' ? 'sw:' : e.ext === '.usfm' ? 'usfm:' : e.ext === '.usfx' ? 'usfx:' : 'tw:') + e.name; }
 
   /** Bibles that are shown in a view stay loaded; the others are let go when nobody has used them for a while (RAM) */
   _openIds() { return new Set([...(this.settings.openBibles || []), ...((this.settings.views || []).map(v => v && v.bible))]); }
@@ -204,7 +217,7 @@ class Library {
     if (!e) throw new Error('Module not found: ' + id);
     const m = (e.ext === '.bblx' || e.ext === '.bbli') ? await esword.load(e.file, this.settings.eswordBookMap || {})
       : e.ext === '.bbl.mybible' ? await mysword.load(e.file, this.settings.eswordBookMap || {})
-      : e.ext === '.gbk.twm' ? await twbook.load(e.file) : e.ext === '.usfm' ? usfm.loadUsfm(e.file) : e.ext === '.usfx' ? usfm.loadUsfx(e.file) : theword.load(e.file);
+      : e.ext === '.gbk.twm' ? await twbook.load(e.file) : e.ext === '.sword' ? await sword.load(e.file) : e.ext === '.usfm' ? usfm.loadUsfm(e.file) : e.ext === '.usfx' ? usfm.loadUsfx(e.file) : theword.load(e.file);
     m.id = id;
     this.bibles.set(id, m);
     return m;

@@ -17,6 +17,7 @@ const twbook = require('./twbook');
 const bookmod = require('./bookmod');
 const twstudy = require('./twstudy');
 const usfm = require('./usfm');
+const sword = require('./sword');
 
 const TW_BIBLE = /\.(ont|ot|nt)$/i;
 const TW_LOCKED = /\.(ontx|otx|ntx)$/i;
@@ -59,6 +60,35 @@ function filesAreSame(f1, f2) {
       fs.closeSync(fd2);
     }
   } catch (e) { return false; }
+}
+
+/** a SWORD package (CrossWire "Raw ZIP": mods.d/<name>.conf plus modules/...) goes into <destRoot>/SWORD/<name>/ as it is */
+function importSword(allEnts, name, from, destRoot, tmp, results) {
+  const confs = allEnts.filter(e => /(^|\/)mods\.d\/[^/]+\.conf$/i.test(e.name));
+  for (const ce of confs) {
+    const prefix = ce.name.replace(/mods\.d\/[^/]+$/i, '');
+    const cname = path.basename(ce.name).replace(/\.conf$/i, '');
+    const tf = path.join(tmp, cname + '.conf'); fs.writeFileSync(tf, ce.data);
+    const pr = sword.probe(tf);
+    const r = { name: cname, from: name === cname ? from : `${name} › ${ce.name}`, format: 'SWORD', kind: pr.kind || 'module', title: pr.title };
+    if (!pr.ok) { results.push(Object.assign(r, { status: 'skipped', reason: pr.reason })); continue; }
+    const dp = ((pr.conf.kv.DataPath || '').replace(/\\/g, '/').replace(/^\.\//, '')).toLowerCase();
+    const mine = allEnts.filter(e => e !== ce && e.name.startsWith(prefix) && e.name.slice(prefix.length).toLowerCase().startsWith(dp) && !/\/$/.test(e.name));
+    if (!mine.length) { results.push(Object.assign(r, { status: 'skipped', reason: 'the package has the .conf but not the module\'s data files' })); continue; }
+    const dir = path.join(destRoot, 'SWORD', cname);
+    const confDest = path.join(dir, 'mods.d', cname + '.conf');
+    let status = 'imported';
+    try { if (fs.existsSync(confDest)) status = fs.readFileSync(confDest).equals(ce.data) && mine.every(e => { try { return fs.statSync(path.join(dir, e.name.slice(prefix.length))).size === e.data.length; } catch (x) { return false; } }) ? 'already' : 'updated'; } catch (e) { status = 'updated'; }
+    if (status !== 'already') {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+        fs.mkdirSync(path.dirname(confDest), { recursive: true }); fs.writeFileSync(confDest, ce.data);
+        for (const e of mine) { const out = path.join(dir, e.name.slice(prefix.length)); fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, e.data); }
+      } catch (err) { results.push(Object.assign(r, { status: 'skipped', reason: 'could not save: ' + err.message })); continue; }
+    }
+    const note = pr.conf.kv.Versification && !/^(kjva?)$/i.test(pr.conf.kv.Versification) ? 'uses the ' + pr.conf.kv.Versification + ' verse numbering' : '';
+    results.push(Object.assign(r, { status, dest: confDest, note }));
+  }
 }
 
 function isModuleName(n) {
@@ -151,6 +181,7 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
         const buf = fs.readFileSync(p);
         const pw = (opts.passwords || {})[p];
         const allEnts = (await archive.unpack(buf, name, { password: pw })).filter(e => !e.name.endsWith('/') && !junk(e.name));
+        if (allEnts.some(e => /(^|\/)mods\.d\/[^/]+\.conf$/i.test(e.name))) { importSword(allEnts, name, p, destRoot, tmp, results); continue; }
         const usfmEnts = allEnts.filter(e => USFM_BIBLE.test(path.basename(e.name)));
         if (usfmEnts.length >= 1) {
           // Bundle all USFM book files inside the archive into a single <archiveBase>.usfm Bible
