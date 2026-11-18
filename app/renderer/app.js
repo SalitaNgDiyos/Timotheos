@@ -625,6 +625,7 @@ function paneHtml() {
         <button data-a="info" title="Bible info: about this module">${TimotheosIcons.icon('info', 15)}</button>
         <button data-a="link" class="bvlink" title="Sync: move together with the other Bible views (click to let this view read on by itself)">${TimotheosIcons.icon('link', 15)}</button>
         <button data-a="grab" class="bvgrab" data-grab="v" title="Drag to scroll: when on, hold the left mouse button on this view's text and drag to scroll it (Shift+drag selects text; the middle button always drags)" aria-pressed="false">${TimotheosIcons.icon('hand', 15)}</button>
+        <button data-a="wpop" class="bvwpop" title="" aria-pressed="false">${TimotheosIcons.icon('lookup', 15)}</button>
         <button data-a="zin" title="Font up (Ctrl + mouse wheel up)">${TimotheosIcons.icon('textUp', 15)}</button>
         <button data-a="zout" title="Font down (Ctrl + mouse wheel down)">${TimotheosIcons.icon('textDown', 15)}</button>
         <button data-a="fcolor" class="bvfcolor" title="Font colour">${TimotheosIcons.icon('fontColor', 15)}<i class="bar"></i></button>
@@ -660,6 +661,9 @@ function ensurePanes() {
     if (window.TimotheosDock) TimotheosDock.retitle('bv' + i, viewName(i));
     sec.querySelector('.bvbible').title = (inf ? inf.title + ' – ' : '') + 'click to choose another Bible for this view · double-click to rename this view';
     sec.querySelector('.bvlink').classList.toggle('on', !!v.linked);
+    { const wb = sec.querySelector('.bvwpop'); if (wb) { wb.classList.toggle('on', !!v.wpop); wb.setAttribute('aria-pressed', v.wpop ? 'true' : 'false');
+      wb.title = v.wpop ? 'Word pop-ups: ON. The dictionary and morphology pop-up opens when you rest the mouse on a tagged word. Click to turn it off (then hold Shift and point at a word to see it).'
+        : 'Word pop-ups: OFF. Hold Shift and point at a tagged word to see its dictionary and morphology pop-up. Click to have it open by itself.'; } }
     applyPaneLook(sec, i);
   });
 }
@@ -708,6 +712,7 @@ function wireViews() {
     if (act === 'close') return closeView(i);
     if (act === 'copyv') return TimotheosStudy.copyDialog();
     if (act === 'link') return toggleLink(i);
+    if (act === 'wpop') return toggleWordPopup(i);
     if (act === 'vnum') {
       const ap = TimotheosOptions.appearance(); const now = (v.vnPos || ap.vnPos) === 'hidden' ? 'hidden' : 'inline';   // verses flow as paragraphs: in the text, or hidden
       v.vnPos = now === 'hidden' ? 'inline' : 'hidden'; if (v.vnPos === ap.vnPos) delete v.vnPos;
@@ -1192,19 +1197,43 @@ async function versePreview(b, c, v1, v2, modSpec) {
   return `<div class="entry"><h4><a class="link" data-href="tw://bible.${esc(modAttr)}?id=${b}.${c}.${v1}">${esc(data.book.name)} ${c}:${v1}${v2 > v1 ? '–' + v2 : ''}${modSpec && modSpec !== '*' && inf ? ` (${esc(inf.abbr)})` : ''}</a></h4>${rows.map(r => `<sup>${r.v}</sup> ${TWRender.render(r.cells[0], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}`).join(' ') || '<div class="src">Not in this Bible</div>'}</div>`;
 }
 
-let hoverTimer = null, hoverEl = null;
+let hoverTimer = null, hoverEl = null, lastWordEl = null;
+/** a Strong's / morphology word (not a footnote or cross-reference mark) */
+const isWordTarget = el => !!el && el.matches('[data-strong],[data-morph]') && !el.matches('sup.fn,sup.xref');
+/** word pop-ups of a Bible view are off at first: the pop-up of a tagged word then needs Shift + hover (View's button in its left icon bar) */
+function wordPopupAllowed(el, shift) {
+  if (!isWordTarget(el)) return true;
+  const bv = el.closest('.bv'); if (!bv) return true;
+  const v = views()[+bv.dataset.i];
+  return !!(shift || (v && v.wpop));
+}
+function toggleWordPopup(i) {
+  const v = views()[i]; if (!v) return;
+  v.wpop = !v.wpop; storeViews(); ensurePanes();
+  if (!v.wpop) { clearTimeout(hoverTimer); hoverEl = null; hidePopupSoon(); }
+  flashMsg(v.wpop ? 'Word pop-ups on for this view' : 'Word pop-ups off: hold Shift and point at a word');
+}
 function popupTarget(el) { return el && el.closest('[data-strong],[data-morph],sup.fn,sup.xref'); }
 function wireHover() {
   // a finger tap also sends a "mouse over": on the three screens the tap opens the word pop-up instead, so the old hover pop-up stays away
   let touchAt = 0; document.addEventListener('touchstart', () => { touchAt = Date.now(); }, { passive: true, capture: true });
   document.addEventListener('mouseover', e => {
     if (document.documentElement.classList.contains('sk') && Date.now() - touchAt < 1500) return;
-    const t = popupTarget(e.target);
+    let t = popupTarget(e.target);
+    if (t && !wordPopupAllowed(t, e.shiftKey)) t = null;   // a view with word pop-ups off: only with Shift
     if (t === hoverEl) return;
     hoverEl = t; clearTimeout(hoverTimer);
     if (!t) { if (!e.target.closest('#popup')) hidePopupSoon(); return; }
     hoverTimer = setTimeout(() => showPopup(t), 280);
   });
+  // Shift pressed while the mouse already rests on a word of a view that has word pop-ups off
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Shift' || e.repeat) return;
+    const t = lastWordEl && lastWordEl.isConnected && lastWordEl.matches(':hover') ? lastWordEl : null;
+    if (!t || hoverEl === t) return;
+    hoverEl = t; clearTimeout(hoverTimer); hoverTimer = setTimeout(() => showPopup(t), 120);
+  });
+  document.addEventListener('mousemove', e => { const w = popupTarget(e.target); lastWordEl = w && isWordTarget(w) ? w : null; }, { passive: true });
   $('#popup').addEventListener('mouseleave', hidePopupSoon);
   $('#popup').addEventListener('mouseenter', () => clearTimeout(hideTimer));
 }
@@ -1368,7 +1397,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.59')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.60')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

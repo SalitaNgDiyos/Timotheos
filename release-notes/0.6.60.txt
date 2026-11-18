@@ -1,0 +1,6 @@
+Timotheos 0.6.60
+- Word pop-ups per Bible view: a new button (a little dictionary) in the left icon bar of each Bible view controls the pop-up of tagged words (Strong's number, morphology, dictionary entry).
+- It is off at first: hold Shift and point at a word to see the pop-up. Click the button to have it open by itself in that view; click again to turn it off. Each view remembers its own setting.
+- Footnote and cross-reference pop-ups and verse-link previews are not affected.
+- The tooltip of the button explains it; the User Guide has the steps.
+- (0.6.59 hand buttons for drag-to-scroll are included.)
