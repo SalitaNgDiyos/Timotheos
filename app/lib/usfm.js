@@ -32,6 +32,26 @@ function decodeXmlEnt(s) {
 /**
  * Normalize a Strong's number from USFM/USFX (e.g. "H00430" -> "H430", unfoldingWord 5-digit "G35880" -> "G3588").
  */
+// unfoldingWord writes Strong's as 5 digits with a trailing 0 ("G35880" = G3588). Other files write the number as it
+// is, and a module with its own numbers (e.g. G13970) must not lose its last digit. The padding is only assumed when
+// every 5-digit Greek/Hebrew number in the file ends in 0 (set by padDetect before each file is read).
+let padStrongs = true;
+function padDetect(textOrTexts) {
+  const all = Array.isArray(textOrTexts) ? textOrTexts : [textOrTexts];
+  let seen = 0;
+  // iBiblia writes the numbers as they are tagged and says so in each book
+  if (all.some(t => /\\rem[^\n]*iBiblia: Strong/.test(String(t || '')))) { padStrongs = false; return; }
+  for (const t of all) {
+    const re = /(?:^|[^0-9A-Za-z])[GHgh](\d{5})(?![0-9])/g;
+    let m;
+    while ((m = re.exec(String(t || '')))) {
+      seen++;
+      if (m[1][4] !== '0') { padStrongs = false; return; }
+    }
+  }
+  padStrongs = true;
+}
+
 function normStrong(raw) {
   const out = [];
   for (const tok of String(raw || '').split(/[\s,;]+/)) {
@@ -41,7 +61,7 @@ function normStrong(raw) {
     let num = parseInt(m[2], 10);
     const suf = m[3] || '';
     // unfoldingWord USFM 3.0 appends a 5th disambiguation digit (usually 0) when raw digits === 5
-    if (m[2].length === 5 && ((L === 'G' && num > 5624) || (L === 'H' && num > 8674)) && num % 10 === 0) {
+    if (padStrongs && m[2].length === 5 && ((L === 'G' && num > 5624) || (L === 'H' && num > 8674)) && num % 10 === 0) {
       num = Math.floor(num / 10);
     }
     if (num > 0) out.push(L + num + suf);
@@ -230,6 +250,7 @@ function formatUsfmNote(body, isXref) {
  * Parse one or more USFM text strings into a Timotheos book/chapter/verse map.
  */
 function parseUsfmTexts(texts) {
+  padDetect(texts);
   const meta = { title: '', abbr: '', about: '', lang: '', hasStrongs: false };
   const standaloneBooks = new Set();
   const entries = []; // [{b, c, v, html}]
@@ -347,6 +368,7 @@ function parseUsfmTexts(texts) {
  * ========================================================================== */
 
 function parseUsfxXml(xmlStr) {
+  padDetect(xmlStr);
   const meta = { title: '', abbr: '', about: '', lang: '', hasStrongs: false };
   const standaloneBooks = new Set();
   const entries = [];
