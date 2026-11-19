@@ -473,7 +473,8 @@ async function buildCopy(from, to, fmt, limit) {
       if (limit && shown >= limit) continue;
       shown++;
       const hl = fill(fmt.verse.replace('%T', '\u0001'), { b: ch.b, c: ch.c, v: x.v, T: '' }).split('\u0001');
-      html += sepHtml + `<span>${hl[0] ? '<b>' + esc(hl[0]) + '</b>' : ''}${x.html}${esc(hl[1] || '')}</span>`;
+      // the verse text appears only where the "Each verse" template has %T (an empty template copies no verse)
+      html += sepHtml + (fmt.verse && fmt.verse.includes('%T') ? `<span>${hl[0] ? '<b>' + esc(hl[0]) + '</b>' : ''}${x.html}${esc(hl[1] || '')}</span>` : `<span>${esc(fill(fmt.verse || '', { b: ch.b, c: ch.c, v: x.v, T: '' })).replace(/\n/g, '<br>')}</span>`);
     }
   }
   const footer = (single && fmt.noRefSingle) ? '' : fill(fmt.footer || '', {});

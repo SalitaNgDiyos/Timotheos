@@ -1,0 +1,3 @@
+Timotheos 0.6.72
+- Copy verses: when the "Each verse" template is empty (Format: Custom…), the preview and the rich-text copy no longer show the verse. The verse text now appears only where the template contains %T, the same as in the plain-text copy.
+- User Guide updated.
