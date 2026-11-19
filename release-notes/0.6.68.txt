@@ -1,0 +1,4 @@
+Timotheos 0.6.68
+- MySword files whose name does not say what they are (for example "LXXBrenton+mysword-interlinear.mybible", without .bbl) were refused as "MySword's personal notes". Timotheos now looks inside the file and reads it as a Bible, commentary, dictionary or book, on import and in a module folder. On import it is kept as Name.bbl.mybible (or .cmt, .dct, .bok). A real personal-notes file is still refused.
+- User Guide updated.
+- Not yet checked: that particular LXX interlinear file itself (I do not have it). Tested with test files on Linux.

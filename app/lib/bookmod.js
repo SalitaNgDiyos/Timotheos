@@ -96,7 +96,10 @@ async function open(file) {
   const db = openDb(file); // read from disk, not copied into memory
   const tabs = tableMap(db);
   try {
-    if (/\.mybible$/i.test(base)) return openMySword(db, tabs, stub);
+    if (/\.mybible$/i.test(base)) {
+      if (!guessKind(base)) { const k = require('./mysword').kindOfTables(Object.keys(tabs)); stub.kind = k === 'dictionary' || k === 'commentary' ? k : 'book'; }   // a MySword file whose name does not say what it is
+      return openMySword(db, tabs, stub);
+    }
     if (tabs.config && (tabs.topics || tabs.content || tabs.bible_refs || tabs.rel_refs || tabs.plan || tabs.readings)) return openTheWord(db, tabs, stub);
     if (tabs.details || tabs.versecommentary || tabs.chaptercommentary || tabs.bookcommentary || tabs.dictionary || tabs.lexicon || tabs.topics || tabs.topic || tabs.reference || tabs.devotions || tabs.devotion || tabs.graphics || tabs.maps || tabs.map || tabs.harmony || tabs.harmonies || tabs.versenotes || tabs.chapternotes || tabs.booknotes || tabs.journal) return openESword(db, tabs, stub);
   } catch (e) { db.close(); throw e; }

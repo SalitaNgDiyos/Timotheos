@@ -88,6 +88,17 @@ const mk = (f, sql) => { const d = new DatabaseSync(f); d.exec(sql); d.close(); 
   // encrypted / not sqlite
   const bad = path.join(dir, 'X.bbl.mybible'); fs.writeFileSync(bad, 'not a database at all');
   let err = ''; try { await mysword.load(bad); } catch (e) { err = e.message; } ok(/not a MySword/.test(err), 'non-sqlite refused');
+  // a MySword file whose name does not say what it is (e.g. "LXXBrenton+mysword-interlinear.mybible"): judged by its tables
+  const un = path.join(dir, 'un'); fs.mkdirSync(un);
+  fs.copyFileSync(bbl, path.join(un, 'LXXBrenton+mysword-interlinear.mybible'));
+  fs.copyFileSync(cmt, path.join(un, 'Some Commentary.mybible'));
+  fs.copyFileSync(notes, path.join(un, 'MyNotes.mybible'));
+  ok(mysword.probe(path.join(un, 'LXXBrenton+mysword-interlinear.mybible')) === 'bible' && mysword.probe(path.join(un, 'Some Commentary.mybible')) === 'commentary' && mysword.probe(path.join(un, 'MyNotes.mybible')) === 'notes', 'probe by tables');
+  const dest = path.join(dir, 'dest'); fs.mkdirSync(dest);
+  const res = await importer.importFiles(['LXXBrenton+mysword-interlinear.mybible', 'Some Commentary.mybible', 'MyNotes.mybible'].map(x => path.join(un, x)), dest, {}, null, null, {});
+  ok(res[0].status === 'imported' && res[0].kind === 'Bible' && res[0].dest && /\.bbl\.mybible$/.test(res[0].dest), 'untyped Bible imports: ' + JSON.stringify(res[0]));
+  ok(res[1].status === 'imported' && res[1].kind === 'commentary', 'untyped commentary imports: ' + JSON.stringify(res[1]));
+  ok(res[2].status === 'skipped', 'a real notes file is still refused');
   fs.rmSync(dir, { recursive: true, force: true });
   console.log('mysword: ' + n + ' ok');
 })().catch(e => { console.log('mysword FAILED: ' + e.stack); process.exit(1); });

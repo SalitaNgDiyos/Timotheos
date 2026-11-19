@@ -117,4 +117,24 @@ async function load(file, bookMapOverride = {}) {
   };
 }
 
-module.exports = { load, convertRules, isSqlite, MY_BIBLE, MY_BOOK };
+/** what a MySword file holds, judged by its tables (not by its file name): 'bible' | 'commentary' | 'dictionary' | 'book' | 'notes' | null */
+function kindOfTables(tables) {
+  const t = new Set(tables.map(x => String(x).toLowerCase()));
+  if (t.has('bible')) return 'bible';
+  if (t.has('commentary')) return 'commentary';
+  if (t.has('dictionary')) return 'dictionary';
+  if (['notes', 'highlights', 'bookmarks', 'verselists', 'favorites', 'history', 'prayers'].some(x => t.has(x)) && !t.has('details')) return 'notes';
+  if (t.has('details') && [...t].some(x => !['details', 'android_metadata', 'sqlite_sequence'].includes(x) && !x.startsWith('sqlite_'))) return 'book';
+  return null;
+}
+/** opens the file just far enough to say what it is: the same words as kindOfTables, or null when it is not a MySword database */
+function probe(file) {
+  if (!isSqlite(file)) return null;
+  let db;
+  try {
+    db = openDb(file);
+    return kindOfTables((db.exec("select name from sqlite_master where type in ('table','view')")[0] || { values: [] }).values.map(r => String(r[0])));
+  } catch (e) { return null; } finally { try { db && db.close(); } catch (e) { /* closed */ } }
+}
+
+module.exports = { kindOfTables, probe, load, convertRules, isSqlite, MY_BIBLE, MY_BOOK };

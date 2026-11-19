@@ -254,6 +254,17 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
       else { try { fs.copyFileSync(p, home + '.order'); results.push({ name, from: p, status: 'imported', kind: 'arrangement of books, chapters and verses', title: modName, dest: home + '.order' }); } catch (err) { results.push({ name, from: p, status: 'skipped', kind: 'arrangement', reason: err.message }); } }
       continue;
     }
+    if (/\.mybible$/i.test(name) && !MY_BIBLE.test(name) && !MY_BOOK.test(name)) {
+      // a MySword file whose name does not say what it is: look inside, and keep a copy under the name MySword itself would give it
+      const k = mysword.probe(p);
+      const suf = { bible: '.bbl', commentary: '.cmt', dictionary: '.dct', book: '.bok' }[k];
+      if (suf) {
+        const typed = path.join(tmp, name.replace(/\.mybible$/i, '') + suf + '.mybible');
+        fs.copyFileSync(p, typed);
+        queue.push({ file: typed, from: p, note: `the file name did not say what it is; read as a ${k === 'book' ? 'book' : k}` });
+        continue;
+      }
+    }
     queue.push({ file: p, from: p });
   }
   for (const [qi, q] of queue.entries()) {

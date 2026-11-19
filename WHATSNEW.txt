@@ -1,7 +1,4 @@
-Timotheos 0.6.67
-- Your own order of Bible books, chapters and verses: a Bible module that comes with an .order file (made by iBiblia 1.1.0.053 or later, using its new drag-to-rearrange Bible tree) now shows in Timotheos exactly as arranged in iBiblia, in the Bible view, the book list and the previous/next chapter buttons.
-- Import the .order file together with the module (File > Import Modules, drag and drop, or on the phone Modules > Import modules), or alone to add an arrangement to a module you already have. Importing the module again without the file removes the old arrangement.
-- Only the order changes; verse numbers stay as they are. A chapter moved into another book gets the next free chapter number there. Searches and links still go by the original reference, so they may not land on a moved verse.
-- Programs that do not know the .order file (theWord, e-Sword) show the normal order.
-- Tested on Linux with unit tests; the Timotheos screens were not checked by eye with a rearranged Bible.
+Timotheos 0.6.68
+- MySword files whose name does not say what they are (for example "LXXBrenton+mysword-interlinear.mybible", without .bbl) were refused as "MySword's personal notes". Timotheos now looks inside the file and reads it as a Bible, commentary, dictionary or book, on import and in a module folder. On import it is kept as Name.bbl.mybible (or .cmt, .dct, .bok). A real personal-notes file is still refused.
 - User Guide updated.
+- Not yet checked: that particular LXX interlinear file itself (I do not have it). Tested with test files on Linux.

@@ -128,6 +128,13 @@ class Library {
         else if (usfm.isUsfxFile(low) || (low.endsWith(".xml") && usfm.probeXml(p))) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: ".usfx", linkFile: viaLink }); }
         else if (ENCRYPTED_EXT.test(low)) continue;
         else if (low.endsWith('.xrefs.twm')) this.xrefFiles.push(p);
+        else if (/\.mybible$/.test(low)) {
+          // a MySword file whose name does not say what it is (no .bbl / .cmt / .dct / .bok): look inside
+          const k = mysword.probe(p);
+          if (seenNames.has(dupKey) || !k || k === 'notes') continue; seenNames.add(dupKey);
+          if (k === 'bible') this.entries.push({ file: p, name: itemName, ext: '.bbl.mybible', linkFile: viaLink });
+          else this.addBook(p, itemName, viaLink, k === 'commentary' || k === 'dictionary' ? k : 'book');
+        }
         else if (OVERLAY_TWM.test(low)) this.overlayFiles.push(p);
         else if (SKIP_TWM.test(low)) continue;
         else if (BOOK_EXT.test(low)) {
