@@ -1,4 +1,5 @@
-Timotheos 0.6.68
-- MySword files whose name does not say what they are (for example "LXXBrenton+mysword-interlinear.mybible", without .bbl) were refused as "MySword's personal notes". Timotheos now looks inside the file and reads it as a Bible, commentary, dictionary or book, on import and in a module folder. On import it is kept as Name.bbl.mybible (or .cmt, .dct, .bok). A real personal-notes file is still refused.
+Timotheos 0.6.69
+- Interlinear Bibles (Greek or Hebrew text with the English after each word, e-Sword, MySword, USFM, theWord): the English gloss is now small, raised (superscript) and in its own colour, like in theWord's interlinears. Timotheos recognises the gloss by itself: Latin letters inside a mostly Greek/Hebrew verse.
+- Intralinear View (Alt+I): the gloss is a new line, "English gloss", in each word's column, level with the original word, Strong's numbers and morphology. Words that belong to a phrase get an empty gloss line so everything stays aligned. It can be switched off in the view menu under "Intralinear lines".
+- Tested with a test interlinear on Linux; not yet with the LXX Brenton+ / Argon LXXBre files themselves.
 - User Guide updated.
-- Not yet checked: that particular LXX interlinear file itself (I do not have it). Tested with test files on Linux.

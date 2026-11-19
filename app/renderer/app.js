@@ -768,7 +768,43 @@ function decorateFootnotes(root, v, show) {
 function showLemmas(root) {
   root.querySelectorAll('[data-lemma]:not(sup)').forEach(w => w.insertAdjacentHTML('afterend', `<sup class="lemma" data-lemma="${esc(w.dataset.lemma)}">${esc(w.dataset.lemma)}</sup>`));
 }
-const COL_LINES = [['orig', 'Original word'], ['tl', 'Transliteration'], ['strong', "Strong's number"], ['morph', 'Morphology'], ['lemma', 'Lemma']];
+/* Interlinear glosses: in a Bible whose text is Greek or Hebrew, the English that follows each word (or phrase) is a gloss.
+   It is shown small, raised and in its own colour, as in theWord's interlinears. Glosses already written as <sup><font> are
+   recognised too. Needs no marking in the module: Latin letters inside a verse that is mostly Greek/Hebrew are the gloss. */
+const ORIG_RE = /[\u0370-\u03FF\u1F00-\u1FFF\u0590-\u05FF\uFB1D-\uFB4F]/;
+const GLOSS_RUN = /[A-Za-z\u00C0-\u024F][^\u0370-\u03FF\u1F00-\u1FFF\u0590-\u05FF\uFB1D-\uFB4F]*/g;
+function markGlosses(root) {
+  const verses = [...root.querySelectorAll('[data-v]')].filter(e => !e.closest('sup.vnum') && !e.parentElement.closest('[data-v]'));
+  for (const el of verses.length ? verses : [root]) {
+    if (el.dataset.gl) continue; el.dataset.gl = '1';
+    const skip = n => n.parentElement && n.parentElement.closest('sup, a, .fn, .noteicon, .vnum, h1, h2, h3, h4, .head, .ptitle, .gloss');
+    const nodes = []; const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let orig = 0, latin = 0;
+    for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+      const t = n.nodeValue; const o = (t.match(new RegExp(ORIG_RE.source, 'g')) || []).length; const l = (t.match(/[A-Za-z\u00C0-\u024F]/g) || []).length;
+      if (skip(n)) continue;
+      orig += o; latin += l; nodes.push(n);
+    }
+    if (orig < 3 || !latin || orig < latin * 0.5 && !el.querySelector('.word')) continue;       // an ordinary Bible: leave it alone
+    // theWord style glosses: <sup><font color=…>
+    el.querySelectorAll('sup:not([class]) > font[color]').forEach(f => { if (f.parentElement.childNodes.length === 1) f.parentElement.classList.add('gloss'); });
+    for (const n of nodes) {
+      const t = n.nodeValue; GLOSS_RUN.lastIndex = 0;
+      if (!GLOSS_RUN.test(t)) continue;
+      GLOSS_RUN.lastIndex = 0;
+      const frag = document.createDocumentFragment(); let last = 0, m;
+      while ((m = GLOSS_RUN.exec(t))) {
+        const txt = m[0].replace(/\s+$/, ''); if (!txt) continue;
+        frag.appendChild(document.createTextNode(t.slice(last, m.index)));
+        const g = document.createElement('sup'); g.className = 'gloss'; g.textContent = txt; frag.appendChild(g);
+        last = m.index + txt.length;
+      }
+      frag.appendChild(document.createTextNode(t.slice(last)));
+      n.replaceWith(frag);
+    }
+  }
+}
+const COL_LINES = [['orig', 'Original word'], ['gloss', 'English gloss'], ['tl', 'Transliteration'], ['strong', "Strong's number"], ['morph', 'Morphology'], ['lemma', 'Lemma']];
 const colOn = (i, k) => ((views()[i] || {}).colLines || {})[k] !== false;
 const origCache = new Map();
 async function originalFor(key) {
@@ -782,11 +818,17 @@ async function originalFor(key) {
 function columnWords(i, root) {
   const tl = w => (window.TimotheosTranslit ? TimotheosTranslit.translit(w) : '');
   const need = [];
+  const hasGloss = !!root.querySelector('sup.gloss');
   for (const w of root.querySelectorAll('span.word[data-strong], span.word[data-morph], span.word[data-lemma]')) {
     const st = (w.dataset.strong || '').split(/\s+/).filter(Boolean); const lem = w.dataset.lemma || '';
     const box = document.createElement('span'); box.className = 'cw'; w.replaceWith(box); box.appendChild(w);
     const line = (cls, txt, attrs = {}) => { const e = document.createElement('span'); e.className = 'cl ' + cls; e.textContent = txt; for (const [a, val] of Object.entries(attrs)) e.setAttribute(a, val); box.appendChild(e); return e; };
     if (colOn(i, 'orig')) { const o = line('cl-orig', lem); if (!lem && st[0]) need.push([o, st[0]]); }
+    if (hasGloss) {        // the gloss that follows this word (a phrase's gloss follows its last word) becomes a line of the column, so it lines up with the codes
+      let nx = box.nextSibling; while (nx && ((nx.nodeType === 3 && !nx.nodeValue.trim()) || (nx.nodeType === 1 && /^SUP$/.test(nx.tagName) && /strong|morph|lemma/.test(nx.className)))) nx = nx.nextSibling;
+      if (nx && nx.nodeType === 1 && nx.classList.contains('gloss')) { if (colOn(i, 'gloss')) { nx.classList.add('cl', 'cl-gloss'); box.appendChild(nx); } else nx.remove(); }
+      else if (colOn(i, 'gloss')) line('cl-gloss', '');
+    }
     if (colOn(i, 'tl')) line('cl-tl', lem ? tl(lem) : '');
     if (colOn(i, 'strong') && st.length) line('cl-strong', st.join(' '), { 'data-strong': st.join(' ') });
     if (colOn(i, 'morph') && w.dataset.morph) line('cl-morph', w.dataset.morph, { 'data-morph': w.dataset.morph });
@@ -1106,7 +1148,7 @@ async function renderPane(i, scroll, seq) {
   if (show.tags) t.dataset.tags = '1'; else delete t.dataset.tags;
   applyPaneLook(sec, i);
   t.classList.toggle('colmode', !!show.columns);
-  if (!show.tags) { decorateFootnotes(t, v, show); if (show.columns) columnWords(i, t); else if (show.lemma) showLemmas(t); }
+  if (!show.tags) { decorateFootnotes(t, v, show); markGlosses(t); if (show.columns) columnWords(i, t); else if (show.lemma) showLemmas(t); }
   const first = views().findIndex((_, k) => sameMove(k, i)) === i;
   TimotheosStudy.afterRender({ root: t, col: i, id, b, c, layout, notes: first });
   if (!show.tags) TimotheosModules.decorateChapter(b, c, t, show);
