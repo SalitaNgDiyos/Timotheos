@@ -17,6 +17,8 @@ const twbook = require('./twbook');
 const bookmod = require('./bookmod');
 const twstudy = require('./twstudy');
 const usfm = require('./usfm');
+const docimport = require('./docimport');
+const { DOC_RE } = require('./docread');
 const sword = require('./sword');
 
 const TW_BIBLE = /\.(ont|ot|nt)$/i;
@@ -210,12 +212,40 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
       }
       continue;
     }
+    if (DOC_RE.test(name) && !isModuleName(name)) {
+      // a word-processor or text document: the window asks what it should become, then imports it again with opts.docs[path] = {as, title}
+      const ch = (opts.docs || {})[p];
+      if (!ch || !ch.as) { results.push({ name, from: p, status: 'choose', kind: 'document', title: docimport.cleanName(p) }); continue; }
+      await tell('check', pi, paths.length, name);
+      try {
+        const title = String(ch.title || '').replace(/[\\/:*?"<>|]+/g, ' ').trim() || docimport.cleanName(p);
+        const free = (sub, ext) => { let t = title, n = 2; while (fs.existsSync(path.join(destRoot, sub, t + ext))) t = `${title} (${n++})`; return t; };
+        const pics = r => r.pics ? `${r.pics} picture${r.pics === 1 ? '' : 's'} kept` : '';
+        const lost = r => r.skippedPics ? `${r.skippedPics} picture${r.skippedPics === 1 ? '' : 's'} left out (format a browser cannot show)` : '';
+        if (ch.as === 'notes') {
+          const r = await docimport.addNotes(p, userData || { get: () => ({ notes: {} }), set() {} });
+          if (r.error) results.push({ name, from: p, status: 'skipped', kind: 'document', reason: r.error });
+          else results.push({ name, from: p, status: 'imported', kind: 'My Study notes', format: 'notes', title: `${r.count} verse note${r.count === 1 ? '' : 's'}`, studyData: { notes: r.count },
+            note: [r.merged ? `${r.merged} added to notes you already had` : '', r.skipped ? `${r.skipped} paragraph${r.skipped === 1 ? '' : 's'} before the first reference left out` : ''].filter(Boolean).join('; ') });
+        } else if (ch.as === 'bible') {
+          const t = free('USFM', '.usfm');
+          const r = await docimport.buildBible(p, tmp, t);
+          if (r.error) results.push({ name, from: p, status: 'skipped', kind: 'document', reason: r.error });
+          else queue.push({ file: r.file, from: p, note: `${r.books} book${r.books === 1 ? '' : 's'}, ${r.chapters} chapters, ${r.verses} verses read from the document` });
+        } else {
+          const t = free('theWord', '.gbk.twm');
+          const r = await docimport.buildBook(p, tmp, t);
+          queue.push({ file: r.file, from: p, note: [`${r.sections} section${r.sections === 1 ? '' : 's'}${r.headings ? ' (by headings)' : ' (no headings found, so one section)'}`, pics(r), lost(r)].filter(Boolean).join('; ') });
+        }
+      } catch (err) { results.push({ name, from: p, status: 'skipped', kind: 'document', reason: 'could not read the document: ' + err.message }); }
+      continue;
+    }
     queue.push({ file: p, from: p });
   }
   for (const [qi, q] of queue.entries()) {
     await tell('check', qi, queue.length, path.basename(q.file));
     const info = await inspect(q.file, settings);
-    const r = { name: info.name, from: q.from, kind: info.kind, format: info.format, title: info.title, note: info.note };
+    const r = { name: info.name, from: q.from, kind: info.kind, format: info.format, title: info.title, note: [q.note, info.note].filter(Boolean).join('; ') || undefined };
     if (!info.ok) { results.push(Object.assign(r, { status: 'skipped', reason: info.reason })); continue; }
     if (info.studyData && userData) {
       const ud = userData.get();

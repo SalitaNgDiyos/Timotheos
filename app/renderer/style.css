@@ -576,3 +576,8 @@ html.sk .dlmods .dllist { max-height: 44vh; } html.sk .dlmods .dlget, html.sk .d
 @keyframes ipshine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 .impprog .iptxt { margin: 12px 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .impprog .ipsub { margin: 0; opacity: .75; }
+
+/* import a document: what should it become? */
+.docchoice{display:flex;flex-direction:column;gap:10px;margin:10px 0}
+.docchoice label{display:block;cursor:pointer;padding:8px 10px;border:1px solid #8884;border-radius:6px}
+.docchoice label:has(input:checked){border-color:#3b82f6}

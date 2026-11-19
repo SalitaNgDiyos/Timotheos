@@ -87,6 +87,25 @@ async function archivePassword(name, wrong) {
   const pw = (document.querySelector('#modalBody #arcPw') || {}).value || '';
   return v === 'ok' && pw ? pw : null;
 }
+/** what should a document (.txt .rtf .docx .odt) become? → {as, title} or null to skip it. `more` = how many other documents wait (offers "same for all") */
+async function docChoice(name, title, more) {
+  const html = `<p>How should <b>${esc(name)}</b> be imported?</p>
+    <div class="docchoice">
+      <label><input type="radio" name="docAs" value="book" checked> <b>Library book</b><div class="small">Read it in the Library. It is split into sections by its headings; bold, italic, underline, lists, tables and pictures stay.</div></label>
+      <label><input type="radio" name="docAs" value="bible"> <b>Bible text</b><div class="small">For a whole Bible or some books of one: book names, chapters ("Chapter 2") and verse numbers at the start of each verse.</div></label>
+      <label><input type="radio" name="docAs" value="notes"> <b>Notes in My Study</b><div class="small">Paragraphs that start with a verse reference (John 3:16 …) become your notes on that verse.</div></label>
+    </div>
+    <label class="field" id="docTitleRow">Name <input id="docTitle" type="text" value="${esc(title || '')}" spellcheck="false"></label>
+    ${more ? `<label class="small"><input type="checkbox" id="docAll"> Do the same for the other ${more} document${more === 1 ? '' : 's'}</label>` : ''}`;
+  const p = modal('Import a document', html, [{ label: 'Skip this file', value: null }, { label: 'Import', value: 'ok', primary: true }]);
+  const upd = () => { const v = (document.querySelector('#modalBody input[name=docAs]:checked') || {}).value; const row = document.querySelector('#modalBody #docTitleRow'); if (row) row.style.display = v === 'notes' ? 'none' : ''; };
+  document.querySelectorAll('#modalBody input[name=docAs]').forEach(i => i.addEventListener('change', upd));
+  const v = await p;
+  const as = (document.querySelector('#modalBody input[name=docAs]:checked') || {}).value || 'book';
+  const t = ((document.querySelector('#modalBody #docTitle') || {}).value || '').trim();
+  const all = !!(document.querySelector('#modalBody #docAll') || {}).checked;
+  return v === 'ok' ? { as, title: t || title, all } : null;
+}
 async function importModules(paths, quiet) {
   let r;
   impStart(quiet);
@@ -107,6 +126,21 @@ async function importModules(paths, quiet) {
     if (!r2) break;
     const done = new Set(retry);
     r = { results: r.results.filter(x => !(x.status === 'password' && done.has(x.from))).concat(r2.results), list: r2.list };
+  }
+  // documents: ask what each becomes, then import them again with the answers
+  if (!quiet && r.results.some(x => x.status === 'choose' && x.from)) {
+    const waiting = r.results.filter(x => x.status === 'choose' && x.from);
+    const docs = {}; let sameFor = null;
+    for (const [i, x] of waiting.entries()) {
+      if (sameFor) { docs[x.from] = { as: sameFor.as, title: x.title }; continue; }
+      const c = await docChoice(x.name, x.title, waiting.length - i - 1);
+      if (c) { docs[x.from] = { as: c.as, title: c.title }; if (c.all) sameFor = c; }
+    }
+    const go = Object.keys(docs);
+    const skipped = waiting.filter(x => !docs[x.from]).map(x => Object.assign(x, { status: 'skipped', reason: 'you chose to skip it' }));
+    let r2 = { results: [], list: r.list };
+    if (go.length) { impStart(false); try { r2 = await api.importFiles(go, { docs }) || r2; } catch (e) { r2 = { results: [{ name: 'documents', status: 'skipped', reason: e.message }], list: r.list }; } impEnd(); }
+    r = { results: r.results.filter(x => x.status !== 'choose').concat(r2.results), list: r2.list || r.list };
   }
   state.infos.clear();
   if (r.results && r.results.some(x => x.studyData) && window.TimotheosStudy) {

@@ -1,6 +1,8 @@
-Timotheos 0.6.65
-- SWORD commentaries, dictionaries and general books: the CrossWire packages for these now import too (File > Import Modules, or drag them onto the window). Commentaries show in the Commentary panel for the verse you read; dictionaries and lexicons, including Strong's Greek and Hebrew, work in the Library and in the word pop-up; general books show as a book with its sections.
-- Tested against real SWORD modules (KJV with Strong's, Luther, Matthew Henry, Treasury of David, Nave's Topical Bible, Strong's dictionaries) and against modules written by SWORD's own programs in all its numbering systems and compressions.
-- SWORD Bibles: a module whose verse index stops a record or two early, or whose record size differs from its driver name, is now read correctly; Strong's numbers written as savlm are recognised.
-- A SWORD module's .conf shows in its properties (read only).
+Timotheos 0.6.66
+- Import documents: Word (.docx), LibreOffice (.odt), .rtf and plain .txt files can now be imported with the same Import button (File > Import Modules, or drag them onto the window; on the phone Modules > Import modules).
+- Timotheos asks each time what the document should become: a Library book, a Bible text, or notes in My Study. "Do the same for the other documents" helps when you import many at once.
+- Library book: split into sections by the document's headings (Heading 1, 2 … in Word and LibreOffice; title-like lines in .txt and .rtf; no headings = one section). Bold, italic, underline, paragraphs, lists, tables and pictures are kept.
+- Bible text: book names, chapters and verse numbers are read from the document (several verses in one paragraph work when the numbers count up). If no verses are found, nothing is added and you are told why.
+- Notes in My Study: each paragraph that starts with a verse reference (John 3:16 …) becomes a note on that verse; importing the same file twice adds nothing.
+- Limits: Word footnotes, headers, text boxes and tracked changes are not imported; tables in .rtf arrive as tab-spaced lines; .emf/.wmf pictures are left out and counted in the result window. Tested on Linux with files made by LibreOffice, pandoc and python-docx, not with Microsoft Word itself.
 - User Guide updated.

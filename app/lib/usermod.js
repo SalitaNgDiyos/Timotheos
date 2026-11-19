@@ -288,4 +288,28 @@ async function exportNotebookToDictionary(notesObj, destFile, opts = {}) {
   return { file: destFile, count: groups.length, subs: groups.reduce((n, g) => n + g.subs.length, 0), notes: groups.reduce((n, g) => n + g.items.length, 0), title, abbr };
 }
 
-module.exports = { exportNotebookToDictionary, createModule, saveCommentaryEntry, saveTopic, renameTopic, moveTopic, deleteTopic, exportNotesToCommentary };
+/**
+ * A new editable Library book (.gbk.twm) whose topics come from sections [{title, parent (index or -1), html}],
+ * all written in one go. The text is stored as HTML, so tables, pictures and headings stay as they were.
+ */
+async function createBookFromSections(opts, destDir, sections) {
+  const made = await createModule(Object.assign({}, opts, { kind: 'book' }), destDir);
+  const file = made.file;
+  await withDb(file, db => {
+    db.run('DELETE FROM topics'); db.run('DELETE FROM content');
+    const ids = []; const order = {};
+    const ti = db.prepare('INSERT INTO topics(id, pid, subject, rel_order, content_type) VALUES (?, ?, ?, ?, ?)');
+    const ci = db.prepare('INSERT INTO content(topic_id, data) VALUES (?, ?)');
+    sections.forEach((s, i) => {
+      const id = i + 1; ids.push(id);
+      const pid = s.parent >= 0 ? ids[s.parent] : 0;
+      order[pid] = (order[pid] || 0) + 10;
+      ti.run([id, pid, String(s.title || 'Untitled').trim() || 'Untitled', order[pid], 'html']);
+      ci.run([id, s.html || '<p></p>']);
+    });
+    ti.free(); ci.free();
+  });
+  return file;
+}
+
+module.exports = { exportNotebookToDictionary, createModule, createBookFromSections, saveCommentaryEntry, saveTopic, renameTopic, moveTopic, deleteTopic, exportNotesToCommentary };

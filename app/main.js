@@ -350,10 +350,11 @@ app.whenReady().then(async () => {
   handle('modules:removeFolder', p => { settings.moduleFolders = settings.moduleFolders.filter(x => x !== p); saveSettings(); return rescanAll(); });
   handle('modules:importDialog', async () => {
     const r = await dialog.showOpenDialog(win, {
-      title: 'Import theWord or e-Sword modules', properties: ['openFile', 'multiSelections'],
+      title: 'Import modules or documents', properties: ['openFile', 'multiSelections'],
       // one line per kind of module, so the drop-down of the dialog is a vertical list
       filters: [
-        { name: 'All supported modules', extensions: ['ont', 'ot', 'nt', 'twm', 'twzip', 'zip', '7z', 'rar', 'tar', 'tgz', 'gz', 'bz2', 'xz', 'zst', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml', 'mybible'] },
+        { name: 'All supported modules and documents', extensions: ['txt', 'text', 'rtf', 'docx', 'odt', 'ont', 'ot', 'nt', 'twm', 'twzip', 'zip', '7z', 'rar', 'tar', 'tgz', 'gz', 'bz2', 'xz', 'zst', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml', 'mybible'] },
+        { name: 'Documents to turn into a book, Bible or notes (.txt .rtf .docx .odt)', extensions: ['txt', 'text', 'rtf', 'docx', 'odt'] },
         { name: 'MySword modules', extensions: ['mybible'] },
         { name: 'theWord Bibles', extensions: ['ont', 'ot', 'nt'] },
         { name: 'theWord books, commentaries, dictionaries', extensions: ['twm'] },
