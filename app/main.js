@@ -353,7 +353,7 @@ app.whenReady().then(async () => {
       title: 'Import modules or documents', properties: ['openFile', 'multiSelections'],
       // one line per kind of module, so the drop-down of the dialog is a vertical list
       filters: [
-        { name: 'All supported modules and documents', extensions: ['txt', 'text', 'rtf', 'docx', 'odt', 'ont', 'ot', 'nt', 'twm', 'twzip', 'zip', '7z', 'rar', 'tar', 'tgz', 'gz', 'bz2', 'xz', 'zst', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml', 'mybible'] },
+        { name: 'All supported modules and documents', extensions: ['txt', 'text', 'rtf', 'docx', 'odt', 'ont', 'ot', 'nt', 'twm', 'twzip', 'zip', '7z', 'rar', 'tar', 'tgz', 'gz', 'bz2', 'xz', 'zst', 'bblx', 'bbli', 'cmtx', 'cmti', 'dctx', 'dcti', 'topx', 'topi', 'refx', 'refi', 'devx', 'devi', 'lexx', 'lexi', 'mapx', 'mapi', 'harx', 'hari', 'notx', 'jnlx', 'usfm', 'sfm', 'ptx', 'usfx', 'xml', 'mybible', 'order'] },
         { name: 'Documents to turn into a book, Bible or notes (.txt .rtf .docx .odt)', extensions: ['txt', 'text', 'rtf', 'docx', 'odt'] },
         { name: 'MySword modules', extensions: ['mybible'] },
         { name: 'theWord Bibles', extensions: ['ont', 'ot', 'nt'] },

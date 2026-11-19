@@ -202,7 +202,12 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
           let base = path.basename(e.name);
           if (/\.xml$/i.test(base) && !/\.usfx$/i.test(base)) base = archBase(name).replace(/[_-]?usfx$/i, '') + '.usfx';
           const out = path.join(tmp, base);
-          try { fs.writeFileSync(out, e.data); queue.push({ file: out, from: `${name} › ${e.name}` }); }
+          try {
+            fs.writeFileSync(out, e.data);
+            const oe = allEnts.find(x => path.basename(x.name) === base + '.order');   // the arrangement made in iBiblia
+            if (oe) fs.writeFileSync(out + '.order', oe.data);
+            queue.push({ file: out, from: `${name} › ${e.name}` });
+          }
           catch (err) { results.push({ name: path.basename(e.name), from: name, status: 'skipped', reason: 'could not unpack: ' + err.message }); }
         }
       } catch (err) {
@@ -238,6 +243,15 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
           queue.push({ file: r.file, from: p, note: [`${r.sections} section${r.sections === 1 ? '' : 's'}${r.headings ? ' (by headings)' : ' (no headings found, so one section)'}`, pics(r), lost(r)].filter(Boolean).join('; ') });
         }
       } catch (err) { results.push({ name, from: p, status: 'skipped', kind: 'document', reason: 'could not read the document: ' + err.message }); }
+      continue;
+    }
+    if (/\.order$/i.test(name)) {
+      // an arrangement made in iBiblia: it belongs next to its module
+      const modName = name.replace(/\.order$/i, '');
+      if (paths.some(q => path.basename(q) === modName)) continue;   // chosen together with its module: it goes along with that
+      const home = ['theWord', 'e-Sword', 'MySword', 'USFM', 'USFX'].map(f => path.join(destRoot, f, modName)).find(f => fs.existsSync(f) || fs.existsSync(f + '.timotheos-link'));
+      if (!home) results.push({ name, from: p, status: 'skipped', kind: 'arrangement', reason: `import ${modName} first (or together with this file): the arrangement belongs to that module` });
+      else { try { fs.copyFileSync(p, home + '.order'); results.push({ name, from: p, status: 'imported', kind: 'arrangement of books, chapters and verses', title: modName, dest: home + '.order' }); } catch (err) { results.push({ name, from: p, status: 'skipped', kind: 'arrangement', reason: err.message }); } }
       continue;
     }
     queue.push({ file: p, from: p });
@@ -291,6 +305,12 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
         await fs.promises.copyFile(q.file, dest);
       }
     }
+    // the arrangement made in iBiblia travels with the module (and a stale one is removed when the module is replaced by one without)
+    try {
+      const src = q.file + '.order', dst = dest + '.order';
+      if (fs.existsSync(src)) { if (path.resolve(src) !== path.resolve(dst) && !(fs.existsSync(dst) && fs.readFileSync(src).equals(fs.readFileSync(dst)))) { fs.copyFileSync(src, dst); r.note = [r.note, 'arrangement of books, chapters and verses kept'].filter(Boolean).join('; '); } }
+      else if (status === 'updated' && fs.existsSync(dst)) fs.unlinkSync(dst);
+    } catch (e) { /* the module itself is imported; the arrangement is an extra */ }
     results.push(Object.assign(r, { status, dest, studyData: info.studyData }));
   }
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* temp */ }

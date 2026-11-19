@@ -21,6 +21,7 @@ const usfm = require('./usfm');
 const sword = require('./sword');
 const bookmod = require('./bookmod');
 const canon = require('./canon');
+const arrange = require('./arrange');
 const search = require('./search');
 const { linkHtml } = require('./refs');
 const { Overlays } = require('./overlays');
@@ -220,6 +221,8 @@ class Library {
       : e.ext === '.bbl.mybible' ? await mysword.load(e.file, this.settings.eswordBookMap || {})
       : e.ext === '.gbk.twm' ? await twbook.load(e.file) : e.ext === '.sword' ? await sword.load(e.file) : e.ext === '.usfm' ? usfm.loadUsfm(e.file) : e.ext === '.usfx' ? usfm.loadUsfx(e.file) : theword.load(e.file);
     m.id = id;
+    const arr = arrange.load(e.file);   // the books, chapters and verses as arranged in iBiblia (<module>.order)
+    if (arr) m.arr = arr;
     this.bibles.set(id, m);
     return m;
   }
@@ -229,7 +232,7 @@ class Library {
     const m = await this.bible(id);
     if (o.transient && !had && !this._openIds().has(id)) setTimeout(() => { if (!this._openIds().has(id)) this._release(id); }, 0); // only its name and features were wanted
     return {
-      id, abbr: m.abbr, title: m.title, format: m.format, rtl: m.rtl, books: m.books,
+      id, abbr: m.abbr, title: m.title, format: m.format, rtl: m.rtl, books: m.books, arranged: !!m.arr,
       rules: (m.props && m.props._rules) || [], tagRules: (m.props && m.props._tagRules) || [],
       warnings: m.warnings || [], hasStrongs: m.hasStrongs,
       strongsDct: m.strongsDct || null, morphDct: m.morphDct || null, lemmaDct: m.lemmaDct || null,
@@ -242,6 +245,9 @@ class Library {
   async chapter(ids, b, c) {
     const mods = [];
     for (const id of ids) { try { mods.push(await this.bible(id)); } catch (e) { mods.push(null); } }
+    const prim = mods.find(m => m && m.arr);
+    const arranged = prim ? prim.arr.chapter(+b, +c) : null;
+    if (arranged) return this._arrangedChapter(mods, +b, +c, arranged);
     let max = 0;
     for (const m of mods) if (m && m.books[b] && m.books[b][c - 1]) max = Math.max(max, m.books[b][c - 1]);
     const rows = [];
@@ -256,13 +262,53 @@ class Library {
     return { b, c, book: canon.book(+b, this.settings.apocryphaPlacement), rows };
   }
 
+  /** a chapter as arranged in iBiblia: its verses in the order wanted, each fetched by its own reference (a verse may come from another chapter) */
+  _arrangedChapter(mods, b, c, ent) {
+    const rows = [];
+    const getV = (m, rb, rc, rv) => {
+      if (!m) return null;
+      const raw = m.getVerse(rb, rc, rv);
+      return raw != null ? this.overlays.applyVerse(rb, rc, rv, raw) : null;
+    };
+    if (ent.b === b && ent.c === c) {   // the chapter's own heading line, when the module has one
+      const zero = mods.map(m => getV(m, b, c, 0));
+      if (zero.some(x => x)) rows.push({ v: 0, cells: zero, ref: [b, c, 0] });
+    }
+    for (const [rb, rc, rv] of ent.verses) rows.push({ v: rv, cells: mods.map(m => getV(m, rb, rc, rv)), ref: [rb, rc, rv] });
+    return { b, c, book: canon.book(+b, this.settings.apocryphaPlacement), rows, arranged: true };
+  }
+
+  /** books and chapters in the order of the first arranged Bible among the loaded ones */
+  _arrangeNav(list, prim, loaded) {
+    const byId = new Map(list.map(k => [k.id, k]));
+    const out = [];
+    for (const bk of prim.arr.books) {
+      const k = byId.get(bk.b); if (!k) continue;
+      const numbers = [], has = {};
+      for (const ent of bk.chapters) {
+        let any = false;
+        for (const [id, m] of loaded) {
+          if (m.books && m.books[ent.b] && m.books[ent.b][ent.c - 1] > 0) { (has[id] = has[id] || []).push(ent.cn); any = true; }
+        }
+        if (any) numbers.push(ent.cn);
+      }
+      if (!numbers.length) continue;
+      out.push({ ...k, chapters: Math.max(...numbers), chapterList: numbers, has });
+      byId.delete(bk.b);
+    }
+    for (const k of list) if (byId.has(k.id)) out.push(k);   // books the arrangement does not mention keep their usual place after
+    return out;
+  }
+
   /** union of books/chapters across the given modules (for navigation) */
   async navigation(ids) {
     const books = {}; let tl = null;   // the book names follow the first Bible: a Tagalog Bible shows Tagalog book names
     const has = {};                    // book -> { Bible id -> its chapters }
     const tlIds = [];                  // every Tagalog Bible among them, so each pane can show its own Bible's names
+    const loaded = [];
     for (const id of ids) {
       let m; try { m = await this.bible(id); } catch (e) { continue; }
+      loaded.push([id, m]);
       const isTl = canon.isTagalogBible(m); if (isTl) tlIds.push(id);
       if (tl === null) tl = isTl;
       for (const b in m.books) {
@@ -273,10 +319,12 @@ class Library {
       }
     }
     const mode = this.settings.apocryphaPlacement;
-    return Object.keys(books).map(Number).filter(b => books[b].size).sort((a, b) => canon.orderKey(a, mode) - canon.orderKey(b, mode))
+    const nav = Object.keys(books).map(Number).filter(b => books[b].size).sort((a, b) => canon.orderKey(a, mode) - canon.orderKey(b, mode))
       .map(b => { const list = [...books[b]].sort((x, y) => x - y); const en = canon.book(b, mode), t = canon.tagalogBook(en);
         return { ...(tl ? t : en), chapters: list[list.length - 1], chapterList: list, has: has[b] || {},
           en: { name: en.name, abbr: en.abbr, abbrs: en.abbrs }, tl: { name: t.name, abbr: t.abbr, abbrs: t.abbrs }, tlIds }; });
+    const prim = loaded.find(([, m]) => m.arr);
+    return prim ? this._arrangeNav(nav, prim[1], loaded) : nav;
   }
 
   /* ---------------- book modules ---------------- */

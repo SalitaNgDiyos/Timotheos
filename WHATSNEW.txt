@@ -1,8 +1,7 @@
-Timotheos 0.6.66
-- Import documents: Word (.docx), LibreOffice (.odt), .rtf and plain .txt files can now be imported with the same Import button (File > Import Modules, or drag them onto the window; on the phone Modules > Import modules).
-- Timotheos asks each time what the document should become: a Library book, a Bible text, or notes in My Study. "Do the same for the other documents" helps when you import many at once.
-- Library book: split into sections by the document's headings (Heading 1, 2 … in Word and LibreOffice; title-like lines in .txt and .rtf; no headings = one section). Bold, italic, underline, paragraphs, lists, tables and pictures are kept.
-- Bible text: book names, chapters and verse numbers are read from the document (several verses in one paragraph work when the numbers count up). If no verses are found, nothing is added and you are told why.
-- Notes in My Study: each paragraph that starts with a verse reference (John 3:16 …) becomes a note on that verse; importing the same file twice adds nothing.
-- Limits: Word footnotes, headers, text boxes and tracked changes are not imported; tables in .rtf arrive as tab-spaced lines; .emf/.wmf pictures are left out and counted in the result window. Tested on Linux with files made by LibreOffice, pandoc and python-docx, not with Microsoft Word itself.
+Timotheos 0.6.67
+- Your own order of Bible books, chapters and verses: a Bible module that comes with an .order file (made by iBiblia 1.1.0.053 or later, using its new drag-to-rearrange Bible tree) now shows in Timotheos exactly as arranged in iBiblia, in the Bible view, the book list and the previous/next chapter buttons.
+- Import the .order file together with the module (File > Import Modules, drag and drop, or on the phone Modules > Import modules), or alone to add an arrangement to a module you already have. Importing the module again without the file removes the old arrangement.
+- Only the order changes; verse numbers stay as they are. A chapter moved into another book gets the next free chapter number there. Searches and links still go by the original reference, so they may not land on a moved verse.
+- Programs that do not know the .order file (theWord, e-Sword) show the normal order.
+- Tested on Linux with unit tests; the Timotheos screens were not checked by eye with a rearranged Bible.
 - User Guide updated.
