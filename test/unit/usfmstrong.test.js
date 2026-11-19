@@ -27,5 +27,11 @@ T(/H430/.test(s), 'leading zeros dropped: ' + s);
 // the state of one file does not leak into the next
 s = strongsOf(book('\\w x|strong="G35880"\\w*'));
 T(/G3588/.test(s) && !/G35880/.test(s), 'next file read on its own: ' + s);
+// ordinary 4-digit tags beside extended ones that all happen to end in 0: not unfoldingWord, so G13970 stays whole
+s = strongsOf(book('\\w a|strong="G1722"\\w* \\w x|strong="G13970"\\w* \\w y|strong="G14030"\\w*'));
+T(/G13970/.test(s) && /G14030/.test(s) && /G1722/.test(s), 'extended numbers beside normal ones kept: ' + s);
+// unfoldingWord pads every Greek number to 5 digits, so a mix with only 5-digit tags is still unpadded
+s = strongsOf(book('\\w a|strong="G17220"\\w* \\w x|strong="G13970"\\w*'));
+T(/G1722\b/.test(s) && !/G17220/.test(s), 'all-5-digit file still unpadded: ' + s);
 console.log(bad ? 'FAILED ' + bad : 'ok ' + ok);
 process.exit(bad ? 1 : 0);

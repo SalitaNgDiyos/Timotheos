@@ -36,9 +36,13 @@ function decodeXmlEnt(s) {
 // is, and a module with its own numbers (e.g. G13970) must not lose its last digit. The padding is only assumed when
 // every 5-digit Greek/Hebrew number in the file ends in 0 (set by padDetect before each file is read).
 let padStrongs = true;
+const padLetter = { G: true, H: true };
 function padDetect(textOrTexts) {
   const all = Array.isArray(textOrTexts) ? textOrTexts : [textOrTexts];
   let seen = 0;
+  padLetter.G = padLetter.H = true;
+  // unfoldingWord writes EVERY Greek (and padded Hebrew) number with 5 digits; a number with fewer digits in a strong="…" attribute shows the file is not padded
+  for (const t of all) for (const a of String(t || '').matchAll(/(?:strong|\bs)="([^"]*)"/g)) for (const tok of a[1].split(/[\s,;]+/)) { const m = /^(?:[a-z]:)?([GHgh])0*(\d+)[a-z]?$/.exec(tok); if (m && m[2].length < 5 && tok.replace(/^[a-z]:/, '').replace(/^[GHgh]/, '').length < 5) padLetter[m[1].toUpperCase()] = false; }
   // iBiblia writes the numbers as they are tagged and says so in each book
   if (all.some(t => /\\rem[^\n]*iBiblia: Strong/.test(String(t || '')))) { padStrongs = false; return; }
   for (const t of all) {
@@ -61,7 +65,7 @@ function normStrong(raw) {
     let num = parseInt(m[2], 10);
     const suf = m[3] || '';
     // unfoldingWord USFM 3.0 appends a 5th disambiguation digit (usually 0) when raw digits === 5
-    if (padStrongs && m[2].length === 5 && ((L === 'G' && num > 5624) || (L === 'H' && num > 8674)) && num % 10 === 0) {
+    if (padStrongs && padLetter[L] && m[2].length === 5 && ((L === 'G' && num > 5624) || (L === 'H' && num > 8674)) && num % 10 === 0) {
       num = Math.floor(num / 10);
     }
     if (num > 0) out.push(L + num + suf);
