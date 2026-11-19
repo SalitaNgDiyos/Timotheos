@@ -804,6 +804,12 @@ function markGlosses(root) {
       const host = n.parentElement;
       n.replaceWith(frag);
       // e-Sword 10 writes a gloss as a raised, coloured run (<span style="vertical-align:super">): the gloss replaces that wrapper
+      // e-Sword 10 Bibles: "word{G}{morph}gloss nextword{G}{morph}": the word tagger takes the gloss into the NEXT word's span. Lift it out, in front of that word.
+      for (const g of made) {
+        const wd = g.closest('.word'); if (!wd || wd === g) continue;
+        wd.parentNode.insertBefore(g, wd); g.after(document.createTextNode(' '));
+        const f = document.createTreeWalker(wd, NodeFilter.SHOW_TEXT).nextNode(); if (f) f.nodeValue = f.nodeValue.replace(/^\s+/, '');
+      }
       for (const g of made) { const w = g.parentElement; if (w && w !== el && /^(SPAN|FONT)$/.test(w.tagName) && !w.classList.contains('word') && w.children.length === 1 && w.textContent === g.textContent) w.replaceWith(g); }
     }
   }
