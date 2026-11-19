@@ -1,5 +1,4 @@
-Timotheos 0.6.69
-- Interlinear Bibles (Greek or Hebrew text with the English after each word, e-Sword, MySword, USFM, theWord): the English gloss is now small, raised (superscript) and in its own colour, like in theWord's interlinears. Timotheos recognises the gloss by itself: Latin letters inside a mostly Greek/Hebrew verse.
-- Intralinear View (Alt+I): the gloss is a new line, "English gloss", in each word's column, level with the original word, Strong's numbers and morphology. Words that belong to a phrase get an empty gloss line so everything stays aligned. It can be switched off in the view menu under "Intralinear lines".
-- Tested with a test interlinear on Linux; not yet with the LXX Brenton+ / Argon LXXBre files themselves.
+Timotheos 0.6.70
+- e-Sword interlinear Bibles in Intralinear View (Alt+I): the English gloss now sits in each word's column, level with the Strong's numbers and morphology, instead of floating as a raised word between the columns. (e-Sword writes these glosses as raised, coloured runs; Timotheos now recognises them.)
+- Tested with test markup that imitates this; not yet with the LXX Brenton+ module itself.
 - User Guide updated.

@@ -1,0 +1,4 @@
+Timotheos 0.6.70
+- e-Sword interlinear Bibles in Intralinear View (Alt+I): the English gloss now sits in each word's column, level with the Strong's numbers and morphology, instead of floating as a raised word between the columns. (e-Sword writes these glosses as raised, coloured runs; Timotheos now recognises them.)
+- Tested with test markup that imitates this; not yet with the LXX Brenton+ module itself.
+- User Guide updated.

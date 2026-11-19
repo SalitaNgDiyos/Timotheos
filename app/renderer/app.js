@@ -800,7 +800,11 @@ function markGlosses(root) {
         last = m.index + txt.length;
       }
       frag.appendChild(document.createTextNode(t.slice(last)));
+      const made = [...frag.querySelectorAll('sup.gloss')];
+      const host = n.parentElement;
       n.replaceWith(frag);
+      // e-Sword 10 writes a gloss as a raised, coloured run (<span style="vertical-align:super">): the gloss replaces that wrapper
+      for (const g of made) { const w = g.parentElement; if (w && w !== el && /^(SPAN|FONT)$/.test(w.tagName) && !w.classList.contains('word') && w.children.length === 1 && w.textContent === g.textContent) w.replaceWith(g); }
     }
   }
 }

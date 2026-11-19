@@ -19,5 +19,14 @@ try {
   const tops = cw.slice(0, 4).map(c => c.querySelector('.cl-gloss').getBoundingClientRect().top - c.getBoundingClientRect().top);
   ok(tops.every(t => Math.abs(t - tops[0]) < 1), 'gloss lines level with each other: ' + tops.map(x => x | 0));
   ok(cw.filter(c => c.querySelector('.cl-gloss').textContent === '').length >= 2, 'group members (ὁ) get an empty gloss line');
+  // e-Sword 10 style: each gloss wrapped in a raised, coloured span after the word and its Strong's/morph marks
+  const d = document.createElement('div'); d.className = 'bvtext colmode'; document.body.appendChild(d);
+  const W = (t, g, m, gl) => `<span class="word" data-strong="${g}" data-morph="${m}">${t}</span><sup class="strong" data-strong="${g}">${g}</sup><sup class="morph" data-morph="${m}">${m}</sup>` + (gl ? `<span style="vertical-align:super;font-size:75%;color:#0000ff">${gl}</span>` : '') + ' ';
+  d.innerHTML = `<span class="pv" data-v="1">` + W('ἐν', 'G1722', 'PREP', 'In') + W('ἀρχῇ', 'G746', 'N-DSF', 'the beginning') + W('ἐποίησεν', 'G4160', 'V-AAI-3S', 'made') + W('ὁ', 'G3588', 'T-NSM', '') + `</span>`;
+  markGlosses(d); columnWords(0, d); await sl(300);
+  const cc = [...d.querySelectorAll('.cw')];
+  ok(cc.length === 4 && cc.map(c => c.querySelector('.cl-gloss').textContent).join('|') === 'In|the beginning|made|', 'e-Sword 10 raised-span glosses join their columns: ' + cc.map(c => c.querySelector('.cl-gloss').textContent).join('|'));
+  ok(!d.querySelector('span[style*="vertical-align:super"]'), 'no leftover raised wrapper');
+  d.remove();
 } catch (e) { out.push('✗ script error ' + e.message); }
 console.log('RESULT ' + out.join(' | ')); })();
