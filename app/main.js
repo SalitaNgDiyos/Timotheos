@@ -109,29 +109,27 @@ async function rescanAll() {
   return l;
 }
 
-/** archives left in a modules folder are unpacked at start (the archive itself stays where it is); each one once, until it changes */
+/** archives left in a modules folder (or any of its subfolders) are unpacked at start and on rescan; each one once, until it changes */
+let scanningArchives = false;
 async function scanArchiveFolders() {
-  const archive = require('./lib/archive');
-  const seen = Object.assign({}, settings.archiveSeen || {});
-  const todo = [];
-  for (const dir of [...new Set([...(settings.moduleFolders || []), MODULES_DIR()])]) {
-    let names = []; try { names = fs.readdirSync(dir); } catch (e) { continue; }
-    for (const n of names) {
-      if (!archive.isArchiveName(n)) continue;
-      const f = path.join(dir, n); let st; try { st = fs.statSync(f); } catch (e) { continue; }
-      if (!st.isFile()) continue;
-      const sig = st.size + ':' + Math.round(st.mtimeMs);
-      if (seen[f] !== sig) todo.push({ f, sig });
-    }
+  if (scanningArchives) return;
+  scanningArchives = true;
+  try {
+    const seen = Object.assign({}, settings.archiveSeen || {});
+    const folders = [...new Set([...(settings.moduleFolders || []), MODULES_DIR()])];
+    const found = Library.findArchives(folders);
+    const todo = found.filter(t => seen[t.f] !== t.sig);
+    if (!todo.length) return;
+    const results = await importFiles(todo.map(t => t.f), MODULES_DIR(), settings, userData, null, {});
+    for (const t of todo) seen[t.f] = t.sig;
+    settings.archiveSeen = seen; saveSettings();
+    const list = await rescanAll();
+    const added = results.filter(r => r.status === 'imported' || r.status === 'updated').length;
+    const protectedN = results.filter(r => r.status === 'password').length;
+    try { if (win && !win.isDestroyed?.()) win.webContents.send('import:auto', { list, added, archives: todo.length, protectedN, results }); } catch (e) { /* no window */ }
+  } finally {
+    scanningArchives = false;
   }
-  if (!todo.length) return;
-  const results = await importFiles(todo.map(t => t.f), MODULES_DIR(), settings, userData, null, {});
-  for (const t of todo) seen[t.f] = t.sig;
-  settings.archiveSeen = seen; saveSettings();
-  const list = await rescanAll();
-  const added = results.filter(r => r.status === 'imported' || r.status === 'updated').length;
-  const protectedN = results.filter(r => r.status === 'password').length;
-  try { if (win && !win.isDestroyed?.()) win.webContents.send('import:auto', { list, added, archives: todo.length, protectedN, results }); } catch (e) { /* no window */ }
 }
 
 /** the text of a study backup: the .json file itself, or the .json inside a compressed file or archive */
@@ -339,13 +337,19 @@ app.whenReady().then(async () => {
   handle('fx:list', () => require('./lib/fxthemes').list(FXDIR()));
   handle('fx:remove', id => { fs.rmSync(path.join(FXDIR(), String(id).replace(/[^A-Za-z0-9._@-]+/g, '_')), { recursive: true, force: true }); return require('./lib/fxthemes').list(FXDIR()); });
   handle('modules:list', () => lib.list());
-  handle('modules:rescan', () => rescanAll());
+  handle('modules:rescan', async () => {
+    const l = await rescanAll();
+    setTimeout(() => { scanArchiveFolders().catch(() => {}); }, 50);
+    return l;
+  });
   handle('modules:addFolder', async () => {
     const r = await dialog.showOpenDialog(win, { title: 'Choose a folder with theWord or e-Sword modules', properties: ['openDirectory'] });
     if (r.canceled || !r.filePaths[0]) return null;
     if (!settings.moduleFolders.includes(r.filePaths[0])) settings.moduleFolders.push(r.filePaths[0]);
     saveSettings();
-    return rescanAll();
+    const l = await rescanAll();
+    setTimeout(() => { scanArchiveFolders().catch(() => {}); }, 50);
+    return l;
   });
   handle('modules:removeFolder', p => { settings.moduleFolders = settings.moduleFolders.filter(x => x !== p); saveSettings(); return rescanAll(); });
   handle('modules:importDialog', async () => {

@@ -145,6 +145,10 @@ fn handle(dbs: &Dbs, req: http::Request<Vec<u8>>) -> Resp {
             Ok(m) => json_ok(json!({ "e": true, "d": m.is_dir(), "s": m.len(), "m": mtime_ms(&m) })),
             Err(_) => json_ok(json!({ "e": false })),
         },
+        "real" => match fs::canonicalize(&p) {
+            Ok(r) => json_ok(json!(r.to_string_lossy().replace('\\', "/"))),
+            Err(_) => json_ok(json!(p.to_string_lossy().replace('\\', "/"))),
+        },
         "read" => {
             let off: u64 = q(&pairs, "o").parse().unwrap_or(0);
             let len: Option<u64> = q(&pairs, "n").parse().ok();

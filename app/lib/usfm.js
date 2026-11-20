@@ -736,12 +736,35 @@ function makeBibleMod(idPrefix, formatLabel, kindLabel, file, parsed) {
   };
 }
 
+function isPerBookUsfmDir(dir, fileNames) {
+  if (!Array.isArray(fileNames) || fileNames.length < 2) return false;
+  const seenBooks = new Set();
+  for (const f of fileNames) {
+    let txt;
+    try {
+      const p = path.join(dir, f);
+      if (!fs.statSync(p).isFile()) return false;
+      txt = fs.readFileSync(p, 'utf8');
+    } catch (e) { return false; }
+    if (/^#\s*timotheos\.title\s*=/m.test(txt)) return false;
+    const ids = [...txt.matchAll(/^\\id\s+([1-4]?[A-Za-z]{2,4})\b/gm)].map(m => m[1]);
+    if (ids.length !== 1) return false;
+    const b = canon.bookFromUbsCode(ids[0]) || ids[0].toUpperCase();
+    if (seenBooks.has(b)) return false;
+    seenBooks.add(b);
+  }
+  return seenBooks.size >= 2;
+}
+
 function loadUsfm(fileOrDir) {
   const st = fs.statSync(fileOrDir);
   const texts = [];
   if (st.isDirectory()) {
     const files = fs.readdirSync(fileOrDir)
-      .filter(f => USFM_EXT.test(f))
+      .filter(f => {
+        if (!USFM_EXT.test(f)) return false;
+        try { return fs.statSync(path.join(fileOrDir, f)).isFile(); } catch (e) { return false; }
+      })
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     for (const f of files) texts.push(fs.readFileSync(path.join(fileOrDir, f), 'utf8'));
   } else if (/\.zip$/i.test(fileOrDir)) {
@@ -798,6 +821,7 @@ module.exports = {
   USFX_EXT,
   isUsfmFile,
   isUsfxFile,
+  isPerBookUsfmDir,
   probeXml,
   loadUsfm,
   loadUsfx,

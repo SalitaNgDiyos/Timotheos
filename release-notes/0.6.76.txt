@@ -1,0 +1,5 @@
+Timotheos 0.6.76
+- Module folders now search sub-folders at any depth (including linked sub-folders), while still skipping sub-folders whose name starts with "-" or "." (theWord's convention for disabled folders).
+- Archives placed inside sub-folders of a modules folder are now found and unpacked automatically at start and when you add a folder or click Rescan.
+- When a sub-folder holds two or more standalone single-file USFM Bibles, each one is now listed as a separate Bible (instead of merging the folder into one Bible), and any deeper sub-folders or other modules inside a USFM sub-folder are still searched.
+- User Guide updated (computer and phone).

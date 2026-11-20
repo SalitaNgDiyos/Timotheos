@@ -40,6 +40,7 @@ function readdirSync(p, o) {
   return l.map(x => x[0]);
 }
 function accessSync(p) { stat(p); }
+function realpathSync(p) { return N.json('real', { p: norm(p) }, `realpath '${p}'`); }
 function mkdtempSync(prefix) { const d = prefix + Math.random().toString(36).slice(2, 8); mkdirSync(d, { recursive: true }); return d; }
 const fds = new Map(); let nextFd = 100;
 function openSync(p) { stat(p); const fd = nextFd++; fds.set(fd, { path: norm(p) }); return fd; }
@@ -51,4 +52,4 @@ function readSync(fd, buf, off, len, pos) {
 function closeSync(fd) { fds.delete(fd); }
 const promises = { copyFile: async (a, b) => copyFileSync(a, b) };
 function watch() { return { close() {} }; }
-module.exports = { existsSync, statSync: stat, readFileSync, writeFileSync, mkdirSync, unlinkSync, rmSync, renameSync, copyFileSync, cpSync, readdirSync, accessSync, mkdtempSync, openSync, readSync, closeSync, promises, watch, constants: { W_OK: 2, R_OK: 4, F_OK: 0 } };
+module.exports = { existsSync, statSync: stat, readFileSync, writeFileSync, mkdirSync, unlinkSync, rmSync, renameSync, copyFileSync, cpSync, readdirSync, accessSync, realpathSync, mkdtempSync, openSync, readSync, closeSync, promises, watch, constants: { W_OK: 2, R_OK: 4, F_OK: 0 } };

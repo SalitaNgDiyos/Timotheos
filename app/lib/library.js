@@ -31,6 +31,20 @@ const ENCRYPTED_EXT = /\.(ontx|otx|ntx)$/i;
 const BOOK_EXT = /\.(twm|cmtx|cmti|dctx|dcti|topx|topi|refx|refi|devx|devi|lexx|lexi|mapx|mapi|harx|hari|notx|jnlx|(cmt|dct|bok|book|jor)\.mybible)$/i;
 const OVERLAY_TWM = /\.(hdgs|prgs)\.twm$/i;
 const SKIP_TWM = /\.(lyts|vsls|bhls|rdp|layouts?)\.twm$/i;
+const MAX_SUBFOLDER_DEPTH = 64;
+
+function isDirEntry(dir, it) {
+  if (it.isDirectory()) return true;
+  if (it.isSymbolicLink && it.isSymbolicLink()) {
+    try { return fs.statSync(path.join(dir, it.name)).isDirectory(); } catch (e) { return false; }
+  }
+  return false;
+}
+
+function realDirKey(dir) {
+  try { return typeof fs.realpathSync === 'function' ? fs.realpathSync(dir) : path.resolve(dir); }
+  catch (e) { return path.resolve(dir); }
+}
 
 class Library {
   constructor(settings, opts = {}) {
@@ -75,27 +89,71 @@ class Library {
 
   folders() { return [...this.extraFolders, ...(this.settings.moduleFolders || [])]; }
 
+  /** Find all archive files across module folders and all their subfolders (skipping "-" and "." subfolders). */
+  findArchives(extraDirs = []) {
+    return Library.findArchives([...new Set([...this.folders(), ...extraDirs])]);
+  }
+
+  static findArchives(folders = []) {
+    const archive = require('./archive');
+    const out = [];
+    const seenFiles = new Set();
+    const visitedDirs = new Set();
+    const walk = (dir, depth) => {
+      if (!dir || depth > MAX_SUBFOLDER_DEPTH) return;
+      const rkey = realDirKey(dir);
+      if (visitedDirs.has(rkey)) return;
+      visitedDirs.add(rkey);
+      let items; try { items = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
+      for (const it of items) {
+        const p = path.join(dir, it.name);
+        if (isDirEntry(dir, it)) {
+          if (depth < MAX_SUBFOLDER_DEPTH && !/^[-.]/.test(it.name)) walk(p, depth + 1);
+          continue;
+        }
+        if (!archive.isArchiveName(it.name)) continue;
+        let st; try { st = fs.statSync(p); } catch (e) { continue; }
+        if (!st.isFile()) continue;
+        const fp = realDirKey(p);
+        if (seenFiles.has(fp)) continue;
+        seenFiles.add(fp);
+        out.push({ f: p, sig: st.size + ':' + Math.round(st.mtimeMs) });
+      }
+    };
+    for (const d of folders) walk(d, 0);
+    return out;
+  }
+
   async scan() {
     for (const b of this.books.values()) if (b.mod) b.mod.close();
     for (const m of this.bibles.values()) if (m.close) m.close();
     this.bibles.clear(); this.books.clear();
     this.entries = []; this.errors = []; this.xrefFiles = []; this.overlayFiles = [];
     const gbks = [];
-    const seen = new Set(); const seenNames = new Set();
+    const seen = new Set(); const seenNames = new Set(); const visitedDirs = new Set();
     const walk = (dir, depth) => {
+      if (!dir || depth > MAX_SUBFOLDER_DEPTH) return;
+      const rkey = realDirKey(dir);
+      if (visitedDirs.has(rkey)) return;
+      visitedDirs.add(rkey);
       let items; try { items = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
-      // If a subfolder (not named "USFM") holds 2+ per-book .usfm/.sfm files, treat the subfolder as one USFM Bible
-      const usfmFiles = items.filter(x => !x.isDirectory() && usfm.USFM_EXT.test(x.name));
-      if (depth > 0 && !/^(usfm|theword|e-sword|modules)$/i.test(path.basename(dir)) && usfmFiles.length >= 2) {
+      // If a subfolder (not named "USFM") holds 2+ per-book .usfm/.sfm files of a single Bible, treat the subfolder as one USFM Bible
+      const usfmFiles = items.filter(x => !isDirEntry(dir, x) && usfm.USFM_EXT.test(x.name));
+      let bundledUsfmHere = false;
+      if (depth > 0 && !/^(usfm|theword|e-sword|modules)$/i.test(path.basename(dir)) && usfmFiles.length >= 2 && usfm.isPerBookUsfmDir(dir, usfmFiles.map(x => x.name))) {
         const dname = path.basename(dir);
         const dupKey = (dname + ".usfm").toLowerCase();
         if (!seenNames.has(dupKey)) { seenNames.add(dupKey); this.entries.push({ file: dir, name: dname, ext: ".usfm" }); }
-        return;
+        bundledUsfmHere = true;
       }
-      // a SWORD module folder: mods.d/<name>.conf (Bibles are listed here; the other SWORD types follow in later versions)
+      // a SWORD module folder: mods.d/<name>.conf (Bibles are listed here; commentaries, dictionaries and books too)
       if (path.basename(dir).toLowerCase() === 'mods.d') {
         for (const it of items) {
-          if (it.isDirectory() || !/\.conf$/i.test(it.name)) continue;
+          if (isDirEntry(dir, it)) {
+            if (depth < MAX_SUBFOLDER_DEPTH && !/^[-.]/.test(it.name)) walk(path.join(dir, it.name), depth + 1);
+            continue;
+          }
+          if (!/\.conf$/i.test(it.name)) continue;
           const cp = path.join(dir, it.name); if (seen.has(cp)) continue; seen.add(cp);
           const pr = sword.probe(cp); if (!pr.ok) continue;
           const dupKey = (it.name.replace(/\.conf$/i, '') + (pr.kind === 'Bible' ? '.sword' : '.swordbook')).toLowerCase();
@@ -109,7 +167,7 @@ class Library {
         let p = path.join(dir, it.name);
         let itemName = it.name;
         let viaLink = null;
-        if (it.isDirectory()) { if (depth < 4 && !/^[-.]/.test(it.name)) walk(p, depth + 1); continue; }
+        if (isDirEntry(dir, it)) { if (depth < MAX_SUBFOLDER_DEPTH && !/^[-.]/.test(it.name)) walk(p, depth + 1); continue; }
         if (itemName.toLowerCase().endsWith('.timotheos-link')) {
           try {
             const target = fs.readFileSync(p, 'utf8').trim();
@@ -117,8 +175,10 @@ class Library {
             viaLink = p;
             p = target;
             itemName = path.basename(target);
+            if (fs.statSync(p).isDirectory()) { if (depth < MAX_SUBFOLDER_DEPTH) walk(p, depth + 1); continue; }
           } catch (e) { continue; }
         }
+        if (bundledUsfmHere && !viaLink && usfm.USFM_EXT.test(itemName)) continue;
         if (seen.has(p)) continue; seen.add(p);
         const low = itemName.toLowerCase();
         // the same module in two folders (e.g. theWord's folder and Timotheos's imports): keep the first
