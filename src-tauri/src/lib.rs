@@ -46,6 +46,177 @@ fn mtime_ms(m: &fs::Metadata) -> f64 {
     m.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_secs_f64() * 1000.0).unwrap_or(0.0)
 }
 
+fn le16(b: &[u8], off: usize) -> u16 { u16::from_le_bytes([b[off], b[off + 1]]) }
+fn le32(b: &[u8], off: usize) -> u32 { u32::from_le_bytes([b[off], b[off + 1], b[off + 2], b[off + 3]]) }
+
+fn safe_zip_rel(name: &str) -> Option<PathBuf> {
+    let mut rel = PathBuf::new();
+    for part in name.split('/') {
+        if part.is_empty() || part == "." { continue; }
+        if part == ".." || part.contains('\0') || part.contains(':') { return None; }
+        rel.push(part);
+    }
+    if rel.as_os_str().is_empty() { None } else { Some(rel) }
+}
+
+fn stream_copy_limited<R: Read, W: Write>(mut r: R, mut w: W, buf: &mut [u8], written_total: &mut u64, max_total: u64) -> Result<u64, String> {
+    let mut entry_bytes: u64 = 0;
+    loop {
+        let n = r.read(buf).map_err(|e| format!("could not unpack: {e}"))?;
+        if n == 0 { break; }
+        *written_total = written_total.saturating_add(n as u64);
+        if max_total > 0 && *written_total > max_total {
+            return Err(format!("the archive unpacks to more than {} MB", max_total / 1_048_576));
+        }
+        w.write_all(&buf[..n]).map_err(|e| e.to_string())?;
+        entry_bytes += n as u64;
+    }
+    w.flush().map_err(|e| e.to_string())?;
+    Ok(entry_bytes)
+}
+
+struct ZipEnt {
+    name: String,
+    rel: PathBuf,
+    method: u16,
+    comp_size: u64,
+    local_off: u64,
+}
+
+fn unzip_to_dir(zip_path: &Path, out_dir: &Path, max_total: u64) -> Result<Value, String> {
+    let mut f = fs::File::open(zip_path).map_err(|e| e.to_string())?;
+    let file_len = f.metadata().map_err(|e| e.to_string())?.len();
+    if file_len < 22 { return Ok(json!({ "ok": false, "code": "FALLBACK" })); }
+    let tail_len = file_len.min(65557) as usize;
+    f.seek(SeekFrom::Start(file_len - tail_len as u64)).map_err(|e| e.to_string())?;
+    let mut tail = vec![0u8; tail_len];
+    f.read_exact(&mut tail).map_err(|e| e.to_string())?;
+
+    let mut eocd: Option<usize> = None;
+    let mut i = tail_len - 22;
+    loop {
+        if le32(&tail, i) == 0x0605_4b50 {
+            let clen = le16(&tail, i + 20) as usize;
+            if i + 22 + clen == tail_len { eocd = Some(i); break; }
+        }
+        if i == 0 { break; }
+        i -= 1;
+    }
+    let Some(e) = eocd else { return Ok(json!({ "ok": false, "code": "FALLBACK" })); };
+    let disk = le16(&tail, e + 4);
+    let cd_disk = le16(&tail, e + 6);
+    let count_disk = le16(&tail, e + 8);
+    let count = le16(&tail, e + 10);
+    let cd_size = le32(&tail, e + 12) as u64;
+    let cd_offset = le32(&tail, e + 16) as u64;
+    if disk != 0 || cd_disk != 0 || count_disk != count || count == 0xFFFF || cd_size == 0xFFFF_FFFF || cd_offset == 0xFFFF_FFFF {
+        return Ok(json!({ "ok": false, "code": "FALLBACK" }));
+    }
+    if cd_size > 64 * 1024 * 1024 || cd_offset.saturating_add(cd_size) > file_len {
+        return Ok(json!({ "ok": false, "code": "FALLBACK" }));
+    }
+
+    f.seek(SeekFrom::Start(cd_offset)).map_err(|e| e.to_string())?;
+    let mut cd = vec![0u8; cd_size as usize];
+    f.read_exact(&mut cd).map_err(|e| e.to_string())?;
+
+    let mut p: usize = 0;
+    let mut entries: Vec<ZipEnt> = Vec::with_capacity(count as usize);
+    let mut total_uncomp: u64 = 0;
+    for _ in 0..count {
+        if p + 46 > cd.len() || le32(&cd, p) != 0x0201_4b50 {
+            return Ok(json!({ "ok": false, "code": "FALLBACK" }));
+        }
+        let flags = le16(&cd, p + 8);
+        let method = le16(&cd, p + 10);
+        let comp_size = le32(&cd, p + 20);
+        let uncomp_size = le32(&cd, p + 24);
+        let nlen = le16(&cd, p + 28) as usize;
+        let xlen = le16(&cd, p + 30) as usize;
+        let clen = le16(&cd, p + 32) as usize;
+        let local_off = le32(&cd, p + 42);
+        let name_end = p + 46 + nlen;
+        let next_p = name_end + xlen + clen;
+        if next_p > cd.len() { return Ok(json!({ "ok": false, "code": "FALLBACK" })); }
+        if (flags & 1) != 0 { return Ok(json!({ "ok": false, "code": "PASSWORD" })); }
+        if comp_size == 0xFFFF_FFFF || uncomp_size == 0xFFFF_FFFF || local_off == 0xFFFF_FFFF || (method != 0 && method != 8) {
+            return Ok(json!({ "ok": false, "code": "FALLBACK" }));
+        }
+        let raw_name = &cd[p + 46..name_end];
+        let decoded = if (flags & 0x0800) != 0 {
+            String::from_utf8_lossy(raw_name).into_owned()
+        } else {
+            raw_name.iter().map(|&b| b as char).collect()
+        };
+        let norm_name = decoded.replace('\\', "/");
+        p = next_p;
+        if norm_name.ends_with('/') { continue; }
+        let Some(rel) = safe_zip_rel(&norm_name) else {
+            return Ok(json!({ "ok": false, "code": "FALLBACK" }));
+        };
+        total_uncomp = total_uncomp.saturating_add(uncomp_size as u64);
+        if max_total > 0 && total_uncomp > max_total {
+            return Ok(json!({
+                "ok": false,
+                "code": "ERROR",
+                "error": format!("the archive unpacks to {} MB; the limit is {} MB", total_uncomp / 1_048_576, max_total / 1_048_576)
+            }));
+        }
+        entries.push(ZipEnt {
+            name: norm_name,
+            rel,
+            method,
+            comp_size: comp_size as u64,
+            local_off: local_off as u64,
+        });
+    }
+
+    fs::create_dir_all(out_dir).map_err(|e| e.to_string())?;
+    let mut buf = vec![0u8; 64 * 1024];
+    let mut written_total: u64 = 0;
+    let mut out_entries: Vec<Value> = Vec::with_capacity(entries.len());
+    for ent in entries {
+        if ent.local_off.saturating_add(30) > file_len {
+            let _ = fs::remove_dir_all(out_dir);
+            return Ok(json!({ "ok": false, "code": "FALLBACK" }));
+        }
+        f.seek(SeekFrom::Start(ent.local_off)).map_err(|e| e.to_string())?;
+        let mut lh = [0u8; 30];
+        f.read_exact(&mut lh).map_err(|e| e.to_string())?;
+        if le32(&lh, 0) != 0x0403_4b50 {
+            let _ = fs::remove_dir_all(out_dir);
+            return Ok(json!({ "ok": false, "code": "FALLBACK" }));
+        }
+        let ln = le16(&lh, 26) as u64;
+        let lx = le16(&lh, 28) as u64;
+        let data_start = ent.local_off + 30 + ln + lx;
+        if data_start.saturating_add(ent.comp_size) > file_len {
+            let _ = fs::remove_dir_all(out_dir);
+            return Ok(json!({ "ok": false, "code": "FALLBACK" }));
+        }
+        f.seek(SeekFrom::Start(data_start)).map_err(|e| e.to_string())?;
+        let dest = out_dir.join(&ent.rel);
+        if let Some(parent) = dest.parent() { fs::create_dir_all(parent).map_err(|e| e.to_string())?; }
+        let out_file = fs::File::create(&dest).map_err(|e| e.to_string())?;
+        let res = if ent.method == 0 {
+            stream_copy_limited((&mut f).take(ent.comp_size), out_file, &mut buf, &mut written_total, max_total)
+        } else {
+            stream_copy_limited(flate2::read::DeflateDecoder::new((&mut f).take(ent.comp_size)), out_file, &mut buf, &mut written_total, max_total)
+        };
+        match res {
+            Ok(sz) => {
+                let dest_fwd = dest.to_string_lossy().replace('\\', "/");
+                out_entries.push(json!({ "name": ent.name, "path": dest_fwd, "size": sz }));
+            }
+            Err(msg) => {
+                let _ = fs::remove_dir_all(out_dir);
+                return Ok(json!({ "ok": false, "code": "ERROR", "error": msg }));
+            }
+        }
+    }
+    Ok(json!({ "ok": true, "entries": out_entries }))
+}
+
 fn copy_rec(from: &Path, to: &Path, force: bool) -> std::io::Result<()> {
     if from.is_dir() {
         fs::create_dir_all(to)?;
@@ -183,6 +354,14 @@ fn handle(dbs: &Dbs, req: http::Request<Vec<u8>>) -> Resp {
             #[cfg(target_os = "android")]
             { return match if p.is_dir() { fs::remove_dir_all(&p) } else { fs::remove_file(&p) } { Ok(_) => json_ok(json!(true)), Err(e) => io_fail(e) }; }
         }
+        "unzip" => {
+            let to = PathBuf::from(q(&pairs, "to"));
+            let max: u64 = q(&pairs, "max").parse().unwrap_or(0);
+            match unzip_to_dir(&p, &to, max) {
+                Ok(v) => json_ok(v),
+                Err(e) => fail("EIO", e),
+            }
+        }
         _ => fail("EINVAL", format!("unknown route {route}")),
     }
 }
@@ -195,6 +374,15 @@ fn host_info(app: tauri::AppHandle) -> Value {
     let home = app.path().home_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
     let tmp = if cfg!(target_os = "android") { app.path().app_cache_dir().map(|p| p.to_string_lossy().to_string()).unwrap_or_default() } else { std::env::temp_dir().to_string_lossy().to_string() };
     let _ = fs::create_dir_all(&tmp);
+    if let Ok(rd) = fs::read_dir(&tmp) {
+        for e in rd.filter_map(|e| e.ok()) {
+            let name = e.file_name();
+            let s = name.to_string_lossy();
+            if (s.starts_with("import-") || s.starts_with("timotheos-import-")) && e.path().is_dir() {
+                let _ = fs::remove_dir_all(e.path());
+            }
+        }
+    }
     let os = if cfg!(target_os = "android") { "android" } else if cfg!(target_os = "windows") { "win32" } else if cfg!(target_os = "macos") { "darwin" } else { "linux" };
     let fwd = |s: String| s.replace('\\', "/");
     let (data, exe, home, tmp) = (fwd(data), fwd(exe), fwd(home), fwd(tmp));
@@ -214,7 +402,7 @@ fn test_report(app: tauri::AppHandle, text: String) {
 fn quit(app: tauri::AppHandle) { app.exit(0); }
 
 /// Android: the chosen file is read by the page piece by piece and put into the app's own folder
-#[tauri::command]
+#[tauri::command(async)]
 fn write_b64(path: String, data: String, append: bool) -> Result<(), String> {
     let bytes = STANDARD.decode(data).map_err(|e| e.to_string())?;
     if let Some(d) = Path::new(&path).parent() { let _ = fs::create_dir_all(d); }
@@ -514,5 +702,110 @@ mod tests {
         let v: Value = serde_json::from_slice(r.body()).unwrap();
         assert_eq!(v["r"][1][0], "ok");
         assert!(v["r"][0][0].as_str().unwrap().starts_with("ABCD"));
+    }
+    #[test]
+    fn unzip_to_dir_streams_stored_and_deflated_and_rejects_limits() {
+        use flate2::{write::DeflateEncoder, Compression};
+        fn crc32(data: &[u8]) -> u32 {
+            let mut c: u32 = 0xFFFF_FFFF;
+            for &b in data {
+                c ^= b as u32;
+                for _ in 0..8 { c = if (c & 1) != 0 { 0xEDB8_8320 ^ (c >> 1) } else { c >> 1 }; }
+            }
+            !c
+        }
+        fn build_zip(items: &[(&str, &[u8], u16, u16)]) -> Vec<u8> {
+            let mut locals = Vec::new();
+            let mut central = Vec::new();
+            let mut off: u32 = 0;
+            for &(name, raw, method, flags) in items {
+                let comp = if method == 8 {
+                    let mut enc = DeflateEncoder::new(Vec::new(), Compression::default());
+                    enc.write_all(raw).unwrap();
+                    enc.finish().unwrap()
+                } else {
+                    raw.to_vec()
+                };
+                let crc = crc32(raw);
+                let nm = name.as_bytes();
+                let mut h = Vec::with_capacity(30 + nm.len());
+                h.extend_from_slice(&0x0403_4b50u32.to_le_bytes());
+                h.extend_from_slice(&20u16.to_le_bytes());
+                h.extend_from_slice(&(flags | 0x0800).to_le_bytes());
+                h.extend_from_slice(&method.to_le_bytes());
+                h.extend_from_slice(&0u32.to_le_bytes());
+                h.extend_from_slice(&crc.to_le_bytes());
+                h.extend_from_slice(&(comp.len() as u32).to_le_bytes());
+                h.extend_from_slice(&(raw.len() as u32).to_le_bytes());
+                h.extend_from_slice(&(nm.len() as u16).to_le_bytes());
+                h.extend_from_slice(&0u16.to_le_bytes());
+                h.extend_from_slice(nm);
+
+                let mut c = Vec::with_capacity(46 + nm.len());
+                c.extend_from_slice(&0x0201_4b50u32.to_le_bytes());
+                c.extend_from_slice(&20u16.to_le_bytes());
+                c.extend_from_slice(&20u16.to_le_bytes());
+                c.extend_from_slice(&(flags | 0x0800).to_le_bytes());
+                c.extend_from_slice(&method.to_le_bytes());
+                c.extend_from_slice(&0u32.to_le_bytes());
+                c.extend_from_slice(&crc.to_le_bytes());
+                c.extend_from_slice(&(comp.len() as u32).to_le_bytes());
+                c.extend_from_slice(&(raw.len() as u32).to_le_bytes());
+                c.extend_from_slice(&(nm.len() as u16).to_le_bytes());
+                c.extend_from_slice(&0u16.to_le_bytes());
+                c.extend_from_slice(&0u16.to_le_bytes());
+                c.extend_from_slice(&0u16.to_le_bytes());
+                c.extend_from_slice(&0u16.to_le_bytes());
+                c.extend_from_slice(&0u32.to_le_bytes());
+                c.extend_from_slice(&off.to_le_bytes());
+                c.extend_from_slice(nm);
+
+                off += (h.len() + comp.len()) as u32;
+                locals.extend_from_slice(&h);
+                locals.extend_from_slice(&comp);
+                central.extend_from_slice(&c);
+            }
+            let mut eocd = Vec::with_capacity(22);
+            eocd.extend_from_slice(&0x0605_4b50u32.to_le_bytes());
+            eocd.extend_from_slice(&0u32.to_le_bytes());
+            eocd.extend_from_slice(&(items.len() as u16).to_le_bytes());
+            eocd.extend_from_slice(&(items.len() as u16).to_le_bytes());
+            eocd.extend_from_slice(&(central.len() as u32).to_le_bytes());
+            eocd.extend_from_slice(&off.to_le_bytes());
+            eocd.extend_from_slice(&0u16.to_le_bytes());
+            locals.extend_from_slice(&central);
+            locals.extend_from_slice(&eocd);
+            locals
+        }
+
+        let dir = std::env::temp_dir().join("timotheos-unzip-test");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let big_payload = vec![b'A'; 128 * 1024];
+        let z1 = dir.join("ok.zip");
+        fs::write(&z1, build_zip(&[
+            ("plain.txt", b"stored-hello", 0, 0),
+            ("sub/big.bin", &big_payload, 8, 0),
+        ])).unwrap();
+        let out1 = dir.join("out1");
+        let res1 = unzip_to_dir(&z1, &out1, 800 * 1024 * 1024).unwrap();
+        assert_eq!(res1["ok"], true);
+        assert_eq!(fs::read(out1.join("plain.txt")).unwrap(), b"stored-hello");
+        assert_eq!(fs::read(out1.join("sub/big.bin")).unwrap(), big_payload);
+
+        let out_lim = dir.join("out_lim");
+        let res_lim = unzip_to_dir(&z1, &out_lim, 1024).unwrap();
+        assert_eq!(res_lim["ok"], false);
+        assert_eq!(res_lim["code"], "ERROR");
+
+        let z_enc = dir.join("enc.zip");
+        fs::write(&z_enc, build_zip(&[("secret.txt", b"xyz", 0, 1)])).unwrap();
+        let out_enc = dir.join("out_enc");
+        let res_enc = unzip_to_dir(&z_enc, &out_enc, 800 * 1024 * 1024).unwrap();
+        assert_eq!(res_enc["ok"], false);
+        assert_eq!(res_enc["code"], "PASSWORD");
+
+        let _ = fs::remove_dir_all(&dir);
     }
 }

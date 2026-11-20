@@ -79,7 +79,7 @@ function androidPick(multiple) {
 }
 async function androidCopy(file, dir) {
   const dest = dir + '/' + String(file.name || 'module').replace(/[\\/:*?"<>|]+/g, '_');
-  const PIECE = 2 << 20; let first = true;
+  const PIECE = 1 << 20; let first = true;
   for (let o = 0; o < file.size || first; o += PIECE) {
     const buf = new Uint8Array(await file.slice(o, o + PIECE).arrayBuffer());
     let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));

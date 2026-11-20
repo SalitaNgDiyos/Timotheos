@@ -3,6 +3,8 @@
 'use strict';
 // Minimal ZIP reader (stored and deflate entries) for module archives such as theWord .twzip
 // downloads. No encryption, no ZIP64. Enough for the archives module sites publish.
+const fs = require('fs');
+const path = require('path');
 const zlib = require('zlib');
 
 const CRC_TABLE = (() => {
@@ -76,4 +78,148 @@ function write(files) {
   return Buffer.concat([...locals, cd, e]);
 }
 
-module.exports = { write, entries, extract };
+function readExact(fd, buf, pos) {
+  let off = 0;
+  while (off < buf.length) {
+    const n = fs.readSync(fd, buf, off, buf.length - off, pos + off);
+    if (!n) throw new Error('Unexpected end of ZIP file');
+    off += n;
+  }
+}
+
+function safeRelParts(name) {
+  const parts = [];
+  for (const part of String(name || '').split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..' || part.includes('\0') || part.includes(':')) return null;
+    parts.push(part);
+  }
+  return parts.length ? parts : null;
+}
+
+/** Stream-extract a standard stored/deflated ZIP archive directly to outDir without loading entries into RAM. */
+async function extractToDir(zipFile, outDir, maxTotal = 0) {
+  const st = fs.statSync(zipFile);
+  const fileLen = st.size;
+  if (fileLen < 22) return { ok: false, code: 'FALLBACK' };
+
+  const fd = fs.openSync(zipFile, 'r');
+  const ents = [];
+  try {
+    const tailLen = Math.min(fileLen, 65557);
+    const tail = Buffer.allocUnsafe(tailLen);
+    readExact(fd, tail, fileLen - tailLen);
+
+    let e = -1;
+    for (let i = tailLen - 22; i >= 0; i--) {
+      if (tail.readUInt32LE(i) === 0x06054b50 && i + 22 + tail.readUInt16LE(i + 20) === tailLen) { e = i; break; }
+    }
+    if (e < 0) return { ok: false, code: 'FALLBACK' };
+
+    const disk = tail.readUInt16LE(e + 4);
+    const cdDisk = tail.readUInt16LE(e + 6);
+    const countDisk = tail.readUInt16LE(e + 8);
+    const count = tail.readUInt16LE(e + 10);
+    const cdSize = tail.readUInt32LE(e + 12);
+    const cdOffset = tail.readUInt32LE(e + 16);
+    if (disk !== 0 || cdDisk !== 0 || countDisk !== count || count === 0xFFFF || cdSize === 0xFFFFFFFF || cdOffset === 0xFFFFFFFF) {
+      return { ok: false, code: 'FALLBACK' };
+    }
+    if (cdSize > 64 * 1024 * 1024 || cdOffset + cdSize > fileLen) return { ok: false, code: 'FALLBACK' };
+
+    const cd = Buffer.allocUnsafe(cdSize);
+    readExact(fd, cd, cdOffset);
+
+    let p = 0;
+    let totalUncomp = 0;
+    const lh = Buffer.allocUnsafe(30);
+    for (let k = 0; k < count; k++) {
+      if (p + 46 > cd.length || cd.readUInt32LE(p) !== 0x02014b50) return { ok: false, code: 'FALLBACK' };
+      const flags = cd.readUInt16LE(p + 8);
+      const method = cd.readUInt16LE(p + 10);
+      const compSize = cd.readUInt32LE(p + 20);
+      const uncompSize = cd.readUInt32LE(p + 24);
+      const nlen = cd.readUInt16LE(p + 28);
+      const xlen = cd.readUInt16LE(p + 30);
+      const clen = cd.readUInt16LE(p + 32);
+      const localOff = cd.readUInt32LE(p + 42);
+      const nextP = p + 46 + nlen + xlen + clen;
+      if (nextP > cd.length) return { ok: false, code: 'FALLBACK' };
+      if (flags & 1) return { ok: false, code: 'PASSWORD' };
+      if (compSize === 0xFFFFFFFF || uncompSize === 0xFFFFFFFF || localOff === 0xFFFFFFFF || (method !== 0 && method !== 8)) {
+        return { ok: false, code: 'FALLBACK' };
+      }
+      const rawName = cd.subarray(p + 46, p + 46 + nlen);
+      const normName = ((flags & 0x800) ? rawName.toString('utf8') : rawName.toString('latin1')).replace(/\\/g, '/');
+      p = nextP;
+      if (normName.endsWith('/')) continue;
+      const relParts = safeRelParts(normName);
+      if (!relParts) return { ok: false, code: 'FALLBACK' };
+
+      totalUncomp += uncompSize;
+      if (maxTotal > 0 && totalUncomp > maxTotal) {
+        return { ok: false, code: 'ERROR', error: `the archive unpacks to ${Math.floor(totalUncomp / 1048576)} MB; the limit is ${Math.floor(maxTotal / 1048576)} MB` };
+      }
+      if (localOff + 30 > fileLen) return { ok: false, code: 'FALLBACK' };
+      readExact(fd, lh, localOff);
+      if (lh.readUInt32LE(0) !== 0x04034b50) return { ok: false, code: 'FALLBACK' };
+      const dataStart = localOff + 30 + lh.readUInt16LE(26) + lh.readUInt16LE(28);
+      if (dataStart + compSize > fileLen) return { ok: false, code: 'FALLBACK' };
+      ents.push({ name: normName, relParts, method, compSize, dataStart });
+    }
+  } finally {
+    try { fs.closeSync(fd); } catch (_) {}
+  }
+
+  fs.mkdirSync(outDir, { recursive: true });
+  let writtenTotal = 0;
+  const outEntries = [];
+  try {
+    for (const ent of ents) {
+      const dest = path.join(outDir, ...ent.relParts);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      if (ent.compSize === 0) {
+        fs.writeFileSync(dest, Buffer.alloc(0));
+        outEntries.push({ name: ent.name, path: dest, size: 0 });
+        continue;
+      }
+      const entrySize = await new Promise((resolve, reject) => {
+        const src = fs.createReadStream(zipFile, { start: ent.dataStart, end: ent.dataStart + ent.compSize - 1 });
+        const infl = ent.method === 8 ? zlib.createInflateRaw() : null;
+        const outSrc = infl ? src.pipe(infl) : src;
+        const dst = fs.createWriteStream(dest);
+        let size = 0;
+        let done = false;
+        const fail = err => {
+          if (done) return;
+          done = true;
+          try { src.destroy(); } catch (_) {}
+          try { if (infl) infl.destroy(); } catch (_) {}
+          try { dst.destroy(); } catch (_) {}
+          reject(err);
+        };
+        src.on('error', fail);
+        if (infl) infl.on('error', fail);
+        dst.on('error', fail);
+        outSrc.on('data', chunk => {
+          writtenTotal += chunk.length;
+          if (maxTotal > 0 && writtenTotal > maxTotal) {
+            return fail(new Error(`the archive unpacks to more than ${Math.floor(maxTotal / 1048576)} MB`));
+          }
+          size += chunk.length;
+          if (!dst.write(chunk)) outSrc.pause();
+        });
+        dst.on('drain', () => { if (!done) outSrc.resume(); });
+        outSrc.on('end', () => { if (!done) dst.end(); });
+        dst.on('finish', () => { if (!done) { done = true; resolve(size); } });
+      });
+      outEntries.push({ name: ent.name, path: dest, size: entrySize });
+    }
+  } catch (err) {
+    try { fs.rmSync(outDir, { recursive: true, force: true }); } catch (_) {}
+    return { ok: false, code: 'ERROR', error: 'could not unpack: ' + err.message };
+  }
+  return { ok: true, entries: outEntries };
+}
+
+module.exports = { write, entries, extract, extractToDir };

@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const archive = require('./archive');
+const zip = require('./zip');
 const theword = require('./theword');
 const mysword = require('./mysword');
 const esword = require('./esword');
@@ -93,6 +94,44 @@ function importSword(allEnts, name, from, destRoot, tmp, results) {
   }
 }
 
+/** a SWORD package already unpacked on disk: copies data files without holding them in memory */
+function importSwordFromDisk(allEnts, name, from, destRoot, results) {
+  const confs = allEnts.filter(e => /(^|\/)mods\.d\/[^/]+\.conf$/i.test(e.name));
+  for (const ce of confs) {
+    const prefix = ce.name.replace(/mods\.d\/[^/]+$/i, '');
+    const cname = path.basename(ce.name).replace(/\.conf$/i, '');
+    const pr = sword.probe(ce.filePath);
+    const r = { name: cname, from: name === cname ? from : `${name} › ${ce.name}`, format: 'SWORD', kind: pr.kind || 'module', title: pr.title };
+    if (!pr.ok) { results.push(Object.assign(r, { status: 'skipped', reason: pr.reason })); continue; }
+    const dp = ((pr.conf.kv.DataPath || '').replace(/\\/g, '/').replace(/^\.\//, '')).toLowerCase();
+    const mine = allEnts.filter(e => e !== ce && e.name.startsWith(prefix) && e.name.slice(prefix.length).toLowerCase().startsWith(dp) && !/\/$/.test(e.name));
+    if (!mine.length) { results.push(Object.assign(r, { status: 'skipped', reason: 'the package has the .conf but not the module\'s data files' })); continue; }
+    const dir = path.join(destRoot, 'SWORD', cname);
+    const confDest = path.join(dir, 'mods.d', cname + '.conf');
+    let status = 'imported';
+    try { if (fs.existsSync(confDest)) status = filesAreSame(confDest, ce.filePath) && mine.every(e => { try { return fs.statSync(path.join(dir, e.name.slice(prefix.length))).size === e.size; } catch (x) { return false; } }) ? 'already' : 'updated'; } catch (e) { status = 'updated'; }
+    if (status !== 'already') {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+        fs.mkdirSync(path.dirname(confDest), { recursive: true }); fs.copyFileSync(ce.filePath, confDest);
+        for (const e of mine) { const out = path.join(dir, e.name.slice(prefix.length)); fs.mkdirSync(path.dirname(out), { recursive: true }); fs.copyFileSync(e.filePath, out); }
+      } catch (err) { results.push(Object.assign(r, { status: 'skipped', reason: 'could not save: ' + err.message })); continue; }
+    }
+    const note = pr.conf.kv.Versification && !/^(kjva?)$/i.test(pr.conf.kv.Versification) ? 'uses the ' + pr.conf.kv.Versification + ' verse numbering' : '';
+    results.push(Object.assign(r, { status, dest: confDest, note }));
+  }
+}
+
+function isZipHeader(filePath) {
+  try {
+    const fd = fs.openSync(filePath, 'r');
+    const b = Buffer.allocUnsafe(4);
+    let n = 0;
+    try { n = fs.readSync(fd, b, 0, 4, 0); } finally { fs.closeSync(fd); }
+    return n === 4 && b[0] === 0x50 && b[1] === 0x4b && ((b[2] === 0x03 && b[3] === 0x04) || (b[2] === 0x05 && b[3] === 0x06));
+  } catch (e) { return false; }
+}
+
 function isModuleName(n) {
   return TW_BIBLE.test(n) || TW_LOCKED.test(n) || TW_BOOK.test(n) || ES_BIBLE.test(n) || ES_BOOK.test(n) || MY_BIBLE.test(n) || MY_BOOK.test(n) || ES_OTHER.test(n) || USFM_BIBLE.test(n) || USFX_BIBLE.test(n);
 }
@@ -159,6 +198,51 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
   const tell = async (step, done, total, name) => { if (!onProgress) return; try { onProgress({ step, done, total, name }); } catch (e) { /* no window */ } await new Promise(r => setTimeout(r, 0)); };
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'timotheos-import-'));
   const queue = [];
+  let arcSeq = 0;
+
+  async function extractArchiveToDisk(arcPath, arcName, pw, depth = 0) {
+    const arcDir = path.join(tmp, 'arc-' + (++arcSeq));
+    if (!pw && isZipHeader(arcPath)) {
+      let r = null;
+      if (typeof fs.unzipToDirSync === 'function') r = fs.unzipToDirSync(arcPath, arcDir, archive.MAX_TOTAL);
+      else if (typeof fs.createReadStream === 'function') r = await zip.extractToDir(arcPath, arcDir, archive.MAX_TOTAL);
+      if (r) {
+        if (r.code === 'PASSWORD') { const e = new Error('this archive needs a password'); e.code = 'PASSWORD'; throw e; }
+        if (r.code === 'ERROR') throw new Error(r.error || 'could not unpack archive');
+        if (r.ok) {
+          const ents = [];
+          let total = 0;
+          for (const e of (r.entries || [])) {
+            if (e.name.endsWith('/') || junk(e.name)) continue;
+            total += e.size || 0;
+            if (total > archive.MAX_TOTAL) throw new Error('the archive unpacks to more than ' + Math.round(archive.MAX_TOTAL / 1048576) + ' MB');
+            if (depth < 2 && ARCHIVE.test(path.basename(e.name))) {
+              try {
+                const sub = await extractArchiveToDisk(e.path, path.basename(e.name), pw, depth + 1);
+                const folder = e.name.includes('/') ? e.name.replace(/[^/]*$/, '') : '';
+                for (const s of sub) ents.push({ name: folder + s.name, filePath: s.filePath, size: s.size });
+                continue;
+              } catch (err) { if (err.code === 'PASSWORD' || err.code === 'BADPASSWORD') throw err; }
+            }
+            ents.push({ name: e.name, filePath: e.path, size: e.size });
+          }
+          return ents;
+        }
+      }
+    }
+    const rawEnts = (await archive.unpack(fs.readFileSync(arcPath), arcName, { password: pw })).filter(e => !e.name.endsWith('/') && !junk(e.name));
+    fs.mkdirSync(arcDir, { recursive: true });
+    const ents = [];
+    for (const e of rawEnts) {
+      const parts = String(e.name || '').replace(/\\/g, '/').split('/').filter(s => s && s !== '.' && s !== '..' && !s.includes(':'));
+      if (!parts.length) continue;
+      const outPath = path.join(arcDir, ...parts);
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, e.data);
+      ents.push({ name: e.name, filePath: outPath, size: e.data.length });
+    }
+    return ents;
+  }
 
   // Check if multiple loose per-book .usfm/.sfm files were chosen together; if so, bundle them into one .usfm Bible
   const looseUsfms = paths.filter(p => USFM_BIBLE.test(path.basename(p)) && fs.existsSync(p) && fs.statSync(p).isFile());
@@ -180,16 +264,15 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
     if (/\.exe$/i.test(name)) { results.push({ name, from: p, status: 'skipped', reason: 'installer program – Timotheos does not run installers. Unpack the module file from it (or install it in e-Sword/theWord) and import the module file itself.' }); continue; }
     if (ARCHIVE.test(name)) {
       try {
-        const buf = fs.readFileSync(p);
         const pw = (opts.passwords || {})[p];
-        const allEnts = (await archive.unpack(buf, name, { password: pw })).filter(e => !e.name.endsWith('/') && !junk(e.name));
-        if (allEnts.some(e => /(^|\/)mods\.d\/[^/]+\.conf$/i.test(e.name))) { importSword(allEnts, name, p, destRoot, tmp, results); continue; }
+        const allEnts = await extractArchiveToDisk(p, name, pw, 0);
+        if (allEnts.some(e => /(^|\/)mods\.d\/[^/]+\.conf$/i.test(e.name))) { importSwordFromDisk(allEnts, name, p, destRoot, results); continue; }
         const usfmEnts = allEnts.filter(e => USFM_BIBLE.test(path.basename(e.name)));
         if (usfmEnts.length >= 1) {
           // Bundle all USFM book files inside the archive into a single <archiveBase>.usfm Bible
           const baseTitle = archBase(name).replace(/[_-]?usfm$/i, '');
           const outFile = path.join(tmp, baseTitle + '.usfm');
-          const texts = usfmEnts.map(e => e.data.toString('utf8'));
+          const texts = usfmEnts.map(e => fs.readFileSync(e.filePath, 'utf8'));
           usfm.bundleUsfmTexts(texts, outFile, baseTitle.replace(/[_-]+/g, ' '));
           queue.push({ file: outFile, from: `${name} (${usfmEnts.length} USFM file${usfmEnts.length > 1 ? 's' : ''})` });
         }
@@ -201,11 +284,13 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
         for (const e of otherEnts) {
           let base = path.basename(e.name);
           if (/\.xml$/i.test(base) && !/\.usfx$/i.test(base)) base = archBase(name).replace(/[_-]?usfx$/i, '') + '.usfx';
-          const out = path.join(tmp, base);
+          const modDir = path.join(tmp, 'mod-' + (++arcSeq));
+          const out = path.join(modDir, base);
           try {
-            fs.writeFileSync(out, e.data);
+            fs.mkdirSync(modDir, { recursive: true });
+            try { fs.renameSync(e.filePath, out); } catch (_) { fs.copyFileSync(e.filePath, out); }
             const oe = allEnts.find(x => path.basename(x.name) === base + '.order');   // the arrangement made in iBiblia
-            if (oe) fs.writeFileSync(out + '.order', oe.data);
+            if (oe) fs.copyFileSync(oe.filePath, out + '.order');
             queue.push({ file: out, from: `${name} › ${e.name}` });
           }
           catch (err) { results.push({ name: path.basename(e.name), from: name, status: 'skipped', reason: 'could not unpack: ' + err.message }); }
@@ -300,20 +385,32 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
       } catch (_) { status = 'updated'; }
     }
     if (path.resolve(dest) !== path.resolve(q.file) && status !== 'already') {
-      const isTempSource = path.resolve(q.file).startsWith(path.resolve(tmp));
+      const absQ = path.resolve(q.file);
+      const absTmp = path.resolve(tmp);
+      const absOsTmp = path.resolve(os.tmpdir());
+      const inOwnTmp = absQ.startsWith(absTmp + path.sep);
+      const isTempSource = inOwnTmp || absQ.startsWith(absOsTmp + path.sep) || process.platform === 'android';
       const srcSize = fs.statSync(q.file).size;
       let linked = false;
       if (!isTempSource && srcSize >= 32 * 1024 * 1024) {
         try {
           if (fs.existsSync(dest)) fs.unlinkSync(dest);
-          fs.writeFileSync(linkDest, path.resolve(q.file), 'utf8');
+          fs.writeFileSync(linkDest, absQ, 'utf8');
           linked = true;
         } catch (_) { linked = false; }
       }
       if (!linked) {
         if (fs.existsSync(linkDest)) { try { fs.unlinkSync(linkDest); } catch (_) {} }
         await tell('copy', qi, queue.length, info.name);
-        await fs.promises.copyFile(q.file, dest);
+        let moved = false;
+        if (inOwnTmp) {
+          try {
+            if (fs.existsSync(dest)) fs.unlinkSync(dest);
+            fs.renameSync(q.file, dest);
+            moved = true;
+          } catch (_) { moved = false; }
+        }
+        if (!moved) await fs.promises.copyFile(q.file, dest);
       }
     }
     // the arrangement made in iBiblia travels with the module (and a stale one is removed when the module is replaced by one without)

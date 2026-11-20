@@ -1,6 +1,6 @@
 [package]
 name = "timotheos"
-version = "0.6.76"
+version = "0.6.77"
 description = "Timotheos"
 license = "AGPL-3.0-or-later"
 authors = ["Edmund P. Valdez"]
@@ -24,6 +24,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 base64 = "0.22"
+flate2 = "1"
 url = "2"
 # downloads for the "Download modules" window only (https, certificates built in so that Android needs nothing else)
 sha2 = "0.10"   # the fingerprint of a downloaded update is checked before it is run

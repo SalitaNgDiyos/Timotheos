@@ -1,0 +1,4 @@
+Timotheos 0.6.77
+- Large ZIP archives (.zip, .twzip) now stream straight to disk when unpacked instead of holding the whole uncompressed module in WebView memory, fixing crashes on Android when importing large dictionaries such as GBL-EPV.
+- Temporary import copies on Android now stay reliably in Timotheos's module storage (instead of linking into temporary cache) and move straight into place while stale import cache folders are cleaned on startup.
+- User Guide updated (computer and phone).

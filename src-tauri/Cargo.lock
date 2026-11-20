@@ -4318,9 +4318,10 @@ dependencies = [
 
 [[package]]
 name = "timotheos"
-version = "0.6.76"
+version = "0.6.77"
 dependencies = [
  "base64 0.22.1",
+ "flate2",
  "rusqlite",
  "serde",
  "serde_json",
