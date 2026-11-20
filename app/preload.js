@@ -72,6 +72,7 @@ contextBridge.exposeInMainWorld('api', {
   modSave: (id, changes, about) => call('mod:save', id, changes, about),
   modCompress: (id, opts) => call('mod:compress', id, opts),
   modRestore: id => call('mod:restore', id),
+  modVerseLinks: (id, opts, write) => call('mod:verselinks', id, opts, write),
   // [A1-A4] User modules
   userModCreate: opts => call('usermod:create', opts),
   userModSaveCmt: (id, ref, html) => call('usermod:saveCmt', id, ref, html),

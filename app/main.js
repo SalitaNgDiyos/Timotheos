@@ -408,6 +408,15 @@ app.whenReady().then(async () => {
   handle('mod:save', async (id, changes, aboutHtml) => { const f = lib.fileOf(id); lib.release(f); return modprops.write(f, changes, aboutHtml); });
   handle('mod:compress', async (id, opts) => { const f = lib.fileOf(id); lib.release(f); return modprops.compress(f, opts || {}); });
   handle('mod:restore', async id => { const f = lib.fileOf(id); lib.release(f); return modprops.restore(f); });
+  // Create verse links (0.6.75): write=false only counts and shows examples; write=true makes the links (a backup is kept, or a new copy is made)
+  handle('mod:verselinks', async (id, opts, write) => {
+    const f = lib.fileOf(id), vl = require('./lib/verselinks');
+    if (!write) return vl.scan(f, opts || {});
+    lib.release(f);
+    const r = await vl.apply(f, opts || {});
+    if (r.file && r.file !== f) r.list = await rescanAll();
+    return r;
+  });
   // [A1-A4] User module creation and authoring
   handle('usermod:create', async opts => {
     const dir = path.join(MODULES_DIR(), 'theWord');

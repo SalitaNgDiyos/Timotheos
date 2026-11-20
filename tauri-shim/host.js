@@ -173,7 +173,7 @@ const api = {
   xrefsChapter: (b, c) => call('xrefs:chapter', b, c), xrefsAdd: (f, t) => call('xrefs:add', f, t), xrefsRemove: (f, t) => call('xrefs:remove', f, t),
   xrefsSets: () => call('xrefs:sets'), xrefsEnable: (i, o) => call('xrefs:enable', i, o),
   parseRef: s => call('ref:parse', s), books: () => call('canon:books'), openExternal: u => call('shell:open', u),
-  modProps: id => call('mod:props', id), modSave: (id, c, a) => call('mod:save', id, c, a), modCompress: (id, o) => call('mod:compress', id, o), modRestore: id => call('mod:restore', id),
+  modProps: id => call('mod:props', id), modSave: (id, c, a) => call('mod:save', id, c, a), modCompress: (id, o) => call('mod:compress', id, o), modRestore: id => call('mod:restore', id), modVerseLinks: (id, o, w) => call('mod:verselinks', id, o, w),
   userModCreate: o => call('usermod:create', o), userModSaveCmt: (id, r, h) => call('usermod:saveCmt', id, r, h), userModSaveTopic: (id, t) => call('usermod:saveTopic', id, t),
   userModRenameTopic: (id, t, s) => call('usermod:renameTopic', id, t, s), userModMoveTopic: (id, t, d) => call('usermod:moveTopic', id, t, d), userModDeleteTopic: (id, t) => call('usermod:deleteTopic', id, t),
   userModExportNotes: o => call('usermod:exportNotes', o), userModExportNotebook: o => call('usermod:exportNotebook', o), exportVsls: (n, l) => call('twstudy:exportVsls', n, l), exportRdp: p => call('twstudy:exportRdp', p),

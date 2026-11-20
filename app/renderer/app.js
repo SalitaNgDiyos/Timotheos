@@ -1197,8 +1197,26 @@ function sanitize(html) {
   const t = document.createElement('template'); t.innerHTML = html;
   t.content.querySelectorAll('script,style,iframe,object,embed').forEach(n => n.remove());
   t.content.querySelectorAll('*').forEach(n => { for (const a of [...n.attributes]) if (/^on/i.test(a.name)) n.removeAttribute(a.name); });
-  t.content.querySelectorAll('a[href]').forEach(a => { a.dataset.href = a.getAttribute('href'); a.removeAttribute('href'); a.classList.add('link'); });
+  t.content.querySelectorAll('a[href]').forEach(a => { a.dataset.href = a.getAttribute('href'); a.removeAttribute('href'); a.classList.add('link'); fillVrefText(a); });
   return t.innerHTML;
+}
+/** theWord's "[vref]" placeholder (some exporters write it literally): a Bible link whose text is "[vref]", "[ref]" or empty shows the reference it points to */
+function fillVrefText(a) {
+  const txt = a.textContent.trim();
+  if (txt && !/^\[(?:v?ref|verse)\]$/i.test(txt)) return;
+  if (a.querySelector('img')) return;
+  const m = /^tw:\/\/bible\.[^?]*\?(?:[^#]*&)?id=(\d+)\.(\d+)\.(\d+)(?:-(\d+)\.(\d+)\.(\d+))?/i.exec(a.dataset.href || '');
+  if (!m) return;
+  const nm = b => { const k = (state.nav || []).find(x => x.id === b); return k ? k.abbr : (window.BOOK_ABBR || {})[b] || String(b); };
+  const [b, c, v] = [+m[1], +m[2], +m[3]];
+  let out = `${nm(b)} ${c}:${v}`;
+  if (m[4]) {
+    const [b2, c2, v2] = [+m[4], +m[5], +m[6]];
+    if (b2 !== b) out += `\u2013${nm(b2)} ${c2}:${v2}`;
+    else if (c2 !== c) out += `\u2013${c2}:${v2}`;
+    else if (v2 !== v) out += `\u2013${v2}`;
+  }
+  a.textContent = out;
 }
 
 async function noteHtml(el) {
@@ -1449,7 +1467,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.73')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.75')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

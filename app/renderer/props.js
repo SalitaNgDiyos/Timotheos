@@ -31,6 +31,9 @@
     const strip = document.documentElement.classList.contains('phone') ? `<div class="ppstrip">${chips}</div>` : '';
     const pages = $('#ppPages');
     const ro = !i.editable;
+    const isTwm = i.format === 'theWord' && i.ext === 'twm' && ['Dictionary', 'Commentary', 'Book'].includes(i.kind);
+    const canLinks = isTwm && i.editable && !i.compressed;
+    const linkWhy = !isTwm ? 'Verse links can be created in theWord books, dictionaries and commentaries (.twm).' : i.compressed ? 'This module stores its text compressed, so links cannot be created in it.' : i.reason || 'This module cannot be changed.';
     const note = ro ? `<p class="note">${TimotheosIcons.icon('info', 14)} This module cannot be changed: ${esc(i.reason)}.</p>` : '';
     pages.innerHTML = strip + `
       <section class="optpage" data-p="about">${note}
@@ -56,6 +59,23 @@
         ${i.ext === 'twm' ? `<label class="ppopt"><input type="checkbox" id="ppZlib" ${i.canZlib ? '' : 'disabled'}> <span><b>Compress the text</b> (zlib, theWord's “compressed” setting)${i.compressed ? ' – already compressed' : ''}. Timotheos reads such modules; whether theWord reads a module compressed by Timotheos has not been checked yet, so test it in theWord and keep the backup until you have.</span></label>` : '<p class="small">e-Sword has no compressed form for this kind of module, so only compacting is offered.</p>'}
         <div class="row"><button id="ppCompress" class="primary" data-icon="compress" data-icon-size="15">Make smaller</button><span id="ppResult" class="small"></span></div>`}
         ${i.backup && !ro ? `<h4>Undo all changes</h4><div class="row"><button id="ppRestore" data-icon="undo" data-icon-size="15">Put the original file back</button></div>` : ''}
+      </section>
+      <section class="optpage hidden" data-p="links">${canLinks ? `
+        <p class="small">Finds references such as <b>John 3:16</b>, <b>Exo 4:14; 5:1</b> or <b>1 Cor 13:4-7</b> in the text of this module and turns them into links that open the verse. They are theWord links, so the module keeps working in theWord. Links that are already there are left as they are.</p>
+        <h4>What to link</h4>
+        <label class="ppopt"><input type="checkbox" id="vlTl" checked> <span>Also know the Tagalog book names (Juan, Mga Awit, Roma …)</span></label>
+        <label class="ppopt"><input type="checkbox" id="vlFollow" checked> <span>Link the references that follow a book name: <i>Exo 4:14; 5:1, 8 and 9</i></span></label>
+        <label class="ppopt"><input type="checkbox" id="vlBare"> <span>Link a bare <i>3:16</i> that comes after a book name in the same paragraph (can also catch times such as 10:30, so look at the preview first)</span></label>
+        <label class="ppopt"><input type="checkbox" id="vlFix" checked> <span>Links whose text is “[vref]” show the real reference instead</span></label>
+        <h4>Link text</h4>
+        <label class="ppopt"><input type="radio" name="vlText" value="written" checked> <span>Keep the text as it is written</span></label>
+        <label class="ppopt"><input type="radio" name="vlText" value="english"> <span>Write it the standard way, English names (Exod 4:14)</span></label>
+        <label class="ppopt"><input type="radio" name="vlText" value="tagalog"> <span>Write it the standard way, Tagalog names</span></label>
+        <h4>Where to put the links</h4>
+        <label class="ppopt"><input type="radio" name="vlMode" value="inplace" checked> <span>In this module (the original file is kept; “File &amp; size” can put it back)</span></label>
+        <label class="ppopt"><input type="radio" name="vlMode" value="copy"> <span>In a new copy next to it, “… (verse links)”; this module stays as it is</span></label>
+        <div class="row"><button id="vlPreview" data-icon="search" data-icon-size="15">Preview</button><button id="vlGo" class="primary" data-icon="link" data-icon-size="15">Create the links</button><span id="vlResult" class="small"></span></div>
+        <div id="vlSamples" class="small"></div>` : `<p class="note">${TimotheosIcons.icon('info', 14)} ${esc(linkWhy)}</p>`}
       </section>`;
     TimotheosIcons.fillIcons(pages);
     // navigation
@@ -74,6 +94,8 @@
     pages.querySelectorAll('#ppFmt [data-cmd]').forEach(b => b.onmousedown = e => { e.preventDefault(); document.execCommand(b.dataset.cmd); aboutDirty = true; updateSave(); });
     const cb = $('#ppCompress'); if (cb) cb.onclick = compress;
     const rb = $('#ppRestore'); if (rb) rb.onclick = restore;
+    const nl = $('#ppNavLinks'); if (nl) nl.classList.toggle('hidden', !isTwm);
+    if (canLinks) { $('#vlPreview').onclick = () => verseLinks(false); $('#vlGo').onclick = () => verseLinks(true); }
     $('#ppNote').textContent = i.editable ? 'Before the first change Timotheos keeps a copy of the original file.' : '';
     updateSave();
   }
@@ -122,6 +144,35 @@
       $('#ppCompress').disabled = false; $('#ppResult').textContent = '';
       TimotheosModules.messageBox('Not made smaller', esc(e.message));
     }
+  }
+  function vlOpts() {
+    const radio = n => (document.querySelector(`input[name="${n}"]:checked`) || {}).value;
+    return { tagalog: $('#vlTl').checked, followOn: $('#vlFollow').checked, bare: $('#vlBare').checked, fixPlaceholders: $('#vlFix').checked, text: radio('vlText') || 'written', mode: radio('vlMode') || 'inplace' };
+  }
+  /** Create verse links (preview = count only, nothing is changed) */
+  async function verseLinks(write) {
+    const res = $('#vlResult'), box = $('#vlSamples'), btns = [$('#vlPreview'), $('#vlGo')];
+    const says = r => `${r.links} new link${r.links === 1 ? '' : 's'}${r.fixed ? `, ${r.fixed} “[vref]” replaced` : ''} in ${r.changed} of ${r.topics} entries`;
+    btns.forEach(b => b.disabled = true); res.textContent = 'Working…'; box.innerHTML = '';
+    try {
+      if (write) {
+        const pre = await api.modVerseLinks(cur.id, vlOpts(), false);
+        if (!pre.changed) { res.textContent = 'Nothing to link: no new references were found.'; return; }
+        if (!await TimotheosModules.confirmBox('Create verse links', `${says(pre)}. ${vlOpts().mode === 'copy' ? 'They go into a new copy of this module.' : 'They are written into this module; the original file is kept first.'} Go on?`)) { res.textContent = ''; return; }
+      }
+      const r = await api.modVerseLinks(cur.id, vlOpts(), write);
+      if (write) {
+        if (r.list) await refreshModules(r.list);
+        if (r.file === null) { res.textContent = 'Nothing to link: no new references were found.'; return; }
+        cur.info = await api.modProps(cur.id); await afterChange(cur.id);
+        const where = r.file && r.file !== cur.info.file ? ` Saved as ${r.file.split(/[\\/]/).pop()}.` : '';
+        render('links'); $('#vlResult').textContent = `Done: ${says(r)}.${where}`;
+      } else {
+        res.textContent = r.changed ? `${says(r)} would change.` : 'Nothing to link: no new references were found.';
+        box.innerHTML = r.samples.map(x => `<div><b>${esc(x.topic)}</b>: ${x.links.map(esc).join('; ')}${x.more ? ` … +${x.more} more` : ''}</div>`).join('') + (r.skipped ? `<div class="hint">${r.skipped} entries hold pictures or are stored in a form that is not changed.</div>` : '');
+      }
+    } catch (e) { res.textContent = ''; TimotheosModules.messageBox('Verse links', esc(e.message)); }
+    finally { btns.forEach(b => { if (b) b.disabled = false; }); }
   }
   async function restore() {
     if (!await TimotheosModules.confirmBox('Put the original back', 'Replace this module with the copy kept before your first change? All changes made in Timotheos are undone.')) return;

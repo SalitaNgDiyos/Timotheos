@@ -1,3 +1,4 @@
-Timotheos 0.6.74
-- USFM Bibles: a number like G13970 could still lose its last digit (and open G1397, a different word) when the file also had ordinary 4-digit numbers and all its 5-digit numbers ended in 0. unfoldingWord writes every Greek number with 5 digits, so a file with any shorter Greek number is now never treated as padded. (Builds on the 0.6.73 fix.)
-- User Guide updated.
+Timotheos 0.6.75
+- Links that read "[vref]" (the AnalyticalConcordance module writes that word instead of the reference) now show the real reference, e.g. "Exod 4:14". The links already pointed to the right verse; only the text was wrong. This is shown whenever an entry is displayed, in any module, and the file is not changed.
+- New: Module properties > Verse links (theWord books, dictionaries and commentaries). It turns references written as plain text (John 3:16, Exo 4:14; 5:1, 1 Cor 13:4-7, Rom 8:28-30, Gen 1:1-2:3, Juan 3:16, Mga Awit 23:1 ...) into real theWord links, so the module also works in theWord. Options: Tagalog book names, following references ("; 5:1, 8 and 9"), a bare 3:16 after a book name, replace "[vref]" in the file, link text as written or standard (English or Tagalog), and change the module (original kept, can be put back) or make a new copy. Preview shows the count and examples first. Links already in the module are left alone.
+- User Guide updated (computer and phone).
