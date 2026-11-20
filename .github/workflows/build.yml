@@ -154,6 +154,15 @@ jobs:
           { cat WHATSNEW.txt; echo; echo "Test build ${V} of ${GITHUB_SHA::7}. Not a finished release: the files are replaced by the next test build."; } > notes.txt
           gh release delete test -R "$GITHUB_REPOSITORY" --cleanup-tag -y >/dev/null 2>&1 || true
           gh release create test -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Timotheos_$V (test build)" --notes-file notes.txt out/*
+      - name: Keep the newest Neon build in the pre-release "neon"
+        if: ${{ github.event_name == 'push' && github.ref_name == 'Neon' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(node -p "require('./package.json').version")
+          { cat WHATSNEW.txt; echo; echo "Neon build ${V} of ${GITHUB_SHA::7}."; } > notes.txt
+          gh release delete neon -R "$GITHUB_REPOSITORY" --cleanup-tag -y >/dev/null 2>&1 || true
+          gh release create neon -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Timotheos_$V" --notes-file notes.txt out/*
 
   release:
     if: github.event_name == 'release'
