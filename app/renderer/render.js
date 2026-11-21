@@ -217,8 +217,8 @@
       // after <CL>/<CM>/<CI>. They never start a new line by themselves; met anywhere else they are left out.
       const lineStart = () => !cur.html.replace(/<[^>]*>/g, '').trim() || /<br>(<span class="pind"[^>]*><\/span>)?$/.test(cur.html);
       const indentLine = () => { if (cur.html.replace(/<[^>]*>/g, '').trim()) cur.html = cur.html.replace(/(<br>)(<span class="pind"[^>]*><\/span>)?$/, (x, br) => br + ((cur.pi || 0) + (cur.lpf || 0) ? `<span class="pind" style="width:${(cur.pi || 0) + (cur.lpf || 0)}px"></span>` : '')); };
-      if ((m = /^<PI(\d?)>$/.exec(t)) || t === '<Pi>') { const lvl = t === '<Pi>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (lineStart()) { cur.pi = lvl ? 20 + 20 * lvl : 0; cur.lpf = 0; if (cur.html.replace(/<[^>]*>/g, '').trim()) indentLine(); else cur.spi = cur.pi; } continue; }
-      if ((m = /^<PF(\d?)>$/.exec(t)) || t === '<Pf>') { const lvl = t === '<Pf>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (lineStart()) { if (cur.html.replace(/<[^>]*>/g, '').trim()) { cur.lpf = 20 * lvl; indentLine(); } else cur.pf = 20 * lvl; } continue; }
+      if (t === '<Pi>' || (m = /^<PI(\d?)>$/i.exec(t))) { const lvl = t === '<Pi>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (lineStart()) { cur.pi = lvl ? 20 + 20 * lvl : 0; cur.lpf = 0; if (cur.html.replace(/<[^>]*>/g, '').trim()) indentLine(); else { cur.spi = cur.pi; cur.piLvl = lvl; } } continue; }
+      if (t === '<Pf>' || (m = /^<PF(\d?)>$/i.exec(t))) { const lvl = t === '<Pf>' ? 0 : (m[1] === '' ? 1 : +m[1]); if (lineStart()) { if (cur.html.replace(/<[^>]*>/g, '').trim()) { cur.lpf = 20 * lvl; indentLine(); } else cur.pf = 20 * lvl; } continue; }
       if (/^<a\s/i.test(t)) {
         const href = attr(t, 'href') || '';
         const { meta, nolink, target } = hrefMeta(href);
@@ -265,10 +265,17 @@
         if (idx === paras.length - 1 && idx > 0 && (p.cls === 'cm' || p.cls === 'ci')) out += `<span class="pbr ${p.cls} trail"></span>`;
         continue;
       }
-      if (p !== paras[0] && !/^<span class="heading/.test(p.html) && !/<span class="heading[^"]*">[^<]*<\/span>$/.test(out)) out += `<span class="pbr ${p.cls}"></span>`;
-      const ind = (p.spi || 0) + (p.pf || 0);
-      if (ind) out += `<span class="pind${p === paras[0] ? ' first' : ''}" style="width:${ind}px"></span>`;
-      out += p.html;
+      const hasBreak = p !== paras[0] && !/^<span class="heading/.test(p.html) && !/<span class="heading[^"]*">[^<]*<\/span>$/.test(out);
+      if (p.piLvl > 0) {
+        const cls = `piblk${p === paras[0] ? ' first' : ''}${hasBreak ? ' ' + p.cls : ''}`;
+        const st = `--pi:${p.piLvl}${p.pf ? `;--pf:${p.pf}px` : ''}`;
+        out += `<span class="${cls}" data-pi="${p.piLvl}" style="${st}">${p.html}</span>`;
+      } else {
+        if (hasBreak) out += `<span class="pbr ${p.cls}"></span>`;
+        const ind = (p.spi || 0) + (p.pf || 0);
+        if (ind) out += `<span class="pind${p === paras[0] ? ' first' : ''}" style="width:${ind}px"></span>`;
+        out += p.html;
+      }
     }
     if (owners.length) out = out.replace(/data-owner="(\d+)"/g, (m, i) => {
       const o = owners[+i]; const a = [];

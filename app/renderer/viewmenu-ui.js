@@ -168,7 +168,7 @@
       <div class="swrow"><label>Any colour <input type="color" class="swany" value="${/^#[0-9a-f]{6}$/i.test(current || '') ? current : '#808080'}"></label><button type="button" class="swdef">As in Options</button></div>`, m => {
       m.classList.add('colormenu');
       m.addEventListener('click', e => { const c = e.target.closest('.swc'); if (c) { onPick(c.dataset.c); m.remove(); } });
-      m.querySelector('.swany').addEventListener('input', e => onPick(e.target.value));
+      const swAny = m.querySelector('.swany'); swAny.addEventListener('input', e => onPick(e.target.value)); swAny.addEventListener('change', e => onPick(e.target.value));
       m.querySelector('.swdef').onclick = () => { onPick(null); m.remove(); };
     });
   }

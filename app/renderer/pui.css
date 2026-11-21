@@ -22,9 +22,10 @@ html.sk .bvtext .pv sup.cm { display: none; }   /* no dot before a verse that ha
 html.sk .pbody, html.sk #libBody, html.sk #libFeed, html.sk .sres .hit p { zoom: var(--mod-zoom, 1); }   /* pinch with two fingers */
 html.sk .bvtext .xrs { display: inline; font: 500 .6em/1.3 var(--p-ui); color: var(--p-muted); margin: 0 .2em 0 .35em; }
 html.sk .bvtext .xrs a { color: var(--p-acc2); }
-html.sk .bvtext tr.sel, html.sk .bvtext .pv.sel { background: var(--p-selv) !important; }
-html.sk .bvtext .pvmark, html.sk .bvtext tr.pvmark { background: var(--p-markv) !important; }
+html.sk .bvtext tr.sel, html.sk .bvtext .pv.sel, html.sk .bvtext .pv.sel .piblk { background: var(--sel, var(--p-selv)) !important; }
+html.sk .bvtext .pvmark, html.sk .bvtext tr.pvmark, html.sk .bvtext .pvmark .piblk { background: var(--p-markv) !important; }
 html.sk .bvtext .speaking { background: var(--p-speak) !important; box-shadow: inset 3px 0 0 var(--p-acc2); border-radius: 12px; }
+html.sk .bvtext .speaking .piblk { background: var(--p-speak) !important; }
 html.sk .bvtext .woj { color: var(--woj); }
 html.sk .bvtext .pwordon { background: var(--p-accsoft); color: var(--p-acc); border-radius: 6px; }
 html.sk .bvtext .hd, html.sk .bvtext tr.hd td, html.sk .bvtext .heading { font-family: var(--p-ui); font-weight: 600; font-size: .78em; letter-spacing: .04em; color: var(--p-muted); }

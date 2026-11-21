@@ -499,6 +499,12 @@ html.phone #ttsbar { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
 .pbr { display: block; height: 0; }
 .pbr.cm { margin-top: .55em; }
 .pind { display: inline-block; height: 1px; vertical-align: baseline; }
+.piblk { display: block; margin-left: min(calc(var(--pi, 0) * var(--pi-step, 1.25em)), 45%); text-indent: var(--pf, 0px); }
+.piblk.cm { margin-top: .55em; }
+.pcol.rtl .piblk { margin-left: 0; margin-right: min(calc(var(--pi, 0) * var(--pi-step, 1.25em)), 45%); }
+.pv.sel .piblk { background: var(--sel); }
+.pv.pvmark .piblk { background: var(--p-markv, var(--sel)); }
+.pv.speaking .piblk { background: var(--p-speak, var(--accent-soft)); }
 
 /* developer: the module's own text with its tags, one verse per line */
 .bvtext[data-tags] .pv { display: block; margin: 0 0 .5em; font-family: ui-monospace, Consolas, 'Cascadia Mono', monospace; font-size: .8em; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }

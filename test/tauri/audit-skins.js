@@ -433,7 +433,7 @@
   ok(/<br>/.test(R0('one<CL>two')),'<CL> breaks the line');
   ok(blocks(R0('one<CM>two'))===1,'<CM> starts a new paragraph');
   ok(blocks(R0('one<CI>two'))===1,'<CI> starts a new line');
-  const pi=R0('<PI1>Psalm line'); ok(/class="pind first" style="width:40px"/.test(pi),'<PI> at the start of a verse keeps its indent ('+pi.slice(0,60)+')');
+  const pi=R0('<PI1>Psalm line'); ok(/class="piblk first" data-pi="1" style="--pi:1"/.test(pi),'<PI> at the start of a verse renders as an indented block ('+pi.slice(0,60)+')');
   ok(/<br><span class="pind" style="width:60px"><\/span>two/.test(R0('one<CL><PI2>two'))&&blocks(R0('one<CL><PI2>two'))===0,'<PI> right after <CL> indents the new line, no extra break');
   ok(!/<span class="para/.test(R0('one<CM>two'))&&/one<span class="pbr cm"><\/span>two/.test(R0('one<CM>two')),'a paragraph begun inside a verse is not closed at the verse end (the next verse goes on in it)');
   // a verse that goes on in the same paragraph keeps its indent inline (no line break)

@@ -1144,7 +1144,7 @@ async function renderPane(i, scroll, seq) {
       if (!paraOpen && !/^<span class="heading/.test(cHtml)) cHtml = cHtml.replace(/^<span class="pind first"[^>]*><\/span>/, '');
       paraOpen = /<span class="pbr (cm|ci) trail"><\/span>$/.test(cHtml);
       if (vnum) {
-        const mLead = /^((?:<span class="heading[^"]*">[\s\S]*?<\/span>)*)((?:<span class="pind[^"]*"[^>]*><\/span>)?)([\s\S]*)$/.exec(cHtml);
+        const mLead = /^((?:<span class="heading[^"]*">[\s\S]*?<\/span>)*)((?:<span class="piblk[^"]*"[^>]*>)?(?:<span class="pind[^"]*"[^>]*><\/span>)?)([\s\S]*)$/.exec(cHtml);
         cHtml = mLead ? `${mLead[1] || ''}${mLead[2] || ''}${vnum}${mLead[3] || ''}` : `${vnum}${cHtml}`;
       }
       html += `<span class="pv${row.v === vv ? ' sel' : ''}" data-v="${row.v}" data-col="${i}">${cHtml}</span> `;
