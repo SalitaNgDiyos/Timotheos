@@ -37,19 +37,34 @@ function renderLibraryList() {
 
 /* ---------------- import ---------------- */
 /* the import window: it shows how far the import is while it runs, then the report of what was imported (same window) */
-const imp = { on: false, quiet: false, t0: 0, timer: null, last: null, hidden: false };
+const imp = { on: false, quiet: false, t0: 0, timer: null, last: null, hidden: false, hadTransfer: false };
+const impMb = n => (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB';
 function impDraw() {
   const d = imp.last || { step: 'start', done: 0, total: 1 };
   const tot = Math.max(1, d.total || 1);
-  const frac = d.step === 'scan' ? 0.96 : d.step === 'copied' ? 0.92 : Math.min(0.9, ((d.done || 0) + (d.step === 'copy' ? 0.5 : 0)) / tot * 0.9);
-  const what = { start: 'Starting…', unpack: 'Unpacking', check: 'Reading', copy: 'Copying', copied: 'All files are in', scan: 'Adding the modules to your lists…' }[d.step] || '';
-  const sec = Math.round((Date.now() - imp.t0) / 1000);
+  let frac;
+  if (d.step === 'transfer') {
+    const bt = d.bytesTotal > 0 ? Math.min(1, (d.bytesDone || 0) / d.bytesTotal) : ((d.done || 0) / tot);
+    frac = 0.02 + bt * 0.43;
+  } else if (d.step === 'scan') frac = 0.96;
+  else if (d.step === 'copied') frac = 0.92;
+  else {
+    const base = imp.hadTransfer ? 0.48 : 0.04;
+    const span = 0.90 - base;
+    const sub = d.step === 'copy' ? 0.65 : d.step === 'check' ? 0.35 : d.step === 'unpack' ? 0.15 : 0;
+    frac = Math.min(0.90, base + ((d.done || 0) + sub) / tot * span);
+  }
+  const what = { transfer: 'Reading file', start: 'Preparing', unpack: 'Unpacking', check: 'Checking', copy: 'Installing', copied: 'All files are in', scan: 'Adding modules to your library…' }[d.step] || '';
+  const sec = Math.max(0, Math.round((Date.now() - imp.t0) / 1000));
   const body = $('#modalBody'); if (!body) return;
   let box = body.querySelector('.impprog');
   if (!box) { body.innerHTML = '<div class="impprog"><div class="ipbar"><i></i></div><p class="iptxt"></p><p class="small ipsub"></p></div>'; box = body.querySelector('.impprog'); }
   box.querySelector('.ipbar i').style.width = Math.round(frac * 100) + '%';
   box.querySelector('.iptxt').innerHTML = `${esc(what)}${d.name ? ' <b>' + esc(d.name) + '</b>' : ''}`;
-  box.querySelector('.ipsub').textContent = `${d.step === 'scan' || d.step === 'copied' ? (d.total || 0) : Math.min((d.done || 0) + 1, tot)} of ${tot} file${tot === 1 ? '' : 's'} · ${Math.round(frac * 100)}% · ${sec} s`;
+  const detail = d.step === 'transfer' && d.bytesTotal > 0
+    ? `${impMb(d.bytesDone || 0)} of ${impMb(d.bytesTotal)}`
+    : `${d.step === 'scan' || d.step === 'copied' ? (d.total || 0) : Math.min((d.done || 0) + 1, tot)} of ${tot} file${tot === 1 ? '' : 's'}`;
+  box.querySelector('.ipsub').textContent = `${detail} · ${Math.round(frac * 100)}% · ${sec} s`;
 }
 function impShow() {
   if (imp.quiet || imp.hidden) return;
@@ -62,11 +77,12 @@ function impShow() {
   }
   impDraw();
 }
-function impStart(quiet) {
-  imp.on = true; imp.quiet = !!quiet; imp.hidden = false; imp.t0 = Date.now(); imp.last = null;
-  clearInterval(imp.timer); imp.timer = setInterval(() => { if (imp.last) impShow(); }, 500);   // the seconds keep counting while a big file is copied
+function impStart(quiet, immediateTotal) {
+  imp.on = true; imp.quiet = !!quiet; imp.hidden = false; imp.t0 = Date.now(); imp.last = null; imp.hadTransfer = false;
+  clearInterval(imp.timer); imp.timer = setInterval(() => { if (imp.last) impShow(); }, 500);
+  if (immediateTotal) { imp.last = { step: 'start', done: 0, total: immediateTotal, name: '' }; impShow(); }
 }
-function impEnd() { imp.on = false; clearInterval(imp.timer); imp.timer = null; if ($('#modalBody .impprog')) $('#modal').classList.add('hidden'); }
+function impEnd() { imp.on = false; imp.hadTransfer = false; clearInterval(imp.timer); imp.timer = null; if ($('#modalBody .impprog')) $('#modal').classList.add('hidden'); }
 // archives found in a modules folder are unpacked at start: say so, and show the new modules
 if (window.api && api.onAutoImport) api.onAutoImport(async d => {
   try { state.infos.clear(); await refreshModules(d.list); } catch (e) { /* the list stays as it was */ }
@@ -76,7 +92,7 @@ if (window.api && api.onAutoImport) api.onAutoImport(async d => {
   if (!bits.length && d.archives) bits.push(`${d.archives} archive${d.archives === 1 ? '' : 's'} in your modules folders had no module Timotheos can read`);
   if (bits.length && window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(bits.join('. '));
 });
-if (window.api && api.onImportProgress) api.onImportProgress(d => { if (!imp.on) return; imp.last = d; impShow(); });
+if (window.api && api.onImportProgress) api.onImportProgress(d => { if (!imp.on) return; if (!imp.last) imp.t0 = Date.now(); if (d && d.step === 'transfer') imp.hadTransfer = true; imp.last = d; impShow(); });
 
 /** the password box for a protected archive: the password, or null */
 async function archivePassword(name, wrong) {
@@ -108,7 +124,7 @@ async function docChoice(name, title, more) {
 }
 async function importModules(paths, quiet) {
   let r;
-  impStart(quiet);
+  impStart(quiet, paths ? paths.length : 0);
   try { r = paths ? await api.importFiles(paths) : await api.importDialog(); }
   catch (e) { impEnd(); return messageBox('Import failed', esc(e.message)); }
   impEnd();

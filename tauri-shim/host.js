@@ -24,6 +24,7 @@ const worker = new Worker('worker.js');
 let started; const startedP = new Promise(r => { started = r; });
 let seq = 0; const waiting = new Map(); const listeners = {};
 const on = (ch, fn) => { (listeners[ch] = listeners[ch] || []).push(fn); };
+const emitLocal = (ch, data) => (listeners[ch] || []).forEach(f => { try { f(data); } catch (e) { console.error(e); } });
 worker.onmessage = async ev => {
   const m = ev.data;
   if (m.t === 'started') started();
@@ -77,13 +78,14 @@ function androidPick(multiple) {
     document.body.appendChild(inp); inp.click();
   });
 }
-async function androidCopy(file, dir) {
+async function androidCopy(file, dir, onChunk) {
   const dest = dir + '/' + String(file.name || 'module').replace(/[\\/:*?"<>|]+/g, '_');
   const PIECE = 1 << 20; let first = true;
   for (let o = 0; o < file.size || first; o += PIECE) {
     const buf = new Uint8Array(await file.slice(o, o + PIECE).arrayBuffer());
     let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
     await invoke('write_b64', { path: dest, data: btoa(bin), append: !first }); first = false;
+    if (onChunk) onChunk(Math.min(o + buf.length, file.size || buf.length));
   }
   return dest;
 }
@@ -95,13 +97,28 @@ async function hostOp(op, a) {
       if (isAndroid) {
         const files = await androidPick(props.includes('multiSelections'));
         if (!files.length) return { canceled: true, filePaths: [] };
+        const totalBytes = files.reduce((s, f) => s + (f.size || 0), 0);
+        emitLocal('import:progress', { step: 'transfer', done: 0, total: files.length, name: files[0].name || '', bytesDone: 0, bytesTotal: totalBytes });
+        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
         const dir = info.tmp + '/import-' + (++importSeq) + '-' + Date.now();
-        const out = []; for (const f of files) out.push(await androidCopy(f, dir));
+        const out = []; let doneBytes = 0;
+        for (let fi = 0; fi < files.length; fi++) {
+          const f = files[fi];
+          emitLocal('import:progress', { step: 'transfer', done: fi, total: files.length, name: f.name || '', bytesDone: doneBytes, bytesTotal: totalBytes });
+          const baseBytes = doneBytes;
+          out.push(await androidCopy(f, dir, n => emitLocal('import:progress', { step: 'transfer', done: fi, total: files.length, name: f.name || '', bytesDone: baseBytes + n, bytesTotal: totalBytes })));
+          doneBytes += (f.size || 0);
+        }
         return { canceled: false, filePaths: out };
       }
       const r = await dlgOpen({ title: o.title, multiple: props.includes('multiSelections'), directory: props.includes('openDirectory'), filters: (o.filters || []).filter(f => !(f.extensions || []).includes('*')) });
       if (!r) return { canceled: true, filePaths: [] };
-      return { canceled: false, filePaths: (Array.isArray(r) ? r : [r]).map(fwd) };
+      const picked = (Array.isArray(r) ? r : [r]).map(fwd);
+      if (props.includes('multiSelections') && picked.length) {
+        emitLocal('import:progress', { step: 'start', done: 0, total: picked.length, name: picked[0].split('/').pop() || '' });
+        await new Promise(res => requestAnimationFrame(() => setTimeout(res, 0)));
+      }
+      return { canceled: false, filePaths: picked };
     }
     case 'save': {
       const o = a[0] || {};

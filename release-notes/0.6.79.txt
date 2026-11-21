@@ -1,0 +1,3 @@
+Timotheos 0.6.79
+- Phone app (Quiet Reader): removed the floating bottom pill bar (only shown as a player while Read aloud is active) and kept the top-right hamburger settings button always visible and tappable.
+- Import progress: the progress box now appears the instant the file picker closes and tracks real-time background progress (including live MB-by-MB file reading on Android, unpacking, checking, installing, and library scanning).

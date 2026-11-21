@@ -1,3 +1,7 @@
+Timotheos 0.6.79
+- Phone app (Quiet Reader): removed the floating bottom pill bar (only shown as a player while Read aloud is active) and kept the top-right hamburger settings button always visible and tappable.
+- Import progress: the progress box now appears the instant the file picker closes and tracks real-time background progress (including live MB-by-MB file reading on Android, unpacking, checking, installing, and library scanning).
+
 Timotheos 0.6.78
 - Phone app: fixed Active verse colour picker so the selected colour (from swatches or the native colour picker) highlights the active verse instead of being overridden by the phone skin default.
 - Bible View: fixed <PI?> paragraph indent tags (<PI>, <PI1>, <PI2>, <PI3>, etc., with optional <PF> first-line indent) so wrapped lines stay indented as a true block alongside all three Margins levels (Narrow, Normal, Wide) and keep the active verse highlight.

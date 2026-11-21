@@ -53,16 +53,18 @@ html.sk-b .pd-ref { font: 500 22px/1 Literata, Georgia, serif; letter-spacing: -
 html.sk-b .pd-ref span, html.sk-b.psplitting .b-big h2 span { min-width: var(--par-w, 0px); }
 
 /* ===================== A · Quiet Reader ===================== */
-html.sk-a { --rd-top: calc(var(--safe-t) + 60px); --rd-bot: 170px; }
+html.sk-a { --rd-top: calc(var(--safe-t) + 60px); --rd-bot: 48px; }
 html.sk-a .bv .bvtext { padding-left: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) !important; padding-right: calc(var(--rd-mx, 26px) + var(--rd-ex, 8px)) !important; }
 .a-chrome { position: fixed; left: 0; right: 0; top: 0; padding: var(--safe-t) 10px 0; height: calc(52px + var(--safe-t)); box-sizing: border-box; display: flex; align-items: center; gap: 4px; z-index: 60; background: transparent; transition: background .25s; pointer-events: none; }
 /* the label (place and Bible) stays where it is while the text scrolls; the buttons around it come and go */
 .a-chrome .pib { opacity: 0; transform: translateY(-6px); transition: opacity .25s, transform .25s; pointer-events: none; }
 html.sk-a.a-show .a-chrome .pib { opacity: 1; transform: none; pointer-events: auto; }
+.a-chrome [data-a="more"] { opacity: 1 !important; transform: none !important; pointer-events: auto !important; }
 .a-chrome .mid { pointer-events: auto; }
 html.sk-a.pg-open .a-chrome, html.sk.sk-dlg .a-chrome { display: none; }
-.a-fade { position: fixed; left: 0; right: 0; bottom: 0; height: 130px; z-index: 22; pointer-events: none; background: linear-gradient(transparent, var(--p-bg) 64%); }
-.a-caps { position: fixed; left: 50%; bottom: calc(30px + var(--safe-b)); transform: translateX(-50%); height: 56px; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-radius: 30px; z-index: 62; background: var(--p-float, #1e2026); box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07) inset; color: var(--p-ink); white-space: nowrap; transition: opacity .2s; }
+.a-fade { display: none; }
+.a-caps { position: fixed; left: 50%; bottom: calc(30px + var(--safe-b)); transform: translateX(-50%); height: 56px; display: none; align-items: center; gap: 2px; padding: 0 8px; border-radius: 30px; z-index: 62; background: var(--p-float, #1e2026); box-shadow: 0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07) inset; color: var(--p-ink); white-space: nowrap; transition: opacity .2s; }
+.a-caps.playing { display: flex; }
 .a-caps .ref { min-width: 128px; max-width: 52vw; height: 44px; border: 0; background: transparent; color: var(--p-ink); font: 600 16px var(--p-ui); border-radius: 20px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; }
 .a-caps .sep { width: 1px; height: 24px; background: var(--p-line); margin: 0 4px; }
 .a-caps .gold { color: var(--p-acc); }
