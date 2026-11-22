@@ -89,7 +89,7 @@ if (window.api && api.onAutoImport) api.onAutoImport(async d => {
   const bits = [];
   if (d.added) bits.push(`${d.added} module${d.added === 1 ? '' : 's'} added from ${d.archives} archive${d.archives === 1 ? '' : 's'} in your modules folders`);
   if (d.protectedN) bits.push(`${d.protectedN} protected archive${d.protectedN === 1 ? ' needs' : 's need'} a password: import ${d.protectedN === 1 ? 'it' : 'them'} with Import to enter it`);
-  if (!bits.length && d.archives) bits.push(`${d.archives} archive${d.archives === 1 ? '' : 's'} in your modules folders had no module Timotheos can read`);
+  if (!bits.length && !d.already && (d.emptyCount == null ? d.archives > 0 : d.emptyCount > 0)) bits.push(`${d.archives} archive${d.archives === 1 ? '' : 's'} in your modules folders had no module Timotheos can read`);
   if (bits.length && window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(bits.join('. '));
 });
 if (window.api && api.onImportProgress) api.onImportProgress(d => { if (!imp.on) return; if (!imp.last) imp.t0 = Date.now(); if (d && d.step === 'transfer') imp.hadTransfer = true; imp.last = d; impShow(); });

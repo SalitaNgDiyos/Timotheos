@@ -5,6 +5,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Menu, session, nativeTheme, 
 const path = require('path');
 const fs = require('fs');
 const { Library } = require('./lib/library');
+const { scanArchives, clearArchiveSeenUnder } = require('./lib/archivescan');
 const canon = require('./lib/canon');
 const { Xrefs } = require('./lib/xrefs');
 const { importFiles } = require('./lib/importer');
@@ -109,27 +110,47 @@ async function rescanAll() {
   return l;
 }
 
-/** archives left in a modules folder (or any of its subfolders) are unpacked at start and on rescan; each one once, until it changes */
-let scanningArchives = false;
-async function scanArchiveFolders() {
-  if (scanningArchives) return;
-  scanningArchives = true;
-  try {
-    const seen = Object.assign({}, settings.archiveSeen || {});
+/** archives left in a modules folder (or any of its subfolders) are unpacked at start and on rescan; Rescan re-unpacks any whose unpacked module is missing */
+let activeArchiveScan = null;
+function scanArchiveFolders(opts = {}) {
+  const prev = activeArchiveScan;
+  const run = (async () => {
+    if (prev) { try { await prev; } catch (e) { /* previous run finished */ } }
     const folders = [...new Set([...(settings.moduleFolders || []), MODULES_DIR()])];
-    const found = Library.findArchives(folders);
-    const todo = found.filter(t => seen[t.f] !== t.sig);
-    if (!todo.length) return;
-    const results = await importFiles(todo.map(t => t.f), MODULES_DIR(), settings, userData, null, {});
-    for (const t of todo) seen[t.f] = t.sig;
-    settings.archiveSeen = seen; saveSettings();
-    const list = await rescanAll();
-    const added = results.filter(r => r.status === 'imported' || r.status === 'updated').length;
-    const protectedN = results.filter(r => r.status === 'password').length;
-    try { if (win && !win.isDestroyed?.()) win.webContents.send('import:auto', { list, added, archives: todo.length, protectedN, results }); } catch (e) { /* no window */ }
-  } finally {
-    scanningArchives = false;
-  }
+    const summary = await scanArchives({
+      folders,
+      destRoot: MODULES_DIR(),
+      settings,
+      userData,
+      forceMissing: !!opts.forceMissing,
+      saveSettings,
+    });
+    if (!summary.archives) return summary;
+    const list = summary.added > 0 ? await rescanAll() : lib.list();
+    const shouldNotify = !opts.silent && (
+      summary.added > 0 ||
+      summary.protectedN > 0 ||
+      (opts.notifyEmpty && summary.emptyCount > 0 && summary.already === 0)
+    );
+    if (shouldNotify) {
+      try {
+        if (win && !win.isDestroyed?.()) {
+          win.webContents.send('import:auto', {
+            list,
+            added: summary.added,
+            already: summary.already,
+            archives: summary.archives,
+            emptyCount: summary.emptyCount,
+            protectedN: summary.protectedN,
+            results: summary.results,
+          });
+        }
+      } catch (e) { /* no window */ }
+    }
+    return summary;
+  })();
+  activeArchiveScan = run.finally(() => { if (activeArchiveScan === run) activeArchiveScan = null; });
+  return activeArchiveScan;
 }
 
 /** the text of a study backup: the .json file itself, or the .json inside a compressed file or archive */
@@ -338,20 +359,23 @@ app.whenReady().then(async () => {
   handle('fx:remove', id => { fs.rmSync(path.join(FXDIR(), String(id).replace(/[^A-Za-z0-9._@-]+/g, '_')), { recursive: true, force: true }); return require('./lib/fxthemes').list(FXDIR()); });
   handle('modules:list', () => lib.list());
   handle('modules:rescan', async () => {
-    const l = await rescanAll();
-    setTimeout(() => { scanArchiveFolders().catch(() => {}); }, 50);
-    return l;
+    await scanArchiveFolders({ forceMissing: true });
+    return await rescanAll();
   });
   handle('modules:addFolder', async () => {
     const r = await dialog.showOpenDialog(win, { title: 'Choose a folder with theWord or e-Sword modules', properties: ['openDirectory'] });
     if (r.canceled || !r.filePaths[0]) return null;
     if (!settings.moduleFolders.includes(r.filePaths[0])) settings.moduleFolders.push(r.filePaths[0]);
     saveSettings();
-    const l = await rescanAll();
-    setTimeout(() => { scanArchiveFolders().catch(() => {}); }, 50);
-    return l;
+    await scanArchiveFolders({ forceMissing: true });
+    return await rescanAll();
   });
-  handle('modules:removeFolder', p => { settings.moduleFolders = settings.moduleFolders.filter(x => x !== p); saveSettings(); return rescanAll(); });
+  handle('modules:removeFolder', p => {
+    settings.moduleFolders = settings.moduleFolders.filter(x => x !== p);
+    settings.archiveSeen = clearArchiveSeenUnder(settings.archiveSeen, p).seen;
+    saveSettings();
+    return rescanAll();
+  });
   handle('modules:importDialog', async () => {
     const r = await dialog.showOpenDialog(win, {
       title: 'Import modules or documents', properties: ['openFile', 'multiSelections'],
@@ -639,7 +663,7 @@ app.whenReady().then(async () => {
   } catch (_) {}
 
   createWindow();
-  setTimeout(() => { scanArchiveFolders().catch(() => { /* later */ }); }, 4000);
+  setTimeout(() => { scanArchiveFolders({ notifyEmpty: true }).catch(() => { /* later */ }); }, 4000);
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 

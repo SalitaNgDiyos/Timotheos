@@ -23,4 +23,5 @@ echo "== tlnames: $(mkdir -p /tmp/claude-0/tlmods; sed "s/^lang=eng/lang=tgl/; s
 echo "== unit: $(node test/unit/studybackup.test.js 2>&1 | tail -1)"
 echo "== unit: $(node test/unit/bigdict.test.js 2>&1 | tail -1)"
 echo "== unit: $(node test/unit/subfolders.test.js 2>&1 | tail -1)"
+echo "== unit: $(node test/unit/archivescan.test.js 2>&1 | tail -1)"
 echo "== licence: $(node scripts/check-licence.mjs | tail -3 | tr '\n' ' ')"

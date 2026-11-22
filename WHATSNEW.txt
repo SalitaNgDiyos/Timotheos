@@ -1,6 +1,5 @@
-Timotheos 0.6.80
-- Module folders: linked sub-folders via .timotheos-link now strictly follow the "-" and "." skip rule (for both link name and target folder name) and resolve relative folder paths cleanly.
-- Module folders: archives placed inside .timotheos-link and Windows .lnk linked sub-folders are now found and unpacked automatically alongside regular folders and OS symlinks.
-- Module folders: added support for Windows Explorer shortcuts (.lnk) pointing to sub-folders or module files (local ANSI/Unicode paths and relative shortcut paths).
-- Module folders: raised nested sub-folder depth limit from 64 to 256 levels, ignored broken file symlinks instead of registering unreadable entries, and stripped UTF-8 BOM when grouping per-book USFM sub-folders as one Bible.
-- User Guide updated (computer and phone), and subfolder tests wired into CI.
+Timotheos 0.6.81
+- Module folders: clicking Rescan or Add folder now checks archives immediately and re-unpacks any module archive whose unpacked file is missing on disk (without re-unpacking non-module backup archives).
+- Module folders: removing a Module Folder clears its remembered archive list so re-adding it unpacks its archives again; failed unpacks are no longer marked as seen.
+- Options → Modules: updates module titles cleanly as background descriptions finish and shows progress feedback when clicking Rescan.
+- User Guide updated (computer and phone), and archive-rescan unit tests wired into CI.
