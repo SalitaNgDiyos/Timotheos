@@ -298,7 +298,7 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
       } catch (err) {
         // a protected archive waits for its password (the window asks for it and imports again)
         if (err.code === 'PASSWORD' || err.code === 'BADPASSWORD') results.push({ name, from: p, status: 'password', wrong: err.code === 'BADPASSWORD', reason: err.code === 'BADPASSWORD' ? 'the password is wrong' : 'the archive is protected by a password' });
-        else results.push({ name, from: p, status: 'skipped', reason: 'could not read archive: ' + err.message });
+        else results.push({ name, from: p, status: 'skipped', reason: 'could not read archive: ' + ((err && err.message) || String(err)) });
       }
       continue;
     }

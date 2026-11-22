@@ -121,17 +121,24 @@ function makeZip(entries) {
     ok(typeof settings.archiveSeen[goodZip] === 'object' && settings.archiveSeen[goodZip].dests[0] === expectedDestA,
       'legacy string entry upgraded to object with dests');
 
-    // 5. Corrupt .zip does not crash scan or block sibling archives, and is NOT recorded in archiveSeen
+    // 5. Corrupt .zip and .7z do not crash scan, pollute process.exitCode, or block sibling archives, and are NOT recorded in archiveSeen
     const folderC = path.join(tmp, 'FolderC');
     fs.mkdirSync(folderC, { recursive: true });
     const corruptZip = path.join(folderC, 'Broken.zip');
+    const corrupt7z = path.join(folderC, 'Corrupt.7z');
     const siblingZip = path.join(folderC, 'SiblingBible.zip');
     fs.writeFileSync(corruptZip, Buffer.from('PK\x03\x04corrupt-not-a-valid-zip'));
+    fs.writeFileSync(corrupt7z, Buffer.from([0x37, 0x7a, 0xbc, 0xaf, 0x27, 0x1c, 1, 2, 3, 4]));
     fs.writeFileSync(siblingZip, makeZip([{ name: 'SiblingBible.nt', data: ntData }]));
     const s5 = await scanArchives({ folders: [folderC], destRoot, settings, forceMissing: true, saveSettings });
-    ok(s5.added === 1 && s5.errorCount === 1 && fs.existsSync(path.join(destRoot, 'theWord', 'SiblingBible.nt')),
-      'corrupt zip fails gracefully without blocking sibling archives');
-    ok(!(corruptZip in settings.archiveSeen), 'corrupt zip is not recorded in archiveSeen so it can be retried');
+    ok(s5.added === 1 && s5.errorCount === 2 && fs.existsSync(path.join(destRoot, 'theWord', 'SiblingBible.nt')),
+      'corrupt zip and 7z fail gracefully without blocking sibling archives');
+    ok(!(corruptZip in settings.archiveSeen) && !(corrupt7z in settings.archiveSeen),
+      'corrupt archives are not recorded in archiveSeen so they can be retried');
+    const skippedCorrupt = s5.results.filter(r => r.name === 'Broken.zip' || r.name === 'Corrupt.7z');
+    ok(skippedCorrupt.length === 2 && skippedCorrupt.every(r => r.status === 'skipped' && /^could not read archive:/i.test(r.reason) && !/\bundefined\b/.test(r.reason)),
+      'corrupt archives report clean error messages without undefined');
+    ok(!process.exitCode, 'corrupt archives do not pollute process.exitCode');
 
     // 6. clearArchiveSeenUnder clears only keys under removed folder
     ok(isPathUnder(goodZip, folderA) && !isPathUnder(goodZipB, folderA) && !isPathUnder(goodZip, folderA + '2'),

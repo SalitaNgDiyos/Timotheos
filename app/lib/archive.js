@@ -81,17 +81,35 @@ async function sevenZipUnpack(buf, name, password) {
   const FS = z.FS; const arc = '/in.' + (/\.([a-z0-9]+)$/i.exec(name) ? /\.([a-z0-9]+)$/i.exec(name)[1].toLowerCase() : 'bin');
   const w = FS.open(arc, 'w+'); FS.write(w, buf, 0, buf.length); FS.close(w);
   const pw = password ? ['-p' + password] : [];
+  // Emscripten's Node wrapper mutates process.exitCode inside quit_() on every callMain(),
+  // and corrupt archives can throw raw C++ exception pointers (numbers) instead of Error objects.
+  const run7z = args => {
+    const isNode = typeof process !== 'undefined' && !!(process && process.versions && process.versions.node);
+    const prevExit = isNode ? process.exitCode : undefined;
+    try {
+      return z.callMain(args);
+    } catch (e) {
+      if (e && e.name === 'ExitStatus' && typeof e.status === 'number') return e.status;
+      const errText = log.join('\n');
+      if (wrongPw(errText)) throw fail(password ? 'the password is wrong' : 'this archive needs a password', password ? 'BADPASSWORD' : 'PASSWORD');
+      const errLines = log.filter(l => /error|can.t|cannot|unsupported/i.test(l)).slice(0, 2).join('; ');
+      throw fail('could not unpack: ' + (errLines || (e && e.message) || 'corrupt or unsupported archive'));
+    } finally {
+      if (isNode) process.exitCode = prevExit;
+    }
+  };
   // look first: how big, and is anything encrypted
   log.length = 0;
-  let code = z.callMain(['l', '-slt', '-ba', ...pw, arc]);
+  let code = run7z(['l', '-slt', '-ba', ...pw, arc]);
   const text = log.join('\n');
   if (code && wrongPw(text)) throw fail(password ? 'the password is wrong' : 'this archive needs a password', password ? 'BADPASSWORD' : 'PASSWORD');
+  if (code === 2 || code === 255) throw fail('could not unpack: ' + (text.split('\n').filter(l => /error|can.t|cannot|unsupported/i.test(l)).slice(0, 2).join('; ') || 'exit code ' + code));
   let total = 0, encrypted = false; for (const m of text.matchAll(/^Size = (\d+)/gm)) total += +m[1];
   if (/^Encrypted = \+/m.test(text)) encrypted = true;
   if (encrypted && !password) throw fail('this archive needs a password', 'PASSWORD');
   if (total > MAX_TOTAL) throw fail('the archive unpacks to ' + Math.round(total / 1048576) + ' MB; the limit is ' + Math.round(MAX_TOTAL / 1048576) + ' MB');
   log.length = 0;
-  code = z.callMain(['x', '-y', '-bd', '-o/out', ...pw, arc]);
+  code = run7z(['x', '-y', '-bd', '-o/out', ...pw, arc]);
   const outText = log.join('\n');
   if (code && wrongPw(outText)) throw fail(password ? 'the password is wrong' : 'this archive needs a password', password ? 'BADPASSWORD' : 'PASSWORD');
   if (code === 2 || code === 255) throw fail('could not unpack: ' + (outText.split('\n').filter(l => /error|can.t|cannot|unsupported/i.test(l)).slice(0, 2).join('; ') || 'exit code ' + code));
@@ -103,7 +121,7 @@ async function sevenZipUnpack(buf, name, password) {
       if (FS.isDir(st.mode)) walk(p); else out.push({ name: p.slice('/out/'.length), data: toBuf(FS.readFile(p)) });
     }
   };
-  walk('/out');
+  if (FS.analyzePath('/out').exists) walk('/out');
   return out;
 }
 function toBuf(u8) { const { Buffer } = require('buffer'); return Buffer.from(u8.buffer, u8.byteOffset, u8.byteLength); }
