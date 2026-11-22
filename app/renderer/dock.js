@@ -622,10 +622,14 @@
   const setEdge = (pl, x) => { for (const o of pl.lo) o[pl.col ? 'x1' : 'y1'] = x; for (const o of pl.hi) o[pl.col ? 'x0' : 'y0'] = x; };
   /** drag one or two edges (a divider: one; a corner: two) with the mouse; nothing is ever allowed to overlap */
   function dragEdges(e, plans, el, rerenderOnUp) {
-    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    try { el.setPointerCapture(e.pointerId); } catch (_) {}
     const rect = $('#grid').getBoundingClientRect(); const start = [e.clientX, e.clientY];
     const per = plans.map(pl => pl.col ? view.w / rect.width : view.h / rect.height);
+    let done = false;
     const move = ev => {
+      if (done) return;
+      if (ev.buttons === 0) { up(); return; }
       const want = plans.map((pl, k) => {
         let x = pl.at + ((pl.col ? ev.clientX - start[0] : ev.clientY - start[1]) * per[k]);
         if (!pl.lo.size || !pl.hi.size) { // an edge in free space snaps to the edge of the area facing it
@@ -640,16 +644,21 @@
       place();
     };
     const up = () => {
+      if (done) return;
+      done = true;
       for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up);
+      for (const t of ['pointerup', 'pointercancel', 'mouseup', 'blur']) window.removeEventListener(t, up);
       if (rerenderOnUp || detachMode) render();
       saveSoon();
     };
     el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+    for (const t of ['pointerup', 'pointercancel', 'mouseup', 'blur']) window.addEventListener(t, up);
   }
 
   /** in Detach edges mode: dragging a shared seam left/up shrinks only `a` inward; dragging right/down shrinks only `b` inward, opening empty space between them */
   function dragSeamDetached(e, a, b, col, el) {
-    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    try { el.setPointerCapture(e.pointerId); } catch (_) {}
     const rect = $('#grid').getBoundingClientRect();
     const start = col ? e.clientX : e.clientY;
     const per = col ? view.w / rect.width : view.h / rect.height;
@@ -658,7 +667,10 @@
     const aMin = (col ? a.x0 : a.y0) + min;
     const bMax = (col ? b.x1 : b.y1) - min;
     let side = 0; // -1 = shrink a inward, +1 = shrink b inward
+    let done = false;
     const move = ev => {
+      if (done) return;
+      if (ev.buttons === 0) { up(); return; }
       const deltaPx = (col ? ev.clientX : ev.clientY) - start;
       if (!side && Math.abs(deltaPx) < 2) return;
       if (!side) side = deltaPx < 0 ? -1 : 1;
@@ -675,10 +687,14 @@
       place();
     };
     const up = () => {
+      if (done) return;
+      done = true;
       for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up);
+      for (const t of ['pointerup', 'pointercancel', 'mouseup', 'blur']) window.removeEventListener(t, up);
       render(); saveSoon();
     };
     el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+    for (const t of ['pointerup', 'pointercancel', 'mouseup', 'blur']) window.addEventListener(t, up);
   }
 
   /** the draggable line between two touching areas: moves both together normally, or detaches whichever side you drag inward in Detach edges mode */
@@ -730,19 +746,45 @@
 
   /* ------------------------------------------------------------ dragging */
   let drag = null;
+  function unbindDrag() {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('pointercancel', cancelDrag);
+    window.removeEventListener('blur', cancelDrag);
+    window.removeEventListener('keydown', onDragKey, true);
+  }
+  function onDragKey(e) {
+    if (e.key === 'Escape' && drag) { e.preventDefault(); e.stopPropagation(); cancelDrag(); }
+  }
+  function cancelDrag() {
+    unbindDrag();
+    const d = drag; drag = null;
+    document.body.classList.remove('dragging');
+    if (d && d.ghost) d.ghost.remove();
+    if (d && d.isFloat && d.groupDiv) d.groupDiv.style.pointerEvents = '';
+    clearTargets();
+  }
   function startDrag(e, groupDiv, g) {
-    if (e.button !== 0 || e.target.closest('.dbtn')) return;
+    if (e.button !== 0 || e.target.closest('.dbtn') || e.target.closest('.dnav')) return;
+    if (drag) cancelDrag();
+    e.preventDefault();
     const tab = e.target.closest('.dtab');
     const id = tab ? tab.dataset.id : g.active;
     const isFloat = groupDiv.classList.contains('dfloat');
-    drag = { id, g, groupDiv, isFloat, sx: e.clientX, sy: e.clientY, started: false,
+    drag = { id, g, groupDiv, isFloat, sx: e.clientX, sy: e.clientY, started: false, lastTgt: null, target: null,
       ox: isFloat ? e.clientX - groupDiv.offsetLeft : 0, oy: isFloat ? e.clientY - groupDiv.offsetTop : 0 };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp, { once: true });
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('pointercancel', cancelDrag);
+    window.addEventListener('blur', cancelDrag);
+    window.addEventListener('keydown', onDragKey, true);
   }
 
   function onMove(e) {
     if (!drag) return;
+    if (e.buttons === 0) { onUp(e); return; }
     if (!drag.started) {
       if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 7) return;
       drag.started = true;
@@ -763,7 +805,9 @@
       drag.groupDiv.style.left = e.clientX - drag.ox + 'px'; drag.groupDiv.style.top = e.clientY - drag.oy + 'px';
       drag.groupDiv.style.pointerEvents = 'none';
     }
-    const tgt = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList && el.classList.contains('dtarget'));
+    const tgt = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList && el.classList.contains('dtarget')) || null;
+    if (tgt === drag.lastTgt) return;
+    drag.lastTgt = tgt;
     drag.target = tgt ? JSON.parse(tgt.dataset.t) : null;
     document.querySelectorAll('.dtarget.hot').forEach(x => x.classList.remove('hot'));
     if (tgt) tgt.classList.add('hot');
@@ -771,7 +815,7 @@
   }
 
   function onUp(e) {
-    document.removeEventListener('pointermove', onMove);
+    unbindDrag();
     const d = drag; drag = null;
     if (!d) return;
     document.body.classList.remove('dragging');
@@ -779,15 +823,20 @@
     clearTargets();
     if (d.isFloat) d.groupDiv.style.pointerEvents = '';
     if (!d.started) return;
-    if (d.target) { dropOn(d.id, d.target); return; }
-    if (d.isFloat) {
-      const f = d.g; f.x = d.groupDiv.offsetLeft; f.y = d.groupDiv.offsetTop; clampFloat(d.groupDiv);
-      f.x = parseInt(d.groupDiv.style.left); f.y = parseInt(d.groupDiv.style.top); saveSoon(); return;
+    try {
+      if (d.target) { dropOn(d.id, d.target); return; }
+      if (d.isFloat) {
+        const f = d.g; f.x = d.groupDiv.offsetLeft; f.y = d.groupDiv.offsetTop; clampFloat(d.groupDiv);
+        f.x = parseInt(d.groupDiv.style.left); f.y = parseInt(d.groupDiv.style.top); saveSoon(); return;
+      }
+      // dropped somewhere without a target: make it a floating window there
+      detach(d.id);
+      L.floats.push({ panels: [d.id], active: d.id, x: e.clientX - 40, y: e.clientY - 14, w: 380, h: 340 });
+      maxed = null; commit();
+    } catch (err) {
+      console.error('TimotheosDock drop error:', err);
+      render();
     }
-    // dropped somewhere without a target: make it a floating window there
-    detach(d.id);
-    L.floats.push({ panels: [d.id], active: d.id, x: e.clientX - 40, y: e.clientY - 14, w: 380, h: 340 });
-    maxed = null; commit();
   }
 
   /** smart drop zones: every empty space created by resizing/detaching + Left/Right/Top/Bottom/Tab zones on existing panels + outer workbench edges */
@@ -883,7 +932,7 @@
     pv.classList.remove('hidden');
   }
 
-  function clearTargets() { const l = $('#dlayer'); if (l) l.remove(); }
+  function clearTargets() { document.querySelectorAll('.dlayer, .dghost').forEach(x => x.remove()); }
 
   /** move a panel to a drop target */
   function dropOn(id, t) {

@@ -1,5 +1,4 @@
-Timotheos 0.6.82
-- Panel layout: added a "Detach edges" toggle button (toolbar, Panels menu, and Options → Layout & toolbar) to shrink panel edges independently without stretching neighbours and keep emptied spaces open while arranging.
-- Panel docking: dragging a panel now shows smart drop zones on every empty space you created plus Left / Right / Top / Bottom / Tab zones on panels and outer window edges, with exact live drop previews.
-- 4×3 snap grid: fixed the optional 4×3 snap grid toggle so cells accurately fill empty or partially empty resized spaces, split spanning panels, and tab onto single-cell panels.
-- Layout thumbnails: Options → Layout & toolbar and the Panels menu now show real miniature SVG thumbnails of each built-in and saved layout instead of generic icons.
+Timotheos 0.6.83
+- Panel docking: fixed a freeze during layout mapping where the drop grid overlay and dragged panel ghost could stay stuck on screen (now handles pointercancel, mouseup, window blur, released mouse buttons, and Escape cleanly).
+- Panel dragging: cached hover target previews so dragging across panels and 4×3 grid cells no longer recomputes layout geometry on every pixel of mouse movement.
+- Edge resizing: guarded pointer capture and added window-level release cleanup for Detach edges and divider drags.

@@ -696,7 +696,7 @@ body.centered .bv > .bvbody > .bvtext { padding-bottom: var(--half, 0px); box-si
 .dtarget.cell { position: absolute; width: auto; height: auto; box-sizing: border-box; border-radius: 6px; background: color-mix(in srgb, var(--bg) 72%, transparent); border: 1.5px dashed var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; text-align: center; padding: 4px; overflow: hidden; }
 .dtarget.cell .dcn { font-weight: 700; opacity: .8; } .dtarget.cell .dcw { opacity: .75; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dtarget.cell.hot { background: color-mix(in srgb, var(--accent) 35%, var(--card)); color: var(--text); }
-.dpreview { position: absolute; z-index: 3; transition: left 60ms ease, top 60ms ease, width 60ms ease, height 60ms ease; }
+.dpreview { position: absolute; z-index: 3; }
 .dpreview.tabmode { border-style: dashed; background: color-mix(in srgb, var(--accent) 16%, transparent); }
 
 /* Detach edges mode: empty spaces & independent gutters */
