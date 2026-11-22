@@ -743,8 +743,19 @@ function isPerBookUsfmDir(dir, fileNames) {
     let txt;
     try {
       const p = path.join(dir, f);
-      if (!fs.statSync(p).isFile()) return false;
-      txt = fs.readFileSync(p, 'utf8');
+      const st = fs.statSync(p);
+      if (!st.isFile()) return false;
+      if (st.size > 4096) {
+        const buf = Buffer.allocUnsafe(4096);
+        let n = 0;
+        const fd = fs.openSync(p, 'r');
+        try { n = fs.readSync(fd, buf, 0, 4096, 0); } finally { fs.closeSync(fd); }
+        const head = buf.subarray(0, n).toString('utf8').replace(/^\uFEFF/, '');
+        if (/^#\s*timotheos\.title\s*=/m.test(head)) return false;
+        const headIds = head.match(/^\\id\s+([1-4]?[A-Za-z]{2,4})\b/gm);
+        if (headIds && headIds.length > 1) return false;
+      }
+      txt = fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '');
     } catch (e) { return false; }
     if (/^#\s*timotheos\.title\s*=/m.test(txt)) return false;
     const ids = [...txt.matchAll(/^\\id\s+([1-4]?[A-Za-z]{2,4})\b/gm)].map(m => m[1]);

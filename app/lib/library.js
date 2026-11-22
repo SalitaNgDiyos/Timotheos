@@ -31,7 +31,135 @@ const ENCRYPTED_EXT = /\.(ontx|otx|ntx)$/i;
 const BOOK_EXT = /\.(twm|cmtx|cmti|dctx|dcti|topx|topi|refx|refi|devx|devi|lexx|lexi|mapx|mapi|harx|hari|notx|jnlx|(cmt|dct|bok|book|jor)\.mybible)$/i;
 const OVERLAY_TWM = /\.(hdgs|prgs)\.twm$/i;
 const SKIP_TWM = /\.(lyts|vsls|bhls|rdp|layouts?)\.twm$/i;
-const MAX_SUBFOLDER_DEPTH = 64;
+const MAX_SUBFOLDER_DEPTH = 256;
+const LNK_CLSID = [0x01, 0x14, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46];
+
+const isHiddenOrDisabled = name => /^[-.]/.test(name || '');
+const isReadableFile = fp => { try { return fs.statSync(fp).isFile(); } catch (e) { return false; } };
+
+function resolveWindowsLnk(lnkPath) {
+  let buf;
+  try {
+    const st = fs.statSync(lnkPath);
+    if (!st.isFile() || st.size < 76 || st.size > 262144) return null;
+    buf = fs.readFileSync(lnkPath);
+  } catch (e) { return null; }
+  if (!buf || buf.length < 76 || buf.readUInt32LE(0) !== 0x4C) return null;
+  for (let i = 0; i < 16; i++) if (buf[4 + i] !== LNK_CLSID[i]) return null;
+
+  const flags = buf.readUInt32LE(20);
+  const hasIdList = (flags & 0x01) !== 0;
+  const hasLinkInfo = (flags & 0x02) !== 0;
+  const hasName = (flags & 0x04) !== 0;
+  const hasRelPath = (flags & 0x08) !== 0;
+  const isUnicode = (flags & 0x80) !== 0;
+
+  let off = 76;
+  if (hasIdList) {
+    if (off + 2 > buf.length) return null;
+    off += 2 + buf.readUInt16LE(off);
+    if (off > buf.length) return null;
+  }
+
+  const readCString = (start, end, utf16) => {
+    if (start < 0 || start >= end || end > buf.length) return '';
+    if (utf16) {
+      let p = start;
+      while (p + 1 < end && (buf[p] !== 0 || buf[p + 1] !== 0)) p += 2;
+      return buf.toString('utf16le', start, p);
+    }
+    let p = start;
+    while (p < end && buf[p] !== 0) p++;
+    return buf.toString('latin1', start, p);
+  };
+
+  let localTarget = '';
+  if (hasLinkInfo && off + 4 <= buf.length) {
+    const infoStart = off;
+    const infoSize = buf.readUInt32LE(infoStart);
+    const infoEnd = infoStart + infoSize;
+    if (infoSize >= 28 && infoEnd <= buf.length) {
+      const hdrSize = buf.readUInt32LE(infoStart + 4);
+      const infoFlags = buf.readUInt32LE(infoStart + 8);
+      if ((infoFlags & 0x01) !== 0) {
+        let base = '', suf = '';
+        if (hdrSize >= 0x24 && infoStart + 36 <= infoEnd) {
+          const baseUniOff = buf.readUInt32LE(infoStart + 28);
+          const sufUniOff = buf.readUInt32LE(infoStart + 32);
+          if (baseUniOff > 0 && infoStart + baseUniOff < infoEnd) {
+            base = readCString(infoStart + baseUniOff, infoEnd, true);
+            if (sufUniOff > 0 && infoStart + sufUniOff < infoEnd) suf = readCString(infoStart + sufUniOff, infoEnd, true);
+          }
+        }
+        if (!base) {
+          const baseOff = buf.readUInt32LE(infoStart + 16);
+          const sufOff = buf.readUInt32LE(infoStart + 24);
+          if (baseOff > 0 && infoStart + baseOff < infoEnd) {
+            base = readCString(infoStart + baseOff, infoEnd, false);
+            if (sufOff > 0 && infoStart + sufOff < infoEnd) suf = readCString(infoStart + sufOff, infoEnd, false);
+          }
+        }
+        if (base) {
+          if (!suf) localTarget = base;
+          else if (/[\\/]$/.test(base) || /^[\\/]/.test(suf)) localTarget = base + suf;
+          else localTarget = base + path.sep + suf;
+        }
+      }
+      off = infoEnd;
+    } else if (infoSize >= 4 && infoEnd <= buf.length) {
+      off = infoEnd;
+    }
+  }
+
+  if (localTarget) {
+    try { if (fs.existsSync(localTarget)) return localTarget; } catch (e) { /* fall through to relative path */ }
+  }
+
+  if (hasRelPath && off + 2 <= buf.length) {
+    const readStringData = () => {
+      if (off + 2 > buf.length) return '';
+      const count = buf.readUInt16LE(off);
+      off += 2;
+      const byteLen = isUnicode ? count * 2 : count;
+      if (off + byteLen > buf.length) { off = buf.length; return ''; }
+      const s = buf.toString(isUnicode ? 'utf16le' : 'latin1', off, off + byteLen);
+      off += byteLen;
+      return s;
+    };
+    if (hasName) readStringData();
+    const rel = readStringData();
+    if (rel) {
+      const resolved = path.resolve(path.dirname(lnkPath), rel.replace(/\\/g, path.sep));
+      try { if (fs.existsSync(resolved)) return resolved; } catch (e) { /* ignore */ }
+    }
+  }
+
+  return null;
+}
+
+function resolveLinkEntry(dir, itemName) {
+  const low = String(itemName || '').toLowerCase();
+  const isTwLink = low.endsWith('.timotheos-link');
+  const isWinLnk = !isTwLink && low.endsWith('.lnk');
+  if (!isTwLink && !isWinLnk) return null;
+  const p = path.join(dir, itemName);
+  try {
+    let target = '';
+    if (isTwLink) {
+      const raw = fs.readFileSync(p, 'utf8').trim();
+      if (!raw) return null;
+      const clean = raw.replace(/\\/g, path.sep);
+      target = (path.isAbsolute(raw) || /^[A-Za-z]:[\\/]/.test(raw)) ? raw : path.resolve(dir, clean);
+    } else {
+      target = resolveWindowsLnk(p) || '';
+    }
+    if (!target || !fs.existsSync(target)) return null;
+    const st = fs.statSync(target);
+    return { target, name: path.basename(target), isDir: st.isDirectory(), isFile: st.isFile(), linkFile: p, linkName: itemName };
+  } catch (e) {
+    return null;
+  }
+}
 
 function isDirEntry(dir, it) {
   if (it.isDirectory()) return true;
@@ -99,6 +227,14 @@ class Library {
     const out = [];
     const seenFiles = new Set();
     const visitedDirs = new Set();
+    const addArchive = fp0 => {
+      let st; try { st = fs.statSync(fp0); } catch (e) { return; }
+      if (!st.isFile()) return;
+      const fp = realDirKey(fp0);
+      if (seenFiles.has(fp)) return;
+      seenFiles.add(fp);
+      out.push({ f: fp0, sig: st.size + ':' + Math.round(st.mtimeMs) });
+    };
     const walk = (dir, depth) => {
       if (!dir || depth > MAX_SUBFOLDER_DEPTH) return;
       const rkey = realDirKey(dir);
@@ -108,16 +244,20 @@ class Library {
       for (const it of items) {
         const p = path.join(dir, it.name);
         if (isDirEntry(dir, it)) {
-          if (depth < MAX_SUBFOLDER_DEPTH && !/^[-.]/.test(it.name)) walk(p, depth + 1);
+          if (depth < MAX_SUBFOLDER_DEPTH && !isHiddenOrDisabled(it.name)) walk(p, depth + 1);
+          continue;
+        }
+        const link = resolveLinkEntry(dir, it.name);
+        if (link) {
+          if (link.isDir) {
+            if (depth < MAX_SUBFOLDER_DEPTH && !isHiddenOrDisabled(link.linkName) && !isHiddenOrDisabled(link.name)) walk(link.target, depth + 1);
+          } else if (link.isFile && archive.isArchiveName(link.name)) {
+            addArchive(link.target);
+          }
           continue;
         }
         if (!archive.isArchiveName(it.name)) continue;
-        let st; try { st = fs.statSync(p); } catch (e) { continue; }
-        if (!st.isFile()) continue;
-        const fp = realDirKey(p);
-        if (seenFiles.has(fp)) continue;
-        seenFiles.add(fp);
-        out.push({ f: p, sig: st.size + ':' + Math.round(st.mtimeMs) });
+        addArchive(p);
       }
     };
     for (const d of folders) walk(d, 0);
@@ -138,7 +278,7 @@ class Library {
       visitedDirs.add(rkey);
       let items; try { items = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
       // If a subfolder (not named "USFM") holds 2+ per-book .usfm/.sfm files of a single Bible, treat the subfolder as one USFM Bible
-      const usfmFiles = items.filter(x => !isDirEntry(dir, x) && usfm.USFM_EXT.test(x.name));
+      const usfmFiles = items.filter(x => !isDirEntry(dir, x) && usfm.USFM_EXT.test(x.name) && isReadableFile(path.join(dir, x.name)));
       let bundledUsfmHere = false;
       if (depth > 0 && !/^(usfm|theword|e-sword|modules)$/i.test(path.basename(dir)) && usfmFiles.length >= 2 && usfm.isPerBookUsfmDir(dir, usfmFiles.map(x => x.name))) {
         const dname = path.basename(dir);
@@ -150,11 +290,13 @@ class Library {
       if (path.basename(dir).toLowerCase() === 'mods.d') {
         for (const it of items) {
           if (isDirEntry(dir, it)) {
-            if (depth < MAX_SUBFOLDER_DEPTH && !/^[-.]/.test(it.name)) walk(path.join(dir, it.name), depth + 1);
+            if (depth < MAX_SUBFOLDER_DEPTH && !isHiddenOrDisabled(it.name)) walk(path.join(dir, it.name), depth + 1);
             continue;
           }
           if (!/\.conf$/i.test(it.name)) continue;
-          const cp = path.join(dir, it.name); if (seen.has(cp)) continue; seen.add(cp);
+          const cp = path.join(dir, it.name);
+          if (!isReadableFile(cp) || seen.has(cp)) continue;
+          seen.add(cp);
           const pr = sword.probe(cp); if (!pr.ok) continue;
           const dupKey = (it.name.replace(/\.conf$/i, '') + (pr.kind === 'Bible' ? '.sword' : '.swordbook')).toLowerCase();
           if (seenNames.has(dupKey)) continue; seenNames.add(dupKey);
@@ -167,26 +309,32 @@ class Library {
         let p = path.join(dir, it.name);
         let itemName = it.name;
         let viaLink = null;
-        if (isDirEntry(dir, it)) { if (depth < MAX_SUBFOLDER_DEPTH && !/^[-.]/.test(it.name)) walk(p, depth + 1); continue; }
-        if (itemName.toLowerCase().endsWith('.timotheos-link')) {
-          try {
-            const target = fs.readFileSync(p, 'utf8').trim();
-            if (!target || !fs.existsSync(target)) continue;
-            viaLink = p;
-            p = target;
-            itemName = path.basename(target);
-            if (fs.statSync(p).isDirectory()) { if (depth < MAX_SUBFOLDER_DEPTH) walk(p, depth + 1); continue; }
-          } catch (e) { continue; }
+        if (isDirEntry(dir, it)) { if (depth < MAX_SUBFOLDER_DEPTH && !isHiddenOrDisabled(it.name)) walk(p, depth + 1); continue; }
+        const rawLow = itemName.toLowerCase();
+        if (rawLow.endsWith('.timotheos-link') || rawLow.endsWith('.lnk')) {
+          const link = resolveLinkEntry(dir, itemName);
+          if (!link) continue;
+          if (link.isDir) {
+            if (depth < MAX_SUBFOLDER_DEPTH && !isHiddenOrDisabled(link.linkName) && !isHiddenOrDisabled(link.name)) walk(link.target, depth + 1);
+            continue;
+          }
+          if (!link.isFile) continue;
+          viaLink = link.linkFile;
+          p = link.target;
+          itemName = link.name;
         }
         if (bundledUsfmHere && !viaLink && usfm.USFM_EXT.test(itemName)) continue;
-        if (seen.has(p)) continue; seen.add(p);
         const low = itemName.toLowerCase();
+        if (ENCRYPTED_EXT.test(low) || SKIP_TWM.test(low)) continue;
+        const mayBeMod = BIBLE_EXT.test(low) || usfm.isUsfmFile(low) || usfm.isUsfxFile(low) || low.endsWith('.xml') || low.endsWith('.xrefs.twm') || /\.mybible$/.test(low) || OVERLAY_TWM.test(low) || BOOK_EXT.test(low);
+        if (!mayBeMod) continue;
+        if (!viaLink && !isReadableFile(p)) continue;
+        if (seen.has(p)) continue; seen.add(p);
         // the same module in two folders (e.g. theWord's folder and Timotheos's imports): keep the first
         const dupKey = low;
         if (BIBLE_EXT.test(low)) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: /\.bbl\.mybible$/.test(low) ? '.bbl.mybible' : path.extname(low), linkFile: viaLink }); }
         else if (usfm.isUsfmFile(low)) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: ".usfm", linkFile: viaLink }); }
         else if (usfm.isUsfxFile(low) || (low.endsWith(".xml") && usfm.probeXml(p))) { if (seenNames.has(dupKey)) continue; seenNames.add(dupKey); this.entries.push({ file: p, name: itemName, ext: ".usfx", linkFile: viaLink }); }
-        else if (ENCRYPTED_EXT.test(low)) continue;
         else if (low.endsWith('.xrefs.twm')) this.xrefFiles.push(p);
         else if (/\.mybible$/.test(low)) {
           // a MySword file whose name does not say what it is (no .bbl / .cmt / .dct / .bok): look inside
@@ -196,7 +344,6 @@ class Library {
           else this.addBook(p, itemName, viaLink, k === 'commentary' || k === 'dictionary' ? k : 'book');
         }
         else if (OVERLAY_TWM.test(low)) this.overlayFiles.push(p);
-        else if (SKIP_TWM.test(low)) continue;
         else if (BOOK_EXT.test(low)) {
           if (seenNames.has(dupKey)) continue; seenNames.add(dupKey);
           if (low.endsWith('.gbk.twm')) gbks.push({ file: p, name: itemName, linkFile: viaLink });
