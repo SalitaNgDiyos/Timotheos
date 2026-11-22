@@ -30,6 +30,7 @@
   <span class="tsep"></span>
   <span class="grow"></span>
   <button id="importBtn2" class="tb" data-icon="import" title="Import theWord or e-Sword modules (Ctrl+I)"><span class="lbl">Import</span></button>
+  <button id="detachBtn" class="tb" data-icon="detach" title="Detach adjacent panel edges so you can shrink panels independently and leave empty spaces for new panels"><span class="lbl">Detach edges</span></button>
   <div class="menuwrap">
     <button id="panelsBtn" class="tb" data-icon="layout" title="Show or hide panels, choose a layout"><span class="lbl">Panels</span></button>
     <div id="panelsMenu" class="menu right hidden"></div>
@@ -320,8 +321,10 @@
         </section>
         <section class="optpage hidden" data-o="layout">
           <h4>Panel layout</h4>
-          <p class="small">Drag a panel by its caption or tab. Drop it on the arrows that appear to dock it left, right, below, or as a tab; drop it anywhere else to float it as a window. Double-click a caption to float it or dock it again.</p>
-          <div id="layoutPresets" class="ocol"></div>
+          <p class="small">Drag a panel by its caption or tab onto any empty space you created, or onto the Left, Right, Top, Bottom, or Tab zones of another panel (drop outside to float it). Turn on <b>Detach edges</b> while arranging to pull any panel edge inward without stretching its neighbour and keep emptied spots open.</p>
+          <div class="orow"><label title="When on, dragging a panel edge shrinks only that panel so you can open empty space, and closing or moving a panel keeps its space open"><input type="checkbox" id="optDetachEdges"> Detach adjacent panel edges (free arrange mode)</label></div>
+          <div class="orow"><label title="When on, dragging a panel shows a 4×3 snap grid overlay instead of smart empty-space and panel drop zones"><input type="checkbox" id="optSnapGrid"> Use 4×3 snap grid when dragging panels</label></div>
+          <div id="layoutPresets" class="presetgrid"></div>
           <div class="orow"><button id="saveLayoutBtn">Save current layout as…</button></div>
           <ul id="savedLayouts" class="savedl"></ul>
           <h4>Toolbar</h4>

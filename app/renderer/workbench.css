@@ -691,12 +691,55 @@ body.centered .bv > .bvbody > .bvtext { padding-bottom: var(--half, 0px); box-si
 .bpick .bpicklist label { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; cursor: pointer; }
 .bpick .bpicklist label.hidden { display: none; }
 
-/* ---- 0.6.2: the 4 x 3 grid of areas ---- */
+/* ---- 0.6.2: the 4 x 3 grid of areas & 0.6.82 smart drop zones / detach edges / layout thumbnails ---- */
 .dlayer { position: fixed; inset: auto; }
 .dtarget.cell { position: absolute; width: auto; height: auto; box-sizing: border-box; border-radius: 6px; background: color-mix(in srgb, var(--bg) 72%, transparent); border: 1.5px dashed var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; text-align: center; padding: 4px; overflow: hidden; }
 .dtarget.cell .dcn { font-weight: 700; opacity: .8; } .dtarget.cell .dcw { opacity: .75; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dtarget.cell.hot { background: color-mix(in srgb, var(--accent) 35%, var(--card)); color: var(--text); }
-.dpreview { position: absolute; }
+.dpreview { position: absolute; z-index: 3; transition: left 60ms ease, top 60ms ease, width 60ms ease, height 60ms ease; }
+.dpreview.tabmode { border-style: dashed; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+
+/* Detach edges mode: empty spaces & independent gutters */
+#detachBtn.on { background: color-mix(in srgb, var(--accent) 24%, transparent); color: var(--accent); border-color: var(--accent); }
+body.detach-mode #grid > .dgroup { outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: -1px; }
+body.detach-mode .gut.detach, body.detach-mode .gut.free { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+body.detach-mode .gut.detach:hover, body.detach-mode .gut.free:hover { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.dempty { position: absolute; z-index: 1; box-sizing: border-box; border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--accent) 7%, transparent); display: flex; align-items: center; justify-content: center; pointer-events: none; color: var(--muted); font-size: 12px; text-align: center; padding: 8px; }
+
+/* Smart drop zones (empty spaces + Left/Right/Top/Bottom/Tab on panels + outer edges) */
+.dtarget.space { position: absolute; width: auto; height: auto; box-sizing: border-box; border-radius: 8px; background: color-mix(in srgb, var(--accent) 18%, var(--bg)); border: 2px dashed var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; color: var(--text); padding: 6px; z-index: 2; }
+.dtarget.space .dcn { font-weight: 700; color: var(--accent); }
+.dtarget.space .dcw { font-size: 11px; opacity: .85; }
+.dtarget.space.hot { background: color-mix(in srgb, var(--accent) 34%, var(--card)); border-style: solid; }
+.dpanelzones { position: absolute; pointer-events: none; z-index: 1; }
+.dtarget.zone { position: absolute; width: auto; height: auto; border-radius: 6px; background: transparent; border: 1px solid transparent; box-shadow: none; color: transparent; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+.dtarget.zone.zl { left: 2%; top: 18%; width: 22%; height: 64%; }
+.dtarget.zone.zr { right: 2%; top: 18%; width: 22%; height: 64%; }
+.dtarget.zone.zt { left: 18%; top: 2%; width: 64%; height: 22%; }
+.dtarget.zone.zb { left: 18%; bottom: 2%; width: 64%; height: 22%; }
+.dtarget.zone.zc { left: 26%; top: 26%; width: 48%; height: 48%; }
+.dpanelzones:hover .dtarget.zone { background: color-mix(in srgb, var(--card) 58%, transparent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--text); }
+.dtarget.zone.hot { background: color-mix(in srgb, var(--accent) 36%, var(--card)) !important; border-color: var(--accent) !important; color: var(--text) !important; }
+.dtarget.oedge { position: absolute; width: auto; height: auto; border-radius: 0; border: 0; box-shadow: none; background: transparent; z-index: 4; }
+.dtarget.oedge.oel { left: 0; top: 16px; bottom: 16px; width: 12px; }
+.dtarget.oedge.oer { right: 0; top: 16px; bottom: 16px; width: 12px; }
+.dtarget.oedge.oet { left: 16px; right: 16px; top: 0; height: 12px; }
+.dtarget.oedge.oeb { left: 16px; right: 16px; bottom: 0; height: 12px; }
+.dtarget.oedge.hot { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* Actual layout thumbnails in Options & Panels menu */
+.laythumb { flex: none; display: block; border-radius: 4px; }
+.presetgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; margin: 8px 0; }
+.presetcard { display: flex; align-items: center; gap: 10px; padding: 8px 10px; text-align: left; border-radius: 8px; }
+.presetcard .preset-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.presetcard .preset-txt b { font-size: 13px; }
+.presetcard .preset-txt small { color: var(--muted); font-size: 11px; line-height: 1.3; }
+.savedl li { display: flex; align-items: center; gap: 8px; }
+.savedl .saved-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.laymenu-btn { display: flex !important; align-items: center; gap: 8px; text-align: left; }
+.laymenu-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.laymenu-txt small { color: var(--muted); font-size: 11px; white-space: normal; max-width: 220px; }
+html.phone #detachBtn { display: none !important; }
 .dgroup.isbv .dbody > .dpanel { overflow: hidden; }
 .dgroup.isbv .dzoom { display: none; }
 /* text wrapping in Bible views: break at spaces; only a word longer than the line is broken; no sideways scrolling */

@@ -13,10 +13,12 @@
   const NC = 4, NR = 3;
   const PANELS = new Map();          // id → { id, title, icon, cap, el }
   let L = null;                      // current layout
-  let opts = {};                     // { onSave(layout), onActivate(id), onClose(id), zoomable, onZoom, onSkin }
+  let opts = {};                     // { onSave(layout), onActivate(id), onClose(id), onModeChange(), zoomable, onZoom, onSkin, snapGrid }
   let focusMode = false;
+  let detachMode = false;            // when true: panel edges shrink independently & closing/moving leaves empty space open
+  let snapGridMode = false;          // when true: dragging shows the 4x3 snap grid instead of smart empty-space/panel zones
   let maxed = null;                  // id of the panel whose group is maximized
-  const ic = (n, s) => TimotheosIcons.icon(n, s);
+  const ic = (n, s) => (typeof TimotheosIcons !== 'undefined' ? TimotheosIcons.icon(n, s) : '');
   const $ = s => document.querySelector(s);
   const clone = o => JSON.parse(JSON.stringify(o));
   const isBible = id => /^bv\d+$/.test(id);
@@ -161,25 +163,287 @@
     }
   }
 
-  function locate(id) {
-    if (!L) return null;
-    for (let i = 0; i < L.areas.length; i++) if (L.areas[i].panels.includes(id)) return { area: true, ai: i, g: L.areas[i] };
-    for (let i = 0; i < L.floats.length; i++) if (L.floats[i].panels.includes(id)) return { float: true, fi: i, g: L.floats[i] };
-    if (L.hidden.includes(id)) return { hidden: true };
+  function locateIn(lay, id) {
+    if (!lay) return null;
+    for (let i = 0; i < (lay.areas || []).length; i++) if (lay.areas[i].panels.includes(id)) return { area: true, ai: i, g: lay.areas[i] };
+    for (let i = 0; i < (lay.floats || []).length; i++) if (lay.floats[i].panels.includes(id)) return { float: true, fi: i, g: lay.floats[i] };
+    if ((lay.hidden || []).includes(id)) return { hidden: true };
     return null;
   }
+  function locate(id) { return locateIn(L, id); }
 
-  /** takes a panel out of where it is; an emptied area is closed and its neighbours grow into the hole (unless keepHole: then the hole is returned) */
-  function detach(id, keepHole) {
-    const at = locate(id); if (!at) return null;
-    if (at.hidden) { L.hidden = L.hidden.filter(x => x !== id); return null; }
+  /** takes a panel out of `lay`; an emptied area is closed and its neighbours grow into the hole (unless keepHole: then the hole is returned) */
+  function detachPanelFromLayout(lay, id, keepHole) {
+    const at = locateIn(lay, id); if (!at) return null;
+    if (at.hidden) { lay.hidden = lay.hidden.filter(x => x !== id); return null; }
     const g = at.g; g.panels = g.panels.filter(x => x !== id);
     if (g.active === id) g.active = g.panels[0];
     if (!g.panels.length) {
-      if (at.float) L.floats.splice(at.fi, 1);
-      else { L.areas.splice(at.ai, 1); const h = { x0: g.x0, y0: g.y0, x1: g.x1, y1: g.y1 }; if (keepHole) return h; fillHole(L, h); }
+      if (at.float) lay.floats.splice(at.fi, 1);
+      else { lay.areas.splice(at.ai, 1); const h = { x0: g.x0, y0: g.y0, x1: g.x1, y1: g.y1 }; if (keepHole) return h; fillHole(lay, h); }
     }
     return null;
+  }
+
+  /** takes a panel out of where it is; leaves the hole open when detachMode is on (or keepHole is passed) */
+  function detach(id, keepHole) {
+    return detachPanelFromLayout(L, id, keepHole == null ? detachMode : keepHole);
+  }
+
+  /** find all maximal non-overlapping empty rectangles (>= MINW x MINH) on the 4x3 workbench */
+  function findEmptySpaces(areas) {
+    const list = areas || [];
+    const uniq = vals => {
+      const s = vals.slice().sort((a, b) => a - b);
+      const out = [];
+      for (const v of s) if (!out.length || v - out[out.length - 1] > EPS) out.push(v);
+      return out;
+    };
+    const xs = uniq([0, NC, ...list.flatMap(a => [a.x0, a.x1])]);
+    const ys = uniq([0, NR, ...list.flatMap(a => [a.y0, a.y1])]);
+    const nx = xs.length - 1, ny = ys.length - 1;
+    if (nx <= 0 || ny <= 0) return [];
+    const occ = Array.from({ length: ny }, (_, iy) => {
+      const ym = (ys[iy] + ys[iy + 1]) / 2;
+      return Array.from({ length: nx }, (_, ix) => {
+        const xm = (xs[ix] + xs[ix + 1]) / 2;
+        return list.some(a => xm > a.x0 + EPS && xm < a.x1 - EPS && ym > a.y0 + EPS && ym < a.y1 - EPS);
+      });
+    });
+    const spaces = [];
+    for (;;) {
+      let best = null;
+      for (let iy0 = 0; iy0 < ny; iy0++) {
+        for (let ix0 = 0; ix0 < nx; ix0++) {
+          if (occ[iy0][ix0]) continue;
+          let maxIx1 = nx;
+          for (let iy1 = iy0 + 1; iy1 <= ny; iy1++) {
+            let ix1 = ix0;
+            while (ix1 < maxIx1 && !occ[iy1 - 1][ix1]) ix1++;
+            if (ix1 === ix0) break;
+            maxIx1 = ix1;
+            const w = xs[ix1] - xs[ix0], h = ys[iy1] - ys[iy0];
+            const area = w * h;
+            if (!best || area > best.area + EPS) best = { ix0, iy0, ix1, iy1, x0: xs[ix0], y0: ys[iy0], x1: xs[ix1], y1: ys[iy1], area };
+          }
+        }
+      }
+      if (!best) break;
+      for (let iy = best.iy0; iy < best.iy1; iy++) for (let ix = best.ix0; ix < best.ix1; ix++) occ[iy][ix] = true;
+      if (best.x1 - best.x0 >= MINW - EPS && best.y1 - best.y0 >= MINH - EPS) {
+        spaces.push({ x0: best.x0, y0: best.y0, x1: best.x1, y1: best.y1 });
+      }
+    }
+    return spaces;
+  }
+
+  /** simulate dropping `id` onto a smart drop target (empty space, panel left/right/top/bottom/center, or outer workbench edge) */
+  function computeSmartDrop(lay, id, t, keepHole) {
+    if (!lay || !t) return null;
+    const next = clone(lay);
+    if (t.space) {
+      const sp = { x0: +t.space.x0, y0: +t.space.y0, x1: +t.space.x1, y1: +t.space.y1 };
+      if (sp.x1 - sp.x0 < MINW - EPS || sp.y1 - sp.y0 < MINH - EPS) return null;
+      const hole = detachPanelFromLayout(next, id, true);
+      if (next.areas.some(a => hit(a, sp))) return null;
+      next.areas.push({ x0: sp.x0, y0: sp.y0, x1: sp.x1, y1: sp.y1, panels: [id], active: id });
+      if (!keepHole && hole) fillHole(next, hole);
+      return { layout: next, rect: sp, mode: 'space' };
+    }
+    if (t.areaIndex != null && t.zone) {
+      const origA = (lay.areas || [])[t.areaIndex];
+      if (!origA) return null;
+      if (origA.panels.length === 1 && origA.panels[0] === id) return null;
+      if (t.zone === 'center' && origA.panels.includes(id)) return null;
+      const hole = detachPanelFromLayout(next, id, true);
+      const a = next.areas.find(o => same(o.x0, origA.x0) && same(o.y0, origA.y0) && same(o.x1, origA.x1) && same(o.y1, origA.y1));
+      if (!a) return null;
+      let rect, mode = 'split';
+      if (t.zone === 'center') {
+        a.panels.push(id); a.active = id;
+        rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 }; mode = 'tab';
+      } else if (t.zone === 'left' || t.zone === 'right') {
+        if (wOf(a) < MINW * 2 - EPS) {
+          a.panels.push(id); a.active = id;
+          rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 }; mode = 'tab';
+        } else {
+          const mid = (a.x0 + a.x1) / 2;
+          if (t.zone === 'left') { rect = { x0: a.x0, y0: a.y0, x1: mid, y1: a.y1 }; a.x0 = mid; }
+          else { rect = { x0: mid, y0: a.y0, x1: a.x1, y1: a.y1 }; a.x1 = mid; }
+          next.areas.push({ ...rect, panels: [id], active: id });
+        }
+      } else if (t.zone === 'top' || t.zone === 'bottom') {
+        if (hOf(a) < MINH * 2 - EPS) {
+          a.panels.push(id); a.active = id;
+          rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 }; mode = 'tab';
+        } else {
+          const mid = (a.y0 + a.y1) / 2;
+          if (t.zone === 'top') { rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: mid }; a.y0 = mid; }
+          else { rect = { x0: a.x0, y0: mid, x1: a.x1, y1: a.y1 }; a.y1 = mid; }
+          next.areas.push({ ...rect, panels: [id], active: id });
+        }
+      } else return null;
+      if (!keepHole && hole) fillHole(next, hole);
+      return { layout: next, rect, mode };
+    }
+    if (t.outer) {
+      const hole = detachPanelFromLayout(next, id, true);
+      if (!keepHole && hole) fillHole(next, hole);
+      let rect = null;
+      if (t.outer === 'left') {
+        let s = 0.85;
+        for (const a of next.areas) if (a.x0 < s - EPS) s = Math.min(s, a.x1 - MINW);
+        if (s < MINW - EPS) return null;
+        for (const a of next.areas) if (a.x0 < s - EPS) a.x0 = s;
+        rect = { x0: 0, y0: 0, x1: s, y1: NR };
+      } else if (t.outer === 'right') {
+        let s = 0.85;
+        for (const a of next.areas) if (a.x1 > NC - s + EPS) s = Math.min(s, NC - (a.x0 + MINW));
+        if (s < MINW - EPS) return null;
+        for (const a of next.areas) if (a.x1 > NC - s + EPS) a.x1 = NC - s;
+        rect = { x0: NC - s, y0: 0, x1: NC, y1: NR };
+      } else if (t.outer === 'top') {
+        let s = 0.75;
+        for (const a of next.areas) if (a.y0 < s - EPS) s = Math.min(s, a.y1 - MINH);
+        if (s < MINH - EPS) return null;
+        for (const a of next.areas) if (a.y0 < s - EPS) a.y0 = s;
+        rect = { x0: 0, y0: 0, x1: NC, y1: s };
+      } else if (t.outer === 'bottom') {
+        let s = 0.75;
+        for (const a of next.areas) if (a.y1 > NR - s + EPS) s = Math.min(s, NR - (a.y0 + MINH));
+        if (s < MINH - EPS) return null;
+        for (const a of next.areas) if (a.y1 > NR - s + EPS) a.y1 = NR - s;
+        rect = { x0: 0, y0: NR - s, x1: NC, y1: NR };
+      }
+      if (!rect) return null;
+      next.areas.push({ ...rect, panels: [id], active: id });
+      return { layout: next, rect, mode: 'edge' };
+    }
+    return null;
+  }
+
+  /** simulate dropping `id` onto 4x3 grid cell [r, c]: fills empty/partial-empty cell first, else carves an edge of a spanning panel, else tabs */
+  function computeGridDrop(lay, id, r, c, keepHole) {
+    if (!lay) return null;
+    const cell = { x0: c, y0: r, x1: c + 1, y1: r + 1 };
+    const own = areaAt(lay, r, c);
+    if (own && own.panels.length === 1 && own.panels[0] === id && wOf(own) <= 1 + EPS && hOf(own) <= 1 + EPS) return null;
+    const next = clone(lay);
+    const hole = detachPanelFromLayout(next, id, true);
+
+    // 1. If any free space intersects this 4x3 cell, place into the largest free sub-rectangle inside the cell
+    let bestFree = null;
+    for (const sp of findEmptySpaces(next.areas)) {
+      const ix0 = Math.max(sp.x0, cell.x0), iy0 = Math.max(sp.y0, cell.y0);
+      const ix1 = Math.min(sp.x1, cell.x1), iy1 = Math.min(sp.y1, cell.y1);
+      const w = ix1 - ix0, h = iy1 - iy0;
+      if (w >= MINW - EPS && h >= MINH - EPS) {
+        const ar = w * h;
+        if (!bestFree || ar > bestFree.ar + EPS) bestFree = { x0: ix0, y0: iy0, x1: ix1, y1: iy1, ar };
+      }
+    }
+    if (bestFree) {
+      const rect = { x0: bestFree.x0, y0: bestFree.y0, x1: bestFree.x1, y1: bestFree.y1 };
+      next.areas.push({ ...rect, panels: [id], active: id });
+      if (!keepHole && hole) fillHole(next, hole);
+      return { layout: next, rect, mode: 'space' };
+    }
+
+    // 2. Cell is covered by existing panel(s): pick the area at cell center (or largest overlap)
+    let a = areaAt(next, r, c);
+    if (!a) {
+      let bestOvl = 0;
+      for (const o of next.areas) {
+        const ow = Math.max(0, ovl(o.x0, o.x1, cell.x0, cell.x1));
+        const oh = Math.max(0, ovl(o.y0, o.y1, cell.y0, cell.y1));
+        if (ow * oh > bestOvl) { bestOvl = ow * oh; a = o; }
+      }
+    }
+    if (!a) {
+      next.areas.push({ ...cell, panels: [id], active: id });
+      if (!keepHole && hole) fillHole(next, hole);
+      return { layout: next, rect: cell, mode: 'space' };
+    }
+    const cx = c + 0.5, cy = r + 0.5, w = wOf(a), h = hOf(a);
+    let rect, mode = 'split';
+    if (w > 1 + EPS && cx >= a.x1 - 1 - EPS) {
+      const cut = Math.max(a.x0 + MINW, Math.min(a.x1 - MINW, c));
+      rect = { x0: cut, y0: a.y0, x1: a.x1, y1: a.y1 }; a.x1 = cut;
+      next.areas.push({ ...rect, panels: [id], active: id });
+    } else if (w > 1 + EPS && cx <= a.x0 + 1 + EPS) {
+      const cut = Math.max(a.x0 + MINW, Math.min(a.x1 - MINW, c + 1));
+      rect = { x0: a.x0, y0: a.y0, x1: cut, y1: a.y1 }; a.x0 = cut;
+      next.areas.push({ ...rect, panels: [id], active: id });
+    } else if (h > 1 + EPS && cy >= a.y1 - 1 - EPS) {
+      const cut = Math.max(a.y0 + MINH, Math.min(a.y1 - MINH, r));
+      rect = { x0: a.x0, y0: cut, x1: a.x1, y1: a.y1 }; a.y1 = cut;
+      next.areas.push({ ...rect, panels: [id], active: id });
+    } else if (h > 1 + EPS && cy <= a.y0 + 1 + EPS) {
+      const cut = Math.max(a.y0 + MINH, Math.min(a.y1 - MINH, r + 1));
+      rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: cut }; a.y0 = cut;
+      next.areas.push({ ...rect, panels: [id], active: id });
+    } else if (w > 1 + EPS) {
+      const mid = (a.x0 + a.x1) / 2;
+      rect = { x0: mid, y0: a.y0, x1: a.x1, y1: a.y1 }; a.x1 = mid;
+      next.areas.push({ ...rect, panels: [id], active: id });
+    } else if (h > 1 + EPS) {
+      const mid = (a.y0 + a.y1) / 2;
+      rect = { x0: a.x0, y0: mid, x1: a.x1, y1: a.y1 }; a.y1 = mid;
+      next.areas.push({ ...rect, panels: [id], active: id });
+    } else {
+      a.panels.push(id); a.active = id;
+      rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 }; mode = 'tab';
+    }
+    if (!keepHole && hole) fillHole(next, hole);
+    return { layout: next, rect, mode };
+  }
+
+  /** build a real miniature SVG thumbnail of a layout's actual panels and floating windows */
+  function capColorFor(id) {
+    if (PANELS.has(id)) return `var(--cap-${PANELS.get(id).cap}, #3b82f6)`;
+    if (isBible(id) || id === 'tree') return 'var(--cap-bible, #3b82f6)';
+    if (id === 'cmt') return 'var(--cap-cmt, #8b5cf6)';
+    if (id === 'lib') return 'var(--cap-lib, #10b981)';
+    if (id === 'study') return 'var(--cap-study, #f59e0b)';
+    if (id === 'search' || id === 'bsearch') return 'var(--cap-search, #ec4899)';
+    return 'var(--accent, #3b82f6)';
+  }
+  function thumbnailSvg(lay, { width = 56, height = 42 } = {}) {
+    const src = lay && lay.v === 3 && Array.isArray(lay.areas) ? lay
+      : lay && lay.v === 2 && Array.isArray(lay.areas) ? fromV2(lay)
+      : lay && lay.v === 1 && lay.zones ? fromV1(lay)
+      : PRESETS.classic.layout;
+    const W = 64, H = 48, pad = 2, iw = W - pad * 2, ih = H - pad * 2, gap = 1.1;
+    const rects = [];
+    for (const a of (src.areas || [])) {
+      const x = pad + (a.x0 / NC) * iw + gap / 2;
+      const y = pad + (a.y0 / NR) * ih + gap / 2;
+      const w = Math.max(2, ((a.x1 - a.x0) / NC) * iw - gap);
+      const h = Math.max(2, ((a.y1 - a.y0) / NR) * ih - gap);
+      const act = a.active || (a.panels && a.panels[0]) || 'bv0';
+      const cap = capColorFor(act);
+      const capH = Math.min(3.8, h * 0.35);
+      rects.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="1.4" fill="var(--card, #2a3140)" stroke="var(--line, #475569)" stroke-width="0.7"/>`);
+      rects.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${capH.toFixed(1)}" rx="1.1" fill="${cap}"/>`);
+      if ((a.panels || []).length > 1 && w > 8) {
+        const nTabs = Math.min(a.panels.length, 4);
+        for (let i = 0; i < nTabs; i++) {
+          const tx = x + 1.4 + i * 2.8;
+          if (tx + 1.6 < x + w - 1) rects.push(`<rect x="${tx.toFixed(1)}" y="${(y + 1.1).toFixed(1)}" width="1.8" height="1.5" rx="0.5" fill="rgba(255,255,255,0.75)"/>`);
+        }
+      }
+      if (isBible(act) && w > 10 && h > 11) {
+        const lx = x + 2.2, lw = Math.max(3, w - 4.4);
+        for (let li = 0; li < 3; li++) {
+          const ly = y + capH + 2.8 + li * 2.8;
+          if (ly < y + h - 1.5) rects.push(`<line x1="${lx.toFixed(1)}" y1="${ly.toFixed(1)}" x2="${(lx + lw * (li === 2 ? 0.65 : 1)).toFixed(1)}" y2="${ly.toFixed(1)}" stroke="var(--muted, #94a3b8)" stroke-opacity="0.55" stroke-width="1" stroke-linecap="round"/>`);
+        }
+      }
+    }
+    if ((src.floats || []).length) {
+      rects.push(`<rect x="34" y="10" width="22" height="17" rx="1.8" fill="var(--card, #2a3140)" stroke="var(--accent, #3b82f6)" stroke-width="1.1"/><rect x="34" y="10" width="22" height="3.5" rx="1.2" fill="var(--accent, #3b82f6)"/>`);
+    }
+    return `<svg class="laythumb" width="${width}" height="${height}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="3" fill="var(--bg, #181d27)" stroke="var(--line, #475569)" stroke-width="0.9"/>${rects.join('')}</svg>`;
   }
 
   function isVisible(id) {
@@ -202,10 +466,16 @@
     for (const { el, a, xs, ys } of cornerEls) { el.style.left = `calc(${pct(a[xs], V.x, V.w)}% - 7px)`; el.style.top = `calc(${pct(a[ys], V.y, V.h)}% - 7px)`; }
     for (const gt of gutEls) {
       const { el, a, b, col, free } = gt;
-      if (free) { // an edge with nothing beside it: a handle to pull it out into the empty space (or push it in)
+      if (free) { // an edge with nothing beside it (or an outer border in detachMode): drag inward or outward
         const f = free;
-        if (f === 'x0' || f === 'x1') Object.assign(el.style, { left: `calc(${pct(a[f], V.x, V.w)}% - 3px)`, width: '6px', top: `calc(${pct(a.y0, V.y, V.h)}% + 3px)`, height: `calc(${(a.y1 - a.y0) / V.h * 100}% - 6px)` });
-        else Object.assign(el.style, { top: `calc(${pct(a[f], V.y, V.h)}% - 3px)`, height: '6px', left: `calc(${pct(a.x0, V.x, V.w)}% + 3px)`, width: `calc(${(a.x1 - a.x0) / V.w * 100}% - 6px)` });
+        const p = pct(a[f], V.x, V.w), py = pct(a[f], V.y, V.h);
+        if (f === 'x0' || f === 'x1') {
+          const left = (f === 'x0' && a.x0 < EPS) ? '0px' : (f === 'x1' && a.x1 > NC - EPS) ? 'calc(100% - 6px)' : `calc(${p}% - 3px)`;
+          Object.assign(el.style, { left, width: '6px', top: `calc(${pct(a.y0, V.y, V.h)}% + 3px)`, height: `calc(${(a.y1 - a.y0) / V.h * 100}% - 6px)` });
+        } else {
+          const top = (f === 'y0' && a.y0 < EPS) ? '0px' : (f === 'y1' && a.y1 > NR - EPS) ? 'calc(100% - 6px)' : `calc(${py}% - 3px)`;
+          Object.assign(el.style, { top, height: '6px', left: `calc(${pct(a.x0, V.x, V.w)}% + 3px)`, width: `calc(${(a.x1 - a.x0) / V.w * 100}% - 6px)` });
+        }
         continue;
       }
       if (col) { const y0 = Math.max(a.y0, b.y0), y1 = Math.min(a.y1, b.y1); Object.assign(el.style, { left: `calc(${pct(a.x1, V.x, V.w)}% - 3px)`, width: '6px', top: `calc(${pct(y0, V.y, V.h)}% + 3px)`, height: `calc(${(y1 - y0) / V.h * 100}% - 6px)` }); }
@@ -222,20 +492,34 @@
       const x = Math.min(...shown.map(a => a.x0)), y = Math.min(...shown.map(a => a.y0));
       view = { x, y, w: Math.max(...shown.map(a => a.x1)) - x, h: Math.max(...shown.map(a => a.y1)) - y };
     } else view = { x: 0, y: 0, w: NC, h: NR };
+    if (detachMode && !maxed && !focusMode) {
+      for (const sp of findEmptySpaces(shown)) {
+        const em = document.createElement('div');
+        em.className = 'dempty';
+        Object.assign(em.style, {
+          left: `calc(${pct(sp.x0, view.x, view.w)}% + 3px)`,
+          top: `calc(${pct(sp.y0, view.y, view.h)}% + 3px)`,
+          width: `calc(${(sp.x1 - sp.x0) / view.w * 100}% - 6px)`,
+          height: `calc(${(sp.y1 - sp.y0) / view.h * 100}% - 6px)`
+        });
+        em.innerHTML = '<span>Empty space — drag a panel here</span>';
+        grid.appendChild(em);
+      }
+    }
     for (const a of shown) {
       const el = groupEl(a, { area: true });
       grid.appendChild(el); groupEls.push({ el, a });
     }
-    // a divider sits on every edge two areas share; it moves only those two areas (and any area that would otherwise be overrun)
+    // a divider sits on every edge two areas share; in detachMode dragging inward shrinks only the side dragged into
     for (const a of shown) for (const b of shown) {
       if (a !== b && same(a.x1, b.x0) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS) addGut(grid, a, b, true);
       if (a !== b && same(a.y1, b.y0) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS) addGut(grid, a, b, false);
     }
-    if (!maxed) for (const a of shown) { // edges that face empty space can be dragged too
+    if (!maxed) for (const a of shown) { // edges that face empty space (and outer borders when detachMode is on) can be dragged too
       const touching = (e, f) => shown.some(b => b !== a && (f === 'x1' ? same(b.x0, a.x1) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS : f === 'x0' ? same(b.x1, a.x0) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS : f === 'y1' ? same(b.y0, a.y1) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS : same(b.y1, a.y0) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS));
       for (const f of ['x0', 'x1', 'y0', 'y1']) {
         const bound = f === 'x0' ? a.x0 < EPS : f === 'x1' ? a.x1 > NC - EPS : f === 'y0' ? a.y0 < EPS : a.y1 > NR - EPS;
-        if (!bound && !touching(a, f)) addFreeGut(grid, a, f);
+        if ((!bound || detachMode) && !touching(a, f)) addFreeGut(grid, a, f);
       }
     }
     if (!maxed) for (const a of shown) if (a.panels.some(isBible)) for (const ys of ['y0', 'y1']) for (const xs of ['x0', 'x1']) addCorner(grid, a, xs, ys);
@@ -252,7 +536,9 @@
     for (const p of PANELS.values()) if (p.el.parentNode === holder) p.el.classList.add('hidden');
     for (const [id, top] of scroll) if (PANELS.has(id)) PANELS.get(id).el.scrollTop = top;
     wb.classList.toggle('focus', focusMode);
+    document.body.classList.toggle('detach-mode', detachMode);
     const fb = $('#focusBtn'); if (fb) fb.classList.toggle('on', focusMode);
+    const db = $('#detachBtn'); if (db) db.classList.toggle('on', detachMode);
     if (opts.onRender) opts.onRender();
   }
 
@@ -335,7 +621,7 @@
   const overlapping = () => L.areas.some((p, i) => L.areas.some((q, j) => j > i && hit(p, q)));
   const setEdge = (pl, x) => { for (const o of pl.lo) o[pl.col ? 'x1' : 'y1'] = x; for (const o of pl.hi) o[pl.col ? 'x0' : 'y0'] = x; };
   /** drag one or two edges (a divider: one; a corner: two) with the mouse; nothing is ever allowed to overlap */
-  function dragEdges(e, plans, el) {
+  function dragEdges(e, plans, el, rerenderOnUp) {
     e.preventDefault(); el.setPointerCapture(e.pointerId);
     const rect = $('#grid').getBoundingClientRect(); const start = [e.clientX, e.clientY];
     const per = plans.map(pl => pl.col ? view.w / rect.width : view.h / rect.height);
@@ -353,24 +639,68 @@
       if (!tryIt(all) && !(plans.length > 1 && all.some(k => tryIt([k])))) unsnap(sn);
       place();
     };
-    const up = () => { for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up); saveSoon(); };
+    const up = () => {
+      for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up);
+      if (rerenderOnUp || detachMode) render();
+      saveSoon();
+    };
     el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
   }
 
-  /** the draggable line between two touching areas: it moves the edge of those two only, not the rest of the row / column */
+  /** in Detach edges mode: dragging a shared seam left/up shrinks only `a` inward; dragging right/down shrinks only `b` inward, opening empty space between them */
+  function dragSeamDetached(e, a, b, col, el) {
+    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    const rect = $('#grid').getBoundingClientRect();
+    const start = col ? e.clientX : e.clientY;
+    const per = col ? view.w / rect.width : view.h / rect.height;
+    const at = col ? a.x1 : a.y1;
+    const min = col ? MINW : MINH;
+    const aMin = (col ? a.x0 : a.y0) + min;
+    const bMax = (col ? b.x1 : b.y1) - min;
+    let side = 0; // -1 = shrink a inward, +1 = shrink b inward
+    const move = ev => {
+      const deltaPx = (col ? ev.clientX : ev.clientY) - start;
+      if (!side && Math.abs(deltaPx) < 2) return;
+      if (!side) side = deltaPx < 0 ? -1 : 1;
+      const sn = snap();
+      const target = at + deltaPx * per;
+      if (side < 0) {
+        const nx = Math.max(aMin, Math.min(at, target));
+        a[col ? 'x1' : 'y1'] = nx;
+      } else {
+        const nx = Math.min(bMax, Math.max(at, target));
+        b[col ? 'x0' : 'y0'] = nx;
+      }
+      if (overlapping()) unsnap(sn);
+      place();
+    };
+    const up = () => {
+      for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up);
+      render(); saveSoon();
+    };
+    el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
+  }
+
+  /** the draggable line between two touching areas: moves both together normally, or detaches whichever side you drag inward in Detach edges mode */
   function addGut(grid, a, b, col) {
     const s = document.createElement('div');
-    s.className = 'gut ' + (col ? 'h' : 'v'); s.title = col ? 'Drag to change the width of the panels beside this line' : 'Drag to change the height of the panels above and below this line';
+    s.className = 'gut ' + (col ? 'h' : 'v') + (detachMode ? ' detach' : '');
+    s.title = detachMode
+      ? (col ? 'Detach mode: drag left to shrink the left panel, or right to shrink the right panel and create empty space' : 'Detach mode: drag up to shrink the top panel, or down to shrink the bottom panel and create empty space')
+      : (col ? 'Drag to change the width of the panels beside this line' : 'Drag to change the height of the panels above and below this line');
     grid.appendChild(s); gutEls.push({ el: s, a, b, col });
-    s.addEventListener('pointerdown', e => dragEdges(e, [edgePlan(col, col ? a.x1 : a.y1, new Set([a]), new Set([b]))], s));
+    s.addEventListener('pointerdown', e => {
+      if (detachMode) dragSeamDetached(e, a, b, col, s);
+      else dragEdges(e, [edgePlan(col, col ? a.x1 : a.y1, new Set([a]), new Set([b]))], s, false);
+    });
   }
 
   function addFreeGut(grid, a, f) {
     const col = f[0] === 'x'; const s = document.createElement('div');
-    s.className = 'gut ' + (col ? 'h' : 'v'); s.title = 'Drag to move this edge into the empty space';
+    s.className = 'gut ' + (col ? 'h' : 'v') + ' free'; s.title = 'Drag to resize this edge freely into or out of empty space';
     grid.appendChild(s); gutEls.push({ el: s, a, b: null, col, free: f });
     const hiSide = f === 'x1' || f === 'y1';
-    s.addEventListener('pointerdown', e => dragEdges(e, [edgePlan(col, a[f], new Set(hiSide ? [a] : []), new Set(hiSide ? [] : [a]))], s));
+    s.addEventListener('pointerdown', e => dragEdges(e, [edgePlan(col, a[f], new Set(hiSide ? [a] : []), new Set(hiSide ? [] : [a]))], s, true));
   }
 
   /** a corner handle of a Bible view's area: it moves the two edges of that corner; the panels next to them adjust */
@@ -388,7 +718,7 @@
         const onX = hiX ? same(o.x0, cx) : same(o.x1, cx), onY = hiY ? same(o.y0, cy) : same(o.y1, cy);
         if (onX && onY) { (hiX ? hiXs : loX).add(o); (hiY ? hiYs : loY).add(o); }
       }
-      dragEdges(e, [edgePlan(true, cx, loX, hiXs), edgePlan(false, cy, loY, hiYs)], s);
+      dragEdges(e, [edgePlan(true, cx, loX, hiXs), edgePlan(false, cy, loY, hiYs)], s, false);
     });
   }
 
@@ -425,7 +755,8 @@
         drag.ghost.innerHTML = `${ic(p.icon, 15)}<span>${esc(p.title)}</span>`;
         document.body.appendChild(drag.ghost);
       }
-      showGridTargets();
+      if (snapGridMode) showGridTargets();
+      else showSmartTargets(drag.id);
     }
     if (drag.ghost) { drag.ghost.style.left = e.clientX + 12 + 'px'; drag.ghost.style.top = e.clientY + 10 + 'px'; }
     if (drag.isFloat) {
@@ -436,7 +767,7 @@
     drag.target = tgt ? JSON.parse(tgt.dataset.t) : null;
     document.querySelectorAll('.dtarget.hot').forEach(x => x.classList.remove('hot'));
     if (tgt) tgt.classList.add('hot');
-    showPreview(drag.target, tgt);
+    showPreview(drag.id, drag.target);
   }
 
   function onUp(e) {
@@ -459,54 +790,107 @@
     maxed = null; commit();
   }
 
-  /** the 12 areas of the grid, laid over the workbench while a panel is dragged */
+  /** smart drop zones: every empty space created by resizing/detaching + Left/Right/Top/Bottom/Tab zones on existing panels + outer workbench edges */
+  function showSmartTargets(dragId) {
+    const r = $('#workbench').getBoundingClientRect();
+    const layer = document.createElement('div'); layer.className = 'dlayer smart'; layer.id = 'dlayer';
+    Object.assign(layer.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    const V = view;
+
+    // 1. Empty spaces: dropping fills that exact empty space
+    for (const sp of findEmptySpaces(L.areas)) {
+      const b = document.createElement('div');
+      b.className = 'dtarget space';
+      b.dataset.t = JSON.stringify({ space: sp });
+      b.style.cssText = `left:${pct(sp.x0, V.x, V.w)}%;top:${pct(sp.y0, V.y, V.h)}%;width:${(sp.x1 - sp.x0) / V.w * 100}%;height:${(sp.y1 - sp.y0) / V.h * 100}%`;
+      b.innerHTML = `<span class="dcn">Empty space</span><span class="dcw">Drop to fill this space</span>`;
+      layer.appendChild(b);
+    }
+
+    // 2. Existing panels: 5-zone Left / Right / Top / Bottom / Center (Tab) drop targets
+    L.areas.forEach((a, ai) => {
+      if (!a.panels.some(id => PANELS.has(id))) return;
+      if (a.panels.length === 1 && a.panels[0] === dragId) return;
+      const box = document.createElement('div');
+      box.className = 'dpanelzones';
+      box.style.cssText = `left:${pct(a.x0, V.x, V.w)}%;top:${pct(a.y0, V.y, V.h)}%;width:${(a.x1 - a.x0) / V.w * 100}%;height:${(a.y1 - a.y0) / V.h * 100}%`;
+      const canH = wOf(a) >= MINW * 2 - EPS;
+      const canV = hOf(a) >= MINH * 2 - EPS;
+      const names = a.panels.filter(id => PANELS.has(id)).map(id => PANELS.get(id).title).join(', ');
+      const addZ = (zone, cls, lbl) => {
+        const z = document.createElement('div');
+        z.className = 'dtarget zone ' + cls;
+        z.dataset.t = JSON.stringify({ areaIndex: ai, zone });
+        z.title = zone === 'center' ? `Add as a tab beside ${names}` : `Dock to the ${zone} of ${names}`;
+        z.innerHTML = `<span>${lbl}</span>`;
+        box.appendChild(z);
+      };
+      if (canH) { addZ('left', 'zl', 'Left'); addZ('right', 'zr', 'Right'); }
+      if (canV) { addZ('top', 'zt', 'Top'); addZ('bottom', 'zb', 'Bottom'); }
+      if (!a.panels.includes(dragId)) addZ('center', 'zc', 'Tab');
+      layer.appendChild(box);
+    });
+
+    // 3. Outer workbench edges
+    for (const [edge, cls, lbl] of [['left', 'oel', 'Left edge'], ['right', 'oer', 'Right edge'], ['top', 'oet', 'Top edge'], ['bottom', 'oeb', 'Bottom edge']]) {
+      const e = document.createElement('div');
+      e.className = 'dtarget oedge ' + cls;
+      e.dataset.t = JSON.stringify({ outer: edge });
+      e.title = `Dock along the ${lbl.toLowerCase()} of the window`;
+      layer.appendChild(e);
+    }
+
+    const pv = document.createElement('div'); pv.className = 'dpreview hidden'; pv.id = 'dpreview'; layer.appendChild(pv);
+    document.body.appendChild(layer);
+  }
+
+  /** the 12 areas of the 4x3 snap grid, laid over the workbench while a panel is dragged (when 4x3 snap grid toggle is on) */
   function showGridTargets() {
     const r = $('#workbench').getBoundingClientRect();
     const layer = document.createElement('div'); layer.className = 'dlayer'; layer.id = 'dlayer';
     Object.assign(layer.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    const spaces = findEmptySpaces(L.areas);
     for (let row = 0; row < NR; row++) for (let col = 0; col < NC; col++) {
       const b = document.createElement('div'); b.className = 'dtarget cell'; b.dataset.t = JSON.stringify({ cell: [row, col] });
+      const hasFree = spaces.some(sp => Math.min(sp.x1, col + 1) - Math.max(sp.x0, col) >= MINW - EPS && Math.min(sp.y1, row + 1) - Math.max(sp.y0, row) >= MINH - EPS);
       const a = areaAt(L, row, col); const names = a ? a.panels.filter(id => PANELS.has(id)).map(id => PANELS.get(id).title).join(', ') : '';
-      b.title = a ? `Area ${row + 1}·${col + 1}: add as a tab beside ${names}` : `Area ${row + 1}·${col + 1}: empty`;
+      const sub = hasFree ? 'empty space' : a ? (wOf(a) > 1 + EPS || hOf(a) > 1 + EPS ? `split ${names}` : `tab with ${names}`) : 'empty';
+      b.title = `Cell ${row + 1}·${col + 1}: ${sub}`;
       b.style.cssText = `left:${col * 25}%;top:${row * 100 / 3}%;width:25%;height:${100 / 3}%`;
-      b.innerHTML = `<span class="dcn">${row + 1}·${col + 1}</span><span class="dcw">${a ? esc(names) : 'empty'}</span>`;
+      b.innerHTML = `<span class="dcn">${row + 1}·${col + 1}</span><span class="dcw">${esc(sub)}</span>`;
       layer.appendChild(b);
     }
     const pv = document.createElement('div'); pv.className = 'dpreview hidden'; pv.id = 'dpreview'; layer.appendChild(pv);
     document.body.appendChild(layer);
   }
 
-  function showPreview(t, tgtEl) {
+  function simulateDrop(id, t) {
+    if (!t) return null;
+    if (t.cell) return computeGridDrop(L, id, t.cell[0], t.cell[1], detachMode);
+    return computeSmartDrop(L, id, t, detachMode);
+  }
+
+  function showPreview(id, t) {
     const pv = $('#dpreview'); if (!pv) return;
-    if (!t || !tgtEl) { pv.classList.add('hidden'); return; }
-    const lay = $('#dlayer').getBoundingClientRect(); const cell = tgtEl.getBoundingClientRect();
-    pv.style.left = cell.left - lay.left + 'px'; pv.style.top = cell.top - lay.top + 'px'; pv.style.width = cell.width + 'px'; pv.style.height = cell.height + 'px';
+    const sim = simulateDrop(id, t);
+    if (!sim || !sim.rect) { pv.classList.add('hidden'); return; }
+    const V = view, r = sim.rect;
+    pv.style.left = pct(r.x0, V.x, V.w) + '%';
+    pv.style.top = pct(r.y0, V.y, V.h) + '%';
+    pv.style.width = ((r.x1 - r.x0) / V.w * 100) + '%';
+    pv.style.height = ((r.y1 - r.y0) / V.h * 100) + '%';
+    pv.classList.toggle('tabmode', sim.mode === 'tab');
     pv.classList.remove('hidden');
   }
 
   function clearTargets() { const l = $('#dlayer'); if (l) l.remove(); }
 
-  /** put a panel into grid cell [r, c]: a free cell gets its own area, a one-cell area gets a tab, a bigger area gives up its edge */
-  function placeAt(lay, id, r, c) {
-    const a = areaAt(lay, r, c);
-    if (!a) { if (!tryCell(lay, id, r, c)) { const near = lay.areas.find(o => o.x0 < c + 1 && o.x1 > c && o.y0 < r + 1 && o.y1 > r); if (near) { near.panels.push(id); near.active = id; } else lay.areas.push(A(c, r, 1, 1, [id])); } return; }
-    const cx = c + 0.5, cy = r + 0.5, w = wOf(a), h = hOf(a);
-    if (w > 1 + EPS && cx > a.x1 - 1) { const k = Math.min(1, w / 2); a.x1 -= k; lay.areas.push({ x0: a.x1, y0: a.y0, x1: a.x1 + k, y1: a.y1, panels: [id], active: id }); }
-    else if (w > 1 + EPS && cx < a.x0 + 1) { const k = Math.min(1, w / 2); a.x0 += k; lay.areas.push({ x0: a.x0 - k, y0: a.y0, x1: a.x0, y1: a.y1, panels: [id], active: id }); }
-    else if (h > 1 + EPS && cy > a.y1 - 1) { const k = Math.min(1, h / 2); a.y1 -= k; lay.areas.push({ x0: a.x0, y0: a.y1, x1: a.x1, y1: a.y1 + k, panels: [id], active: id }); }
-    else if (h > 1 + EPS && cy < a.y0 + 1) { const k = Math.min(1, h / 2); a.y0 += k; lay.areas.push({ x0: a.x0, y0: a.y0 - k, x1: a.x1, y1: a.y0, panels: [id], active: id }); }
-    else { a.panels.push(id); a.active = id; }
-  }
-
   /** move a panel to a drop target */
   function dropOn(id, t) {
-    if (t.cell) {
-      const own = areaAt(L, t.cell[0], t.cell[1]);
-      if (own && own.panels.includes(id)) return; // onto its own area
-      const hole = detach(id, true); maxed = null;
-      placeAt(L, id, t.cell[0], t.cell[1]);
-      if (hole) fillHole(L, hole);
-    }
+    const sim = simulateDrop(id, t);
+    if (!sim || !sim.layout) return;
+    L = sim.layout;
+    maxed = null;
     if (focusMode) focusMode = false;
     commit(); activate(id);
   }
@@ -619,7 +1003,9 @@
   function commit() { render(); saveSoon(); }
   let saveT = null;
   function saveSoon() { clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; if (opts.onSave && L) opts.onSave(clone(L)); }, 100); }
-  window.addEventListener('beforeunload', () => { if (saveT) { clearTimeout(saveT); saveT = null; if (opts.onSave && L) opts.onSave(clone(L)); } });
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => { if (saveT) { clearTimeout(saveT); saveT = null; if (opts.onSave && L) opts.onSave(clone(L)); } });
+  }
 
   function applyPreset(name) {
     const p = PRESETS[name]; if (!p) return;
@@ -627,17 +1013,46 @@
   }
   function setLayout(lay) { L = normalize(lay); maxed = null; focusMode = false; commit(); }
 
+  function setDetachMode(on) {
+    detachMode = !!on;
+    if (L && typeof document !== 'undefined') render();
+    if (opts.onModeChange) opts.onModeChange({ detachMode, snapGridMode });
+  }
+  function toggleDetachMode() { setDetachMode(!detachMode); return detachMode; }
+  function getDetachMode() { return detachMode; }
+
+  function setSnapGrid(on) {
+    snapGridMode = !!on;
+    if (opts.onModeChange) opts.onModeChange({ detachMode, snapGridMode });
+  }
+  function toggleSnapGrid() { setSnapGrid(!snapGridMode); return snapGridMode; }
+  function getSnapGrid() { return snapGridMode; }
+
   function init(layout, o) {
     opts = o || {};
+    snapGridMode = !!opts.snapGrid;
+    detachMode = !!opts.detachMode;
     holder = document.createElement('div'); holder.id = 'dholder'; holder.hidden = true; document.body.appendChild(holder);
     L = normalize(layout);
     render();
     window.addEventListener('resize', () => document.querySelectorAll('.dfloat').forEach(clampFloat));
   }
 
-  window.TimotheosDock = {
+  const apiObj = {
     init, register, add, remove, retitle, render, show, hide, activate, toggleFloat, toggleFocus, applyPreset, setLayout, isVisible, arrangeBible,
+    setDetachMode, toggleDetachMode, getDetachMode, setSnapGrid, toggleSnapGrid, getSnapGrid,
+    thumbnailSvg, findEmptySpaces: () => findEmptySpaces(L ? L.areas : []),
     panels: () => [...PANELS.values()], panel: id => PANELS.get(id), state: () => clone(L), located: id => locate(id), PRESETS, isBible,
-    get focus() { return focusMode; }
+    get focus() { return focusMode; },
+    get detachMode() { return detachMode; },
+    get snapGrid() { return snapGridMode; }
   };
+  if (typeof window !== 'undefined') window.TimotheosDock = apiObj;
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      NC, NR, EPS, MINW, MINH, PRESETS,
+      normalize, findEmptySpaces, detachPanelFromLayout, fillHole,
+      computeSmartDrop, computeGridDrop, thumbnailSvg
+    };
+  }
 })();

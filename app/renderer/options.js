@@ -309,6 +309,17 @@
   function setSkin(id) { pendingFx = null; A().skin = id; save({ theme: SKINS[id].dark ? 'dark' : 'light' }); store(); apply(); syncForm(); }
 
   /* ------------------------------------------------------------ panels menu */
+  function syncDockToggles() {
+    const det = !!(window.TimotheosDock && TimotheosDock.getDetachMode && TimotheosDock.getDetachMode());
+    const snap = !!(window.TimotheosDock && TimotheosDock.getSnapGrid && TimotheosDock.getSnapGrid());
+    const db = $('#detachBtn'); if (db) db.classList.toggle('on', det);
+    const cd = $('#optDetachEdges'); if (cd) cd.checked = det;
+    const cs = $('#optSnapGrid'); if (cs) cs.checked = snap;
+  }
+  function presetParts(label) {
+    const m = /^([^(]+?)\s*\((.+)\)$/.exec(String(label || ''));
+    return m ? [m[1].trim(), m[2].trim()] : [String(label || ''), ''];
+  }
   function fillPanelsMenu() {
     const m = $('#panelsMenu');
     const row = p => {
@@ -318,10 +329,20 @@
     const all = TimotheosDock.panels();
     const rows = all.filter(p => !TimotheosDock.isBible(p.id)).map(row).join('');
     const bibles = all.filter(p => TimotheosDock.isBible(p.id)).map(row).join('');
-    const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => `<button data-preset="${id}">${TimotheosIcons.icon('layout', 15)}${p.label}</button>`).join('');
-    const saved = Object.keys(state.settings.savedLayouts || {}).map(n => `<button data-saved="${esc(n)}">${TimotheosIcons.icon('study', 15)}${esc(n)}</button>`).join('');
+    const detOn = TimotheosDock.getDetachMode ? TimotheosDock.getDetachMode() : false;
+    const snapOn = TimotheosDock.getSnapGrid ? TimotheosDock.getSnapGrid() : false;
+    const thumb = (lay) => TimotheosDock.thumbnailSvg ? TimotheosDock.thumbnailSvg(lay, { width: 32, height: 24 }) : TimotheosIcons.icon('layout', 15);
+    const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => {
+      const [ttl, sub] = presetParts(p.label);
+      return `<button class="laymenu-btn" data-preset="${id}">${thumb(p.layout)}<span class="laymenu-txt"><b>${esc(ttl)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
+    }).join('');
+    const savedObj = state.settings.savedLayouts || {};
+    const saved = Object.keys(savedObj).map(n => `<button class="laymenu-btn" data-saved="${esc(n)}">${thumb(savedObj[n])}<span class="laymenu-txt"><b>${esc(n)}</b></span></button>`).join('');
     m.innerHTML = `<div class="mh">Panels <span class="small">(click to show or close)</span></div>
       <button data-act="newbv">${TimotheosIcons.icon('plus', 15)}<span class="pic" style="color:var(--cap-bible)">${TimotheosIcons.icon('bible', 15)}</span><b>Bible View</b> <span class="small">(add another)</span></button>${bibles}${rows}
+      <div class="msep"></div><div class="mh">Arranging</div>
+      <button data-act="detach" class="${detOn ? 'on' : ''}">${TimotheosIcons.icon(detOn ? 'check' : 'detach', 15)}Detach adjacent edges <span class="small">(leave empty spaces)</span></button>
+      <button data-act="snapgrid" class="${snapOn ? 'on' : ''}">${TimotheosIcons.icon(snapOn ? 'check' : 'grid', 15)}Use 4×3 snap grid when dragging</button>
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
 `;
@@ -332,6 +353,8 @@
       fillPanelsMenu();
     });
     m.querySelector('[data-act="newbv"]').onclick = async () => { closeMenus(); await window.addView((state.settings.views[state.active] || {}).bible || state.modules.bibles[0].id); };
+    m.querySelector('[data-act="detach"]').onclick = () => { TimotheosDock.toggleDetachMode(); syncDockToggles(); fillPanelsMenu(); };
+    m.querySelector('[data-act="snapgrid"]').onclick = () => { const on = TimotheosDock.toggleSnapGrid(); save({ snapGrid: on }); syncDockToggles(); fillPanelsMenu(); };
     m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TimotheosDock.applyPreset(b.dataset.preset); closeMenus(); });
     m.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TimotheosDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); closeMenus(); });
     m.querySelector('[data-act="save"]').onclick = () => { closeMenus(); saveLayoutAs(); };
@@ -345,7 +368,8 @@
   }
   function renderSavedLayouts() {
     const ul = $('#savedLayouts'); const all = state.settings.savedLayouts || {};
-    ul.innerHTML = Object.keys(all).map(n => `<li><span>${esc(n)}</span><button data-use="${esc(n)}">Use</button><button data-del="${esc(n)}" title="Delete this layout">×</button></li>`).join('');
+    const thumb = lay => TimotheosDock.thumbnailSvg ? TimotheosDock.thumbnailSvg(lay, { width: 56, height: 42 }) : '';
+    ul.innerHTML = Object.keys(all).map(n => `<li>${thumb(all[n])}<span class="saved-name">${esc(n)}</span><button data-use="${esc(n)}">Use</button><button data-del="${esc(n)}" title="Delete this layout">×</button></li>`).join('');
     ul.querySelectorAll('[data-use]').forEach(b => b.onclick = () => TimotheosDock.setLayout(all[b.dataset.use]));
     ul.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const c = Object.assign({}, all); delete c[b.dataset.del]; save({ savedLayouts: c }); renderSavedLayouts(); });
   }
@@ -538,6 +562,10 @@
       state.settings.appearance = Object.assign({}, DEFAULTS, { colors: {} }); save({ fontSize: 17, theme: 'light' }); store(); apply(); syncForm(); fillFontSelects(); renderChapter();
     };
     $('#saveLayoutBtn').onclick = saveLayoutAs;
+    const optDet = $('#optDetachEdges');
+    if (optDet) optDet.onchange = () => { if (window.TimotheosDock) TimotheosDock.setDetachMode(optDet.checked); syncDockToggles(); };
+    const optSnap = $('#optSnapGrid');
+    if (optSnap) optSnap.onchange = () => { if (window.TimotheosDock) TimotheosDock.setSnapGrid(optSnap.checked); save({ snapGrid: optSnap.checked }); syncDockToggles(); };
     $('#optNav').querySelectorAll('button').forEach(b => b.onclick = () => page(b.dataset.o));
     const close = () => $('#optionsDlg').classList.add('hidden');
     $('#optClose').onclick = close; $('#optDone').onclick = close;
@@ -560,8 +588,12 @@
   }
   async function open(pg) {
     const fontsP = listFonts();
-    syncForm(); fillSkinGrid(); renderSavedLayouts();
-    $('#layoutPresets').innerHTML = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => `<button data-preset="${id}" class="presetbtn">${TimotheosIcons.icon('layout', 16)}${p.label}</button>`).join('');
+    syncForm(); syncDockToggles(); fillSkinGrid(); renderSavedLayouts();
+    const thumb = lay => TimotheosDock.thumbnailSvg ? TimotheosDock.thumbnailSvg(lay, { width: 72, height: 54 }) : TimotheosIcons.icon('layout', 16);
+    $('#layoutPresets').innerHTML = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => {
+      const [ttl, sub] = presetParts(p.label);
+      return `<button data-preset="${id}" class="presetbtn presetcard">${thumb(p.layout)}<span class="preset-txt"><b>${esc(ttl)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
+    }).join('');
     $('#layoutPresets').querySelectorAll('[data-preset]').forEach(b => b.onclick = () => TimotheosDock.applyPreset(b.dataset.preset));
     page(pg || 'look');
     $('#optionsDlg').classList.remove('hidden');
@@ -575,9 +607,17 @@
     wireForm();
     $('#optionsBtn').onclick = () => open();
     { const fb = $('#fxImportBtn'); if (fb) { if (window.api && api.fxImport && !document.documentElement.classList.contains('sk')) fb.onclick = () => importMyFx(); else fb.closest('.fxrow').classList.add('hidden'); } }
+    const detBtn = $('#detachBtn');
+    if (detBtn) detBtn.onclick = () => {
+      if (!window.TimotheosDock) return;
+      const on = TimotheosDock.toggleDetachMode();
+      syncDockToggles();
+      if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(on ? 'Detach edges ON — drag any panel edge inward to open space' : 'Detach edges OFF');
+    };
     $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', fillSkinMenu); };
     $('#panelsBtn').onclick = e => { e.stopPropagation(); toggleMenu('#panelsMenu', fillPanelsMenu); };
     document.addEventListener('mousedown', e => { if (!e.target.closest('.menuwrap')) document.querySelectorAll('#panelsMenu, #skinMenu').forEach(m => m.classList.add('hidden')); });
+    syncDockToggles();
   }
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -589,5 +629,5 @@
     if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(`Menus & panels size ${next} px`);
   }
 
-  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
+  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, syncDockToggles, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
 })();

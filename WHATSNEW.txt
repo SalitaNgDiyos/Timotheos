@@ -1,5 +1,5 @@
-Timotheos 0.6.81
-- Module folders: clicking Rescan or Add folder now checks archives immediately and re-unpacks any module archive whose unpacked file is missing on disk (without re-unpacking non-module backup archives).
-- Module folders: removing a Module Folder clears its remembered archive list so re-adding it unpacks its archives again; failed unpacks are no longer marked as seen.
-- Options → Modules: updates module titles cleanly as background descriptions finish and shows progress feedback when clicking Rescan.
-- User Guide updated (computer and phone), and archive-rescan unit tests wired into CI.
+Timotheos 0.6.82
+- Panel layout: added a "Detach edges" toggle button (toolbar, Panels menu, and Options → Layout & toolbar) to shrink panel edges independently without stretching neighbours and keep emptied spaces open while arranging.
+- Panel docking: dragging a panel now shows smart drop zones on every empty space you created plus Left / Right / Top / Bottom / Tab zones on panels and outer window edges, with exact live drop previews.
+- 4×3 snap grid: fixed the optional 4×3 snap grid toggle so cells accurately fill empty or partially empty resized spaces, split spanning panels, and tab onto single-cell panels.
+- Layout thumbnails: Options → Layout & toolbar and the Panels menu now show real miniature SVG thumbnails of each built-in and saved layout instead of generic icons.
