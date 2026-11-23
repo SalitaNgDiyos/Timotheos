@@ -28,7 +28,8 @@
   function rename(i, btn) {
     const v = views()[i]; if (!v) return;
     document.querySelectorAll('.bvmenu').forEach(m => m.remove());
-    const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'bvrename'; inp.value = viewName(i); inp.maxLength = 40; inp.setAttribute('aria-label', 'Name of this Bible view');
+    const curLbl = (window.viewTitle && !document.documentElement.classList.contains('sk') && !document.documentElement.classList.contains('mobile')) ? window.viewTitle(i) : viewName(i);
+    const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'bvrename'; inp.value = curLbl; inp.maxLength = 60; inp.setAttribute('aria-label', 'Name of this Bible view');
     btn.hidden = true; btn.after(inp); inp.focus(); inp.select();
     let done = false;
     const finish = save => {
@@ -43,7 +44,7 @@
   function setLabel(i, text) {
     const v = views()[i]; if (!v) return;
     const inf = state.infos.get(v.bible); const t = String(text || '').trim();
-    if (!t || (inf && t === inf.abbr)) delete v.label; else v.label = t;
+    if (!t || (inf && (t === inf.abbr || t === inf.title))) delete v.label; else v.label = t;
     storeViews(); ensurePanes();
   }
 
@@ -56,7 +57,7 @@
     const lbl = b => { const inf = state.infos.get(b.id); return (inf ? inf.abbr : b.abbr) + '|' + (inf ? inf.title : b.name); };
     const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); const f = dupFile(state.modules.bibles, b, lbl); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}${f ? ` <span class="dupf">· ${esc(f)}</span>` : ''}</span></button>`; }).join('');
     paneMenu(btn, `<div class="mh">Name of this view</div>
-      <div class="bvname"><input type="text" class="bvnameinp" maxlength="40" value="${esc(viewName(i))}" placeholder="Name of this view" aria-label="Name of this Bible view"><button type="button" class="bvsave">Save</button><button type="button" class="bvreset" title="Back to the Bible's own abbreviation">Reset</button></div>
+      <div class="bvname"><input type="text" class="bvnameinp" maxlength="60" value="${esc((window.viewTitle && !document.documentElement.classList.contains('sk') && !document.documentElement.classList.contains('mobile')) ? window.viewTitle(i) : viewName(i))}" placeholder="Name of this view" aria-label="Name of this Bible view"><button type="button" class="bvsave">Save</button><button type="button" class="bvreset" title="Back to the Bible's own title">Reset</button></div>
       ${document.documentElement.classList.contains('sk') ? '<button type="button" class="bvinfo">About this Bible (module information)</button>' : ''}
       <div class="mh">Bible of this view</div><div class="bvlist">${list}</div>`, m => {
       m.classList.add('biblemenu'); openFor = btn;

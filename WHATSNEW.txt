@@ -1,2 +1,2 @@
-Timotheos 0.6.90
-- Phone UI cleanup: removed PC-only mouse and keyboard instructions from the phone interface, including the mouse-wheel / Page Up / Page Down / Shift hint in Copy Verses, keyboard shortcut badges, right-click and Esc hints in the highlighter pen, Ctrl bookmark instructions, Alt/Enter navigation hints, and PC panel-dragging and module-folder instructions in Options.
+Timotheos 0.6.91
+- Desktop Bible view label: the top-left Bible label of each desktop Bible panel now displays the module title instead of the filename or short abbreviation, with clean truncation on narrow panels.

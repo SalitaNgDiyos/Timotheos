@@ -347,7 +347,7 @@ body.altkeys .tmenu u { text-decoration: underline; }
 
 .bv.active .bvcap { background: color-mix(in srgb, var(--cap-bible) 28%, var(--panel)); }
 .bvcap { flex-wrap: wrap; row-gap: 2px; }
-.bvbible { white-space: nowrap; border: 0; background: transparent; font: 700 var(--ui-size, 13px) var(--font-ui); color: var(--heading); padding: 3px 7px; border-radius: 5px; cursor: pointer; }
+.bvbible { white-space: nowrap; max-width: min(360px, 100%); overflow: hidden; text-overflow: ellipsis; min-width: 0; border: 0; background: transparent; font: 700 var(--ui-size, 13px) var(--font-ui); color: var(--heading); padding: 3px 7px; border-radius: 5px; cursor: pointer; }
 .bvbible::after { content: ' ▾'; font-weight: 400; opacity: .6; }
 .bvbible:hover { background: var(--card); }
 .bvref { color: var(--muted); font-size: calc(var(--ui-size, 13px) - 1px); }

@@ -1,0 +1,2 @@
+Timotheos 0.6.91
+- Desktop Bible view label: the top-left Bible label of each desktop Bible panel now displays the module title instead of the filename or short abbreviation, with clean truncation on narrow panels.
