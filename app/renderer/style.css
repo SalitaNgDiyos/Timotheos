@@ -160,18 +160,12 @@ a.link:hover { text-decoration: underline; }
 .popup h4 { margin: 0 0 2px; font: 600 14px var(--font-ui); }
 .popup .src { color: var(--muted); font: 11px var(--font-ui); margin-bottom: 6px; }
 .popup .entry + .entry { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); }
-.popup.par:not(.sized) { max-width: min(92vw, 880px); width: max-content; }
-.popup .ppar { display: grid; grid-template-columns: repeat(var(--pcols, 2), minmax(200px, 1fr)); gap: 10px; align-items: start; margin-top: 6px; }
-.popup .ppcol { min-width: 0; padding-left: 10px; border-left: 1px solid var(--line); }
-.popup .ppcol:first-child { padding-left: 0; border-left: 0; }
+.popup .ppar { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.popup .ppcol { min-width: 0; padding-top: 8px; border-top: 1px solid var(--line); }
+.popup .ppcol:first-child { padding-top: 0; border-top: 0; }
 .popup .pphead { font: 600 12px var(--font-ui); color: var(--accent); margin-bottom: 4px; }
 .popup .pphead a.link { color: inherit; }
-.popup .ppbody { min-width: 0; }
-@media (max-width: 640px) {
-  .popup .ppar { grid-template-columns: 1fr; gap: 8px; }
-  .popup .ppcol { padding-left: 0; border-left: 0; padding-top: 8px; border-top: 1px solid var(--line); }
-  .popup .ppcol:first-child { padding-top: 0; border-top: 0; }
-}
+.popup .ppbody { min-width: 0; overflow-wrap: break-word; }
 .popgroup { margin: 6px 0 10px; }
 .pophead { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font: 600 var(--ui-size, 13px) var(--font-ui); }
 .pophead .small { font-weight: normal; color: var(--muted); }

@@ -1,0 +1,2 @@
+Timotheos 0.6.85
+- Multi-Bible verse popups: stacked selected Bibles vertically one above another with each Bible's short name header and a clean divider, preventing horizontal clipping in resized popups.

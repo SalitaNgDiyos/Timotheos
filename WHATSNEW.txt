@@ -1,4 +1,2 @@
-Timotheos 0.6.84
-- Verse link popups: added multi-Bible selection in Options > Modules > Verse links (popups and previews) for Old Testament, New Testament, and a new Deuterocanon / Apocrypha group (filtered to installed Bibles that contain Deuterocanon books).
-- Parallel hover preview: when two or more Bibles are ticked for a group, hovering a verse link in books, dictionaries, commentaries, or cross-references opens those Bibles side by side in a parallel popup (stacking automatically on narrow screens).
-- Legacy Deuterocanon links: hovering or clicking legacy theWord Deuterocanon book links (such as DeuteroKJV links to Sirach, Wisdom, Tobit, or Maccabees) now resolves to your selected Deuterocanon Bibles for parallel preview and navigation.
+Timotheos 0.6.85
+- Multi-Bible verse popups: stacked selected Bibles vertically one above another with each Bible's short name header and a clean divider, preventing horizontal clipping in resized popups.

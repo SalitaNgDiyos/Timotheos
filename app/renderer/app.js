@@ -1326,7 +1326,7 @@ async function versePreview(b, c, v1, v2, modSpec) {
     const body = rows.map(r => r.cells[idx] != null ? `<sup>${r.v}</sup> ${TWRender.render(r.cells[idx], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}` : '').filter(Boolean).join(' ') || '<div class="src">Not in this Bible</div>';
     return `<div class="ppcol"><div class="pphead" title="${esc(title)}"><a class="link" data-href="tw://bible.${esc(abbr)}?id=${b}.${c}.${v1}">${esc(abbr)}</a></div><div class="ppbody">${body}</div></div>`;
   }).join('');
-  return `<div class="entry"><h4><a class="link" data-href="tw://bible.*?id=${b}.${c}.${v1}">${refLabel}</a></h4><div class="ppar" style="--pcols:${targetIds.length}">${cols}</div></div>`;
+  return `<div class="entry"><h4><a class="link" data-href="tw://bible.*?id=${b}.${c}.${v1}">${refLabel}</a></h4><div class="ppar">${cols}</div></div>`;
 }
 
 let hoverTimer = null, hoverEl = null, lastWordEl = null;
@@ -1412,10 +1412,9 @@ async function showPopup(el) {
 function showPopupHtml(el, html) {
   clearTimeout(hideTimer);
   const p = $('#popup'); p.innerHTML = `<div class="pzbar"><button type="button" data-pz="-" title="Smaller text in popups (Ctrl + mouse wheel down)">A−</button><span class="pzv"></span><button type="button" data-pz="+" title="Larger text in popups (Ctrl + mouse wheel up)">A+</button></div><div class="pzbody">${html}</div>`;
-  p.classList.toggle('par', !!p.querySelector('.ppar'));
   applyPopupZoom(); p.classList.remove('hidden'); p.scrollTop = 0;
   const r = el.getBoundingClientRect(); const W = window.innerWidth, H = window.innerHeight;
-  const pw = Math.min(p.offsetWidth || (p.classList.contains('par') ? 680 : 440), W - 20);
+  const pw = Math.min(p.offsetWidth || 440, W - 20);
   let x = Math.min(Math.max(10, r.left), W - pw - 10); let y = r.bottom + 6;
   p.style.left = x + 'px'; p.style.top = y + 'px';
   const ph = p.offsetHeight; if (y + ph > H - 10) p.style.top = Math.max(10, r.top - ph - 6) + 'px';
@@ -1536,7 +1535,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.84')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.85')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
