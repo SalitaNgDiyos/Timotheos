@@ -108,4 +108,25 @@ assert.deepStrictEqual(ordered.selected.map(b => b.id), ['bk:deuterokjv', 'bib:l
 assert.deepStrictEqual(ordered.unselected.map(b => b.id), ['bib:kjv', 'bib:amb', 'bib:pending']);
 ok(true, 'orderBiblesForChecklist pins selected Bibles at the top in their exact display order');
 
+
+{
+  const links = [
+    { href: 'tw://bk.DeuteroKJV?tid=103#v20-', text: 'Sirach 14:20' },
+    { href: 'tw://bk.DeuteroKJV?tid=103#v26-', text: ', 26' },
+    { href: 'tw://bk.DeuteroKJV?tid=113#v1-', text: '; 24:1' },
+    { href: 'tw://bk.DeuteroKJV?tid=113#v18-', text: ', 18' },
+  ];
+  assert.deepStrictEqual(pb.parseLegacyDeuteroInContext(links, 0), { b: 71, c: 14, v1: 20, v2: 20 });
+  assert.deepStrictEqual(pb.parseLegacyDeuteroInContext(links, 1), { b: 71, c: 14, v1: 26, v2: 26 });
+  assert.deepStrictEqual(pb.parseLegacyDeuteroInContext(links, 2), { b: 71, c: 24, v1: 1, v2: 1 });
+  assert.deepStrictEqual(pb.parseLegacyDeuteroInContext(links, 3), { b: 71, c: 24, v1: 18, v2: 18 });
+  const two = [
+    { href: 'tw://bk.DeuteroKJV?tid=96#v32-', text: 'Sirach 7:32, ' },
+    { href: 'tw://bk.DeuteroKJV?tid=118#v11-v14', text: '29:11-13 (LXX)' },
+  ];
+  assert.deepStrictEqual(pb.parseLegacyDeuteroInContext(two, 1), { b: 71, c: 29, v1: 11, v2: 13 });
+  assert.deepStrictEqual(pb.parseLegacyDeuteroLink('tw://bk.DeuteroKJV?tid=104#v11-v14', 'Sirach 15:11-13 (LXX'), { b: 71, c: 15, v1: 11, v2: 13 });
+  ok(true, 'parseLegacyDeuteroInContext resolves chained Deuterocanon footnote links without repeated book names');
+}
+
 console.log(`popupbibles tests: ${passed} ok`);

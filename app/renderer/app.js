@@ -1497,9 +1497,31 @@ window.GET_MODS_LINK = GET_MODS_LINK;
 /* On a phone screen, a verse link tapped inside a dictionary pop-up, sheet or page (not in a Bible view) shows the normal Bible view with that
    verse selected. The Bible is the default Old / New Testament Bible of Options → Modules; when that is "Automatic" (or does not have the
    book), the first Bible of the list in the Bible view's name menu that has the book. With no Bible for that testament, "Where to get modules". */
+function legacyDeuteroForLink(link) {
+  const PB = window.TimotheosPopupBibles;
+  if (!PB || !link) return null;
+  const href = link.dataset ? (link.dataset.href || '') : '';
+  if (!/^tw:\/\/bk\./i.test(href)) return null;
+  const scope = link.closest && link.closest('.entry, .pcard, .fnlist, .lookup, p, li, div');
+  if (scope) {
+    const els = [...scope.querySelectorAll('a[data-href]')];
+    const idx = els.indexOf(link);
+    if (idx >= 0) {
+      return PB.parseLegacyDeuteroInContext(els.map(a => ({ href: a.dataset.href || '', text: a.textContent || '' })), idx);
+    }
+  }
+  return PB.parseLegacyDeuteroLink(href, link.textContent || '');
+}
+window.legacyDeuteroForLink = legacyDeuteroForLink;
+
 function phoneVerseLink(link) {
   if (!document.documentElement.classList.contains('sk') || link.closest('.bv')) return false;
   const href = link.dataset.href || '';
+  const legacyRef = legacyDeuteroForLink(link);
+  if (legacyRef) {
+    phoneVerse(legacyRef.b, legacyRef.c, legacyRef.v1);
+    return true;
+  }
   const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
   const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
   if (!/^tw:\/\/bible/i.test(href) || !id) return false;
@@ -1508,7 +1530,7 @@ function phoneVerseLink(link) {
   return true;
 }
 async function bibleForBook(b) {
-  const has = async bid => { const inf = await ensureInfo(bid); return !!(inf && inf.books && inf.books[b]); };
+  const has = async bid => { const inf = await ensureInfo(bid, true); return !!(inf && inf.books && inf.books[b]); };
   const PB = window.TimotheosPopupBibles;
   const key = PB ? PB.popupGroupKey(b) : (b >= 1 && b <= 39 ? 'popupOT' : b >= 40 && b <= 66 ? 'popupNT' : b >= 67 ? 'popupAP' : '');
   const prefs = PB && key ? PB.normalizePopupIds(state.settings[key], state.modules.bibles.map(x => x.id)) : [];
@@ -1524,14 +1546,31 @@ async function phoneVerse(b, c, v) {
   if (views()[state.active].bible !== bid) await useBible(bid);
   return go({ b, c, v });
 }
-async function followLink(href, linkText) {
+async function followLink(href, linkText, linkEl) {
   if (!href) return;
   if (href === 'cmd:getModules') return getModules();
   if (/^https?:/i.test(href)) return api.openExternal(href);
   if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href)) {
+    const PB = window.TimotheosPopupBibles;
+    const legacyRef = linkEl ? legacyDeuteroForLink(linkEl) : (PB ? PB.parseLegacyDeuteroLink(href, linkText) : null);
+    const apSelected = PB ? PB.normalizePopupIds(state.settings && state.settings.popupAP, (state.modules.bibles || []).map(x => x.id)) : [];
+    const openLegacy = async () => {
+      if (document.documentElement.classList.contains('sk')) return phoneVerse(legacyRef.b, legacyRef.c, legacyRef.v1);
+      const curView = views()[state.active];
+      const curInf = curView ? await ensureInfo(curView.bible, true) : null;
+      if (!curInf || !curInf.books || !curInf.books[legacyRef.b]) {
+        const openIdx = views().findIndex(v => { const inf = state.infos.get(v.bible); return inf && inf.books && inf.books[legacyRef.b]; });
+        if (openIdx >= 0) setActive(openIdx, true);
+        else {
+          const bid = await bibleForBook(legacyRef.b);
+          if (bid) await useBible(bid);
+        }
+      }
+      return go({ b: legacyRef.b, c: legacyRef.c, v: legacyRef.v1 });
+    };
+    if (legacyRef && apSelected.length) return openLegacy();
     if (await TimotheosModules.followBookLink(href)) return;
-    const legacyRef = window.TimotheosPopupBibles ? TimotheosPopupBibles.parseLegacyDeuteroLink(href, linkText) : null;
-    if (legacyRef) return go({ b: legacyRef.b, c: legacyRef.c, v: legacyRef.v1 });
+    if (legacyRef) return openLegacy();
   }
   const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
   const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
@@ -1570,7 +1609,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.91')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.92')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
@@ -1639,7 +1678,7 @@ function wireUi() {
     if (!row) row = verseNear(e);   // the blank space between and beside the verses belongs to the nearest verse
     if (row && !e.target.closest('button, input, select, textarea, .menu') && !String(window.getSelection()).trim()) selectVerse(+row.dataset.v, false);
     const link = e.target.closest('[data-href]');
-    if (link) { e.preventDefault(); if (phoneVerseLink(link)) return; followLink(link.dataset.href, link.textContent); return; }
+    if (link) { e.preventDefault(); if (phoneVerseLink(link)) return; followLink(link.dataset.href, link.textContent, link); return; }
     const t = popupTarget(e.target);
     if (t) {
       if ((document.documentElement.classList.contains('mobile') || document.documentElement.classList.contains('sk')) && isWordTarget(t) && t.closest('.bv')) return;

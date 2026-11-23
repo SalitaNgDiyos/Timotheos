@@ -111,9 +111,9 @@
    * Parse a legacy theWord Deuterocanon book link (e.g. tw://bk.DeuteroKJV?tid=135#v1-v2 with text "Sirach 46:1 (LXX)")
    * into { b, c, v1, v2 }. Returns null if the link is not a Deuterocanon passage reference.
    */
-  function parseLegacyDeuteroLink(href, linkText) {
+  function parseLegacyDeuteroLink(href, linkText, prevRef) {
     if (!/^tw:\/\/bk\./i.test(String(href || ''))) return null;
-    const raw = String(linkText || '').replace(/^[\s,;:.]+/, '').replace(/\s*\([^)]*\)\s*$/, '').replace(/[\s,;:.]+$/, '').trim();
+    const raw = String(linkText || '').replace(/^[\s,;:.]+/, '').replace(/\s*\([^)]*\)?\s*$/, '').replace(/[\s,;:.]+$/, '').trim();
     if (!raw) return null;
     for (const [re, b] of DEUTERO_PATTERNS) {
       const m = re.exec(raw);
@@ -137,6 +137,32 @@
         if (hm) return { b, c: +chOnly[1], v1: +hm[1], v2: hm[2] ? Math.max(+hm[1], +hm[2] - 1) : +hm[1] };
         return { b, c: +chOnly[1], v1: 1, v2: 1 };
       }
+    }
+    if (prevRef && prevRef.b) {
+      const cv = /^(\d+)\s*:\s*(\d+)(?:\s*[-–—]\s*(\d+))?/.exec(raw);
+      if (cv) {
+        const c = +cv[1], v1 = +cv[2], v2 = cv[3] ? Math.max(v1, +cv[3]) : v1;
+        return { b: prevRef.b, c, v1, v2 };
+      }
+      const vm = /^(\d+)(?:\s*[-–—]\s*(\d+))?$/.exec(raw);
+      if (vm && prevRef.c) {
+        const v1 = +vm[1], v2 = vm[2] ? Math.max(v1, +vm[2]) : v1;
+        return { b: prevRef.b, c: prevRef.c, v1, v2 };
+      }
+    }
+    return null;
+  }
+
+  /** Resolve a legacy Deuterocanon link within an ordered list of { href, text } siblings (for chained refs like "Sirach 7:32, 29:11-13"). */
+  function parseLegacyDeuteroInContext(links, index) {
+    if (!Array.isArray(links) || index < 0 || index >= links.length) return null;
+    let lastRef = null;
+    for (let i = 0; i <= index; i++) {
+      const item = links[i] || {};
+      const ref = parseLegacyDeuteroLink(item.href, item.text, lastRef);
+      if (ref) lastRef = ref;
+      else if (/^tw:\/\/bible/i.test(String(item.href || ''))) lastRef = null;
+      if (i === index) return ref;
     }
     return null;
   }
@@ -167,7 +193,7 @@
     return { selected: sel, unselected: rest };
   }
 
-  const apiObj = { popupGroupKey, normalizePopupIds, bibleHasGroup, filterBiblesForGroup, resolvePopupTargets, parseLegacyDeuteroLink, reorderPopupIds, orderBiblesForChecklist };
+  const apiObj = { popupGroupKey, normalizePopupIds, bibleHasGroup, filterBiblesForGroup, resolvePopupTargets, parseLegacyDeuteroLink, parseLegacyDeuteroInContext, reorderPopupIds, orderBiblesForChecklist };
   if (typeof window !== 'undefined') window.TimotheosPopupBibles = apiObj;
   if (typeof module !== 'undefined' && module.exports) module.exports = apiObj;
 })();

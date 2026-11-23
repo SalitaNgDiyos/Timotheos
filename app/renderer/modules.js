@@ -1151,7 +1151,7 @@ function wireModules() {
     if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href)) {
       await new Promise(r => setTimeout(r, 320));
       if (!a.matches(':hover')) return;
-      const legacyRef = window.TimotheosPopupBibles ? TimotheosPopupBibles.parseLegacyDeuteroLink(href, a.textContent) : null;
+      const legacyRef = window.legacyDeuteroForLink ? window.legacyDeuteroForLink(a) : (window.TimotheosPopupBibles ? TimotheosPopupBibles.parseLegacyDeuteroLink(href, a.textContent) : null);
       const tgt = await resolveBookLinkTarget(href, a);
       if (legacyRef) {
         const apSelected = TimotheosPopupBibles.normalizePopupIds(state.settings && state.settings.popupAP, (state.modules.bibles || []).map(x => x.id));
