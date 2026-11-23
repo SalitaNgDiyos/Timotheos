@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Edmund P. Valdez
+name: Apply Patch
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Target branch"
+        required: true
+        default: "Neon"
+        type: string
+      patch_b64:
+        description: "Base64 git format-patch (plain or gzip)"
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.branch }}", fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Apply patch
+        env: { PATCH_B64: "${{ inputs.patch_b64 }}" }
+        run: |
+          git config user.name "Edmund Valdez"
+          git config user.email "46296587+SalitaNgDiyos@users.noreply.github.com"
+          printf '%s' "$PATCH_B64" | tr -d '[:space:]' | base64 -d > /tmp/p.raw
+          if file /tmp/p.raw | grep -qi gzip; then gzip -dc /tmp/p.raw > /tmp/p.patch; else cp /tmp/p.raw /tmp/p.patch; fi
+          git am --3way /tmp/p.patch
+      - name: Test and licence check
+        run: |
+          npm ci
+          node test/unit/subfolders.test.js && node test/unit/archivescan.test.js && node test/unit/dock.test.js && node test/unit/bigzip.test.js
+          if [ -f test/unit/popupbibles.test.js ]; then node test/unit/popupbibles.test.js; fi
+          node scripts/check-licence.mjs
+      - run: git push origin "HEAD:${{ inputs.branch }}"
