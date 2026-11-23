@@ -172,7 +172,7 @@ const api = {
   fxImport: () => call('fx:import'), fxList: () => call('fx:list'), fxRemove: id => call('fx:remove', id),
   listModules: () => call('modules:list'), rescan: () => call('modules:rescan'), addFolder: () => call('modules:addFolder'),
   removeFolder: p => call('modules:removeFolder', p), importDialog: () => call('modules:importDialog'), importFiles: (p, o) => call('modules:import', p, o),
-  removeImported: f => call('modules:removeImported', f), setHiddenModules: ids => call('modules:setHidden', ids), deleteModuleFile: id => call('modules:deleteFile', id),
+  removeImported: f => call('modules:removeImported', f), setHiddenModules: ids => call('modules:setHidden', ids), locateModuleFolder: id => call('modules:locateFolder', id), deleteModuleFile: id => call('modules:deleteFile', id),
   importedFolder: () => call('modules:importedFolder'), describeModules: () => call('modules:describe'),
   pathForFile: () => '',
   bibleInfo: (id, o) => call('bible:info', id, o), nav: ids => call('bible:nav', ids), chapter: (ids, b, c) => call('bible:chapter', ids, b, c),

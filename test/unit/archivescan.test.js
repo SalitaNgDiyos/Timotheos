@@ -8,7 +8,7 @@ const os = require('os');
 const path = require('path');
 const zlib = require('zlib');
 const { Library } = require('../../app/lib/library');
-const { isPathUnder, clearArchiveSeenUnder, shouldScanArchive, scanArchives } = require('../../app/lib/archivescan');
+const { isPathUnder, clearArchiveSeenUnder, markArchiveDestDeleted, shouldScanArchive, scanArchives } = require('../../app/lib/archivescan');
 
 let passed = 0;
 function ok(cond, msg) {
@@ -165,6 +165,24 @@ function makeZip(entries) {
       ok(rRescan.added === 1 && fs.existsSync(realTwm) && fs.statSync(realTwm).size > 200 * 1024 * 1024,
         'real GBL-EPV_2026-11-22_0815.dct.zip recovered by Rescan even when legacy archiveSeen already existed');
     }
+
+    // 8. markArchiveDestDeleted prevents resurrection on Rescan even when forceMissing is true
+    const delFolder = path.join(tmp, 'FolderDel');
+    const delDest = path.join(tmp, 'modules-del');
+    fs.mkdirSync(delFolder, { recursive: true });
+    fs.mkdirSync(delDest, { recursive: true });
+    const delZip = path.join(delFolder, 'TempBible.zip');
+    fs.writeFileSync(delZip, makeZip([{ name: 'TempBible.nt', data: ntData }]));
+    const delSettings = { moduleFolders: [delFolder], archiveSeen: {} };
+    const ds1 = await scanArchives({ folders: [delFolder], destRoot: delDest, settings: delSettings, forceMissing: false });
+    const delNt = path.join(delDest, 'theWord', 'TempBible.nt');
+    ok(ds1.added === 1 && fs.existsSync(delNt), 'initial scan unpacks TempBible.nt');
+    fs.unlinkSync(delNt);
+    delSettings.archiveSeen = markArchiveDestDeleted(delSettings.archiveSeen, delNt).seen;
+    const ds2 = await scanArchives({ folders: [delFolder], destRoot: delDest, settings: delSettings, forceMissing: true });
+    ok(ds2.archives === 0 && !fs.existsSync(delNt), 'deleted module is not restored by Rescan even with forceMissing: true');
+    const ds3 = await scanArchives({ folders: [delFolder], destRoot: delDest, settings: delSettings, forceMissing: false });
+    ok(ds3.archives === 0 && !fs.existsSync(delNt), 'deleted module stays deleted on normal Rescan');
 
     console.log(`archivescan: ${passed} ok`);
   } finally {

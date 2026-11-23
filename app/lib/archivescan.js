@@ -51,7 +51,7 @@ function shouldScanArchive(entry, sig, { forceMissing = false } = {}) {
     return !!forceMissing;
   }
   if (entry.sig !== sig) return true;
-  if (entry.empty || entry.protected) return false;
+  if (entry.empty || entry.protected || entry.deleted) return false;
   if (!forceMissing) return false;
   const dests = Array.isArray(entry.dests) ? entry.dests : [];
   if (!dests.length) return true;
@@ -106,4 +106,22 @@ async function scanArchives({ folders, destRoot, settings, userData, forceMissin
   return { archives: todo.length, added, already, protectedN, emptyCount, errorCount, results };
 }
 
-module.exports = { isPathUnder, clearArchiveSeenUnder, shouldScanArchive, scanArchives };
+function markArchiveDestDeleted(archiveSeen, deletedPath) {
+  const seen = Object.assign({}, archiveSeen || {});
+  if (!deletedPath) return { seen, updated: 0 };
+  let updated = 0;
+  for (const k of Object.keys(seen)) {
+    const entry = seen[k];
+    if (!entry || typeof entry !== 'object' || !Array.isArray(entry.dests)) continue;
+    const rem = entry.dests.filter(d => !isPathUnder(d, deletedPath) && !isPathUnder(deletedPath, d));
+    if (rem.length !== entry.dests.length) {
+      seen[k] = rem.length
+        ? Object.assign({}, entry, { dests: rem })
+        : Object.assign({}, entry, { dests: [], deleted: true });
+      updated++;
+    }
+  }
+  return { seen, updated };
+}
+
+module.exports = { isPathUnder, clearArchiveSeenUnder, markArchiveDestDeleted, shouldScanArchive, scanArchives };

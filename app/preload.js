@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('api', {
   onAutoImport: fn => ipcRenderer.on('import:auto', (e, t) => fn(t)),
   removeImported: file => call('modules:removeImported', file),
   setHiddenModules: ids => call('modules:setHidden', ids),
+  locateModuleFolder: id => call('modules:locateFolder', id),
   deleteModuleFile: id => call('modules:deleteFile', id),
   importedFolder: () => call('modules:importedFolder'),
   describeModules: () => call('modules:describe'),

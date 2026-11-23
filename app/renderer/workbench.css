@@ -685,6 +685,7 @@ body.centered .bv > .bvbody > .bvtext { padding-bottom: var(--half, 0px); box-si
 .mmrow.off .mmname { text-decoration: line-through; opacity: .55; }
 .mmrow .mmfile { flex: 0 1 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mmrow button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 5px; padding: 1px 7px; cursor: pointer; font-size: 11.5px; }
+.mmrow .mmloc { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .mmrow .mmdel:hover { border-color: #b3261e; color: #b3261e; }
 .pskrow { display: flex; align-items: center; gap: 6px; padding: 3px 10px; }
 .pskl { width: 74px; }

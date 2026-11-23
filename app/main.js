@@ -5,7 +5,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Menu, session, nativeTheme, 
 const path = require('path');
 const fs = require('fs');
 const { Library } = require('./lib/library');
-const { scanArchives, clearArchiveSeenUnder } = require('./lib/archivescan');
+const { scanArchives, clearArchiveSeenUnder, markArchiveDestDeleted } = require('./lib/archivescan');
 const canon = require('./lib/canon');
 const { Xrefs } = require('./lib/xrefs');
 const { importFiles } = require('./lib/importer');
@@ -359,7 +359,7 @@ app.whenReady().then(async () => {
   handle('fx:remove', id => { fs.rmSync(path.join(FXDIR(), String(id).replace(/[^A-Za-z0-9._@-]+/g, '_')), { recursive: true, force: true }); return require('./lib/fxthemes').list(FXDIR()); });
   handle('modules:list', () => lib.list());
   handle('modules:rescan', async () => {
-    await scanArchiveFolders({ forceMissing: true });
+    await scanArchiveFolders({ forceMissing: false });
     return await rescanAll();
   });
   handle('modules:addFolder', async () => {
@@ -419,13 +419,34 @@ app.whenReady().then(async () => {
   });
   // Options → Modules: take a module out of the lists (the file stays), or permanently delete its file/folder from disk
   handle('modules:setHidden', ids => { settings.hiddenModules = [...new Set(ids || [])]; saveSettings(); lib.setHidden(settings.hiddenModules); return rescanAll(); });
-  handle('modules:deleteFile', async id => {
+  handle('modules:locateFolder', id => {
     const file = lib.fileOf(id);
     if (!file || !fs.existsSync(file)) throw new Error('The file of this module is not there any more.');
+    const dir = fs.statSync(file).isDirectory() ? file : path.dirname(file);
+    shell.openPath(dir);
+    return dir;
+  });
+  handle('modules:deleteFile', async id => {
+    const file = lib.fileOf(id);
+    const linkFile = lib.linkFileOf && lib.linkFileOf(file);
+    if (!file || (!fs.existsSync(file) && !(linkFile && fs.existsSync(linkFile)))) {
+      throw new Error('The file of this module is not there any more.');
+    }
     lib.release(file);
-    fs.rmSync(file, { recursive: true, force: true });
+    if (fs.existsSync(file)) fs.rmSync(file, { recursive: true, force: true });
     if (fs.existsSync(file)) throw new Error('Could not delete the file from disk: ' + file);
-    settings.hiddenModules = (settings.hiddenModules || []).filter(x => x !== id); saveSettings(); lib.setHidden(settings.hiddenModules);
+    if (linkFile && fs.existsSync(linkFile)) {
+      try { fs.rmSync(linkFile, { recursive: true, force: true }); } catch (e) {}
+    }
+    const orderFile = file + '.order';
+    if (fs.existsSync(orderFile)) {
+      try { fs.rmSync(orderFile, { force: true }); } catch (e) {}
+    }
+    settings.archiveSeen = markArchiveDestDeleted(settings.archiveSeen, file).seen;
+    if (linkFile) settings.archiveSeen = markArchiveDestDeleted(settings.archiveSeen, linkFile).seen;
+    settings.hiddenModules = (settings.hiddenModules || []).filter(x => x !== id);
+    saveSettings();
+    lib.setHidden(settings.hiddenModules);
     return rescanAll();
   });
   handle('modules:importedFolder', () => MODULES_DIR());
