@@ -1339,7 +1339,7 @@ async function versePreview(b, c, v1, v2, modSpec) {
   if (targetIds.length === 1) {
     const inf = state.infos.get(targetIds[0]);
     const showAbbr = modSpec && modSpec !== '*' && inf;
-    return `<div class="entry"><h4><a class="link" data-href="tw://bible.${esc(modAttr)}?id=${b}.${c}.${v1}">${refLabel}${showAbbr ? ` (${esc(inf.abbr)})` : ''}</a></h4>${rows.map(r => r.cells[0] != null ? `<sup>${r.v}</sup> ${TWRender.render(r.cells[0], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}` : '').filter(Boolean).join(' ') || '<div class="src">Not in this Bible</div>'}</div>`;
+    return `<div class="entry vprev"><h4><a class="link" data-href="tw://bible.${esc(modAttr)}?id=${b}.${c}.${v1}">${refLabel}${showAbbr ? ` (${esc(inf.abbr)})` : ''}</a></h4>${rows.map(r => r.cells[0] != null ? `<sup>${r.v}</sup> ${TWRender.render(r.cells[0], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}` : '').filter(Boolean).join(' ') || '<div class="src">Not in this Bible</div>'}</div>`;
   }
   const cols = targetIds.map((id, idx) => {
     const inf = state.infos.get(id);
@@ -1348,7 +1348,7 @@ async function versePreview(b, c, v1, v2, modSpec) {
     const body = rows.map(r => r.cells[idx] != null ? `<sup>${r.v}</sup> ${TWRender.render(r.cells[idx], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}` : '').filter(Boolean).join(' ') || '<div class="src">Not in this Bible</div>';
     return `<div class="ppcol"><div class="pphead" title="${esc(title)}"><a class="link" data-href="tw://bible.${esc(abbr)}?id=${b}.${c}.${v1}">${esc(abbr)}</a></div><div class="ppbody">${body}</div></div>`;
   }).join('');
-  return `<div class="entry"><h4><a class="link" data-href="tw://bible.*?id=${b}.${c}.${v1}">${refLabel}</a></h4><div class="ppar">${cols}</div></div>`;
+  return `<div class="entry vprev"><h4><a class="link" data-href="tw://bible.*?id=${b}.${c}.${v1}">${refLabel}</a></h4><div class="ppar">${cols}</div></div>`;
 }
 
 let hoverTimer = null, hoverEl = null, lastWordEl = null;
@@ -1367,7 +1367,7 @@ function toggleWordPopup(i) {
   if (!v.wpop) { clearTimeout(hoverTimer); hoverEl = null; hidePopupSoon(); }
   flashMsg(v.wpop ? 'Word pop-ups on for this view' : 'Word pop-ups off: hold Shift and point at a word');
 }
-function popupTarget(el) { return el && el.closest('[data-strong],[data-morph],sup.fn,sup.xref'); }
+function popupTarget(el) { if (!el || !el.closest || el.closest('#popup .vprev')) return null; return el.closest('[data-strong],[data-morph],sup.fn,sup.xref'); }
 function wireHover() {
   // a finger tap also sends a "mouse over": on the three screens the tap opens the word pop-up instead, so the old hover pop-up stays away
   let touchAt = 0; document.addEventListener('touchstart', () => { touchAt = Date.now(); }, { passive: true, capture: true });
@@ -1557,7 +1557,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.88')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.89')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

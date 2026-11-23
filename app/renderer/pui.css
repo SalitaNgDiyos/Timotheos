@@ -22,10 +22,13 @@ html.sk .bvtext .pv sup.cm { display: none; }   /* no dot before a verse that ha
 html.sk .pbody, html.sk #libBody, html.sk #libFeed, html.sk .sres .hit p { zoom: var(--mod-zoom, 1); }   /* pinch with two fingers */
 html.sk .bvtext .xrs { display: inline; font: 500 .6em/1.3 var(--p-ui); color: var(--p-muted); margin: 0 .2em 0 .35em; }
 html.sk .bvtext .xrs a { color: var(--p-acc2); }
-html.sk .bvtext tr.sel, html.sk .bvtext .pv.sel, html.sk .bvtext .pv.sel .piblk { background: var(--sel, var(--p-selv)) !important; }
-html.sk .bvtext .pvmark, html.sk .bvtext tr.pvmark, html.sk .bvtext .pvmark .piblk { background: var(--p-markv) !important; }
-html.sk .bvtext .speaking { background: var(--p-speak) !important; box-shadow: inset 3px 0 0 var(--p-acc2); border-radius: 12px; }
-html.sk .bvtext .speaking .piblk { background: var(--p-speak) !important; }
+html.sk .bvtext tr.sel, html.sk .bvtext .pv.sel .piblk { background: var(--sel, var(--p-selv)) !important; }
+html.sk .bvtext .pv.sel { background: linear-gradient(var(--sel, var(--p-selv)), var(--sel, var(--p-selv))) 0 .16em / 100% min(1.2em, calc(var(--rd-lh, 1.72) * 1em)) no-repeat !important; }
+html.sk .bvtext tr.pvmark, html.sk .bvtext .pvmark .piblk { background: var(--p-markv) !important; }
+html.sk .bvtext .pv.pvmark { background: linear-gradient(var(--p-markv), var(--p-markv)) 0 .16em / 100% min(1.2em, calc(var(--rd-lh, 1.72) * 1em)) no-repeat !important; }
+html.sk .bvtext tr.speaking, html.sk .bvtext .speaking .piblk { background: var(--p-speak) !important; }
+html.sk .bvtext .speaking { box-shadow: inset 3px 0 0 var(--p-acc2); border-radius: 12px; }
+html.sk .bvtext .pv.speaking { background: linear-gradient(var(--p-speak), var(--p-speak)) 0 .16em / 100% min(1.2em, calc(var(--rd-lh, 1.72) * 1em)) no-repeat !important; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 html.sk .bvtext .woj { color: var(--woj); }
 html.sk .bvtext .pwordon { background: var(--p-accsoft); color: var(--p-acc); border-radius: 6px; }
 html.sk .bvtext .hd, html.sk .bvtext tr.hd td, html.sk .bvtext .heading { font-family: var(--p-ui); font-weight: 600; font-size: .78em; letter-spacing: .04em; color: var(--p-muted); }
@@ -218,9 +221,9 @@ html.sk .bvtext::-webkit-scrollbar, html.sk .pgbody::-webkit-scrollbar, html.sk 
 
 /* Tight lines: a highlight covers the letters (from the top of the tall ones to the bottom of the low ones), not the whole font box,
    so the highlight of one line never paints over the letters of the line above; the underline keeps clear of the line below */
-html.sk .bvtext mark.hl-yellow { --hlc: #fff09a; } html.sk .bvtext mark.hl-green { --hlc: #c9f0c0; } html.sk .bvtext mark.hl-blue { --hlc: #c8e2ff; } html.sk .bvtext mark.hl-pink { --hlc: #ffd0e4; } html.sk .bvtext mark.hl-orange { --hlc: #ffd8a8; }
-html.sk[data-theme="dark"] .bvtext mark.hl-yellow { --hlc: #6b5d12; } html.sk[data-theme="dark"] .bvtext mark.hl-green { --hlc: #2e5a2a; } html.sk[data-theme="dark"] .bvtext mark.hl-blue { --hlc: #1f4870; } html.sk[data-theme="dark"] .bvtext mark.hl-pink { --hlc: #6a2a48; } html.sk[data-theme="dark"] .bvtext mark.hl-orange { --hlc: #6e4512; }
-html.sk .bvtext mark.hl:not(.hl-ul):not(.hl-bold) { background: linear-gradient(var(--hlc, #fff09a), var(--hlc, #fff09a)) 0 .17em / 100% 1.27em no-repeat !important; border-radius: 0; }
+html.sk .bvtext mark.hl-yellow { --hlc: #fff09a; } html.sk .bvtext mark.hl-green { --hlc: #c9f0c0; } html.sk .bvtext mark.hl-blue { --hlc: #c8e2ff; } html.sk .bvtext mark.hl-pink { --hlc: #ffd0e4; } html.sk .bvtext mark.hl-orange { --hlc: #ffd8a8; } html.sk .bvtext mark.hl-purple { --hlc: #e0ccff; } html.sk .bvtext mark.hl-teal { --hlc: #b8ece8; } html.sk .bvtext mark.hl-red { --hlc: #ffb3b3; } html.sk .bvtext mark.hl-gray { --hlc: #d4d4d4; }
+html.sk[data-theme="dark"] .bvtext mark.hl-yellow { --hlc: #6b5d12; } html.sk[data-theme="dark"] .bvtext mark.hl-green { --hlc: #2e5a2a; } html.sk[data-theme="dark"] .bvtext mark.hl-blue { --hlc: #1f4870; } html.sk[data-theme="dark"] .bvtext mark.hl-pink { --hlc: #6a2a48; } html.sk[data-theme="dark"] .bvtext mark.hl-orange { --hlc: #6e4512; } html.sk[data-theme="dark"] .bvtext mark.hl-purple { --hlc: #4b3478; } html.sk[data-theme="dark"] .bvtext mark.hl-teal { --hlc: #1d5a57; } html.sk[data-theme="dark"] .bvtext mark.hl-red { --hlc: #6d2a2a; } html.sk[data-theme="dark"] .bvtext mark.hl-gray { --hlc: #555555; }
+html.sk .bvtext mark.hl:not(.hl-ul):not(.hl-bold):not([class*="hl-ul-"]) { background: linear-gradient(var(--hlc, #fff09a), var(--hlc, #fff09a)) 0 .16em / 100% min(1.2em, calc(var(--rd-lh, 1.72) * 1em)) no-repeat !important; border-radius: 0; }
 html.sk .bvtext mark.hl-ul { text-decoration-thickness: .09em; text-underline-offset: .11em; }
 
 /* Quiet Reader: the big title scrolls with the text (the top strip then shows the place in one line); in parallel the panes' small labels stay pinned */
