@@ -1,4 +1,4 @@
-Timotheos 0.6.83
-- Panel docking: fixed a freeze during layout mapping where the drop grid overlay and dragged panel ghost could stay stuck on screen (now handles pointercancel, mouseup, window blur, released mouse buttons, and Escape cleanly).
-- Panel dragging: cached hover target previews so dragging across panels and 4×3 grid cells no longer recomputes layout geometry on every pixel of mouse movement.
-- Edge resizing: guarded pointer capture and added window-level release cleanup for Detach edges and divider drags.
+Timotheos 0.6.84
+- Verse link popups: added multi-Bible selection in Options > Modules > Verse links (popups and previews) for Old Testament, New Testament, and a new Deuterocanon / Apocrypha group (filtered to installed Bibles that contain Deuterocanon books).
+- Parallel hover preview: when two or more Bibles are ticked for a group, hovering a verse link in books, dictionaries, commentaries, or cross-references opens those Bibles side by side in a parallel popup (stacking automatically on narrow screens).
+- Legacy Deuterocanon links: hovering or clicking legacy theWord Deuterocanon book links (such as DeuteroKJV links to Sirach, Wisdom, Tobit, or Maccabees) now resolves to your selected Deuterocanon Bibles for parallel preview and navigation.

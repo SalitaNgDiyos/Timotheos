@@ -1150,7 +1150,15 @@ function wireModules() {
     if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href)) {
       await new Promise(r => setTimeout(r, 320));
       if (!a.matches(':hover')) return;
+      const legacyRef = window.TimotheosPopupBibles ? TimotheosPopupBibles.parseLegacyDeuteroLink(href, a.textContent) : null;
       const tgt = await resolveBookLinkTarget(href, a);
+      if (legacyRef) {
+        const apSelected = TimotheosPopupBibles.normalizePopupIds(state.settings && state.settings.popupAP, (state.modules.bibles || []).map(x => x.id));
+        if (apSelected.length || !tgt || tgt.tid == null) {
+          const html = await versePreview(legacyRef.b, legacyRef.c, legacyRef.v1, legacyRef.v2);
+          if (a.matches(':hover') && html) { window.showPopupHtml(a, html); return; }
+        }
+      }
       if (!tgt || tgt.tid == null) return;
       const topic = await api.bookTopic(tgt.id, tgt.tid).catch(() => null);
       if (!topic || !a.matches(':hover')) return;

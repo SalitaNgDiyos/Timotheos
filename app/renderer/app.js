@@ -447,11 +447,43 @@ function wireStackName() {
 }
 function renderPopupSelects() {
   wireStackName();
-  for (const [sel, key] of [['#popupOT', 'popupOT'], ['#popupNT', 'popupNT']]) {
+  const PB = window.TimotheosPopupBibles;
+  const allIds = state.modules.bibles.map(b => b.id);
+  for (const [sel, metaSel, clrSel, key] of [
+    ['#popupOT', '#popupOTMeta', '#popupOTClr', 'popupOT'],
+    ['#popupNT', '#popupNTMeta', '#popupNTClr', 'popupNT'],
+    ['#popupAP', '#popupAPMeta', '#popupAPClr', 'popupAP'],
+  ]) {
     const el = $(sel); if (!el) continue;
-    el.innerHTML = '<option value="">The first open Bible</option>' + state.modules.bibles.map(b => { const inf = state.infos.get(b.id); return `<option value="${esc(b.id)}">${esc(inf ? inf.abbr : b.abbr)} – ${esc(inf ? inf.title : b.name)}</option>`; }).join('');
-    el.value = state.settings[key] && state.modules.bibles.some(b => b.id === state.settings[key]) ? state.settings[key] : '';
-    el.onchange = () => { save({ [key]: el.value }); };
+    const meta = $(metaSel), clr = $(clrSel);
+    const { list, loading } = PB ? PB.filterBiblesForGroup(state.modules.bibles, state.infos, key) : { list: state.modules.bibles, loading: false };
+    const selected = PB ? PB.normalizePopupIds(state.settings[key], allIds) : [];
+    const selSet = new Set(selected);
+    const updateMeta = ids => {
+      if (meta) meta.textContent = ids.length ? `${ids.length} selected${ids.length >= 2 ? ' (parallel)' : ''}` : 'Automatic (first open Bible)';
+      if (clr) clr.classList.toggle('hidden', !ids.length);
+    };
+    updateMeta(selected);
+    if (!list.length) {
+      el.innerHTML = `<div class="popempty">${loading ? 'Checking installed Bibles…' : key === 'popupAP' ? 'No installed Bible contains Deuterocanon / Apocrypha books.' : 'No installed Bibles for this section.'}</div>`;
+    } else {
+      el.innerHTML = list.map(b => {
+        const inf = state.infos.get(b.id);
+        const abbr = inf ? inf.abbr : b.abbr;
+        const title = inf ? inf.title : b.name;
+        return `<label><input type="checkbox" value="${esc(b.id)}"${selSet.has(b.id) ? ' checked' : ''}><span class="popabbr">${esc(abbr)}</span><span class="popttl">${esc(title)}</span></label>`;
+      }).join('');
+      el.onchange = () => {
+        const checked = [...el.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+        updateMeta(checked);
+        save({ [key]: checked });
+      };
+    }
+    if (clr) clr.onclick = () => {
+      el.querySelectorAll('input[type=checkbox]').forEach(i => { i.checked = false; });
+      updateMeta([]);
+      save({ [key]: [] });
+    };
   }
 }
 function renderDictSelects() {
@@ -1261,24 +1293,40 @@ function resolveBibleSpec(modSpec) {
 window.resolveBibleSpec = resolveBibleSpec;
 
 async function versePreview(b, c, v1, v2, modSpec) {
-  let targetId = resolveBibleSpec(modSpec);
-  if (!targetId) {
-    // verse links without a named Bible: the default Old / New Testament Bible of Options → Modules, else the first open Bible
-    const pref = b >= 1 && b <= 39 ? state.settings.popupOT : b >= 40 && b <= 66 ? state.settings.popupNT : '';
-    if (pref && state.modules.bibles.some(x => x.id === pref)) targetId = pref;
-    else {
-      const ids = state.settings.openBibles;
-      if (!ids.length) return '';
-      targetId = ids[0];
+  const PB = window.TimotheosPopupBibles;
+  let targetIds = PB
+    ? PB.resolvePopupTargets({ b, settings: state.settings, bibles: state.modules.bibles, infosMap: state.infos, openBibles: state.settings.openBibles, modSpec, resolveBibleSpecFn: resolveBibleSpec })
+    : [];
+  // If a Deuterocanon link has no explicit selection yet and preloading is still in progress, check unloaded Bibles to find one with book b
+  if (!resolveBibleSpec(modSpec) && b >= 67 && PB && !PB.normalizePopupIds(state.settings.popupAP, state.modules.bibles.map(x => x.id)).length) {
+    const curInf = targetIds[0] ? await ensureInfo(targetIds[0]) : null;
+    if (!curInf || !curInf.books || !curInf.books[b]) {
+      for (const x of state.modules.bibles) {
+        const inf = await ensureInfo(x.id, true);
+        if (inf && inf.books && inf.books[b]) { targetIds = [x.id]; break; }
+      }
     }
   }
-  await ensureInfo(targetId);
-  const data = await api.chapter([targetId], b, c);
-  const inf = state.infos.get(targetId);
+  if (!targetIds.length) return '';
+  await Promise.all(targetIds.map(id => ensureInfo(id)));
+  const data = await api.chapter(targetIds, b, c);
   const show = Object.assign({}, state.settings.show, { strongs: false, morph: false, footnotes: false });
   const rows = data.rows.filter(r => r.v >= v1 && r.v <= v2);
   const modAttr = modSpec && modSpec !== '*' ? modSpec : '*';
-  return `<div class="entry"><h4><a class="link" data-href="tw://bible.${esc(modAttr)}?id=${b}.${c}.${v1}">${esc(data.book.name)} ${c}:${v1}${v2 > v1 ? '–' + v2 : ''}${modSpec && modSpec !== '*' && inf ? ` (${esc(inf.abbr)})` : ''}</a></h4>${rows.map(r => `<sup>${r.v}</sup> ${TWRender.render(r.cells[0], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}`).join(' ') || '<div class="src">Not in this Bible</div>'}</div>`;
+  const refLabel = `${esc(data.book.name)} ${c}:${v1}${v2 > v1 ? '–' + v2 : ''}`;
+  if (targetIds.length === 1) {
+    const inf = state.infos.get(targetIds[0]);
+    const showAbbr = modSpec && modSpec !== '*' && inf;
+    return `<div class="entry"><h4><a class="link" data-href="tw://bible.${esc(modAttr)}?id=${b}.${c}.${v1}">${refLabel}${showAbbr ? ` (${esc(inf.abbr)})` : ''}</a></h4>${rows.map(r => r.cells[0] != null ? `<sup>${r.v}</sup> ${TWRender.render(r.cells[0], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}` : '').filter(Boolean).join(' ') || '<div class="src">Not in this Bible</div>'}</div>`;
+  }
+  const cols = targetIds.map((id, idx) => {
+    const inf = state.infos.get(id);
+    const abbr = inf ? inf.abbr : id.replace(/^[^:]+:/, '');
+    const title = inf ? inf.title : abbr;
+    const body = rows.map(r => r.cells[idx] != null ? `<sup>${r.v}</sup> ${TWRender.render(r.cells[idx], inf || EMPTY_MOD, show, { fn: { n: 0 }, b })}` : '').filter(Boolean).join(' ') || '<div class="src">Not in this Bible</div>';
+    return `<div class="ppcol"><div class="pphead" title="${esc(title)}"><a class="link" data-href="tw://bible.${esc(abbr)}?id=${b}.${c}.${v1}">${esc(abbr)}</a></div><div class="ppbody">${body}</div></div>`;
+  }).join('');
+  return `<div class="entry"><h4><a class="link" data-href="tw://bible.*?id=${b}.${c}.${v1}">${refLabel}</a></h4><div class="ppar" style="--pcols:${targetIds.length}">${cols}</div></div>`;
 }
 
 let hoverTimer = null, hoverEl = null, lastWordEl = null;
@@ -1364,9 +1412,10 @@ async function showPopup(el) {
 function showPopupHtml(el, html) {
   clearTimeout(hideTimer);
   const p = $('#popup'); p.innerHTML = `<div class="pzbar"><button type="button" data-pz="-" title="Smaller text in popups (Ctrl + mouse wheel down)">A−</button><span class="pzv"></span><button type="button" data-pz="+" title="Larger text in popups (Ctrl + mouse wheel up)">A+</button></div><div class="pzbody">${html}</div>`;
+  p.classList.toggle('par', !!p.querySelector('.ppar'));
   applyPopupZoom(); p.classList.remove('hidden'); p.scrollTop = 0;
   const r = el.getBoundingClientRect(); const W = window.innerWidth, H = window.innerHeight;
-  const pw = Math.min(p.offsetWidth || 440, W - 20);
+  const pw = Math.min(p.offsetWidth || (p.classList.contains('par') ? 680 : 440), W - 20);
   let x = Math.min(Math.max(10, r.left), W - pw - 10); let y = r.bottom + 6;
   p.style.left = x + 'px'; p.style.top = y + 'px';
   const ph = p.offsetHeight; if (y + ph > H - 10) p.style.top = Math.max(10, r.top - ph - 6) + 'px';
@@ -1426,8 +1475,10 @@ function phoneVerseLink(link) {
 }
 async function bibleForBook(b) {
   const has = async bid => { const inf = await ensureInfo(bid); return !!(inf && inf.books && inf.books[b]); };
-  const pref = b >= 1 && b <= 39 ? state.settings.popupOT : b >= 40 && b <= 66 ? state.settings.popupNT : '';
-  if (pref && state.modules.bibles.some(x => x.id === pref) && await has(pref)) return pref;
+  const PB = window.TimotheosPopupBibles;
+  const key = PB ? PB.popupGroupKey(b) : (b >= 1 && b <= 39 ? 'popupOT' : b >= 40 && b <= 66 ? 'popupNT' : b >= 67 ? 'popupAP' : '');
+  const prefs = PB && key ? PB.normalizePopupIds(state.settings[key], state.modules.bibles.map(x => x.id)) : [];
+  for (const pref of prefs) if (await has(pref)) return pref;
   for (const x of state.modules.bibles) if (await has(x.id)) return x.id;
   return null;
 }
@@ -1439,11 +1490,15 @@ async function phoneVerse(b, c, v) {
   if (views()[state.active].bible !== bid) await useBible(bid);
   return go({ b, c, v });
 }
-async function followLink(href) {
+async function followLink(href, linkText) {
   if (!href) return;
   if (href === 'cmd:getModules') return getModules();
   if (/^https?:/i.test(href)) return api.openExternal(href);
-  if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href) && await TimotheosModules.followBookLink(href)) return;
+  if (/^tw:\/\/(dct|bk|cmt|map|dev)\.|^tw:\/\/\[self\]/i.test(href)) {
+    if (await TimotheosModules.followBookLink(href)) return;
+    const legacyRef = window.TimotheosPopupBibles ? TimotheosPopupBibles.parseLegacyDeuteroLink(href, linkText) : null;
+    if (legacyRef) return go({ b: legacyRef.b, c: legacyRef.c, v: legacyRef.v1 });
+  }
   const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
   const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
   if (/^tw:\/\/bible/i.test(href) && id) {
@@ -1481,7 +1536,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.83')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.84')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
@@ -1550,7 +1605,7 @@ function wireUi() {
     if (!row) row = verseNear(e);   // the blank space between and beside the verses belongs to the nearest verse
     if (row && !e.target.closest('button, input, select, textarea, .menu') && !String(window.getSelection()).trim()) selectVerse(+row.dataset.v, false);
     const link = e.target.closest('[data-href]');
-    if (link) { e.preventDefault(); if (phoneVerseLink(link)) return; followLink(link.dataset.href); return; }
+    if (link) { e.preventDefault(); if (phoneVerseLink(link)) return; followLink(link.dataset.href, link.textContent); return; }
     const t = popupTarget(e.target);
     if (t) { pin(t); return; }
   });
