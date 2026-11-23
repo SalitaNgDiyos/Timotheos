@@ -177,13 +177,14 @@
   function setPen(pen) {
     state.pen = pen || null;
     if (window.refreshPaneLooks) window.refreshPaneLooks();
-    flashMsg(pen ? `${pen.kind === 'ul' ? 'Underline' : 'Highlighter'}: ${pen.label} – select text to mark it (Esc: stop)` : 'Highlighter off');
+    const mob = document.documentElement.classList.contains('mobile') || document.documentElement.classList.contains('sk');
+    flashMsg(pen ? `${pen.kind === 'ul' ? 'Underline' : 'Highlighter'}: ${pen.label} – select text to mark it${mob ? '' : ' (Esc: stop)'}` : 'Highlighter off');
   }
   function penMenu(btn) {
     const cur = state.pen && state.pen.kind === 'hl' ? state.pen.style : '';
     paneMenu(btn, `<div class="mh">Highlighter</div><div class="swgrid hlgrid">${HL_COLORS.map(([k, c]) => `<button type="button" class="swc${k === cur ? ' on' : ''}" data-k="${k}" data-c="${c}" style="background:${c}" title="${k}"></button>`).join('')}</div>
       <div class="swrow"><button type="button" class="swdef">Stop highlighting</button></div>
-      <p class="small bvpenhint">Pick a colour, then select words in the Bible text: they are marked at once. “Clear” is in the right-click menu.</p>`, m => {
+      <p class="small bvpenhint">Pick a colour, then select words in the Bible text: they are marked at once. <span class="nophone">“Clear” is in the right-click menu.</span><span class="phoneonly">Long-press a verse to clear highlighting.</span></p>`, m => {
       m.addEventListener('click', e => { const c = e.target.closest('.swc'); if (c) { setPen({ kind: 'hl', style: c.dataset.k, color: c.dataset.c, label: c.dataset.k }); m.remove(); } });
       m.querySelector('.swdef').onclick = () => { setPen(null); m.remove(); };
     });

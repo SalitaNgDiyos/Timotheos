@@ -1,0 +1,2 @@
+Timotheos 0.6.90
+- Phone UI cleanup: removed PC-only mouse and keyboard instructions from the phone interface, including the mouse-wheel / Page Up / Page Down / Shift hint in Copy Verses, keyboard shortcut badges, right-click and Esc hints in the highlighter pen, Ctrl bookmark instructions, Alt/Enter navigation hints, and PC panel-dragging and module-folder instructions in Options.

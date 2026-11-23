@@ -284,7 +284,7 @@
             <label>Selected verse <span><input type="color" id="colSel"> <button class="link0" data-reset="sel">skin</button></span></label>
           </div>
           <div class="orow"><label><input type="checkbox" id="optCapColor"> Coloured panel captions</label></div>
-          <div class="orow"><span class="olbl">Panels have their own fonts and colours (palette button in each panel's caption)</span><button id="resetPanelSkins">Reset all panels</button></div>
+          <div class="orow nophone"><span class="olbl">Panels have their own fonts and colours (palette button in each panel's caption)</span><button id="resetPanelSkins">Reset all panels</button></div>
         </section>
         <section class="optpage hidden" data-o="fonts">
           <h4>Bible text</h4>
@@ -312,7 +312,7 @@
           <h4>Verse numbers</h4>
           <div class="ocol">
             <label><input type="radio" name="vnPos" value="inline"> In the text, before each verse</label>
-            <label><input type="radio" name="vnPos" value="hidden"> Hidden (click the margin to select a verse)</label>
+            <label><input type="radio" name="vnPos" value="hidden"> Hidden (<span class="nophone">click the margin to select a verse</span><span class="phoneonly">tap a verse to select it</span>)</label>
           </div>
           <div class="ogrid">
             <label>Style <select id="vnStyle"><option value="normal">Normal</option><option value="sup">Raised (superscript)</option><option value="bold">Bold</option><option value="circle">In a circle</option></select></label>
@@ -322,9 +322,9 @@
         </section>
         <section class="optpage hidden" data-o="layout">
           <h4>Panel layout</h4>
-          <p class="small">Drag a panel by its caption or tab onto any empty space you created, or onto the Left, Right, Top, Bottom, or Tab zones of another panel (drop outside to float it). Turn on <b>Detach edges</b> while arranging to pull any panel edge inward without stretching its neighbour and keep emptied spots open.</p>
-          <div class="orow"><label title="When on, dragging a panel edge shrinks only that panel so you can open empty space, and closing or moving a panel keeps its space open"><input type="checkbox" id="optDetachEdges"> Detach adjacent panel edges (free arrange mode)</label></div>
-          <div class="orow"><label title="When on, dragging a panel shows a 4×3 snap grid overlay instead of smart empty-space and panel drop zones"><input type="checkbox" id="optSnapGrid"> Use 4×3 snap grid when dragging panels</label></div>
+          <p class="small nophone">Drag a panel by its caption or tab onto any empty space you created, or onto the Left, Right, Top, Bottom, or Tab zones of another panel (drop outside to float it). Turn on <b>Detach edges</b> while arranging to pull any panel edge inward without stretching its neighbour and keep emptied spots open.</p>
+          <div class="orow nophone"><label title="When on, dragging a panel edge shrinks only that panel so you can open empty space, and closing or moving a panel keeps its space open"><input type="checkbox" id="optDetachEdges"> Detach adjacent panel edges (free arrange mode)</label></div>
+          <div class="orow nophone"><label title="When on, dragging a panel shows a 4×3 snap grid overlay instead of smart empty-space and panel drop zones"><input type="checkbox" id="optSnapGrid"> Use 4×3 snap grid when dragging panels</label></div>
           <div id="layoutPresets" class="presetgrid"></div>
           <div class="orow"><button id="saveLayoutBtn">Save current layout as…</button></div>
           <ul id="savedLayouts" class="savedl"></ul>
@@ -335,9 +335,9 @@
           </div>
           <div class="orow"><span class="olbl">Spacing</span><select id="density"><option value="comfy">Comfortable</option><option value="compact">Compact</option></select></div>
           <div class="orow"><label><input type="checkbox" id="showStatus"> Show the status bar</label></div>
-          <div class="orow"><label title="Hold the left mouse button on the text and drag to scroll it. Shift+drag selects text; the middle button always drags."><input type="checkbox" data-grabopt="search"> Drag to scroll: Bible search results</label></div>
-          <div class="orow"><label><input type="checkbox" data-grabopt="bsearch"> Drag to scroll: Book search results</label></div>
-          <div class="orow"><label><input type="checkbox" data-grabopt="study"> Drag to scroll: My Study</label></div>
+          <div class="orow nophone"><label title="Hold the left mouse button on the text and drag to scroll it. Shift+drag selects text; the middle button always drags."><input type="checkbox" data-grabopt="search"> Drag to scroll: Bible search results</label></div>
+          <div class="orow nophone"><label><input type="checkbox" data-grabopt="bsearch"> Drag to scroll: Book search results</label></div>
+          <div class="orow nophone"><label><input type="checkbox" data-grabopt="study"> Drag to scroll: My Study</label></div>
           <div class="orow"><label title="The active verse is lit and kept in the vertical middle of every Bible view that moves together; scrolling a view makes the verse in its middle the active verse"><input type="checkbox" id="centerActive"> Keep the active verse in the middle of the Bible views</label></div>
         </section>
         <section class="optpage hidden" data-o="mods">
@@ -356,7 +356,7 @@
           <label class="field">Hebrew Strong's <select id="hebrewDict"></select></label>
           <label class="field">Morphology <select id="morphDict"></select></label>
           <h4>Verse links (popups and previews)</h4>
-          <p class="small">Tick one or more Bibles for each group, and use the <b>↑ / ↓</b> buttons on ticked Bibles to arrange their order. When two or more are ticked, hovering a verse link in books, dictionaries, commentaries or cross-references opens them stacked one above another in that order. Leave a group unticked to use the first open Bible that has the book.</p>
+          <p class="small">Tick one or more Bibles for each group, and use the <b>↑ / ↓</b> buttons on ticked Bibles to arrange their order. When two or more are ticked, <span class="nophone">hovering a verse link</span><span class="phoneonly">tapping a verse link</span> in books, dictionaries, commentaries or cross-references opens them stacked one above another in that order. Leave a group unticked to use the first open Bible that has the book.</p>
           <div class="popgroup"><div class="pophead"><span>Old Testament</span><span class="small" id="popupOTMeta"></span><button type="button" class="popclr hidden" id="popupOTClr">Clear</button></div><div id="popupOT" class="poplist"></div></div>
           <div class="popgroup"><div class="pophead"><span>New Testament</span><span class="small" id="popupNTMeta"></span><button type="button" class="popclr hidden" id="popupNTClr">Clear</button></div><div id="popupNT" class="poplist"></div></div>
           <div class="popgroup"><div class="pophead"><span>Deuterocanon / Apocrypha</span><span class="small" id="popupAPMeta"></span><button type="button" class="popclr hidden" id="popupAPClr">Clear</button></div><div id="popupAP" class="poplist"></div></div>
@@ -364,10 +364,10 @@
           <p class="small">Every module Timotheos found. Untick one to take it out of all lists (Bibles, commentaries, dictionaries, lookups, searches) – the file stays. <span class="d-desk"><b>Delete file…</b> permanently deletes the file (or folder) from your hard drive.</span><span class="d-mob"><b>Uninstall</b> deletes the module file from this device.</span></p>
           <input id="modFilter" type="search" placeholder="Find a module…" style="width:100%;margin:2px 0 6px" spellcheck="false">
           <div id="modMgr" class="modmgr"></div>
-          <h4>Module folders</h4>
-          <p class="small">Timotheos also reads modules where they already are, e.g. theWord's or e-Sword's own folder.</p>
-          <ul id="folderList" class="folders"></ul>
-          <div class="row"><button id="addFolderBtn" data-icon="folder" data-icon-size="15" title="Read modules where they are (e.g. theWord's or e-Sword's own folder)">Add folder…</button><button id="rescanBtn" data-icon="refresh" data-icon-size="15">Rescan</button></div>
+          <h4 class="nophone">Module folders</h4>
+          <p class="small nophone">Timotheos also reads modules where they already are, e.g. theWord's or e-Sword's own folder.</p>
+          <ul id="folderList" class="folders nophone"></ul>
+          <div class="row"><button id="addFolderBtn" class="nophone" data-icon="folder" data-icon-size="15" title="Read modules where they are (e.g. theWord's or e-Sword's own folder)">Add folder…</button><button id="rescanBtn" data-icon="refresh" data-icon-size="15">Rescan</button></div>
         </section>
         <section class="optpage hidden" data-o="speech"><div id="ttsOpt"></div></section>
         <section class="optpage hidden" data-o="keys">

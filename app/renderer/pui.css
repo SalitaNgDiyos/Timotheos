@@ -247,12 +247,13 @@ html.sk-a.psplitting .bv .bvtext .sk-ttl { position: sticky; top: 0; z-index: 6;
 .pwpop .pcard { padding: 12px 14px; }
 .pwpop .pwft { display: flex; gap: 8px; padding: 8px 12px 12px; flex-wrap: wrap; }
 .pwpop .pwft .pill { margin: 0; }
-/* a phone has no keyboard to press: no Shortcuts page in Options */
-html.sk #optionsDlg [data-o="keys"] { display: none !important; }
+/* a phone has no mouse or keyboard: hide Shortcuts page, keyboard hints and desktop-only instructions */
+html.sk #optionsDlg [data-o="keys"], html.mobile #optionsDlg [data-o="keys"], html.phone #optionsDlg [data-o="keys"] { display: none !important; }
+html.mobile kbd, html.phone kbd, html.sk kbd { display: none !important; }
 
-/* commands a phone cannot carry out (a folder of modules, printing, the panel layout of the computer) are not shown there */
-html.mobile .nophone { display: none !important; }
-html:not(.mobile) .phoneonly { display: none !important; }
+/* commands and hints a phone cannot carry out (a folder of modules, printing, mouse/keyboard hints, panel layout of the computer) are not shown there */
+html.mobile .nophone, html.phone .nophone, html.sk .nophone { display: none !important; }
+html:not(.mobile):not(.phone):not(.sk) .phoneonly { display: none !important; }
 html.sk #empty { padding: 128px 24px 24px; }
 #emptyImport { margin-top: 14px; padding: 10px 18px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-fg, #fff); font: inherit; font-weight: 600; cursor: pointer; }
 

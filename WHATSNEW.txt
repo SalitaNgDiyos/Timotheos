@@ -1,3 +1,2 @@
-Timotheos 0.6.89
-- Phone tight line-height highlights: stopped active verse colour, selected/read-aloud verse highlights, and highlighter pen colours from painting over and clipping the bottom of characters on the line above when using Tight line height; also added the extra highlighter colours (purple, teal, red, gray) and excluded custom underline styles on phone.
-- Desktop verse-link popups: disabled dictionary word hover popups and word click lookups inside verse-link preview popups while keeping verse reference links clickable.
+Timotheos 0.6.90
+- Phone UI cleanup: removed PC-only mouse and keyboard instructions from the phone interface, including the mouse-wheel / Page Up / Page Down / Shift hint in Copy Verses, keyboard shortcut badges, right-click and Esc hints in the highlighter pen, Ctrl bookmark instructions, Alt/Enter navigation hints, and PC panel-dragging and module-folder instructions in Options.

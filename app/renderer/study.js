@@ -359,7 +359,7 @@ function bookIdOf(name) {
 /* ======================================================================= bookmarks */
 const slot = d => (d === 0 ? 9 : d - 1);
 function setBookmark(d) { study.ud.bookmarks[slot(d)] = { ...state.ref }; saveUD('bookmarks', true); flash(`Bookmark ${d}: ${refName(state.ref)}`); if (study.seg === 'marks') renderStudy(); if (window.TimotheosNav) TimotheosNav.syncAll(); }
-function gotoBookmark(d) { const r = study.ud.bookmarks[slot(d)]; if (r) go(r); else flash(`Bookmark ${d} is empty – set it with Ctrl+Shift+${d}`); }
+function gotoBookmark(d) { const r = study.ud.bookmarks[slot(d)]; if (r) go(r); else { const mob = document.documentElement.classList.contains('mobile') || document.documentElement.classList.contains('sk'); flash(mob ? `Bookmark ${d} is empty` : `Bookmark ${d} is empty – set it with Ctrl+Shift+${d}`); } }
 
 /* ======================================================================= verse lists */
 function curList() { const ud = study.ud; if (!ud.lists[ud.currentList]) { ud.currentList = Object.keys(ud.lists)[0] || 'My verses'; ud.lists[ud.currentList] = ud.lists[ud.currentList] || []; } return ud.lists[ud.currentList]; }
@@ -508,7 +508,7 @@ async function copyDialog(range) {
           <button id="cpFromBtn" class="rbtn" data-end="from" title="Choose the first verse. Mouse wheel or Page Up/Page Down: one verse earlier/later"><span class="rl">From:</span><b id="cpFromLbl"></b>${ic('next', 13)}</button>
           <button id="cpToBtn" class="rbtn" data-end="to" title="Choose the last verse. Mouse wheel or Page Up/Page Down: one verse fewer/more"><span class="rl">To:</span><b id="cpToLbl"></b>${ic('next', 13)}</button>
         </div>
-        <p class="small cphint">(use the mouse wheel over the buttons or the Page Up / Page Down keys to add or take away verses quickly; Shift: a chapter at a time)</p>
+        <p class="small cphint nophone">(use the mouse wheel over the buttons or the Page Up / Page Down keys to add or take away verses quickly; Shift: a chapter at a time)</p>
       </section>
       <section class="cvstep"><h5>Step 2: choose the Bible and how the verses look</h5>
         <div class="grid2"><label>Bible <select id="cpBible">${bibles}</select></label>
@@ -882,7 +882,7 @@ async function renderMarks(body) {
     const r = study.ud.bookmarks[slot(d)];
     rows.push(`<li><span class="bmn">${d}</span>${r ? `<a data-go="${d}">${esc(refName(r))}</a> <span class="small" data-bt="${d}"></span>` : '<span class="small">empty</span>'}<span class="grow"></span><button data-set="${d}" title="Set to the current verse">Set</button>${r ? `<button data-clr="${d}" title="Clear">×</button>` : ''}</li>`);
   }
-  body.innerHTML = `<p class="small"><kbd>Ctrl+Shift+1…0</kbd> sets a bookmark on the current verse; <kbd>Ctrl+1…0</kbd> jumps to it.</p><ul class="bmlist">${rows.join('')}</ul>`;
+  body.innerHTML = `<p class="small nophone"><kbd>Ctrl+Shift+1…0</kbd> sets a bookmark on the current verse; <kbd>Ctrl+1…0</kbd> jumps to it.</p><ul class="bmlist">${rows.join('')}</ul>`;
   body.onclick = e => {
     const g = e.target.closest('[data-go]'); if (g) return gotoBookmark(+g.dataset.go);
     const s = e.target.closest('[data-set]'); if (s) { setBookmark(+s.dataset.set); return renderStudy(); }

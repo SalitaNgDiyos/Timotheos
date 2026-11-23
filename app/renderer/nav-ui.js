@@ -274,7 +274,7 @@
       return x.name.toLowerCase().includes(q) || (x.abbr || '').toLowerCase().includes(q) || (x.abbrs || []).some(a => a.toLowerCase().startsWith(q));
     });
     if (!filtered.length) {
-      return `<p class="small" style="padding:12px">No books matching “${esc(popState.filter)}”. Press <b>Enter</b> to jump if this is a verse reference.</p>`;
+      return `<p class="small" style="padding:12px">No books matching “${esc(popState.filter)}”. <span class="nophone">Press <b>Enter</b> to jump if this is a verse reference.</span></p>`;
     }
     for (const x of filtered) {
       const cat = bookCategory(x.id, x.grp);
@@ -419,14 +419,14 @@
 
     let html = `<div class="mh">Passage History</div>`;
     if (fwd.length) {
-      html += `<div class="mh small">Forward (Alt+→)</div>`;
+      html += `<div class="mh small">Forward <span class="nophone">(Alt+→)</span></div>`;
       fwd.forEach((r, idx) => {
         html += `<button type="button" data-hdir="fwd" data-hidx="${idx}">↪ <b>${esc(refName(r))}</b></button>`;
       });
     }
     html += `<button type="button" class="on" disabled>● <b>${esc(refName(state.ref))}</b> <span class="small">(current)</span></button>`;
     if (back.length) {
-      html += `<div class="mh small">Earlier Passages (Alt+←)</div>`;
+      html += `<div class="mh small">Earlier Passages <span class="nophone">(Alt+←)</span></div>`;
       back.forEach((r, idx) => {
         html += `<button type="button" data-hdir="back" data-hidx="${idx}">↩ ${esc(refName(r))}</button>`;
       });
