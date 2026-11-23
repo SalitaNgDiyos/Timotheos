@@ -155,6 +155,35 @@ jobs:
           gh release delete neon -R "$GITHUB_REPOSITORY" --cleanup-tag -y >/dev/null 2>&1 || true
           gh release delete test -R "$GITHUB_REPOSITORY" --cleanup-tag -y >/dev/null 2>&1 || true
           gh release create test -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Timotheos_$V (test build)" --notes-file notes.txt out/*
+      - name: Prune older releases (keep newest 10 plus test)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --slurp | python3 -c '
+          import json, os, re, subprocess, sys
+          repo = os.environ["GITHUB_REPOSITORY"]
+          rels = [r for page in json.load(sys.stdin) for r in page]
+          def ver(r):
+              m = re.search(r"(\d+)\.(\d+)\.(\d+)", r.get("name") or r.get("tag_name") or "")
+              return tuple(map(int, m.groups())) if m else (0, 0, 0)
+          non_test = [r for r in rels if r.get("tag_name") != "test"]
+          non_test.sort(key=lambda r: (ver(r), r.get("created_at") or ""), reverse=True)
+          keep, seen, top = set(), set(), []
+          for r in rels:
+              if r.get("tag_name") == "test": keep.add(r["id"])
+          for r in non_test:
+              v = ver(r)
+              if v in seen: continue
+              seen.add(v); keep.add(r["id"]); top.append(r)
+              if len(top) == 10: break
+          for r in rels:
+              if r["id"] in keep: continue
+              rid, tag = r["id"], r.get("tag_name") or ""
+              subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/releases/{rid}"], check=False)
+              if tag and tag != "test":
+                  subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/git/refs/tags/{tag}"], stderr=subprocess.DEVNULL, check=False)
+              print("Pruned:", r.get("name"), f"({tag})")
+          '
 
   release:
     if: github.event_name == 'release'
