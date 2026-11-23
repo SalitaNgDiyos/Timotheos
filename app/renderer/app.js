@@ -432,9 +432,9 @@ function wireModuleManager() {
       const mob = document.documentElement.classList.contains('mobile');
       const ok = mob
         ? await TimotheosModules.confirmBox('Uninstall the module', `Uninstall <b>${esc(r.name || id)}</b>?<br><span class="small">Its file is deleted from this device. To get it back, import it again.</span>`)
-        : await TimotheosModules.confirmBox('Delete the module file', `Move the file <b>${esc(r.name || id)}</b> to the Recycle Bin?<br><span class="small">It disappears from Timotheos and from every other program that reads the same folder. You can get it back from the Recycle Bin.</span>`);
+        : await TimotheosModules.confirmBox('Delete the module file', `Permanently delete <b>${esc(r.name || id)}</b> from your hard drive?<br><span class="small">This cannot be undone. The file (or module folder) is removed from Timotheos and deleted from disk.</span>`);
       if (!ok) return;
-      try { await refreshModules(await api.deleteModuleFile(id)); flashMsg((mob ? 'Uninstalled: ' : 'Moved to the Recycle Bin: ') + (r.name || id)); }
+      try { await refreshModules(await api.deleteModuleFile(id)); flashMsg((mob ? 'Uninstalled: ' : 'Deleted from hard drive: ') + (r.name || id)); }
       catch (err) { TimotheosModules.messageBox('Could not delete', esc(err.message)); }
     }
   });
@@ -457,32 +457,53 @@ function renderPopupSelects() {
     const el = $(sel); if (!el) continue;
     const meta = $(metaSel), clr = $(clrSel);
     const { list, loading } = PB ? PB.filterBiblesForGroup(state.modules.bibles, state.infos, key) : { list: state.modules.bibles, loading: false };
-    const selected = PB ? PB.normalizePopupIds(state.settings[key], allIds) : [];
-    const selSet = new Set(selected);
-    const updateMeta = ids => {
-      if (meta) meta.textContent = ids.length ? `${ids.length} selected${ids.length >= 2 ? ' (parallel)' : ''}` : 'Automatic (first open Bible)';
-      if (clr) clr.classList.toggle('hidden', !ids.length);
-    };
-    updateMeta(selected);
-    if (!list.length) {
-      el.innerHTML = `<div class="popempty">${loading ? 'Checking installed Bibles…' : key === 'popupAP' ? 'No installed Bible contains Deuterocanon / Apocrypha books.' : 'No installed Bibles for this section.'}</div>`;
-    } else {
-      el.innerHTML = list.map(b => {
+    const draw = () => {
+      const prevScroll = el.scrollTop;
+      const selected = PB ? PB.normalizePopupIds(state.settings[key], allIds) : [];
+      if (meta) meta.textContent = selected.length ? `${selected.length} selected${selected.length >= 2 ? ' (parallel)' : ''}` : 'Automatic (first open Bible)';
+      if (clr) clr.classList.toggle('hidden', !selected.length);
+      if (!list.length) {
+        el.innerHTML = `<div class="popempty">${loading ? 'Checking installed Bibles…' : key === 'popupAP' ? 'No installed Bible contains Deuterocanon / Apocrypha books.' : 'No installed Bibles for this section.'}</div>`;
+        return;
+      }
+      const { selected: selBibles, unselected } = PB
+        ? PB.orderBiblesForChecklist(list, selected)
+        : { selected: [], unselected: list };
+      const rowHtml = (b, idx) => {
         const inf = state.infos.get(b.id);
         const abbr = inf ? inf.abbr : b.abbr;
         const title = inf ? inf.title : b.name;
-        return `<label><input type="checkbox" value="${esc(b.id)}"${selSet.has(b.id) ? ' checked' : ''}><span class="popabbr">${esc(abbr)}</span><span class="popttl">${esc(title)}</span></label>`;
-      }).join('');
-      el.onchange = () => {
-        const checked = [...el.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
-        updateMeta(checked);
-        save({ [key]: checked });
+        const isSel = idx >= 0;
+        const btns = isSel && selBibles.length > 1
+          ? `<button type="button" class="popmv" data-mv="-1" title="Move up"${idx === 0 ? ' disabled' : ''}>↑</button><button type="button" class="popmv" data-mv="1" title="Move down"${idx === selBibles.length - 1 ? ' disabled' : ''}>↓</button>`
+          : '';
+        return `<div class="poprow${isSel ? ' sel' : ''}" data-bid="${esc(b.id)}"><label><input type="checkbox" value="${esc(b.id)}"${isSel ? ' checked' : ''}>${isSel ? `<span class="popord">${idx + 1}.</span>` : ''}<span class="popabbr">${esc(abbr)}</span><span class="popttl">${esc(title)}</span></label>${btns}</div>`;
       };
-    }
+      el.innerHTML = selBibles.map((b, i) => rowHtml(b, i)).join('') + unselected.map(b => rowHtml(b, -1)).join('');
+      el.scrollTop = prevScroll;
+    };
+    draw();
+    el.onchange = e => {
+      const cb = e.target.closest('input[type=checkbox]'); if (!cb) return;
+      const cur = PB ? PB.normalizePopupIds(state.settings[key], allIds) : [];
+      const next = cb.checked ? (cur.includes(cb.value) ? cur : [...cur, cb.value]) : cur.filter(x => x !== cb.value);
+      state.settings[key] = next;
+      save({ [key]: next });
+      draw();
+    };
+    el.onclick = e => {
+      const btn = e.target.closest('button.popmv'); if (!btn || btn.disabled) return;
+      const row = btn.closest('.poprow'); if (!row) return;
+      const cur = PB ? PB.normalizePopupIds(state.settings[key], allIds) : [];
+      const next = PB ? PB.reorderPopupIds(cur, row.dataset.bid, +btn.dataset.mv) : cur;
+      state.settings[key] = next;
+      save({ [key]: next });
+      draw();
+    };
     if (clr) clr.onclick = () => {
-      el.querySelectorAll('input[type=checkbox]').forEach(i => { i.checked = false; });
-      updateMeta([]);
+      state.settings[key] = [];
       save({ [key]: [] });
+      draw();
     };
   }
 }
@@ -1535,7 +1556,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.85')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.86')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

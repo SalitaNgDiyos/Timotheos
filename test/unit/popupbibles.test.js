@@ -94,4 +94,18 @@ assert.strictEqual(pb.parseLegacyDeuteroLink('tw://bk.SomeHistory?tid=5', 'Chapt
 assert.strictEqual(pb.parseLegacyDeuteroLink('tw://bible.*?id=71.24.1', 'Sirach 24:1'), null);
 ok(true, 'parseLegacyDeuteroLink parses English and Tagalog Deuterocanon links and ignores non-Deuterocanon links');
 
+// 6. reorderPopupIds moves selected Bibles up and down cleanly
+assert.deepStrictEqual(pb.reorderPopupIds(['a', 'b', 'c'], 'b', -1), ['b', 'a', 'c']);
+assert.deepStrictEqual(pb.reorderPopupIds(['a', 'b', 'c'], 'b', 1), ['a', 'c', 'b']);
+assert.deepStrictEqual(pb.reorderPopupIds(['a', 'b', 'c'], 'a', -1), ['a', 'b', 'c']);
+assert.deepStrictEqual(pb.reorderPopupIds(['a', 'b', 'c'], 'c', 1), ['a', 'b', 'c']);
+assert.deepStrictEqual(pb.reorderPopupIds(['a', 'b', 'c'], 'z', -1), ['a', 'b', 'c']);
+ok(true, 'reorderPopupIds moves items up/down and clamps at bounds');
+
+// 7. orderBiblesForChecklist pins selected Bibles at top in saved display order
+const ordered = pb.orderBiblesForChecklist(bibles, ['bk:deuterokjv', 'bib:lxx']);
+assert.deepStrictEqual(ordered.selected.map(b => b.id), ['bk:deuterokjv', 'bib:lxx']);
+assert.deepStrictEqual(ordered.unselected.map(b => b.id), ['bib:kjv', 'bib:amb', 'bib:pending']);
+ok(true, 'orderBiblesForChecklist pins selected Bibles at the top in their exact display order');
+
 console.log(`popupbibles tests: ${passed} ok`);

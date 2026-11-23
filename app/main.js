@@ -417,13 +417,14 @@ app.whenReady().then(async () => {
     await shell.trashItem(file);
     return rescanAll();
   });
-  // Options → Modules: take a module out of the lists (the file stays), or move its file to the Recycle Bin
+  // Options → Modules: take a module out of the lists (the file stays), or permanently delete its file/folder from disk
   handle('modules:setHidden', ids => { settings.hiddenModules = [...new Set(ids || [])]; saveSettings(); lib.setHidden(settings.hiddenModules); return rescanAll(); });
   handle('modules:deleteFile', async id => {
     const file = lib.fileOf(id);
     if (!file || !fs.existsSync(file)) throw new Error('The file of this module is not there any more.');
     lib.release(file);
-    await shell.trashItem(file);
+    fs.rmSync(file, { recursive: true, force: true });
+    if (fs.existsSync(file)) throw new Error('Could not delete the file from disk: ' + file);
     settings.hiddenModules = (settings.hiddenModules || []).filter(x => x !== id); saveSettings(); lib.setHidden(settings.hiddenModules);
     return rescanAll();
   });

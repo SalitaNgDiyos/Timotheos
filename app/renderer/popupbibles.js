@@ -141,7 +141,33 @@
     return null;
   }
 
-  const apiObj = { popupGroupKey, normalizePopupIds, bibleHasGroup, filterBiblesForGroup, resolvePopupTargets, parseLegacyDeuteroLink };
+  /** Move an ID up (-1) or down (+1) in the ordered selected popup Bible list. */
+  function reorderPopupIds(ids, id, delta) {
+    const out = Array.isArray(ids) ? ids.slice() : [];
+    const idx = out.indexOf(id);
+    if (idx < 0) return out;
+    const next = idx + (delta < 0 ? -1 : 1);
+    if (next < 0 || next >= out.length) return out;
+    const tmp = out[idx];
+    out[idx] = out[next];
+    out[next] = tmp;
+    return out;
+  }
+
+  /** Order checklist Bibles with selected ones pinned at the top in their exact display order, followed by unselected ones. */
+  function orderBiblesForChecklist(list, selectedIds) {
+    const byId = new Map((list || []).map(b => [b.id, b]));
+    const sel = [];
+    const seen = new Set();
+    for (const id of selectedIds || []) {
+      const b = byId.get(id);
+      if (b && !seen.has(id)) { sel.push(b); seen.add(id); }
+    }
+    const rest = (list || []).filter(b => !seen.has(b.id));
+    return { selected: sel, unselected: rest };
+  }
+
+  const apiObj = { popupGroupKey, normalizePopupIds, bibleHasGroup, filterBiblesForGroup, resolvePopupTargets, parseLegacyDeuteroLink, reorderPopupIds, orderBiblesForChecklist };
   if (typeof window !== 'undefined') window.TimotheosPopupBibles = apiObj;
   if (typeof module !== 'undefined' && module.exports) module.exports = apiObj;
 })();
