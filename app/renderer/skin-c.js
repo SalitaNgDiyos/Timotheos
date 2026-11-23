@@ -178,7 +178,6 @@
   function onHold(x, w) { quickRow(x, w); }
   function onTap(x, w) {
     closeQ(); const p = P();
-    if (x && w && w.word && (w.strongs.length || /\p{L}{2,}/u.test(w.word))) { document.querySelectorAll('.pwordon').forEach(z => z.classList.remove('pwordon')); if (w.el) w.el.classList.add('pwordon'); p.wordPop(w, { big: ww => studyDrawer('dictionary', ww) }); return; }
     if (document.getElementById('pWordPop')) p.wordPopClose();
   }
 

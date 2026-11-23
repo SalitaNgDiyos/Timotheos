@@ -1117,6 +1117,7 @@ function wireModules() {
   }, true);
   $('#libSpeak').onclick = () => TimotheosSpeech.speakTopic($('#libSpeak'));
   $('#workbench').addEventListener('click', e => {
+    if (document.documentElement.classList.contains('mobile') || document.documentElement.classList.contains('sk')) return;
     if (e.target.closest('a, sup, [data-strong], [data-morph], .xrs')) return;
     if (!e.target.closest('.bv td') || String(window.getSelection())) return;
     const w = wordAt(e); if (w) lookupWord(w);

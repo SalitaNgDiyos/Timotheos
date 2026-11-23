@@ -1,3 +1,2 @@
-Timotheos 0.6.86
-- Installed modules deletion: fixed the Delete file button in Options > Modules so it permanently deletes the module file (or module folder) directly from the hard drive instead of failing on system Trash across mounted drives, and verifies removal.
-- Parallel popup ordering: ticked Bibles in Options > Modules > Verse links (Old Testament, New Testament, and Deuterocanon / Apocrypha) now pin to the top with numbered order and up/down buttons so you can rearrange their exact display order in parallel verse popups.
+Timotheos 0.6.87
+- Phone Bible view: disabled tap/click word lookup in the Bible view across all phone screens (Quiet Reader, Clear Tabs, Study Desk, and Classic) so tapping the Bible text does not open word lookup popups; dictionary lookup remains available from the long-press verse menu.
