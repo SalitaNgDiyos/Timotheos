@@ -82,7 +82,7 @@ jobs:
           }
           pc_exact = {
               "app/renderer/dock.js", "app/renderer/workbench.css", "app/renderer/titlebar.js",
-              "app/renderer/panelskin-ui.js", "app/renderer/viewmenu-ui.js", "app/renderer/download.js",
+              "app/renderer/panelskin-ui.js", "app/renderer/viewmenu-ui.js",
           }
 
           code = [p for p in diff if p and not is_meta(p)]

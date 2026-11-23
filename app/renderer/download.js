@@ -284,7 +284,7 @@ const TimotheosDownload = (() => {
     if (!rs.some(r => r.id === current)) current = 'official';
     const cur = rs.find(r => r.id === current);
     return `<div class="dlmods">
-      <p class="small dlnote">Here Timotheos uses the internet to fetch repository lists and download the modules you choose. Official SalitaNgDiyos modules are checked for updates automatically on PC startup (you always choose whether to download them).</p>
+      <p class="small dlnote">Here Timotheos uses the internet to fetch repository lists and download the modules you choose. Official SalitaNgDiyos modules are checked for updates automatically on startup on both PC and Android (you always choose whether to download them).</p>
       <div class="dlbar"><label>Repository <select id="dlRepo">${rs.map(r => `<option value="${r.id}"${r.id === current ? ' selected' : ''}>${E(r.name)}</option>`).join('')}</select></label>
         ${cur.official ? '<button type="button" id="dlCheckUpd">Check for updates</button>' : ''}
         <button type="button" id="dlAddBtn">Add a repository…</button>${cur.user ? '<button type="button" id="dlRemove">Remove this one</button>' : ''}</div>
@@ -407,7 +407,6 @@ const TimotheosDownload = (() => {
   }
 
   async function checkModuleUpdatesStartup() {
-    if (typeof document !== 'undefined' && document.documentElement.classList.contains('mobile')) return;
     if (typeof state !== 'undefined' && state.settings && state.settings.updAuto === false) return;
     if (!net()) return;
     try {
