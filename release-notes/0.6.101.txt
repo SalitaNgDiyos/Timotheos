@@ -1,0 +1,3 @@
+Timotheos 0.6.101
+
+- Download modules cleanup: removed the redundant Timotheos repository from the Download modules dropdown, leaving SalitaNgDiyos Official, eBible.org, and any custom repositories you add.

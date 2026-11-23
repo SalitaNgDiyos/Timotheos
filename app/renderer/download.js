@@ -29,7 +29,6 @@ const TimotheosDownload = (() => {
   function repos() {
     return [
       { id: 'official', name: 'SalitaNgDiyos Official', official: true },
-      { id: 'timotheos', name: 'Timotheos', url: places().catalog },
       { id: 'ebible', name: 'eBible.org', ebible: true }
     ].concat(userRepos().map((r, i) => ({ id: 'u' + i, name: r.name || r.url, url: r.url, user: true })));
   }

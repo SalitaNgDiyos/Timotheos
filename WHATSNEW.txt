@@ -1,4 +1,3 @@
-Timotheos 0.6.100
+Timotheos 0.6.101
 
-- SalitaNgDiyos Official repository on Android phone: enabled the combined SalitaNgDiyos Official repository and automatic module update notifications on Android phones as well as PC (with options to download selected updates, postpone, or ignore).
-- Shared Download modules CI detection: updates to Download modules now automatically build both PC and Android releases.
+- Download modules cleanup: removed the redundant Timotheos repository from the Download modules dropdown, leaving SalitaNgDiyos Official, eBible.org, and any custom repositories you add.
