@@ -248,11 +248,14 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
   const looseUsfms = paths.filter(p => USFM_BIBLE.test(path.basename(p)) && fs.existsSync(p) && fs.statSync(p).isFile());
   const handledLooseUsfm = new Set();
   if (looseUsfms.length >= 2) {
-    const parentName = path.basename(path.dirname(looseUsfms[0])) || 'Bundled-USFM-Bible';
-    const cleanBase = (/^(usfm|sfm|modules|downloads|desktop|tmp)$/i.test(parentName) ? 'USFM-Bible' : parentName).replace(/\.usfm$/i, '');
-    const outFile = path.join(tmp, cleanBase + '.usfm');
     const texts = looseUsfms.map(f => fs.readFileSync(f, 'utf8'));
-    usfm.bundleUsfmTexts(texts, outFile, cleanBase.replace(/[_-]+/g, ' '));
+    const sharedTitle = usfm.commonUsfmTitle(texts);
+    const parentName = path.basename(path.dirname(looseUsfms[0])) || 'Bundled-USFM-Bible';
+    const cleanBase = (sharedTitle
+      ? sharedTitle.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
+      : (/^(usfm|sfm|modules|downloads|desktop|tmp)$/i.test(parentName) ? 'USFM-Bible' : parentName)).replace(/\.usfm$/i, '');
+    const outFile = path.join(tmp, cleanBase + '.usfm');
+    usfm.bundleUsfmTexts(texts, outFile, sharedTitle || cleanBase.replace(/[_-]+/g, ' '));
     queue.push({ file: outFile, from: `${looseUsfms.length} USFM files` });
     for (const f of looseUsfms) handledLooseUsfm.add(f);
   }
@@ -273,7 +276,8 @@ async function importFiles(paths, destRoot, settings = {}, userData = null, onPr
           const baseTitle = archBase(name).replace(/[_-]?usfm$/i, '');
           const outFile = path.join(tmp, baseTitle + '.usfm');
           const texts = usfmEnts.map(e => fs.readFileSync(e.filePath, 'utf8'));
-          usfm.bundleUsfmTexts(texts, outFile, baseTitle.replace(/[_-]+/g, ' '));
+          const sharedTitle = usfm.commonUsfmTitle(texts);
+          usfm.bundleUsfmTexts(texts, outFile, sharedTitle || baseTitle.replace(/[_-]+/g, ' '));
           queue.push({ file: outFile, from: `${name} (${usfmEnts.length} USFM file${usfmEnts.length > 1 ? 's' : ''})` });
         }
         const otherEnts = allEnts.filter(e => !USFM_BIBLE.test(path.basename(e.name)) && isModuleName(path.basename(e.name)));

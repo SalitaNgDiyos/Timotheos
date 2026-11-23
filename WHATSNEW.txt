@@ -1,2 +1,2 @@
-Timotheos 0.6.92
-- Deuterocanonical footnote links on phone and desktop: tapping a Deuterocanonical reference inside a footnote (including legacy tw://bk.DeuteroKJV links and chained references like Sirach 7:32, 29:11-13) now switches to your installed e-Sword (.bblx/.bbli) or USFM Deuterocanon Bible module, closes the footnote sheet on phone, and jumps straight to the verse.
+Timotheos 0.6.93
+- USFM folders and ZIP archives as one Bible: per-book USFM folders (including folders added directly to Module Folders) and USFM ZIP imports now load as a single Bible module (OT, Deuterocanon, or NT) instead of individual book files, automatically using the common title shared across their \id headers (or the folder/ZIP name).

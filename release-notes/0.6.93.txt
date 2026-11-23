@@ -1,0 +1,2 @@
+Timotheos 0.6.93
+- USFM folders and ZIP archives as one Bible: per-book USFM folders (including folders added directly to Module Folders) and USFM ZIP imports now load as a single Bible module (OT, Deuterocanon, or NT) instead of individual book files, automatically using the common title shared across their \id headers (or the folder/ZIP name).

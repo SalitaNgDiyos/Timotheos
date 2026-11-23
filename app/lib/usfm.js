@@ -79,7 +79,7 @@ function normStrong(raw) {
 function parseUbsOrTextRef(str) {
   if (!str) return null;
   const s = String(str).trim();
-  const mDot = /^([1-4]?[A-Za-z]{2,4})[.\s]+(\d+)(?:[.:](\d+))?/.exec(s);
+  const mDot = /^([A-Za-z0-9]{2,5})[.\s]+(\d+)(?:[.:](\d+))?/.exec(s);
   if (mDot) {
     const b = canon.bookFromUbsCode(mDot[1]) || canon.findBook(mDot[1]);
     if (b) return canon.normalizeRef({ b, c: +mDot[2] || 1, v: +mDot[3] || 1 });
@@ -253,9 +253,29 @@ function formatUsfmNote(body, isXref) {
 /**
  * Parse one or more USFM text strings into a Timotheos book/chapter/verse map.
  */
+/**
+ * Extract a common Bible title shared across 2+ USFM book texts (from identical \id <BOOK> <description> headers).
+ */
+function commonUsfmTitle(texts) {
+  if (!Array.isArray(texts) || texts.length < 2) return '';
+  const descs = [];
+  for (const t of texts) {
+    const clean = String(t || '').replace(/^\uFEFF/, '');
+    const m = /^\\id\s+[A-Za-z0-9]{2,5}\s+(.+)$/m.exec(clean);
+    if (!m) return '';
+    const d = m[1].trim();
+    if (!d) return '';
+    descs.push(d);
+  }
+  if (descs.length < 2) return '';
+  const first = descs[0];
+  return descs.every(d => d === first) ? first : '';
+}
+
 function parseUsfmTexts(texts) {
   padDetect(texts);
   const meta = { title: '', abbr: '', about: '', lang: '', hasStrongs: false };
+  const sharedIdTitle = commonUsfmTitle(texts);
   const standaloneBooks = new Set();
   const entries = []; // [{b, c, v, html}]
 
@@ -286,7 +306,7 @@ function parseUsfmTexts(texts) {
         continue;
       }
 
-      const mId = /^\\id\s+([1-4]?[A-Za-z]{2,4})(?:\s+(.*))?$/.exec(line);
+      const mId = /^\\id\s+([A-Za-z0-9]{2,5})(?:\s+(.*))?$/.exec(line);
       if (mId) {
         flushVerse();
         curBook = canon.bookFromUbsCode(mId[1]);
@@ -364,6 +384,7 @@ function parseUsfmTexts(texts) {
     flushVerse();
   }
 
+  if (!meta.title && sharedIdTitle) meta.title = sharedIdTitle;
   return finalizeParsedBible(entries, standaloneBooks, meta);
 }
 
@@ -389,7 +410,7 @@ function parseUsfxXml(xmlStr) {
     const body = bm[2] || '';
     let code = ((/\bid\s*=\s*["']([^"']+)["']/i.exec(attrs) || [])[1]) || '';
     if (!code) {
-      const mIdTag = /<id\b[^>]*\bid\s*=\s*["']([^"']+)["']/i.exec(body) || /<id\b[^>]*>\s*([1-4]?[A-Za-z]{2,4})\b/i.exec(body);
+      const mIdTag = /<id\b[^>]*\bid\s*=\s*["']([^"']+)["']/i.exec(body) || /<id\b[^>]*>\s*([A-Za-z0-9]{2,5})\b/i.exec(body);
       if (mIdTag) code = mIdTag[1];
     }
     const b = canon.bookFromUbsCode(code);
@@ -752,13 +773,13 @@ function isPerBookUsfmDir(dir, fileNames) {
         try { n = fs.readSync(fd, buf, 0, 4096, 0); } finally { fs.closeSync(fd); }
         const head = buf.subarray(0, n).toString('utf8').replace(/^\uFEFF/, '');
         if (/^#\s*timotheos\.title\s*=/m.test(head)) return false;
-        const headIds = head.match(/^\\id\s+([1-4]?[A-Za-z]{2,4})\b/gm);
+        const headIds = head.match(/^\\id\s+([A-Za-z0-9]{2,5})\b/gm);
         if (headIds && headIds.length > 1) return false;
       }
       txt = fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '');
     } catch (e) { return false; }
     if (/^#\s*timotheos\.title\s*=/m.test(txt)) return false;
-    const ids = [...txt.matchAll(/^\\id\s+([1-4]?[A-Za-z]{2,4})\b/gm)].map(m => m[1]);
+    const ids = [...txt.matchAll(/^\\id\s+([A-Za-z0-9]{2,5})\b/gm)].map(m => m[1]);
     if (ids.length !== 1) return false;
     const b = canon.bookFromUbsCode(ids[0]) || ids[0].toUpperCase();
     if (seenBooks.has(b)) return false;
@@ -816,7 +837,7 @@ function loadUsfx(file) {
  */
 function bundleUsfmTexts(textItems, outFile, defaultTitle = '') {
   const withBook = textItems.map(txt => {
-    const m = /^\\id\s+([1-4]?[A-Za-z]{2,4})\b/m.exec(txt);
+    const m = /^\\id\s+([A-Za-z0-9]{2,5})\b/m.exec(txt);
     const b = m ? (canon.bookFromUbsCode(m[1]) || 999) : 999;
     return { b, txt: String(txt || '').replace(/^\uFEFF/, '').trim() };
   }).filter(x => x.txt);
@@ -836,6 +857,7 @@ module.exports = {
   probeXml,
   loadUsfm,
   loadUsfx,
+  commonUsfmTitle,
   parseUsfmTexts,
   parseUsfxXml,
   bundleUsfmTexts,

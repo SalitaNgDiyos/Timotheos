@@ -280,7 +280,7 @@ class Library {
       // If a subfolder (not named "USFM") holds 2+ per-book .usfm/.sfm files of a single Bible, treat the subfolder as one USFM Bible
       const usfmFiles = items.filter(x => !isDirEntry(dir, x) && usfm.USFM_EXT.test(x.name) && isReadableFile(path.join(dir, x.name)));
       let bundledUsfmHere = false;
-      if (depth > 0 && !/^(usfm|theword|e-sword|modules)$/i.test(path.basename(dir)) && usfmFiles.length >= 2 && usfm.isPerBookUsfmDir(dir, usfmFiles.map(x => x.name))) {
+      if (!/^(usfm|theword|e-sword|modules)$/i.test(path.basename(dir)) && usfmFiles.length >= 2 && usfm.isPerBookUsfmDir(dir, usfmFiles.map(x => x.name))) {
         const dname = path.basename(dir);
         const dupKey = (dname + ".usfm").toLowerCase();
         if (!seenNames.has(dupKey)) { seenNames.add(dupKey); this.entries.push({ file: dir, name: dname, ext: ".usfm" }); }
