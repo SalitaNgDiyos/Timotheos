@@ -1,2 +1,3 @@
-Timotheos 0.6.87
-- Phone Bible view: disabled tap/click word lookup in the Bible view across all phone screens (Quiet Reader, Clear Tabs, Study Desk, and Classic) so tapping the Bible text does not open word lookup popups; dictionary lookup remains available from the long-press verse menu.
+Timotheos 0.6.88
+- Android startup splash: removed the white background and blank titlebar flash on startup by setting the Android WebView background to dark and showing the dark Timotheos splash screen from frame 0.
+- Post-update freeze fix: stopped the phone splash screen from timing out onto a frozen blank screen after a successful update; startup now waits cleanly for initialization to finish and automatically recovers if a post-update WebView stalls.

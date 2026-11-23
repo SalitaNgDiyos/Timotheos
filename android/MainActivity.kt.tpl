@@ -55,6 +55,7 @@ class MainActivity : TauriActivity() {
 
   override fun onWebViewCreate(webView: WebView) {
     web = webView
+    webView.setBackgroundColor(Color.parseColor("#0d0f13"))
     webView.settings.setSupportZoom(false)          // the page never zooms; a pinch on module text changes its size (see app.js)
     webView.settings.builtInZoomControls = false
     webView.settings.displayZoomControls = false
