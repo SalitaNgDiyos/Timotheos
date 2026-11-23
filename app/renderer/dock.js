@@ -468,6 +468,14 @@
     return `<svg class="laythumb" width="${width}" height="${height}" viewBox="0 0 ${W} ${H}" aria-hidden="true"><rect x="0.5" y="0.5" width="${W - 1}" height="${H - 1}" rx="3" fill="var(--bg, #181d27)" stroke="var(--line, #475569)" stroke-width="0.9"/>${rects.join('')}</svg>`;
   }
 
+  let notifyRaf = 0;
+  function notifyLayoutChange(immediate) {
+    if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return;
+    const fire = () => { notifyRaf = 0; window.dispatchEvent(new CustomEvent('timotheos:dock-change')); };
+    if (immediate) { if (notifyRaf) { cancelAnimationFrame(notifyRaf); notifyRaf = 0; } fire(); return; }
+    if (!notifyRaf) notifyRaf = requestAnimationFrame(fire);
+  }
+
   function isVisible(id) {
     const at = locate(id); return !!at && !at.hidden && at.g.active === id && !(focusMode && !at.float && !at.g.panels.some(isBible));
   }
@@ -562,6 +570,7 @@
     const fb = $('#focusBtn'); if (fb) fb.classList.toggle('on', focusMode);
     const db = $('#detachBtn'); if (db) db.classList.toggle('on', detachMode);
     if (opts.onRender) opts.onRender();
+    notifyLayoutChange(true);
   }
 
   function groupEl(g, where) {
@@ -663,7 +672,7 @@
       const tryIt = idx => { unsnap(sn); idx.forEach(k => { if (want[k] >= plans[k].from - EPS && want[k] <= plans[k].to + EPS) setEdge(plans[k], want[k]); }); return !overlapping(); };
       const all = plans.map((_, k) => k);
       if (!tryIt(all) && !(plans.length > 1 && all.some(k => tryIt([k])))) unsnap(sn);
-      place();
+      place(); notifyLayoutChange(false);
     };
     const up = () => {
       if (done) return;
@@ -671,6 +680,7 @@
       for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up);
       for (const t of ['pointerup', 'pointercancel', 'mouseup', 'blur']) window.removeEventListener(t, up);
       if (rerenderOnUp || detachMode) render();
+      else notifyLayoutChange(true);
       saveSoon();
     };
     el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
@@ -706,7 +716,7 @@
         b[col ? 'x0' : 'y0'] = nx;
       }
       if (overlapping()) unsnap(sn);
-      place();
+      place(); notifyLayoutChange(false);
     };
     const up = () => {
       if (done) return;

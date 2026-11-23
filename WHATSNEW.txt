@@ -1,4 +1,4 @@
-Timotheos 0.6.96
+Timotheos 0.6.97
 
-- Locate folder button in Options -> Modules: every module row on desktop now has a Locate folder button next to it so you can open the exact folder where that module file or folder is stored.
-- Permanent deletion without Rescan restoring deleted files: Delete file now deletes the module file or folder from disk along with any .timotheos-link or .order companion files, records the deletion for archive tracking, and Rescan no longer re-unpacks or restores files you deleted from Timotheos's modules folder.
+- Persistent Panels dialog: clicking the Panels button now opens a floating, movable dialog box with an X close button that stays open until you close it, letting you drag and drop multiple panels in a row whenever you create empty spaces without clicking Panels again.
+- Immediate warning dismissal: when the Panels dialog is open and you open an empty space (at least 1 inch by 1 inch) by resizing or moving panels, the no-space warning disappears immediately and all panel kinds become draggable live.

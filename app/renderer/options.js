@@ -320,8 +320,83 @@
     const m = /^([^(]+?)\s*\((.+)\)$/.exec(String(label || ''));
     return m ? [m[1].trim(), m[2].trim()] : [String(label || ''), ''];
   }
+  let panelsDlgWired = false;
+  let panelsDlgPos = null;
+  function clampPanelsDlg(m) {
+    if (!m || m.classList.contains('hidden')) return;
+    const w = m.offsetWidth || 340, h = Math.min(m.offsetHeight || 420, innerHeight - 24);
+    let x = panelsDlgPos ? panelsDlgPos.x : Math.max(12, innerWidth - w - 16);
+    let y = panelsDlgPos ? panelsDlgPos.y : 52;
+    x = Math.max(8, Math.min(innerWidth - w - 8, x));
+    y = Math.max(8, Math.min(innerHeight - Math.min(h, 120) - 8, y));
+    m.style.left = x + 'px';
+    m.style.top = y + 'px';
+    m.style.right = 'auto';
+    m.style.maxHeight = Math.max(200, innerHeight - y - 12) + 'px';
+  }
+  function closePanelsDialog() {
+    const m = $('#panelsMenu');
+    if (m) m.classList.add('hidden');
+    const b = $('#panelsBtn');
+    if (b) b.classList.remove('on');
+  }
+  function togglePanelsDialog() {
+    const m = $('#panelsMenu'); if (!m) return;
+    const wasOpen = !m.classList.contains('hidden');
+    closeMenus();
+    if (wasOpen) { closePanelsDialog(); return; }
+    if (!panelsDlgPos) {
+      const btn = $('#panelsBtn');
+      const r = btn ? btn.getBoundingClientRect() : null;
+      const w = 340;
+      panelsDlgPos = {
+        x: r ? Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) : Math.max(12, innerWidth - w - 16),
+        y: r ? Math.min(innerHeight - 240, r.bottom + 6) : 52
+      };
+    }
+    if (m.parentNode !== document.body) document.body.appendChild(m);
+    m.classList.add('panels-dlg');
+    m.classList.remove('hidden');
+    fillPanelsMenu();
+    clampPanelsDlg(m);
+    const b = $('#panelsBtn'); if (b) b.classList.add('on');
+  }
+  function wirePanelsDlgChrome(m) {
+    if (panelsDlgWired) return;
+    panelsDlgWired = true;
+    m.innerHTML = `<div class="pm-dlg-head" title="Drag to move this dialog"><span class="pm-dlg-grip">${TimotheosIcons.icon('grip', 14)}</span><span class="pm-dlg-title">Panels &amp; Layouts</span><button type="button" class="pm-dlg-close" aria-label="Close Panels" title="Close">${TimotheosIcons.icon('close', 15)}</button></div><div class="pm-dlg-body"></div>`;
+    m.querySelector('.pm-dlg-close').onclick = () => closePanelsDialog();
+    const head = m.querySelector('.pm-dlg-head');
+    head.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || e.target.closest('.pm-dlg-close')) return;
+      e.preventDefault();
+      const r = m.getBoundingClientRect();
+      const ox = e.clientX - r.left, oy = e.clientY - r.top;
+      const move = ev => {
+        if (ev.buttons === 0) { up(); return; }
+        panelsDlgPos = { x: ev.clientX - ox, y: ev.clientY - oy };
+        clampPanelsDlg(m);
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('pointercancel', up);
+        window.removeEventListener('blur', up);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('mouseup', up);
+      window.addEventListener('pointercancel', up);
+      window.addEventListener('blur', up);
+    });
+  }
   function fillPanelsMenu() {
     const m = $('#panelsMenu');
+    if (!m) return;
+    wirePanelsDlgChrome(m);
+    const body = m.querySelector('.pm-dlg-body');
+    const prevScroll = body ? body.scrollTop : 0;
     const kinds = [
       { id: 'newbv', title: 'Bible View', icon: 'bible', cap: 'bible', isNewBible: true },
       ...TimotheosDock.panels().filter(p => !TimotheosDock.isBible(p.id))
@@ -340,14 +415,15 @@
     }).join('');
     const savedObj = state.settings.savedLayouts || {};
     const saved = Object.keys(savedObj).map(n => `<button class="laymenu-btn" data-saved="${esc(n)}">${thumb(savedObj[n])}<span class="laymenu-txt"><b>${esc(n)}</b></span></button>`).join('');
-    m.innerHTML = `<div class="mh">Panels <span class="small">(click, hold &amp; drag)</span></div>${warn}${rows}
+    body.innerHTML = `<div class="mh">Panels <span class="small">(click, hold &amp; drag)</span></div>${warn}${rows}
       <div class="msep"></div><div class="mh">Arranging</div>
       <button data-act="detach" class="${detOn ? 'on' : ''}">${TimotheosIcons.icon(detOn ? 'check' : 'detach', 15)}Detach adjacent edges <span class="small">(leave empty spaces)</span></button>
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
 `;
+    body.scrollTop = prevScroll;
     const kindMap = new Map(kinds.map(k => [k.id, k]));
-    m.querySelectorAll('[data-drag-kind]').forEach(el => {
+    body.querySelectorAll('[data-drag-kind]').forEach(el => {
       el.addEventListener('pointerdown', e => {
         if (!hasSpace) return;
         const k = kindMap.get(el.dataset.dragKind);
@@ -366,10 +442,10 @@
         });
       });
     });
-    m.querySelector('[data-act="detach"]').onclick = () => { TimotheosDock.toggleDetachMode(); syncDockToggles(); fillPanelsMenu(); };
-    m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TimotheosDock.applyPreset(b.dataset.preset); closeMenus(); });
-    m.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TimotheosDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); closeMenus(); });
-    m.querySelector('[data-act="save"]').onclick = () => { closeMenus(); saveLayoutAs(); };
+    body.querySelector('[data-act="detach"]').onclick = () => { TimotheosDock.toggleDetachMode(); syncDockToggles(); fillPanelsMenu(); };
+    body.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TimotheosDock.applyPreset(b.dataset.preset); fillPanelsMenu(); });
+    body.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TimotheosDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); fillPanelsMenu(); });
+    body.querySelector('[data-act="save"]').onclick = () => { saveLayoutAs(); };
   }
   async function saveLayoutAs() {
     const name = await TimotheosModules.modal('Save layout', '<label class="field">Name of this layout <input id="layName" type="text" placeholder="e.g. Sermon preparation"></label>',
@@ -386,7 +462,7 @@
     ul.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const c = Object.assign({}, all); delete c[b.dataset.del]; save({ savedLayouts: c }); renderSavedLayouts(); });
   }
 
-  function closeMenus() { document.querySelectorAll('#panelsMenu, #skinMenu, #viewMenu').forEach(m => m.classList.add('hidden')); }
+  function closeMenus() { document.querySelectorAll('#skinMenu, #viewMenu').forEach(m => m.classList.add('hidden')); }
   function toggleMenu(id, fill) {
     const m = $(id); const was = !m.classList.contains('hidden');
     closeMenus(); if (was) return;
@@ -627,8 +703,15 @@
       if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(on ? 'Detach edges ON — drag any panel edge inward to open space' : 'Detach edges OFF');
     };
     $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', fillSkinMenu); };
-    $('#panelsBtn').onclick = e => { e.stopPropagation(); toggleMenu('#panelsMenu', fillPanelsMenu); };
-    document.addEventListener('mousedown', e => { if (document.body.classList.contains('dragging')) return; if (!e.target.closest('.menuwrap')) document.querySelectorAll('#panelsMenu, #skinMenu').forEach(m => m.classList.add('hidden')); });
+    $('#panelsBtn').onclick = e => { e.stopPropagation(); togglePanelsDialog(); };
+    document.addEventListener('mousedown', e => { if (!e.target.closest('.menuwrap')) document.querySelectorAll('#skinMenu').forEach(m => m.classList.add('hidden')); });
+    const refreshOpenPanelsDlg = () => {
+      const m = $('#panelsMenu');
+      if (!m || m.classList.contains('hidden') || document.body.classList.contains('dragging')) return;
+      fillPanelsMenu();
+    };
+    window.addEventListener('timotheos:dock-change', refreshOpenPanelsDlg);
+    window.addEventListener('resize', () => { const m = $('#panelsMenu'); if (m && !m.classList.contains('hidden')) { clampPanelsDlg(m); refreshOpenPanelsDlg(); } });
     syncDockToggles();
   }
 

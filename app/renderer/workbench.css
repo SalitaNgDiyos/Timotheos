@@ -30,6 +30,19 @@ button.tb.on { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 .menu .small { margin-left: auto; }
 .swatch { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); flex: none; }
 #panelsMenu { min-width: 330px; z-index: 105; }
+#panelsMenu.panels-dlg { position: fixed; width: 340px; padding: 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 16px 40px rgba(0, 0, 0, .28); border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); }
+#panelsMenu.panels-dlg.hidden { display: none; }
+#panelsMenu.panels-dlg .pm-dlg-head { display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: var(--tool); color: var(--tooltext); border-bottom: 1px solid var(--line); cursor: grab; user-select: none; -webkit-user-select: none; flex: none; }
+#panelsMenu.panels-dlg .pm-dlg-head:active { cursor: grabbing; }
+#panelsMenu.panels-dlg .pm-dlg-grip { display: grid; opacity: .7; }
+#panelsMenu.panels-dlg .pm-dlg-title { font: 700 12.5px var(--font-ui); flex: 1; }
+#panelsMenu.panels-dlg .pm-dlg-close { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 3px; border-radius: 5px; display: grid; opacity: .85; }
+#panelsMenu.panels-dlg .pm-dlg-close:hover { background: color-mix(in srgb, currentColor 14%, transparent); opacity: 1; }
+#panelsMenu.panels-dlg .pm-dlg-body { overflow-y: auto; overscroll-behavior: contain; padding: 4px 0 6px; flex: 1 1 auto; }
+#panelsMenu.panels-dlg .pm-dlg-body > button { width: 100%; border: 0; background: transparent; color: var(--text); font: 13px var(--font-ui); padding: 6px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: left; }
+#panelsMenu.panels-dlg .pm-dlg-body > button:hover { background: var(--accent-soft); }
+#panelsMenu.panels-dlg .pm-dlg-body > button.on { font-weight: 600; background: var(--accent-soft); }
+#panelsBtn.on { background: color-mix(in srgb, var(--accent) 24%, transparent); color: var(--accent); border-color: var(--accent); }
 .pm-warn { margin: 4px 10px 6px; padding: 8px 10px; border-radius: 7px; border: 1px solid color-mix(in srgb, #d97706 45%, var(--line)); background: color-mix(in srgb, #f59e0b 12%, var(--card)); font-size: 12px; line-height: 1.35; }
 .pm-warn-title { font-weight: 700; color: var(--text); margin-bottom: 2px; }
 .pm-warn-sub { color: var(--muted); font-size: 11.5px; }
