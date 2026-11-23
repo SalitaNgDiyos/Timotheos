@@ -354,6 +354,12 @@ fn handle(dbs: &Dbs, req: http::Request<Vec<u8>>) -> Resp {
             #[cfg(target_os = "android")]
             { return match if p.is_dir() { fs::remove_dir_all(&p) } else { fs::remove_file(&p) } { Ok(_) => json_ok(json!(true)), Err(e) => io_fail(e) }; }
         }
+        "reveal" => {
+            match reveal_in_file_manager(&p) {
+                Ok(_) => json_ok(json!(true)),
+                Err(e) => fail("EIO", e),
+            }
+        }
         "unzip" => {
             let to = PathBuf::from(q(&pairs, "to"));
             let max: u64 = q(&pairs, "max").parse().unwrap_or(0);
@@ -363,6 +369,77 @@ fn handle(dbs: &Dbs, req: http::Request<Vec<u8>>) -> Resp {
             }
         }
         _ => fail("EINVAL", format!("unknown route {route}")),
+    }
+}
+
+
+fn reveal_in_file_manager(p: &Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let mut cmd = std::process::Command::new("explorer");
+        if p.is_dir() { cmd.arg(p); } else { cmd.arg(format!("/select,{}", p.to_string_lossy())); }
+        cmd.spawn().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let mut cmd = std::process::Command::new("open");
+        if !p.is_dir() { cmd.arg("-R"); }
+        cmd.arg(p);
+        cmd.spawn().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    #[cfg(all(unix, not(target_os = "macos"), not(target_os = "android")))]
+    {
+        let dir = if p.is_dir() { p } else { p.parent().unwrap_or(p) };
+        let canon = fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+        let mut uri = String::from("file://");
+        for b in canon.to_string_lossy().as_bytes() {
+            match *b {
+                b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'-' | b'_' | b'.' | b'~' => uri.push(*b as char),
+                _ => uri.push_str(&format!("%{:02X}", b)),
+            }
+        }
+        // 1. Ask the running desktop's real file manager via Freedesktop FileManager1 D-Bus (selects the file, never launches baobab)
+        let dbus_method = if p.is_dir() { "org.freedesktop.FileManager1.ShowFolders" } else { "org.freedesktop.FileManager1.ShowItems" };
+        if let Ok(st) = std::process::Command::new("dbus-send")
+            .args([
+                "--session", "--print-reply", "--dest=org.freedesktop.FileManager1",
+                "/org/freedesktop/FileManager1", dbus_method,
+                &format!("array:string:{}", uri), "string:",
+            ])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+        {
+            if st.success() { return Ok(()); }
+        }
+        // 2. Check xdg-mime default for inode/directory, skipping disk analyzers (baobab, filelight, qdirstat, kdirstat)
+        if let Ok(out) = std::process::Command::new("xdg-mime").args(["query", "default", "inode/directory"]).output() {
+            if out.status.success() {
+                let desk = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                let low = desk.to_lowercase();
+                if !desk.is_empty() && !low.contains("baobab") && !low.contains("disk") && !low.contains("filelight") && !low.contains("dirstat") {
+                    if std::process::Command::new("gtk-launch").arg(&desk).arg(dir).spawn().is_ok() {
+                        return Ok(());
+                    }
+                }
+            }
+        }
+        // 3. Fall back directly to installed Linux file managers (never baobab)
+        for fm in ["nautilus", "nemo", "dolphin", "thunar", "caja", "pcmanfm-qt", "pcmanfm", "cosmic-files", "pantheon-files", "spacefm"] {
+            if std::process::Command::new(fm).arg(dir).spawn().is_ok() {
+                return Ok(());
+            }
+        }
+        // 4. Last resort
+        std::process::Command::new("xdg-open").arg(dir).spawn().map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+    #[cfg(target_os = "android")]
+    {
+        let _ = p;
+        Err("Not supported on Android".into())
     }
 }
 

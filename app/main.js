@@ -329,7 +329,7 @@ app.whenReady().then(async () => {
     const w = win;
     if (cmd === 'quit') app.quit();
     else if (cmd === 'devtools') w.webContents.toggleDevTools();
-    else if (cmd === 'modulesFolder') { fs.mkdirSync(MODULES_DIR(), { recursive: true }); shell.openPath(MODULES_DIR()); }
+    else if (cmd === 'modulesFolder') { fs.mkdirSync(MODULES_DIR(), { recursive: true }); if (shell.showItemInFolder) shell.showItemInFolder(MODULES_DIR()); else shell.openPath(MODULES_DIR()); }
     else if (cmd === 'guide') openGuide(arg);
     else if (cmd === 'front') { if (w.isMinimized()) w.restore(); w.show(); w.focus(); }
     else if (cmd === 'minimize') BrowserWindow.getFocusedWindow() && BrowserWindow.getFocusedWindow().minimize();
@@ -422,9 +422,9 @@ app.whenReady().then(async () => {
   handle('modules:locateFolder', id => {
     const file = lib.fileOf(id);
     if (!file || !fs.existsSync(file)) throw new Error('The file of this module is not there any more.');
-    const dir = fs.statSync(file).isDirectory() ? file : path.dirname(file);
-    shell.openPath(dir);
-    return dir;
+    if (shell.showItemInFolder) shell.showItemInFolder(file);
+    else shell.openPath(fs.statSync(file).isDirectory() ? file : path.dirname(file));
+    return fs.statSync(file).isDirectory() ? file : path.dirname(file);
   });
   handle('modules:deleteFile', async id => {
     const file = lib.fileOf(id);

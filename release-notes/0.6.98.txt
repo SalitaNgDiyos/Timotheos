@@ -1,0 +1,4 @@
+Timotheos 0.6.98
+
+- Locate folder opens default file manager: clicking Locate folder in Options -> Modules (or Show Imported Modules Folder) now opens your system's default file manager and selects the module file instead of launching Disk Usage Analyzer (baobab) on Linux.
+- Options -> Modules button polish: kept the Delete file button on one single line beside Locate folder.

@@ -49,6 +49,7 @@ const dialog = {
 };
 const shell = {
   openExternal: u => hostCall('openUrl', u), openPath: p => hostCall('openPath', p),
+  showItemInFolder: p => N.json('reveal', { p }),
   trashItem: async p => { N.json('trash', { p }); },
 };
 const clipboard = { readText: () => hostCall('clipRead'), write: o => hostCall('clipWrite', o) };
