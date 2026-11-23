@@ -8,8 +8,6 @@ on:
   workflow_dispatch:
   push:
     branches: ["**"]
-  release:
-    types: [published]
 
 jobs:
   linux:
