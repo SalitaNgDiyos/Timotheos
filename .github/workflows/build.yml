@@ -1,17 +1,109 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Edmund P. Valdez
 # Builds Timotheos (Tauri 2) on GitHub's machines: Linux (.deb, .AppImage), Windows (installer) and Android (APK).
-# Start it by hand (Actions → Build Timotheos → Run workflow) or by pushing. The files are under Artifacts of the run.
-# Publishing a release on GitHub (tag like v0.6.5) builds again and attaches the files to that release.
+# Automatically skips Android when changes are PC-only, and skips Linux/Windows when changes are Android-only.
+# Commit messages may also include [pc-only] or [android-only] to override platform selection.
 name: Build Timotheos
 on:
   workflow_dispatch:
+    inputs:
+      build_desktop:
+        description: "Build Linux and Windows desktop installers"
+        type: boolean
+        default: true
+      build_android:
+        description: "Build Android APK"
+        type: boolean
+        default: true
   push:
     branches: ["**"]
     paths-ignore: ["release-notes/**", "WHATSNEW.txt"]   # correcting notes alone does not rebuild (fix-notes.yml does that)
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      desktop: ${{ steps.detect.outputs.desktop }}
+      android: ${{ steps.detect.outputs.android }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_DESKTOP: ${{ inputs.build_desktop }}
+          INPUT_ANDROID: ${{ inputs.build_android }}
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+
+          out = os.environ["GITHUB_OUTPUT"]
+          ev = os.environ.get("EVENT_NAME", "")
+
+          def write_out(desk, andr, reason):
+              print(f"Platform decision: desktop={desk}, android={andr} ({reason})")
+              with open(out, "a") as f:
+                  f.write(f"desktop={'true' if desk else 'false'}\n")
+                  f.write(f"android={'true' if andr else 'false'}\n")
+
+          if ev == "workflow_dispatch":
+              d = os.environ.get("INPUT_DESKTOP", "true").lower() == "true"
+              a = os.environ.get("INPUT_ANDROID", "true").lower() == "true"
+              write_out(d, a, "workflow_dispatch inputs")
+              raise SystemExit(0)
+
+          msg = subprocess.check_output(["git", "log", "-1", "--pretty=%B"], text=True).lower()
+          if "[pc-only]" in msg or "[desktop-only]" in msg or "[no-android]" in msg:
+              write_out(True, False, "commit tag [pc-only]")
+              raise SystemExit(0)
+          if "[android-only]" in msg or "[phone-only]" in msg or "[no-pc]" in msg:
+              write_out(False, True, "commit tag [android-only]")
+              raise SystemExit(0)
+
+          try:
+              diff = subprocess.check_output(["git", "diff", "--name-only", "HEAD~1", "HEAD"], text=True).splitlines()
+          except Exception:
+              write_out(True, True, "no parent commit; building all")
+              raise SystemExit(0)
+
+          meta_exact = {
+              "package.json", "package-lock.json",
+              "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock",
+              "WHATSNEW.txt", "app/renderer/guide.html",
+          }
+          def is_meta(p):
+              return p in meta_exact or p.startswith("release-notes/") or p.startswith("test/") or p.startswith(".github/")
+
+          android_exact = {
+              "app/renderer/pui.js", "app/renderer/pui.css", "app/renderer/phone.js",
+              "app/renderer/skins.js", "app/renderer/skins.css",
+              "app/renderer/skin-a.js", "app/renderer/skin-b.js", "app/renderer/skin-c.js",
+          }
+          pc_exact = {
+              "app/renderer/dock.js", "app/renderer/workbench.css", "app/renderer/titlebar.js",
+              "app/renderer/panelskin-ui.js", "app/renderer/viewmenu-ui.js", "app/renderer/download.js",
+          }
+
+          code = [p for p in diff if p and not is_meta(p)]
+          if not code:
+              write_out(True, True, "metadata-only change; building all")
+              raise SystemExit(0)
+
+          only_android = all(p.startswith("android/") or p in android_exact for p in code)
+          only_pc = all(p in pc_exact for p in code)
+
+          if only_android:
+              write_out(False, True, f"android-only files: {code}")
+          elif only_pc:
+              write_out(True, False, f"pc-only files: {code}")
+          else:
+              write_out(True, True, f"shared files changed: {code}")
+          PY
+
   linux:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.desktop == 'true' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +128,8 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
 
   windows:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.desktop == 'true' }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,6 +151,8 @@ jobs:
           path: src-tauri/target/release/bundle/nsis/*.exe
 
   android:
+    needs: [changes]
+    if: ${{ needs.changes.outputs.android == 'true' }}
     # GitHub's Ubuntu machines come with the Android SDK and NDK installed (ANDROID_HOME, ANDROID_NDK_LATEST_HOME)
     runs-on: ubuntu-24.04
     steps:
@@ -116,9 +212,9 @@ jobs:
           path: signed/Timotheos-android.apk
 
   draft:
-    # every push publishes its files in a public release so all versions appear under Releases
-    if: ${{ !cancelled() && github.event_name != 'release' }}
-    needs: [linux, windows, android]
+    # publishes built files in a public release whenever at least one platform succeeded and none failed
+    if: ${{ always() && !cancelled() && github.event_name != 'release' && needs.linux.result != 'failure' && needs.windows.result != 'failure' && needs.android.result != 'failure' && (needs.linux.result == 'success' || needs.windows.result == 'success' || needs.android.result == 'success') }}
+    needs: [changes, linux, windows, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -130,7 +226,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir out
+          mkdir -p out dl
           find dl -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.exe' \) -exec cp {} out/ \;
           n=0; for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Timotheos_android-test-${n}.apk"; done
           # AGPL: the complete source of exactly this build travels with its files
@@ -138,14 +234,10 @@ jobs:
           ls -la out
           TAG="build-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
           V=$(node -p "require('./package.json').version")
-          # the title is the files' own name with the version (Timotheos_0.6.17); the tag stays unique per build
-          # "What is new" in Check for updates is WHATSNEW.txt: it must be written for every version (the build stops if it is not)
           head -1 WHATSNEW.txt | grep -q "Timotheos $V" || { echo "WHATSNEW.txt must begin with: Timotheos $V"; exit 1; }
           { cat WHATSNEW.txt; echo; echo "Build ${GITHUB_RUN_NUMBER} of ${GITHUB_SHA::7}"; } > notes.txt
           gh release create "$TAG" -R "$GITHUB_REPOSITORY" --latest --target "$GITHUB_SHA" --title "Timotheos_$V" --notes-file notes.txt out/*
       - name: Keep the newest test build in the pre-release "test" (what Check for updates reads when "Include test builds" is on)
-        # Pushes to timotheos-tauri or Neon replace the one pre-release each time. (A release made with the workflow's own token
-        # does not start another build.)
         if: ${{ github.event_name == 'push' && (github.ref_name == 'timotheos-tauri' || github.ref_name == 'Neon') }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -184,27 +276,3 @@ jobs:
                   subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/git/refs/tags/{tag}"], stderr=subprocess.DEVNULL, check=False)
               print("Pruned:", r.get("name"), f"({tag})")
           '
-
-  release:
-    if: github.event_name == 'release'
-    needs: [linux, windows, android]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with: { path: dl }
-      - name: Attach the files to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          mkdir out
-          find dl -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.exe' \) -exec cp {} out/ \;
-          V="${TAG#v}"; n=0
-          for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Timotheos_${V}_android-test$([ $n -gt 1 ] && echo -$n).apk"; done
-          git archive --format=zip --prefix="timotheos-${V}/" -o "out/timotheos-${V}-source.zip" "$GITHUB_SHA"
-          ls -la out
-          gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --title "Timotheos $V" --notes "Timotheos $V" --prerelease
-          gh release upload "$TAG" out/* -R "$GITHUB_REPOSITORY" --clobber

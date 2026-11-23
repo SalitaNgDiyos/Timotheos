@@ -1,0 +1,6 @@
+Timotheos 0.6.99
+
+- SalitaNgDiyos Official repository in Download modules: added a combined official repository section aggregating module releases across all SalitaNgDiyos GitHub repositories (Bibles, Septuagint texts, interlinears, morphology dictionaries, and lexicons).
+- Official module update notifications: Timotheos checks installed SalitaNgDiyos modules for newer releases on PC startup (and via Check for updates in Download modules) and notifies you with options to download selected updates, postpone, or ignore them.
+- Flush adjacent panels on PC: removed the spacing gap between adjacent docked panels on the desktop workbench.
+- Platform-aware GitHub Actions builds: Android APK builds are skipped when changes are PC-only, and PC builds are skipped when changes are Android-only; in-app startup update alerts also skip releases without an installer for the current device.

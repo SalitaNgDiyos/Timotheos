@@ -55,10 +55,10 @@ button.tb.on { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 .pm-drag.disabled:hover { background: transparent; }
 
 /* workbench */
-#workbench { flex: 1; display: block; min-height: 0; position: relative; padding: 6px; background: var(--bg); }
-/* the panels reach the edges of the window: each panel sits 1px inside its cell, so the grid starts 1px outside */
-#grid { position: absolute; inset: -1px; min-width: 0; min-height: 0; }
-#grid > .dgroup { position: absolute; min-width: 0; min-height: 0; box-sizing: border-box; }
+#workbench { flex: 1; display: block; min-height: 0; position: relative; padding: 0; background: var(--bg); }
+/* adjacent docked panels sit flush edge-to-edge with zero gap */
+#grid { position: absolute; inset: 0; min-width: 0; min-height: 0; }
+#grid > .dgroup { position: absolute; min-width: 0; min-height: 0; box-sizing: border-box; border-radius: 0; }
 .gut { position: absolute; z-index: 2; border-radius: 3px; }
 .gut.h { cursor: col-resize; } .gut.v { cursor: row-resize; }
 .dcorner { position: absolute; width: 14px; height: 14px; z-index: 4; border-radius: 4px; }
@@ -932,3 +932,14 @@ body.grabbing, body.grabbing * { cursor: grabbing !important; user-select: none 
 .grabbtn.on, .bvside .bvgrab.on { background: color-mix(in srgb, var(--cap-bible, var(--accent)) 24%, transparent); color: var(--heading, var(--text)); }
 .libbar .grabright, .cmtbar .grabright { margin-left: 4px; }
 .bvside .wpglyph { font: 700 14px/1 'Gentium Plus', 'Noto Serif', 'DejaVu Serif', serif; letter-spacing: -1.5px; white-space: nowrap; }
+
+/* Official SalitaNgDiyos module update badges & notification dialog */
+.dlrow .dlbadge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: color-mix(in srgb, #16a34a 18%, var(--card)); color: #15803d; border: 1px solid color-mix(in srgb, #16a34a 45%, var(--line)); vertical-align: middle; }
+.dlrow .dlget.updbtn { background: #16a34a; color: #fff; border-color: #15803d; font-weight: 600; }
+.dlrow .dlget.updbtn:hover { filter: brightness(1.06); }
+.modupd-list { list-style: none; margin: 8px 0 12px; padding: 0; max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.modupd-list li { padding: 7px 10px; border-bottom: 1px dotted var(--line); display: flex; align-items: flex-start; gap: 8px; }
+.modupd-list li:last-child { border-bottom: 0; }
+.modupd-list label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; flex: 1; min-width: 0; }
+.modupd-list .mu-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.modupd-list .mu-meta { font-size: 11.5px; color: var(--muted); }

@@ -128,6 +128,7 @@ const TimotheosUpdates = (() => {
     if (s.updAuto === false || !net() || quiet()) return;
     let r; try { r = await ask(!!s.updTest); } catch (e) { return; }   // no connection, no release, ...: nothing to say
     if (compare(r.latest, here()) <= 0) return;
+    if (!fileFor(r)) return;   // skip platform-only releases that have no installer/APK for this device
     if (s.updIgnore && compare(s.updIgnore, r.latest) >= 0) return;   // "Ignore": this version is not offered again (a newer one is)
     notice(r);
   }

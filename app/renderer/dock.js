@@ -489,9 +489,9 @@
   function place() {
     const V = view;
     for (const { el, a } of groupEls) {
-      // 1px on each side of an edge: two panels are 2px apart (the divider between them is still 6px wide to grab)
-      Object.assign(el.style, { left: `calc(${pct(a.x0, V.x, V.w)}% + 1px)`, top: `calc(${pct(a.y0, V.y, V.h)}% + 1px)`,
-        width: `calc(${(a.x1 - a.x0) / V.w * 100}% - 2px)`, height: `calc(${(a.y1 - a.y0) / V.h * 100}% - 2px)` });
+      // Adjacent panels sit flush edge-to-edge with zero gap (the 6px divider stays centered on the shared seam)
+      Object.assign(el.style, { left: `${pct(a.x0, V.x, V.w)}%`, top: `${pct(a.y0, V.y, V.h)}%`,
+        width: `${(a.x1 - a.x0) / V.w * 100}%`, height: `${(a.y1 - a.y0) / V.h * 100}%` });
     }
     for (const { el, a, xs, ys } of cornerEls) { el.style.left = `calc(${pct(a[xs], V.x, V.w)}% - 7px)`; el.style.top = `calc(${pct(a[ys], V.y, V.h)}% - 7px)`; }
     for (const gt of gutEls) {
