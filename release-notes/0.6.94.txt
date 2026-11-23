@@ -1,0 +1,2 @@
+Timotheos 0.6.94
+- OT and NT footnote verse links on phone and desktop: tapping a named OT or NT verse link inside a footnote (such as tw://bible.lxxe or tw://bible.akjvpce links in AMB) now always closes the footnote sheet on phone, honours your Options -> Modules -> Verse links preference first (falling back to the named Bible or any installed Bible that contains the book), and switches automatically from NT-only Bibles to open the intended verse.

@@ -1525,22 +1525,25 @@ function phoneVerseLink(link) {
   const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
   const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
   if (!/^tw:\/\/bible/i.test(href) || !id) return false;
-  if (bm && bm[1] && bm[1] !== '*' && resolveBibleSpec(bm[1])) return false;   // the link names a Bible that is installed: as before
-  phoneVerse(+id[1], +id[2], id[3] ? +id[3] : 1);
+  phoneVerse(+id[1], +id[2], id[3] ? +id[3] : 1, bm ? bm[1] : '');
   return true;
 }
-async function bibleForBook(b) {
+async function bibleForBook(b, modSpec) {
   const has = async bid => { const inf = await ensureInfo(bid, true); return !!(inf && inf.books && inf.books[b]); };
   const PB = window.TimotheosPopupBibles;
   const key = PB ? PB.popupGroupKey(b) : (b >= 1 && b <= 39 ? 'popupOT' : b >= 40 && b <= 66 ? 'popupNT' : b >= 67 ? 'popupAP' : '');
   const prefs = PB && key ? PB.normalizePopupIds(state.settings[key], state.modules.bibles.map(x => x.id)) : [];
   for (const pref of prefs) if (await has(pref)) return pref;
+  if (modSpec && modSpec !== '*') {
+    const named = resolveBibleSpec(modSpec);
+    if (named && await has(named)) return named;
+  }
   for (const x of state.modules.bibles) if (await has(x.id)) return x.id;
   return null;
 }
-async function phoneVerse(b, c, v) {
+async function phoneVerse(b, c, v, modSpec) {
   const P = window.PUI;
-  const bid = await bibleForBook(b);
+  const bid = await bibleForBook(b, modSpec);
   if (P) { try { P.wordPopClose(); } catch (e) { /* none */ } try { P.closeSheet(); } catch (e) { /* none */ } try { P.clearPages(); } catch (e) { /* none */ } }
   if (!bid) return getModules();
   if (views()[state.active].bible !== bid) await useBible(bid);
@@ -1575,16 +1578,36 @@ async function followLink(href, linkText, linkEl) {
   const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
   const id = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?/.exec(href) || /^tw:\/\/bible[^?]*\?(\d+)\.(\d+)(?:\.(\d+))?/.exec(href);
   if (/^tw:\/\/bible/i.test(href) && id) {
-    // [B4] Honor target-specific Bible if specified (e.g. tw://bible.KJV?id=1.1.1)
-    if (bm && bm[1] && bm[1] !== '*') {
-      const targetBible = resolveBibleSpec(bm[1]);
+    const b = +id[1], c = +id[2], v = id[3] ? +id[3] : 1;
+    const modSpec = bm ? bm[1] : '';
+    if (document.documentElement.classList.contains('sk')) return phoneVerse(b, c, v, modSpec);
+    // [B4] Honor target-specific Bible if installed and has book b; otherwise switch to an open or preferred/installed Bible that has book b
+    let switched = false;
+    if (modSpec && modSpec !== '*') {
+      const targetBible = resolveBibleSpec(modSpec);
       if (targetBible) {
-        const existingIdx = views().findIndex(v => v.bible === targetBible);
-        if (existingIdx >= 0) setActive(existingIdx, true);
-        else await useBible(targetBible);
+        const inf = await ensureInfo(targetBible, true);
+        if (inf && inf.books && inf.books[b]) {
+          const existingIdx = views().findIndex(vw => vw.bible === targetBible);
+          if (existingIdx >= 0) setActive(existingIdx, true);
+          else await useBible(targetBible);
+          switched = true;
+        }
       }
     }
-    return go({ b: +id[1], c: +id[2], v: id[3] ? +id[3] : 1 });
+    if (!switched) {
+      const curView = views()[state.active];
+      const curInf = curView ? await ensureInfo(curView.bible, true) : null;
+      if (!curInf || !curInf.books || !curInf.books[b]) {
+        const openIdx = views().findIndex(vw => { const inf = state.infos.get(vw.bible); return inf && inf.books && inf.books[b]; });
+        if (openIdx >= 0) setActive(openIdx, true);
+        else {
+          const bid = await bibleForBook(b, modSpec);
+          if (bid) await useBible(bid);
+        }
+      }
+    }
+    return go({ b, c, v });
   }
   const st = /[?&]t=([GH]\d+)/i.exec(href) || /\?([GH]\d+)\b/i.exec(href);
   if (st) { const fake = document.createElement('span'); fake.dataset.strong = st[1].toUpperCase(); return pin(fake); }
@@ -1609,7 +1632,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.93')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.94')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
