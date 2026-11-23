@@ -24,7 +24,8 @@
   const isBible = id => /^bv\d+$/.test(id);
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const A = (c, r, cs, rs, panels, active) => ({ x0: c, y0: r, x1: c + cs, y1: r + rs, panels, active: active || panels[0] });
-  const EPS = 1e-3, MINW = 0.2, MINH = 0.25;
+  const EPS = 1e-3, MINW = 0.2, MINH = 0.25, MIN_SPACE_PX = 96; // 1 CSS inch = 96px
+  let nextAddRect = null;
 
   const PRESETS = {
     classic: { label: 'Classic (Books left, Bible views in the middle, study tools right, search below)', layout: {
@@ -190,8 +191,8 @@
     return detachPanelFromLayout(L, id, keepHole == null ? detachMode : keepHole);
   }
 
-  /** find all maximal non-overlapping empty rectangles (>= MINW x MINH) on the 4x3 workbench */
-  function findEmptySpaces(areas) {
+  /** find all maximal non-overlapping empty rectangles (>= minW x minH) on the 4x3 workbench */
+  function findEmptySpaces(areas, minW = MINW, minH = MINH) {
     const list = areas || [];
     const uniq = vals => {
       const s = vals.slice().sort((a, b) => a - b);
@@ -230,11 +231,32 @@
       }
       if (!best) break;
       for (let iy = best.iy0; iy < best.iy1; iy++) for (let ix = best.ix0; ix < best.ix1; ix++) occ[iy][ix] = true;
-      if (best.x1 - best.x0 >= MINW - EPS && best.y1 - best.y0 >= MINH - EPS) {
+      if (best.x1 - best.x0 >= minW - EPS && best.y1 - best.y0 >= minH - EPS) {
         spaces.push({ x0: best.x0, y0: best.y0, x1: best.x1, y1: best.y1 });
       }
     }
     return spaces;
+  }
+
+  /** filter empty spaces to those at least minPxW x minPxH (default 96x96 = 1in x 1in) on the workbench */
+  function filterSpacesByMinPx(spaces, wbW, wbH, v = { x: 0, y: 0, w: NC, h: NR }, minPxW = MIN_SPACE_PX, minPxH = MIN_SPACE_PX) {
+    if (!wbW || !wbH) return [];
+    return (spaces || []).filter(sp => {
+      const pxW = (sp.x1 - sp.x0) / v.w * wbW;
+      const pxH = (sp.y1 - sp.y0) / v.h * wbH;
+      return pxW >= minPxW - 0.5 && pxH >= minPxH - 0.5;
+    });
+  }
+
+  /** live empty spaces on the workbench that are at least 1in x 1in (96px x 96px) */
+  function findAvailableSpaces(minPxW = MIN_SPACE_PX, minPxH = MIN_SPACE_PX) {
+    const wb = typeof document !== 'undefined' && $('#workbench');
+    if (!L || !wb) return [];
+    const r = wb.getBoundingClientRect();
+    if (!r.width || !r.height) return [];
+    const gMinW = Math.min(MINW, (minPxW / r.width) * view.w);
+    const gMinH = Math.min(MINH, (minPxH / r.height) * view.h);
+    return filterSpacesByMinPx(findEmptySpaces(L.areas, gMinW, gMinH), r.width, r.height, view, minPxW, minPxH);
   }
 
   /** simulate dropping `id` onto a smart drop target (empty space, panel left/right/top/bottom/center, or outer workbench edge) */
@@ -243,7 +265,7 @@
     const next = clone(lay);
     if (t.space) {
       const sp = { x0: +t.space.x0, y0: +t.space.y0, x1: +t.space.x1, y1: +t.space.y1 };
-      if (sp.x1 - sp.x0 < MINW - EPS || sp.y1 - sp.y0 < MINH - EPS) return null;
+      if (sp.x1 - sp.x0 <= EPS || sp.y1 - sp.y0 <= EPS) return null;
       const hole = detachPanelFromLayout(next, id, true);
       if (next.areas.some(a => hit(a, sp))) return null;
       next.areas.push({ x0: sp.x0, y0: sp.y0, x1: sp.x1, y1: sp.y1, panels: [id], active: id });
@@ -765,15 +787,7 @@
     if (d && d.isFloat && d.groupDiv) d.groupDiv.style.pointerEvents = '';
     clearTargets();
   }
-  function startDrag(e, groupDiv, g) {
-    if (e.button !== 0 || e.target.closest('.dbtn') || e.target.closest('.dnav')) return;
-    if (drag) cancelDrag();
-    e.preventDefault();
-    const tab = e.target.closest('.dtab');
-    const id = tab ? tab.dataset.id : g.active;
-    const isFloat = groupDiv.classList.contains('dfloat');
-    drag = { id, g, groupDiv, isFloat, sx: e.clientX, sy: e.clientY, started: false, lastTgt: null, target: null,
-      ox: isFloat ? e.clientX - groupDiv.offsetLeft : 0, oy: isFloat ? e.clientY - groupDiv.offsetTop : 0 };
+  function bindDragListeners() {
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
     window.addEventListener('mouseup', onUp);
@@ -782,36 +796,63 @@
     window.addEventListener('keydown', onDragKey, true);
   }
 
+  function startDrag(e, groupDiv, g) {
+    if (e.button !== 0 || e.target.closest('.dbtn') || e.target.closest('.dnav')) return;
+    if (drag) cancelDrag();
+    e.preventDefault();
+    const tab = e.target.closest('.dtab');
+    const id = tab ? tab.dataset.id : g.active;
+    const isFloat = groupDiv.classList.contains('dfloat');
+    drag = { id, g, groupDiv, isFloat, fromMenu: false, sx: e.clientX, sy: e.clientY, started: false, lastTgt: null, target: null,
+      ox: isFloat ? e.clientX - groupDiv.offsetLeft : 0, oy: isFloat ? e.clientY - groupDiv.offsetTop : 0 };
+    bindDragListeners();
+  }
+
+  /** start click+hold+drag of a panel kind from the Panels menu onto an available empty space (>= 1in x 1in) */
+  function startMenuDrag(e, spec) {
+    if (!e || e.button !== 0 || !spec) return false;
+    if (!findAvailableSpaces().length) return false;
+    if (drag) cancelDrag();
+    e.preventDefault();
+    drag = {
+      id: spec.id, title: spec.title, icon: spec.icon, cap: spec.cap || 'bible',
+      fromMenu: true, onDrop: spec.onDrop, onAfterDrop: spec.onAfterDrop,
+      isFloat: false, sx: e.clientX, sy: e.clientY, started: false, lastTgt: null, target: null
+    };
+    bindDragListeners();
+    return true;
+  }
+
   function onMove(e) {
     if (!drag) return;
     if (e.buttons === 0) { onUp(e); return; }
     if (!drag.started) {
-      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 7) return;
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
       drag.started = true;
       document.body.classList.add('dragging');
       if (!drag.isFloat) {
-        const p = PANELS.get(drag.id);
+        const p = drag.fromMenu ? { title: drag.title, icon: drag.icon, cap: drag.cap } : PANELS.get(drag.id);
         drag.ghost = document.createElement('div');
         drag.ghost.className = 'dghost';
         drag.ghost.style.setProperty('--cap', `var(--cap-${p.cap})`);
         drag.ghost.innerHTML = `${ic(p.icon, 15)}<span>${esc(p.title)}</span>`;
         document.body.appendChild(drag.ghost);
       }
-      if (snapGridMode) showGridTargets();
-      else showSmartTargets(drag.id);
+      showEmptySpaceTargets();
     }
     if (drag.ghost) { drag.ghost.style.left = e.clientX + 12 + 'px'; drag.ghost.style.top = e.clientY + 10 + 'px'; }
     if (drag.isFloat) {
       drag.groupDiv.style.left = e.clientX - drag.ox + 'px'; drag.groupDiv.style.top = e.clientY - drag.oy + 'px';
       drag.groupDiv.style.pointerEvents = 'none';
     }
-    const tgt = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList && el.classList.contains('dtarget')) || null;
+    const els = document.elementsFromPoint(e.clientX, e.clientY);
+    const overMenu = els.some(el => el && el.id === 'panelsMenu');
+    const tgt = overMenu ? null : (els.find(el => el.classList && el.classList.contains('dtarget')) || null);
     if (tgt === drag.lastTgt) return;
     drag.lastTgt = tgt;
     drag.target = tgt ? JSON.parse(tgt.dataset.t) : null;
     document.querySelectorAll('.dtarget.hot').forEach(x => x.classList.remove('hot'));
     if (tgt) tgt.classList.add('hot');
-    showPreview(drag.id, drag.target);
   }
 
   function onUp(e) {
@@ -824,19 +865,42 @@
     if (d.isFloat) d.groupDiv.style.pointerEvents = '';
     if (!d.started) return;
     try {
-      if (d.target) { dropOn(d.id, d.target); return; }
+      if (d.fromMenu) {
+        if (d.target && d.target.space && typeof d.onDrop === 'function') {
+          Promise.resolve(d.onDrop(d.target.space)).then(() => { if (typeof d.onAfterDrop === 'function') d.onAfterDrop(); });
+        }
+        return;
+      }
+      if (d.target && d.target.space) { dropOn(d.id, d.target); return; }
       if (d.isFloat) {
         const f = d.g; f.x = d.groupDiv.offsetLeft; f.y = d.groupDiv.offsetTop; clampFloat(d.groupDiv);
         f.x = parseInt(d.groupDiv.style.left); f.y = parseInt(d.groupDiv.style.top); saveSoon(); return;
       }
-      // dropped somewhere without a target: make it a floating window there
-      detach(d.id);
+      // dropped outside any empty space: float it without shifting or resizing any other panel
+      detach(d.id, true);
       L.floats.push({ panels: [d.id], active: d.id, x: e.clientX - 40, y: e.clientY - 14, w: 380, h: 340 });
       maxed = null; commit();
     } catch (err) {
       console.error('TimotheosDock drop error:', err);
       render();
     }
+  }
+
+  /** highlight only available empty spaces (>= 1in x 1in) with a clean green border; no 4x3 grid flash and no splitting of other panels */
+  function showEmptySpaceTargets() {
+    const r = $('#workbench').getBoundingClientRect();
+    const layer = document.createElement('div'); layer.className = 'dlayer empty-only'; layer.id = 'dlayer';
+    Object.assign(layer.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    const V = view;
+    for (const sp of findAvailableSpaces()) {
+      const b = document.createElement('div');
+      b.className = 'dtarget space';
+      b.dataset.t = JSON.stringify({ space: sp });
+      b.style.cssText = `left:calc(${pct(sp.x0, V.x, V.w)}% + 3px);top:calc(${pct(sp.y0, V.y, V.h)}% + 3px);width:calc(${(sp.x1 - sp.x0) / V.w * 100}% - 6px);height:calc(${(sp.y1 - sp.y0) / V.h * 100}% - 6px)`;
+      b.innerHTML = `<span class="dcn">Drop here</span>`;
+      layer.appendChild(b);
+    }
+    document.body.appendChild(layer);
   }
 
   /** smart drop zones: every empty space created by resizing/detaching + Left/Right/Top/Bottom/Tab zones on existing panels + outer workbench edges */
@@ -915,8 +979,9 @@
 
   function simulateDrop(id, t) {
     if (!t) return null;
-    if (t.cell) return computeGridDrop(L, id, t.cell[0], t.cell[1], detachMode);
-    return computeSmartDrop(L, id, t, detachMode);
+    if (t.space) return computeSmartDrop(L, id, t, true);
+    if (t.cell) return computeGridDrop(L, id, t.cell[0], t.cell[1], true);
+    return computeSmartDrop(L, id, t, true);
   }
 
   function showPreview(id, t) {
@@ -1008,11 +1073,36 @@
 
   function toggleFocus(on) { focusMode = on == null ? !focusMode : on; maxed = null; render(); }
 
+  /** reserve an exact empty space for the next newly added panel (e.g. a dragged Bible View) */
+  function setNextRect(sp) {
+    nextAddRect = sp ? { x0: +sp.x0, y0: +sp.y0, x1: +sp.x1, y1: +sp.y1 } : null;
+  }
+
+  /** place an existing panel kind into an exact empty space without moving or resizing any other panel */
+  function placeInSpace(id, sp) {
+    if (!L || !sp || !PANELS.has(id)) return false;
+    const sim = computeSmartDrop(L, id, { space: sp }, true);
+    if (!sim || !sim.layout) return false;
+    L = sim.layout;
+    maxed = null;
+    if (focusMode) focusMode = false;
+    commit(); activate(id);
+    return true;
+  }
+
   /** a new panel that was not there when the layout was made (a new Bible view) */
   function add(p) {
     register(p);
     if (!L) return;
-    if (!locate(p.id)) placeHome(L, p.id);
+    if (!locate(p.id)) {
+      if (nextAddRect && !L.areas.some(a => hit(a, nextAddRect))) {
+        L.areas.push({ ...nextAddRect, panels: [p.id], active: p.id });
+        nextAddRect = null;
+      } else {
+        nextAddRect = null;
+        placeHome(L, p.id);
+      }
+    }
     commit();
   }
   /** a Bible view that is gone */
@@ -1090,7 +1180,9 @@
   const apiObj = {
     init, register, add, remove, retitle, render, show, hide, activate, toggleFloat, toggleFocus, applyPreset, setLayout, isVisible, arrangeBible,
     setDetachMode, toggleDetachMode, getDetachMode, setSnapGrid, toggleSnapGrid, getSnapGrid,
+    setNextRect, placeInSpace, startMenuDrag,
     thumbnailSvg, findEmptySpaces: () => findEmptySpaces(L ? L.areas : []),
+    findAvailableSpaces,
     panels: () => [...PANELS.values()], panel: id => PANELS.get(id), state: () => clone(L), located: id => locate(id), PRESETS, isBible,
     get focus() { return focusMode; },
     get detachMode() { return detachMode; },
@@ -1099,8 +1191,8 @@
   if (typeof window !== 'undefined') window.TimotheosDock = apiObj;
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-      NC, NR, EPS, MINW, MINH, PRESETS,
-      normalize, findEmptySpaces, detachPanelFromLayout, fillHole,
+      NC, NR, EPS, MINW, MINH, MIN_SPACE_PX, PRESETS,
+      normalize, findEmptySpaces, filterSpacesByMinPx, detachPanelFromLayout, fillHole,
       computeSmartDrop, computeGridDrop, thumbnailSvg
     };
   }

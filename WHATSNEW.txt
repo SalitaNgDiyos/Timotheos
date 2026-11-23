@@ -1,2 +1,6 @@
-Timotheos 0.6.94
-- OT and NT footnote verse links on phone and desktop: tapping a named OT or NT verse link inside a footnote (such as tw://bible.lxxe or tw://bible.akjvpce links in AMB) now always closes the footnote sheet on phone, honours your Options -> Modules -> Verse links preference first (falling back to the named Bible or any installed Bible that contains the book), and switches automatically from NT-only Bibles to open the intended verse.
+Timotheos 0.6.95
+
+- Panels menu click-hold-drag: removed the list of already open Bible views from the Panels menu and replaced click toggles with click-hold-drag for each panel kind (Bible View, Books & chapters, Commentary, Library, Bible search, Book search, and My Study).
+- Green empty-space highlight (replaces 4x3 grid flash): while dragging a panel, the Panels menu stays on top and available empty spaces at least 1 inch by 1 inch highlight with a green border instead of flashing a 4x3 snap grid.
+- No-space warning: when no 1 inch by 1 inch empty space is available, the Panels menu warns that there is no more space available and explains how to enable Detach edges and move or resize panels to open space.
+- Fixed panel drag side-effects: dragging a panel no longer splits empty spaces or moves and resizes other panels by themselves. Only the dropped panel adjusts its size to fit the target empty space.

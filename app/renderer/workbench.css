@@ -29,7 +29,17 @@ button.tb.on { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 .menu > button .pic { display: grid; }
 .menu .small { margin-left: auto; }
 .swatch { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); flex: none; }
-#panelsMenu { min-width: 330px; }
+#panelsMenu { min-width: 330px; z-index: 105; }
+.pm-warn { margin: 4px 10px 6px; padding: 8px 10px; border-radius: 7px; border: 1px solid color-mix(in srgb, #d97706 45%, var(--line)); background: color-mix(in srgb, #f59e0b 12%, var(--card)); font-size: 12px; line-height: 1.35; }
+.pm-warn-title { font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.pm-warn-sub { color: var(--muted); font-size: 11.5px; }
+.pm-drag { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font: 13px var(--font-ui); color: var(--text); cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+.pm-drag:hover { background: var(--accent-soft); }
+.pm-drag:active { cursor: grabbing; }
+.pm-drag .pm-grip { color: var(--muted); display: grid; opacity: .7; }
+.pm-drag .pic { display: grid; }
+.pm-drag.disabled { opacity: .45; cursor: not-allowed; }
+.pm-drag.disabled:hover { background: transparent; }
 
 /* workbench */
 #workbench { flex: 1; display: block; min-height: 0; position: relative; padding: 6px; background: var(--bg); }
@@ -79,7 +89,7 @@ body.dragging .dcorner { display: none; }
 .dgroup.max { position: absolute; inset: 6px; z-index: 40; box-shadow: 0 14px 40px rgba(0,0,0,.25); }
 .dfloat { position: fixed; z-index: 45; resize: both; box-shadow: 0 18px 50px rgba(0,0,0,.32); min-width: 220px; min-height: 140px; }
 body.dragging, body.dragging * { cursor: grabbing !important; user-select: none !important; }
-.dghost { position: fixed; z-index: 101; pointer-events: none; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: var(--cap); color: var(--captext); font-weight: 600; box-shadow: 0 12px 30px rgba(0,0,0,.3); transform: rotate(-2deg); }
+.dghost { position: fixed; z-index: 110; pointer-events: none; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: var(--cap); color: var(--captext); font-weight: 600; box-shadow: 0 12px 30px rgba(0,0,0,.3); transform: rotate(-2deg); }
 .dlayer { position: fixed; inset: 0; z-index: 100; pointer-events: none; }
 .dtarget { pointer-events: auto; width: 36px; height: 36px; border-radius: 9px; background: var(--card); border: 1.5px solid var(--accent); color: var(--accent); display: grid; place-items: center; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
 .dtarget.edge { position: fixed; }
@@ -707,10 +717,11 @@ body.detach-mode .gut.detach:hover, body.detach-mode .gut.free:hover { backgroun
 .dempty { position: absolute; z-index: 1; box-sizing: border-box; border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--accent) 7%, transparent); display: flex; align-items: center; justify-content: center; pointer-events: none; color: var(--muted); font-size: 12px; text-align: center; padding: 8px; }
 
 /* Smart drop zones (empty spaces + Left/Right/Top/Bottom/Tab on panels + outer edges) */
-.dtarget.space { position: absolute; width: auto; height: auto; box-sizing: border-box; border-radius: 8px; background: color-mix(in srgb, var(--accent) 18%, var(--bg)); border: 2px dashed var(--accent); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; color: var(--text); padding: 6px; z-index: 2; }
-.dtarget.space .dcn { font-weight: 700; color: var(--accent); }
+body.dragging .dempty { opacity: 0; }
+.dtarget.space { position: absolute; width: auto; height: auto; box-sizing: border-box; border-radius: 8px; background: rgba(34, 197, 94, 0.08); border: 2.5px dashed #22c55e; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; color: #16a34a; padding: 6px; z-index: 2; pointer-events: auto; transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease; }
+.dtarget.space .dcn { font-weight: 700; color: #16a34a; }
 .dtarget.space .dcw { font-size: 11px; opacity: .85; }
-.dtarget.space.hot { background: color-mix(in srgb, var(--accent) 34%, var(--card)); border-style: solid; }
+.dtarget.space.hot { background: rgba(34, 197, 94, 0.20); border: 3px solid #16a34a; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 0 0 2px rgba(34, 197, 94, 0.35); }
 .dpanelzones { position: absolute; pointer-events: none; z-index: 1; }
 .dtarget.zone { position: absolute; width: auto; height: auto; border-radius: 6px; background: transparent; border: 1px solid transparent; box-shadow: none; color: transparent; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
 .dtarget.zone.zl { left: 2%; top: 18%; width: 22%; height: 64%; }

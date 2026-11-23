@@ -322,15 +322,17 @@
   }
   function fillPanelsMenu() {
     const m = $('#panelsMenu');
-    const row = p => {
-      const at = TimotheosDock.located(p.id); const on = at && !at.hidden;
-      return `<button data-p="${p.id}">${TimotheosIcons.icon(on ? 'check' : 'plus', 15)}<span class="pic" style="color:var(--cap-${p.cap})">${TimotheosIcons.icon(p.icon, 15)}</span>${esc(p.title)}</button>`;
-    };
-    const all = TimotheosDock.panels();
-    const rows = all.filter(p => !TimotheosDock.isBible(p.id)).map(row).join('');
-    const bibles = all.filter(p => TimotheosDock.isBible(p.id)).map(row).join('');
+    const kinds = [
+      { id: 'newbv', title: 'Bible View', icon: 'bible', cap: 'bible', isNewBible: true },
+      ...TimotheosDock.panels().filter(p => !TimotheosDock.isBible(p.id))
+    ];
+    const spaces = TimotheosDock.findAvailableSpaces ? TimotheosDock.findAvailableSpaces() : [];
+    const hasSpace = spaces.length > 0;
+    const warn = hasSpace ? '' : `<div class="pm-warn" role="status"><div class="pm-warn-title">There is no more space available.</div><div class="pm-warn-sub">To make available space, enable <b>Detach edges</b> and move or resize some panels to open an empty space (at least 1&Prime; &times; 1&Prime;).</div></div>`;
+    const rows = kinds.map(k =>
+      `<div class="pm-drag${hasSpace ? '' : ' disabled'}" data-drag-kind="${esc(k.id)}" role="button" tabindex="${hasSpace ? '0' : '-1'}" aria-disabled="${hasSpace ? 'false' : 'true'}" title="${hasSpace ? 'Click, hold, and drag onto an empty space' : 'No empty space available (at least 1&Prime; &times; 1&Prime; needed)'}"><span class="pm-grip">${TimotheosIcons.icon('grip', 14)}</span><span class="pic" style="color:var(--cap-${k.cap})">${TimotheosIcons.icon(k.icon, 15)}</span><span class="pm-lbl">${esc(k.title)}</span>${hasSpace ? '<span class="small">drag</span>' : ''}</div>`
+    ).join('');
     const detOn = TimotheosDock.getDetachMode ? TimotheosDock.getDetachMode() : false;
-    const snapOn = TimotheosDock.getSnapGrid ? TimotheosDock.getSnapGrid() : false;
     const thumb = (lay) => TimotheosDock.thumbnailSvg ? TimotheosDock.thumbnailSvg(lay, { width: 32, height: 24 }) : TimotheosIcons.icon('layout', 15);
     const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => {
       const [ttl, sub] = presetParts(p.label);
@@ -338,23 +340,33 @@
     }).join('');
     const savedObj = state.settings.savedLayouts || {};
     const saved = Object.keys(savedObj).map(n => `<button class="laymenu-btn" data-saved="${esc(n)}">${thumb(savedObj[n])}<span class="laymenu-txt"><b>${esc(n)}</b></span></button>`).join('');
-    m.innerHTML = `<div class="mh">Panels <span class="small">(click to show or close)</span></div>
-      <button data-act="newbv">${TimotheosIcons.icon('plus', 15)}<span class="pic" style="color:var(--cap-bible)">${TimotheosIcons.icon('bible', 15)}</span><b>Bible View</b> <span class="small">(add another)</span></button>${bibles}${rows}
+    m.innerHTML = `<div class="mh">Panels <span class="small">(click, hold &amp; drag)</span></div>${warn}${rows}
       <div class="msep"></div><div class="mh">Arranging</div>
       <button data-act="detach" class="${detOn ? 'on' : ''}">${TimotheosIcons.icon(detOn ? 'check' : 'detach', 15)}Detach adjacent edges <span class="small">(leave empty spaces)</span></button>
-      <button data-act="snapgrid" class="${snapOn ? 'on' : ''}">${TimotheosIcons.icon(snapOn ? 'check' : 'grid', 15)}Use 4×3 snap grid when dragging</button>
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
 `;
-    m.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
-      const at = TimotheosDock.located(b.dataset.p);
-      if (at && !at.hidden) { if (TimotheosDock.isBible(b.dataset.p)) window.closeView(+b.dataset.p.slice(2)); else TimotheosDock.hide(b.dataset.p); }
-      else window.openTab(b.dataset.p);
-      fillPanelsMenu();
+    const kindMap = new Map(kinds.map(k => [k.id, k]));
+    m.querySelectorAll('[data-drag-kind]').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        if (!hasSpace) return;
+        const k = kindMap.get(el.dataset.dragKind);
+        if (!k || !TimotheosDock.startMenuDrag) return;
+        TimotheosDock.startMenuDrag(e, {
+          id: k.id, title: k.title, icon: k.icon, cap: k.cap,
+          onDrop: async sp => {
+            if (k.isNewBible) {
+              const bid = (state.settings.views[state.active] || {}).bible || (state.modules.bibles[0] && state.modules.bibles[0].id);
+              if (bid) await window.addView(bid, sp);
+            } else {
+              TimotheosDock.placeInSpace(k.id, sp);
+            }
+          },
+          onAfterDrop: () => { if (!m.classList.contains('hidden')) fillPanelsMenu(); }
+        });
+      });
     });
-    m.querySelector('[data-act="newbv"]').onclick = async () => { closeMenus(); await window.addView((state.settings.views[state.active] || {}).bible || state.modules.bibles[0].id); };
     m.querySelector('[data-act="detach"]').onclick = () => { TimotheosDock.toggleDetachMode(); syncDockToggles(); fillPanelsMenu(); };
-    m.querySelector('[data-act="snapgrid"]').onclick = () => { const on = TimotheosDock.toggleSnapGrid(); save({ snapGrid: on }); syncDockToggles(); fillPanelsMenu(); };
     m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TimotheosDock.applyPreset(b.dataset.preset); closeMenus(); });
     m.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TimotheosDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); closeMenus(); });
     m.querySelector('[data-act="save"]').onclick = () => { closeMenus(); saveLayoutAs(); };
@@ -616,7 +628,7 @@
     };
     $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', fillSkinMenu); };
     $('#panelsBtn').onclick = e => { e.stopPropagation(); toggleMenu('#panelsMenu', fillPanelsMenu); };
-    document.addEventListener('mousedown', e => { if (!e.target.closest('.menuwrap')) document.querySelectorAll('#panelsMenu, #skinMenu').forEach(m => m.classList.add('hidden')); });
+    document.addEventListener('mousedown', e => { if (document.body.classList.contains('dragging')) return; if (!e.target.closest('.menuwrap')) document.querySelectorAll('#panelsMenu, #skinMenu').forEach(m => m.classList.add('hidden')); });
     syncDockToggles();
   }
 

@@ -114,4 +114,21 @@ floatLay.floats = [{ panels: ['cmt'], active: 'cmt', x: 100, y: 100, w: 300, h: 
 const floatSvg = dock.thumbnailSvg(floatLay, { width: 56, height: 42 });
 ok(floatSvg !== dock.thumbnailSvg(classic, { width: 56, height: 42 }), 'saved layout with floating window renders distinct thumbnail');
 
+// 9. Minimum 1in x 1in (96px x 96px) empty-space filter and zero neighbor movement on drop
+const pxSpaces = [
+  { x0: 0, y0: 0, x1: 0.4, y1: 0.5 },   // on 1200x900: 120px x 150px -> qualifies
+  { x0: 1, y0: 0, x1: 1.25, y1: 0.5 },  // on 1200x900: 75px x 150px  -> too narrow (< 96px)
+  { x0: 2, y0: 0, x1: 2.5, y1: 0.25 }   // on 1200x900: 150px x 75px  -> too short (< 96px)
+];
+const validPx = dock.filterSpacesByMinPx(pxSpaces, 1200, 900);
+ok(validPx.length === 1 && Math.abs(validPx[0].x0 - 0) < EPS,
+  'filterSpacesByMinPx keeps only empty spaces at least 1in x 1in (96px x 96px)');
+
+// Dropping a panel into an empty space with keepHole=true leaves every other existing panel untouched
+const beforeOthers = shrunk.areas.filter(a => !a.panels.includes('cmt')).map(a => ({ x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1, panels: a.panels }));
+const afterDrop = dock.computeSmartDrop(shrunk, 'cmt', { space: spaces1[0] }, true);
+const afterOthers = afterDrop.layout.areas.filter(a => !a.panels.includes('cmt')).map(a => ({ x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1, panels: a.panels }));
+ok(JSON.stringify(beforeOthers) === JSON.stringify(afterOthers),
+  'dropping a panel into an empty space never moves, resizes, or splits any other existing panel');
+
 console.log(`dock: ${passed} ok`);
