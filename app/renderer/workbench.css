@@ -83,15 +83,15 @@ body.dragging .dcorner { display: none; }
 .gsplit.v { width: 6px; cursor: col-resize; }
 
 .dgroup { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.dcap { display: flex; align-items: center; gap: 2px; height: 31px; padding: 0 3px 0 2px; background: var(--cap); color: var(--captext); cursor: grab; user-select: none; flex: none; }
+.dcap { display: flex; align-items: center; gap: 2px; height: 23px; padding: 0 3px 0 2px; background: var(--cap); color: var(--captext); cursor: grab; user-select: none; flex: none; }
 .dgrip { display: grid; place-items: center; width: 16px; opacity: .65; }
 .dtabs { flex: 1; display: flex; min-width: 0; overflow: hidden; gap: 1px; }
-.dtab { border: 0; background: transparent; color: inherit; display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; font-size: calc(var(--ui-size, 13px) - 1px); opacity: .78; white-space: nowrap; min-width: 0; cursor: inherit; }
+.dtab { border: 0; background: transparent; color: inherit; display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border-radius: 5px; font-size: calc(var(--ui-size, 13px) - 1px); opacity: .78; white-space: nowrap; min-width: 0; cursor: inherit; }
 .dtab span { overflow: hidden; text-overflow: ellipsis; }
 .dtab:hover { opacity: 1; }
 .dtab.on { opacity: 1; background: rgba(255,255,255,.2); font-weight: 600; }
 .dbtns { display: flex; flex: none; margin-left: auto; }
-.dbtn { border: 0; background: transparent; color: inherit; padding: 4px; border-radius: 5px; opacity: .72; display: grid; }
+.dbtn { border: 0; background: transparent; color: inherit; padding: 2px; border-radius: 4px; opacity: .72; display: grid; }
 .dbtn:hover { opacity: 1; background: rgba(255,255,255,.2); border: 0; }
 :root[data-caps="plain"] .dcap { background: var(--panel); color: var(--text); border-bottom: 1px solid var(--line); box-shadow: inset 3px 0 0 var(--cap); }
 :root[data-caps="plain"] .dtab .ic { color: var(--tc); }
@@ -174,7 +174,7 @@ td sup.vnum, .rline sup.vnum { cursor: pointer; }
 /* density */
 :root[data-density="compact"] .toolbar { padding: 3px 8px; }
 :root[data-density="compact"] button.tb { padding: 3px 6px; }
-:root[data-density="compact"] .dcap { height: 26px; }
+:root[data-density="compact"] .dcap { height: 20px; }
 :root[data-density="compact"] #workbench { padding: 3px; }
 :root[data-density="compact"] .zsplit.h, :root[data-density="compact"] .gsplit.v { width: 4px; }
 :root[data-density="compact"] .zsplit.v, :root[data-density="compact"] .gsplit.h { height: 4px; }
@@ -949,7 +949,7 @@ body.grabbing, body.grabbing * { cursor: grabbing !important; user-select: none 
 .modupd-list .mu-meta { font-size: 11.5px; color: var(--muted); }
 
 /* Desktop Bible View header swap (0.6.102): Translation Name in top .dcap bar, Verse Picker + Nav tools in .bvcap below */
-.dcap .bvbible { color: var(--captext); font-weight: 700; flex: 0 1 auto; min-width: 0; max-width: 100%; margin-right: auto; padding: 3px 7px; }
+.dcap .bvbible { color: var(--captext); font-weight: 700; flex: 0 1 auto; min-width: 0; max-width: 100%; margin-right: auto; padding: 1px 6px; line-height: 1.2; }
 .dcap .bvbible:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
 .dgroup.isbv:not(.solo) .dcap .bvbible { display: none; }
 .bvcap .dnav { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; }

@@ -87,7 +87,7 @@
     const d = document.querySelector(`.tmdrop[data-i="${i}"]`); if (!d) return;
     const detBtn = d.querySelector('button[data-cmd="detachEdges"]');
     if (detBtn) {
-      const detOn = !!(window.TimotheosDock && TimotheosDock.detachMode && TimotheosDock.detachMode());
+      const detOn = !!(window.TimotheosDock && (TimotheosDock.getDetachMode ? TimotheosDock.getDetachMode() : TimotheosDock.detachMode));
       detBtn.classList.toggle('on', detOn);
       const ic = detBtn.querySelector('.tmic');
       if (ic) ic.innerHTML = TimotheosIcons.icon(detOn ? 'check' : 'detach', 15);

@@ -1,5 +1,4 @@
-Timotheos 0.6.112
+Timotheos 0.6.113
 
-- Removed the top-right ribbon buttons (Import, Detach edges, Panels, Skin, Options) on desktop and cut the top ribbon height in half.
-- Added Panels and Detach edges (showing a live checkmark when active) to the View main menu.
-- Fixed the text font color and background inside the Copy Verses Templates field boxes (and other untyped text inputs) so they adhere to the active skin theme on both PC and Android.
+- Fixed a bug where the View main menu could not be opened while Detach edges was active (including after closing the popped-out Panels & Layouts window).
+- Reduced the desktop panel caption bar height by a quarter (from 31 px to 23 px, and from 26 px to 20 px in compact density) to give more vertical reading space.
