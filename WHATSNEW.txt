@@ -1,4 +1,4 @@
-Timotheos 0.6.113
+Timotheos 0.6.114
 
-- Fixed a bug where the View main menu could not be opened while Detach edges was active (including after closing the popped-out Panels & Layouts window).
-- Reduced the desktop panel caption bar height by a quarter (from 31 px to 23 px, and from 26 px to 20 px in compact density) to give more vertical reading space.
+- Reduced the main desktop ribbon (title and menu bar) height by half (to 20 px on standard skins and 22 px on Firefox themes) with compact logo and menu padding.
+- Added Skins... directly under the View main menu to open Skin & colours in one click.

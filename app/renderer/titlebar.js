@@ -39,6 +39,7 @@
         ['Copy Verses…', sc('copyVerses'), 'copyVerses', 'copy'],
         ['Daily Readings', '', 'daily', 'study'],
         '-',
+        ['Skins…', '', 'skins', 'palette'],
         ['Panels', '', 'panels', 'layout'],
         ['Detach edges', '', 'detachEdges', 'detach'],
         ['Reset Panel Layout', '', 'resetLayout', 'layout'],

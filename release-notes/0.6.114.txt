@@ -1,0 +1,4 @@
+Timotheos 0.6.114
+
+- Reduced the main desktop ribbon (title and menu bar) height by half (to 20 px on standard skins and 22 px on Firefox themes) with compact logo and menu padding.
+- Added Skins... directly under the View main menu to open Skin & colours in one click.

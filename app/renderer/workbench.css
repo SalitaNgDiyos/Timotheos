@@ -293,16 +293,16 @@ button.cpx:hover { color: var(--woj); }
 .popup .entry:first-child { margin-top: 0; }
 
 /* title bar (drawn by Timotheos so it follows the skin; Windows' own buttons sit at the right) */
-.titlebar { display: flex; align-items: center; height: 36px; flex: none; background: var(--tool); color: var(--tooltext); -webkit-app-region: drag; user-select: none;
+.titlebar { display: flex; align-items: center; height: 20px; flex: none; background: var(--tool); color: var(--tooltext); -webkit-app-region: drag; user-select: none;
   padding-left: 8px; padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)); }
-.titlebar .brand { gap: 7px; font: 600 var(--ui-size, 13px) var(--font-ui); margin-right: 8px; }
-.titlebar .brand .logo { width: 22px; height: 22px; border-radius: 6px; background: none; }
+.titlebar .brand { gap: 5px; font: 600 12px var(--font-ui); margin-right: 6px; }
+.titlebar .brand .logo { width: 15px; height: 15px; border-radius: 4px; background: none; }
 .brand .logo img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .titlebar .brand .logo { -webkit-app-region: no-drag; }
 img[data-logo] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .tbmenus { display: flex; -webkit-app-region: no-drag; }
 .tmwrap { position: relative; }
-.tmenu { background: transparent; border: 0; color: inherit; padding: 5px 10px; border-radius: 6px; font-size: calc(var(--ui-size, 13px) - 0.5px); }
+.tmenu { background: transparent; border: 0; color: inherit; padding: 1px 8px; border-radius: 4px; font-size: 12px; line-height: 1.3; }
 .tmenu u { text-decoration: none; }
 body.altkeys .tmenu u { text-decoration: underline; }
 .tmenu:hover, .tmenu.on { background: color-mix(in srgb, currentColor 13%, transparent); border: 0; }
@@ -902,7 +902,7 @@ html.mobile .toolbar .grow { display: none; }
 
 /* Firefox themes: the header picture runs across the title bar and the toolbar below the menus, as in the browser */
 html[data-fx] .titlebar, html[data-fx] #toolbar { background-color: var(--fx-frame) !important; background-image: var(--fx-img) !important; background-position: var(--fx-pos); background-repeat: var(--fx-rep); background-attachment: fixed; }
-html[data-fx] .titlebar { color: var(--fx-ftext) !important; height: 44px; }
+html[data-fx] .titlebar { color: var(--fx-ftext) !important; height: 22px; }
 html[data-fx] #toolbar { color: var(--fx-ttext) !important; box-shadow: inset 0 0 0 100vmax var(--fx-toolbar); border-top-color: transparent; min-height: 26px; }
 html:not(.phone) #toolbar { display: none; }
 .tmdrop button.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 600; }
