@@ -525,14 +525,54 @@ fn doh_lookup(host: &str) -> Vec<std::net::IpAddr> {
     }
     Vec::new()
 }
+/// Order resolved socket addresses with IPv4 before IPv6 so VPNs/mobile networks without IPv6 routing
+/// do not fail immediately with ENETUNREACH (os error 101). If system DNS returns only IPv6, also query DoH A records.
+fn order_addrs_ipv4_first(addrs: Vec<std::net::SocketAddr>, host: &str, port: u16) -> Vec<std::net::SocketAddr> {
+    let mut v4: Vec<std::net::SocketAddr> = addrs.iter().copied().filter(|a| a.is_ipv4()).collect();
+    let v6: Vec<std::net::SocketAddr> = addrs.into_iter().filter(|a| a.is_ipv6()).collect();
+    if v4.is_empty() && host.parse::<std::net::IpAddr>().is_err() {
+        for ip in doh_lookup(host) {
+            if ip.is_ipv4() { v4.push(std::net::SocketAddr::new(ip, port)); }
+        }
+    }
+    v4.extend(v6);
+    v4
+}
+struct DohIpv4Resolver;
+impl ureq::Resolver for DohIpv4Resolver {
+    fn resolve(&self, netloc: &str) -> std::io::Result<Vec<std::net::SocketAddr>> {
+        use std::net::ToSocketAddrs;
+        let (host, port) = match netloc.rsplit_once(':') { Some((h, p)) => (h.trim_matches(|c| c == '[' || c == ']'), p.parse().unwrap_or(443)), None => (netloc, 443) };
+        let mut v4: Vec<std::net::SocketAddr> = if host.parse::<std::net::IpAddr>().is_err() {
+            doh_lookup(host).into_iter().filter(|ip| ip.is_ipv4()).map(|ip| std::net::SocketAddr::new(ip, port)).collect()
+        } else { Vec::new() };
+        if v4.is_empty() {
+            if let Ok(iter) = netloc.to_socket_addrs() {
+                v4.extend(iter.filter(|a| a.is_ipv4()));
+            }
+        }
+        if !v4.is_empty() { Ok(v4) } else { Err(std::io::Error::new(std::io::ErrorKind::NotFound, "no IPv4 address for this name")) }
+    }
+}
 impl ureq::Resolver for NetResolver {
     fn resolve(&self, netloc: &str) -> std::io::Result<Vec<std::net::SocketAddr>> {
         use std::net::ToSocketAddrs;
-        let sys = || netloc.to_socket_addrs().map(|i| i.collect::<Vec<_>>());
-        if let Ok(a) = sys() { if !a.is_empty() { return Ok(a); } }
-        std::thread::sleep(std::time::Duration::from_millis(1200));
-        let first = match sys() { Ok(a) if !a.is_empty() => return Ok(a), Ok(_) => None, Err(e) => Some(e) };
         let (host, port) = match netloc.rsplit_once(':') { Some((h, p)) => (h.trim_matches(|c| c == '[' || c == ']'), p.parse().unwrap_or(443)), None => (netloc, 443) };
+        let sys = || netloc.to_socket_addrs().map(|i| i.collect::<Vec<_>>());
+        if let Ok(a) = sys() {
+            let ordered = order_addrs_ipv4_first(a, host, port);
+            if !ordered.is_empty() { return Ok(ordered); }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        let first = match sys() {
+            Ok(a) if !a.is_empty() => {
+                let ordered = order_addrs_ipv4_first(a, host, port);
+                if !ordered.is_empty() { return Ok(ordered); }
+                None
+            }
+            Ok(_) => None,
+            Err(e) => Some(e),
+        };
         if host.parse::<std::net::IpAddr>().is_err() {
             let ips = doh_lookup(host);
             if !ips.is_empty() { return Ok(ips.into_iter().map(|ip| std::net::SocketAddr::new(ip, port)).collect()); }
@@ -542,18 +582,23 @@ impl ureq::Resolver for NetResolver {
 }
 fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
-    let agent = ureq::AgentBuilder::new()
-        .resolver(NetResolver)
+    let mk_agent = |r| ureq::AgentBuilder::new()
+        .resolver(r)
         .https_only(!cfg!(debug_assertions))
         .timeout_connect(std::time::Duration::from_secs(25))
         .timeout_read(std::time::Duration::from_secs(60))
         .redirects(5)
         .user_agent(concat!("Timotheos/", env!("CARGO_PKG_VERSION")))
         .build();
-    let resp = agent.get(url).call().map_err(|e| match e {
-        ureq::Error::Status(c, _) => format!("The site answered with error {c}."),
-        ureq::Error::Transport(t) => format!("No connection: {t}"),
-    })?;
+    let first_try = mk_agent(NetResolver).get(url).call();
+    let resp = match first_try {
+        Ok(r) => r,
+        Err(ureq::Error::Transport(_)) => mk_agent(DohIpv4Resolver).get(url).call().map_err(|e| match e {
+            ureq::Error::Status(c, _) => format!("The site answered with error {c}."),
+            ureq::Error::Transport(t) => format!("No connection: {t}"),
+        })?,
+        Err(ureq::Error::Status(c, _)) => return Err(format!("The site answered with error {c}.")),
+    };
     let total: u64 = resp.header("Content-Length").and_then(|v| v.parse().ok()).unwrap_or(0);
     if max > 0 && total > max { return Err("The file is larger than Timotheos downloads.".into()); }
     NET_TOTAL.store(total, Ordering::Relaxed);
