@@ -85,7 +85,7 @@
       const b = e.target.closest('.bvbible'); if (!b) return;
       keepOpen(); clearTimeout(intent); over = b;
       if (openFor === b) return;
-      intent = setTimeout(() => { if (over === b && openFor !== b) bibleMenu(b, +b.closest('.bv').dataset.i); }, 220);
+      intent = setTimeout(() => { if (over === b && openFor !== b) { const idx = b.dataset.bvIdx != null ? +b.dataset.bvIdx : (b.closest('.bv') ? +b.closest('.bv').dataset.i : -1); if (idx >= 0) bibleMenu(b, idx); } }, 220);
     });
     host.addEventListener('mouseout', e => {
       const b = e.target.closest('.bvbible'); if (!b) return;

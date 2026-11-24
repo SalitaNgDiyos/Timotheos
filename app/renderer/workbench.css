@@ -943,3 +943,14 @@ body.grabbing, body.grabbing * { cursor: grabbing !important; user-select: none 
 .modupd-list label { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; flex: 1; min-width: 0; }
 .modupd-list .mu-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .modupd-list .mu-meta { font-size: 11.5px; color: var(--muted); }
+
+/* Desktop Bible View header swap (0.6.102): Translation Name in top .dcap bar, Verse Picker + Nav tools in .bvcap below */
+.dcap .bvbible { color: var(--captext); font-weight: 700; flex: 0 1 auto; min-width: 0; max-width: 100%; margin-right: auto; padding: 3px 7px; }
+.dcap .bvbible:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
+.dgroup.isbv:not(.solo) .dcap .bvbible { display: none; }
+.bvcap .dnav { flex: 1 1 auto; min-width: 0; margin: 0; overflow: hidden; }
+.bvcap .dnav .navhdr1 { width: 100%; }
+.bvcap .dnav .navsteps { margin-left: auto; }
+.bvcap .dnav .navpill { color: var(--heading); background: color-mix(in srgb, var(--card) 55%, transparent); }
+.bvcap .dnav .navpill:hover { background: var(--card); }
+.bvcap .dnav .dbtn.navic { color: var(--text); }

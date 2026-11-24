@@ -594,7 +594,7 @@
     div.innerHTML = `<header class="dcap">
         <span class="dgrip" title="Drag to move this panel">${ic('grip', 14)}</span>
         <div class="dtabs">${tabs}</div>
-        ${ids.some(isBible) && window.TimotheosNav ? `<span class="dnav">${TimotheosNav.barHtml()}</span>` : ''}
+        ${ids.some(isBible) ? ((typeof document !== 'undefined' && document.documentElement.classList.contains('mobile')) ? (window.TimotheosNav ? `<span class="dnav">${TimotheosNav.barHtml()}</span>` : '') : `<button type="button" class="bvbible" data-a="bible" data-bv-idx="${isBible(act0) ? +act0.slice(2) : +ids.find(isBible).slice(2)}" title="Click to choose another Bible for this view · double-click to rename this view">${esc(PANELS.get(isBible(act0) ? act0 : ids.find(isBible)).title)}</button>`) : ''}
         <span class="dbtns">
           <button class="dbtn" data-act="skin" title="This panel's own fonts and colours">${ic('palette', 14)}</button>
           <button class="dbtn dzoom" data-act="zoom-" title="Smaller (Ctrl + mouse wheel down)">${ic('textDown', 15)}</button>
@@ -607,7 +607,7 @@
     const body = div.querySelector('.dbody');
     for (const id of ids) { const p = PANELS.get(id); body.appendChild(p.el); p.el.classList.toggle('hidden', id !== act0); }
     div.querySelector('.dcap').addEventListener('pointerdown', e => startDrag(e, div, g));
-    div.querySelector('.dcap').addEventListener('dblclick', e => { if (!e.target.closest('.dbtn')) toggleFloat(g.active); });
+    div.querySelector('.dcap').addEventListener('dblclick', e => { if (!e.target.closest('.dbtn, .bvbible, .bvrename')) toggleFloat(g.active); });
     div.querySelectorAll('.dtab').forEach(b => b.addEventListener('click', () => activate(b.dataset.id)));
     div.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', () => {
       const a = b.dataset.act;
@@ -807,7 +807,7 @@
   }
 
   function startDrag(e, groupDiv, g) {
-    if (e.button !== 0 || e.target.closest('.dbtn') || e.target.closest('.dnav')) return;
+    if (e.button !== 0 || e.target.closest('.dbtn') || e.target.closest('.dnav') || e.target.closest('.bvbible') || e.target.closest('.bvrename')) return;
     if (drag) cancelDrag();
     e.preventDefault();
     const tab = e.target.closest('.dtab');
@@ -1031,6 +1031,8 @@
       grpEl.style.setProperty('--cap', `var(--cap-${PANELS.get(id).cap})`);
       grpEl.classList.toggle('zoomable', !!(opts.zoomable && opts.zoomable(id)));
       grpEl.classList.toggle('isbv', isBible(id));
+      const bvb = grpEl.querySelector('.dcap .bvbible');
+      if (bvb && isBible(id)) { bvb.dataset.bvIdx = String(+id.slice(2)); bvb.textContent = PANELS.get(id).title; }
     } else render();
     saveSoon();
     if (opts.onActivate) opts.onActivate(id);
@@ -1125,6 +1127,7 @@
   function retitle(id, title) {
     const p = PANELS.get(id); if (!p || p.title === title) return; p.title = title;
     document.querySelectorAll(`.dtab[data-id="${id}"]`).forEach(b => { const sp = b.querySelector('span'); if (sp) sp.textContent = title; b.title = title + ' — drag to move'; });
+    if (isBible(id)) document.querySelectorAll(`.dcap .bvbible[data-bv-idx="${+id.slice(2)}"]`).forEach(b => { b.textContent = title; });
   }
 
   /** Bible views side by side (cols) or one under another (rows), inside the space they now take */

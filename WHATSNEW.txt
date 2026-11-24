@@ -1,3 +1,4 @@
-Timotheos 0.6.101
+Timotheos 0.6.102
 
-- Download modules cleanup: removed the redundant Timotheos repository from the Download modules dropdown, leaving SalitaNgDiyos Official, eBible.org, and any custom repositories you add.
+- Desktop Bible View header layout swap: moved the Translation Name selector to the top panel caption bar and placed the Verse Picker together with the Bible navigation tools (previous/next book, chapter, verse, and history) in the bar directly below it (desktop only).
+- Desktop new Bible View defaults: every new Bible View opened on desktop now starts with Strong's and Morph off, Words of Jesus on, Translator's Notes on, Headings on, Verse numbers on, Left text alignment, 1.35 line spacing, Lemmas off, and Intralinear View off.

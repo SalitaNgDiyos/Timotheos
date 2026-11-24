@@ -638,7 +638,15 @@ async function setViews(vs) {
 async function addView(bible, targetRect) {
   await ensureInfo(bible);
   if (targetRect && window.TimotheosDock && TimotheosDock.setNextRect) TimotheosDock.setNextRect(targetRect);
-  const vs = [...views(), { bible, linked: true }]; state.active = vs.length - 1;
+  const v = { bible, linked: true };
+  if (!document.documentElement.classList.contains('mobile')) {
+    v.show = { strongs: false, morph: false, woj: true, footnotes: true, headings: true, lemma: false, columns: false };
+    v.align = 'left';
+    const ap = window.TimotheosOptions ? TimotheosOptions.appearance() : {};
+    if (Math.abs((+ap.lineH || 1.65) - 1.35) > 0.001) v.lh = 1.35;
+    if (ap.vnPos === 'hidden') v.vnPos = 'inline';
+  }
+  const vs = [...views(), v]; state.active = vs.length - 1;
   await setViews(vs);
 }
 async function useBible(bible) {
@@ -664,7 +672,7 @@ function setActive(i, quiet) {
 window.setActiveView = setActive;
 window.addView = addView; window.closeView = closeView;
 window.setViewLayout = l => { save({ layout: l }); if (window.TimotheosDock) TimotheosDock.arrangeBible(l); renderChapter(); };
-function refreshPaneNames() { paneEls.forEach((_, i) => { const lbl = paneLabel(i); if (window.TimotheosDock) TimotheosDock.retitle('bv' + i, lbl); const b = paneEls[i].querySelector('.bvbible'); if (b && views()[i]) b.textContent = lbl; }); }
+function refreshPaneNames() { paneEls.forEach((_, i) => { const lbl = paneLabel(i); if (window.TimotheosDock) TimotheosDock.retitle('bv' + i, lbl); const b = paneEls[i].querySelector('.bvbible'); if (b && views()[i]) b.textContent = lbl; document.querySelectorAll(`.dcap .bvbible[data-bv-idx="${i}"]`).forEach(x => { x.textContent = lbl; }); }); }
 window.refreshPaneNames = refreshPaneNames;
 window.refreshPaneLooks = () => panes().forEach((sec, i) => { if (views()[i]) applyPaneLook(sec, i); });
 function toggleViewShow(i, key, on) {
@@ -703,7 +711,11 @@ function applyPaneLook(sec, i) {
   const ub = sec.querySelector('.bvul'); if (ub) ub.classList.toggle('on', !!(state.pen && state.pen.kind === 'ul'));
 }
 function paneHtml() {
-  return `<header class="bvcap"><button class="bvbible" data-a="bible" title="Choose the Bible of this view (double-click to rename this view)"></button><span class="bvref"></span><span class="grow"></span></header>
+  const mob = document.documentElement.classList.contains('mobile');
+  const capInner = mob
+    ? `<button class="bvbible" data-a="bible" title="Choose the Bible of this view (double-click to rename this view)"></button><span class="bvref"></span><span class="grow"></span>`
+    : `<span class="dnav">${window.TimotheosNav ? TimotheosNav.barHtml() : ''}</span><span class="bvref"></span>`;
+  return `<header class="bvcap">${capInner}</header>
       <div class="bvbody"><nav class="bvside" aria-label="Settings of this view">
         <button data-a="menu" class="bvmenubtn" title="What this view shows, and its options" aria-haspopup="true">${TimotheosIcons.icon('menu', 16)}</button>
         <span class="bvsep"></span>
@@ -745,9 +757,10 @@ function ensurePanes() {
     sec.dataset.i = i; sec.dataset.linked = v.linked ? '1' : '0';
     sec.classList.toggle('active', i === state.active);
     const lbl = paneLabel(i);
-    sec.querySelector('.bvbible').textContent = lbl;
+    const btitle = (inf ? inf.title + ' – ' : '') + 'click to choose another Bible for this view · double-click to rename this view';
+    const sb = sec.querySelector('.bvbible'); if (sb) { sb.textContent = lbl; sb.title = btitle; }
     if (window.TimotheosDock) TimotheosDock.retitle('bv' + i, lbl);
-    sec.querySelector('.bvbible').title = (inf ? inf.title + ' – ' : '') + 'click to choose another Bible for this view · double-click to rename this view';
+    document.querySelectorAll(`.dcap .bvbible[data-bv-idx="${i}"]`).forEach(x => { x.textContent = lbl; x.title = btitle; });
     sec.querySelector('.bvlink').classList.toggle('on', !!v.linked);
     { const wb = sec.querySelector('.bvwpop'); if (wb) { wb.classList.toggle('on', !!v.wpop); wb.setAttribute('aria-pressed', v.wpop ? 'true' : 'false');
       wb.title = v.wpop ? 'Word pop-ups: ON. The dictionary and morphology pop-up opens when you rest the mouse on a tagged word. Click to turn it off (then hold Shift and point at a word to see it).'
@@ -788,9 +801,12 @@ function setVerseNumbers(i, on) {
 function wireViews() {
   const host = $('#workbench');
   host.addEventListener('mousedown', e => { const sec = e.target.closest('.bv'); if (sec) setActive(+sec.dataset.i); }, true);
-  host.addEventListener('dblclick', e => { const b = e.target.closest('.bvbible'); if (b) { const sec = b.closest('.bv'); TimotheosViewUI.rename(+sec.dataset.i, b); } });
+  const bvIdxOf = el => { if (!el) return -1; if (el.dataset && el.dataset.bvIdx != null) return +el.dataset.bvIdx; const s = el.closest('.bv'); return s ? +s.dataset.i : -1; };
+  host.addEventListener('dblclick', e => { const b = e.target.closest('.bvbible'); if (b) { const idx = bvIdxOf(b); if (idx >= 0) TimotheosViewUI.rename(idx, b); } });
   host.addEventListener('focusin', e => { const sec = e.target.closest('.bv'); if (sec) setActive(+sec.dataset.i); });
   host.addEventListener('click', e => {
+    const topB = e.target.closest('.dcap .bvbible');
+    if (topB) { const idx = bvIdxOf(topB); if (idx >= 0) { setActive(idx); TimotheosViewUI.bibleMenu(topB, idx); } return; }
     const sec = e.target.closest('.bv'); if (!sec) return; const i = +sec.dataset.i; const v = views()[i];
     const refSpan = e.target.closest('.bvref');
     if (refSpan && refSpan.textContent && window.TimotheosNav) { setActive(i); TimotheosNav.openNavPopover('book', refSpan, i); return; }
@@ -1639,7 +1655,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.101')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.102')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
