@@ -1,0 +1,3 @@
+Timotheos 0.6.106
+
+- Release build fix: fixed Rust compilation errors in the IPv4/DoH network fallback helper and restored the mobile entry-point attribute so Linux, Windows, and Android installers build cleanly (includes PC config sync, Android/VPN IPv4 network fix, and panel-resize text-selection fix).

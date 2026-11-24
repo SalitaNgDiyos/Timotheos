@@ -580,20 +580,22 @@ impl ureq::Resolver for NetResolver {
         Err(first.unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no address for this name")))
     }
 }
-fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
-    if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
-    let mk_agent = |r| ureq::AgentBuilder::new()
+fn make_net_agent<R: ureq::Resolver + 'static>(r: R) -> ureq::Agent {
+    ureq::AgentBuilder::new()
         .resolver(r)
         .https_only(!cfg!(debug_assertions))
         .timeout_connect(std::time::Duration::from_secs(25))
         .timeout_read(std::time::Duration::from_secs(60))
         .redirects(5)
         .user_agent(concat!("Timotheos/", env!("CARGO_PKG_VERSION")))
-        .build();
-    let first_try = mk_agent(NetResolver).get(url).call();
+        .build()
+}
+fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
+    if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
+    let first_try = make_net_agent(NetResolver).get(url).call();
     let resp = match first_try {
         Ok(r) => r,
-        Err(ureq::Error::Transport(_)) => mk_agent(DohIpv4Resolver).get(url).call().map_err(|e| match e {
+        Err(ureq::Error::Transport(_)) => make_net_agent(DohIpv4Resolver).get(url).call().map_err(|e| match e {
             ureq::Error::Status(c, _) => format!("The site answered with error {c}."),
             ureq::Error::Transport(t) => format!("No connection: {t}"),
         })?,
@@ -745,8 +747,6 @@ fn linux_update(f: &std::path::Path, name: &str) -> Result<String, String> {
 #[cfg(not(target_os = "linux"))]
 fn linux_update(_f: &std::path::Path, _name: &str) -> Result<String, String> { Err("This system installs updates in another way.".into()) }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-
 /// HTTPS request helper for PC cloud config sync (Google Drive, Dropbox, Microsoft OneDrive)
 #[tauri::command]
 fn net_request(method: String, url: String, headers: std::collections::HashMap<String, String>, body: String) -> Result<Value, String> {
@@ -847,6 +847,7 @@ async fn oauth_auth(auth_url_template: String, timeout_secs: Option<u64>) -> Res
     }
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Linux: WebKitGTK's GPU compositing shows soft, blurred text while scrolling. Software compositing keeps it sharp.
     // Set before any web view exists; a value the user already set (even "0") is respected.
