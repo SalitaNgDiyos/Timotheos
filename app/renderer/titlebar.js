@@ -39,6 +39,8 @@
         ['Copy Verses…', sc('copyVerses'), 'copyVerses', 'copy'],
         ['Daily Readings', '', 'daily', 'study'],
         '-',
+        ['Panels', '', 'panels', 'layout'],
+        ['Detach edges', '', 'detachEdges', 'detach'],
         ['Reset Panel Layout', '', 'resetLayout', 'layout'],
         '-',
         ['Developer Tools', sc('devtools'), 'devtools'],
@@ -83,6 +85,13 @@
   function show(i) {
     close();
     const d = document.querySelector(`.tmdrop[data-i="${i}"]`); if (!d) return;
+    const detBtn = d.querySelector('button[data-cmd="detachEdges"]');
+    if (detBtn) {
+      const detOn = !!(window.TimotheosDock && TimotheosDock.detachMode && TimotheosDock.detachMode());
+      detBtn.classList.toggle('on', detOn);
+      const ic = detBtn.querySelector('.tmic');
+      if (ic) ic.innerHTML = TimotheosIcons.icon(detOn ? 'check' : 'detach', 15);
+    }
     d.classList.remove('hidden');
     document.querySelector(`.tmenu[data-i="${i}"]`).classList.add('on');
     open = i;

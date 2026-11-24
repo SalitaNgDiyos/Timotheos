@@ -60,7 +60,8 @@ button, select, input { font: inherit; color: inherit; }
 button { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
 button:hover { border-color: var(--accent); }
 button.icon { padding: 2px 9px; font-size: 16px; line-height: 1.2; }
-select, input[type=text], input[type=search] { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+select, input:not([type]), input[type=text], input[type=search], input[type=url], input[type=number], input[type=email], input[type=password], textarea { background: var(--card); color: var(--text); caret-color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 input:focus, select:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
 .hidden { display: none !important; }
 

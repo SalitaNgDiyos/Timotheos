@@ -515,9 +515,9 @@ async function copyDialog(range) {
         <label>Format <select id="cpPreset">${COPY_PRESETS.map(p => `<option value="${p.id}">${esc(p.label)}</option>`).join('')}<option value="custom">Custom…</option></select></label></div>
         <div class="col cpopts"><label><input type="checkbox" id="cpShort"> Short book names</label><label><input type="checkbox" id="cpText"> Plain text only (no formatting)</label><label><input type="checkbox" id="cpNoRef"> No header/footer for a single verse</label></div>
         <details id="cpCustom"><summary>Templates</summary><div class="grid2">
-          <label>Header <input id="cpHeader"></label><label>Footer <input id="cpFooter"></label>
-          <label>Each verse <input id="cpVerse"></label><label>Between verses <input id="cpSep"></label>
-          <label>Before each chapter <input id="cpChapter"></label><span class="small">%r range · %t Bible · %b book · %c chapter · %v verse · %T verse text · %n new line · (between verses %b %c %v mean the verse that follows)</span></div></details>
+          <label>Header <input type="text" id="cpHeader"></label><label>Footer <input type="text" id="cpFooter"></label>
+          <label>Each verse <input type="text" id="cpVerse"></label><label>Between verses <input type="text" id="cpSep"></label>
+          <label>Before each chapter <input type="text" id="cpChapter"></label><span class="small">%r range · %t Bible · %b book · %c chapter · %v verse · %T verse text · %n new line · (between verses %b %c %v mean the verse that follows)</span></div></details>
       </section>
     </div>
     <div id="cvSplit" class="cvsplit" title="Drag up or down to give more room to the settings or to the preview"></div>

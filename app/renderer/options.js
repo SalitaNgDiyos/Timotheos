@@ -699,17 +699,12 @@
     ensure(); apply(); loadMyFx();
     TimotheosIcons.fillIcons();
     wireForm();
-    $('#optionsBtn').onclick = () => open();
+    if ($('#optionsBtn')) $('#optionsBtn').onclick = () => open();
     { const fb = $('#fxImportBtn'); if (fb) { if (window.api && api.fxImport && !document.documentElement.classList.contains('sk')) fb.onclick = () => importMyFx(); else fb.closest('.fxrow').classList.add('hidden'); } }
     const detBtn = $('#detachBtn');
-    if (detBtn) detBtn.onclick = () => {
-      if (!window.TimotheosDock) return;
-      const on = TimotheosDock.toggleDetachMode();
-      syncDockToggles();
-      if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(on ? 'Detach edges ON — drag any panel edge inward to open space' : 'Detach edges OFF');
-    };
-    $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', fillSkinMenu); };
-    $('#panelsBtn').onclick = e => { e.stopPropagation(); togglePanelsDialog(); };
+    if (detBtn) detBtn.onclick = () => toggleDetachEdges();
+    if ($('#skinBtn')) $('#skinBtn').onclick = e => { e.stopPropagation(); toggleMenu('#skinMenu', fillSkinMenu); };
+    if ($('#panelsBtn')) $('#panelsBtn').onclick = e => { e.stopPropagation(); togglePanelsDialog(); };
     document.addEventListener('mousedown', e => { if (!e.target.closest('.menuwrap')) document.querySelectorAll('#skinMenu').forEach(m => m.classList.add('hidden')); });
     const refreshOpenPanelsDlg = () => {
       const m = $('#panelsMenu');
@@ -908,11 +903,18 @@
       }
     };
   }
+  function toggleDetachEdges() {
+    if (!window.TimotheosDock) return false;
+    const on = TimotheosDock.toggleDetachMode();
+    syncDockToggles();
+    if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(on ? 'Detach edges ON — drag any panel edge inward to open space' : 'Detach edges OFF');
+    return on;
+  }
   function openPanelsDialog() {
     const m = $('#panelsMenu');
     if (m && m.classList.contains('hidden')) togglePanelsDialog();
     else if (m) fillPanelsMenu();
   }
 
-  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, openPanelsDialog, stepUiSize, syncDockToggles, startupAutoSync, scheduleAutoSyncPush, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
+  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, openPanelsDialog, togglePanelsDialog, toggleDetachEdges, stepUiSize, syncDockToggles, startupAutoSync, scheduleAutoSyncPush, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
 })();

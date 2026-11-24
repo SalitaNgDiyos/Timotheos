@@ -277,6 +277,7 @@ button.cpx:hover { color: var(--woj); }
 .cvstep .grid2 { grid-template-columns: minmax(0, 1fr); }
 .cvstep select, .cvstep input { width: 100%; min-width: 0; }
 .cvstep input[type=checkbox] { width: auto; }
+.cvstep input:not([type=checkbox]):not([type=radio]), .cvstep select, .cvstep textarea, #cpCustom input { background: var(--card); color: var(--text); caret-color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
 .cvmleft { overflow-x: hidden; }
 
 /* text size buttons */
@@ -901,8 +902,10 @@ html.mobile .toolbar .grow { display: none; }
 
 /* Firefox themes: the header picture runs across the title bar and the toolbar below the menus, as in the browser */
 html[data-fx] .titlebar, html[data-fx] #toolbar { background-color: var(--fx-frame) !important; background-image: var(--fx-img) !important; background-position: var(--fx-pos); background-repeat: var(--fx-rep); background-attachment: fixed; }
-html[data-fx] .titlebar { color: var(--fx-ftext) !important; }
-html[data-fx] #toolbar { color: var(--fx-ttext) !important; box-shadow: inset 0 0 0 100vmax var(--fx-toolbar); border-top-color: transparent; min-height: 52px; }
+html[data-fx] .titlebar { color: var(--fx-ftext) !important; height: 44px; }
+html[data-fx] #toolbar { color: var(--fx-ttext) !important; box-shadow: inset 0 0 0 100vmax var(--fx-toolbar); border-top-color: transparent; min-height: 26px; }
+html:not(.phone) #toolbar { display: none; }
+.tmdrop button.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 600; }
 html[data-fx] .titlebar button, html[data-fx] .titlebar .tbmenus > *, html[data-fx] #toolbar .tb { color: inherit; }
 html[data-fx] #toolbar .tb:hover, html[data-fx] .titlebar .tbmenus > *:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
 .swatch.fxsw { background-size: cover; }
