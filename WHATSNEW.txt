@@ -1,4 +1,4 @@
-Timotheos 0.6.116
+Timotheos 0.6.117
 
-- Fixed panel dragging when Detach edges is active so releasing a dragged panel outside a highlighted empty space (or over the Panels & Layouts dialog) cancels safely and keeps the panel in place instead of detaching it into an empty space, and ensured hidden Bible views restore cleanly into empty spaces.
-- Reduced desktop Bible view margins by three-quarters (from 24 px to 6 px in paragraph view, and from 14 px to 4 px in verse-by-verse view) to maximize reading width on PC.
+- Fixed mouse-hover verse preview popups for Scripture links inside a Bible view's Footnotes section (such as Old Testament links in amb+.nt), which were previously blocked inside Bible view panels.
+- Updated hover popup resolution so Old Testament and New Testament links inside NT-only or OT-only Bibles automatically fall back to an installed Bible that contains the target book.

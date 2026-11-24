@@ -74,11 +74,8 @@
 
     const opens = (openBibles || []).filter(id => installed.includes(id));
     for (const id of opens) if (hasBook(id)) return [id];
-    if (+b >= 67) {
-      for (const id of installed) if (hasBook(id)) return [id];
-    }
-    if (opens.length) return [opens[0]];
     for (const id of installed) if (hasBook(id)) return [id];
+    if (opens.length) return [opens[0]];
     return installed.length ? [installed[0]] : [];
   }
 

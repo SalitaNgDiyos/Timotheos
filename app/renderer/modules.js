@@ -1135,7 +1135,7 @@ function wireModules() {
     if (popupMode === 0) return;
     if (popupMode === 2 && !e.ctrlKey) return;
 
-    if (/^tw:\/\/bible/i.test(href) && !a.closest('.bv')) {
+    if (/^tw:\/\/bible/i.test(href)) {
       const bm = /^tw:\/\/bible\.([^?#]*)/i.exec(href);
       const modSpec = bm ? bm[1] : '*';
       const m = /[?&|]id=(\d+)\.(\d+)(?:\.(\d+))?(?:-\d+\.\d+\.(\d+))?/.exec(href);

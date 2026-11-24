@@ -1383,10 +1383,13 @@ async function versePreview(b, c, v1, v2, modSpec) {
   let targetIds = PB
     ? PB.resolvePopupTargets({ b, settings: state.settings, bibles: state.modules.bibles, infosMap: state.infos, openBibles: state.settings.openBibles, modSpec, resolveBibleSpecFn: resolveBibleSpec })
     : [];
-  // If a Deuterocanon link has no explicit selection yet and preloading is still in progress, check unloaded Bibles to find one with book b
-  if (!resolveBibleSpec(modSpec) && b >= 67 && PB && !PB.normalizePopupIds(state.settings.popupAP, state.modules.bibles.map(x => x.id)).length) {
-    const curInf = targetIds[0] ? await ensureInfo(targetIds[0]) : null;
-    if (!curInf || !curInf.books || !curInf.books[b]) {
+  // If the resolved Bible does not contain book b (e.g. OT footnote link hovered inside an NT-only Bible like amb+.nt),
+  // check installed Bibles to find one that actually has book b
+  if (PB && targetIds.length) {
+    const grpKey = PB.popupGroupKey ? PB.popupGroupKey(b) : (b >= 67 ? 'popupAP' : b >= 40 ? 'popupNT' : 'popupOT');
+    const explicitUser = grpKey ? PB.normalizePopupIds(state.settings[grpKey], state.modules.bibles.map(x => x.id)) : [];
+    const curInf = await ensureInfo(targetIds[0]);
+    if ((!curInf || !curInf.books || !curInf.books[b]) && !explicitUser.length) {
       for (const x of state.modules.bibles) {
         const inf = await ensureInfo(x.id, true);
         if (inf && inf.books && inf.books[b]) { targetIds = [x.id]; break; }
@@ -1441,7 +1444,7 @@ function wireHover() {
     if (t && !wordPopupAllowed(t, e.shiftKey)) t = null;   // a view with word pop-ups off: only with Shift
     if (t === hoverEl) return;
     hoverEl = t; clearTimeout(hoverTimer);
-    if (!t) { if (!e.target.closest('#popup')) hidePopupSoon(); return; }
+    if (!t) { if (!e.target.closest('#popup, a[data-href], a.xr')) hidePopupSoon(); return; }
     hoverTimer = setTimeout(() => showPopup(t), 280);
   });
   // Shift pressed while the mouse already rests on a word of a view that has word pop-ups off
@@ -1683,7 +1686,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.116')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.117')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

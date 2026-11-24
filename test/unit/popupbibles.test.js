@@ -130,3 +130,15 @@ ok(true, 'orderBiblesForChecklist pins selected Bibles at the top in their exact
 }
 
 console.log(`popupbibles tests: ${passed} ok`);
+
+// OT footnote link hovered while only an NT-only Bible (e.g. amb+.nt) is open falls back to an installed OT Bible
+{
+  const bibles = [{ id: 'amb+.nt' }, { id: 'kjv.ont' }];
+  const infos = new Map([
+    ['amb+.nt', { abbr: 'AMB', books: { 42: 24 } }],
+    ['kjv.ont', { abbr: 'KJV', books: { 23: 66, 42: 24 } }]
+  ]);
+  const res = pb.resolvePopupTargets({ b: 23, settings: {}, bibles, infosMap: infos, openBibles: ['amb+.nt'], modSpec: '*' });
+  assert.deepStrictEqual(res, ['kjv.ont'], 'OT link falls back to installed OT Bible when open Bible is NT-only');
+  console.log('ok - OT link in NT-only Bible resolves to installed OT Bible for hover preview');
+}
