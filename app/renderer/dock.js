@@ -652,8 +652,13 @@
   const overlapping = () => L.areas.some((p, i) => L.areas.some((q, j) => j > i && hit(p, q)));
   const setEdge = (pl, x) => { for (const o of pl.lo) o[pl.col ? 'x1' : 'y1'] = x; for (const o of pl.hi) o[pl.col ? 'x0' : 'y0'] = x; };
   /** drag one or two edges (a divider: one; a corner: two) with the mouse; nothing is ever allowed to overlap */
+  function clearSelection() {
+    try { const s = window.getSelection && window.getSelection(); if (s && s.rangeCount) s.removeAllRanges(); } catch (_) {}
+  }
   function dragEdges(e, plans, el, rerenderOnUp) {
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation();
+    document.body.classList.add('resizing');
+    clearSelection();
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
     const rect = $('#grid').getBoundingClientRect(); const start = [e.clientX, e.clientY];
     const per = plans.map(pl => pl.col ? view.w / rect.width : view.h / rect.height);
@@ -677,6 +682,8 @@
     const up = () => {
       if (done) return;
       done = true;
+      document.body.classList.remove('resizing');
+      clearSelection();
       for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up);
       for (const t of ['pointerup', 'pointercancel', 'mouseup', 'blur']) window.removeEventListener(t, up);
       if (rerenderOnUp || detachMode) render();
@@ -689,7 +696,9 @@
 
   /** in Detach edges mode: dragging a shared seam left/up shrinks only `a` inward; dragging right/down shrinks only `b` inward, opening empty space between them */
   function dragSeamDetached(e, a, b, col, el) {
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation();
+    document.body.classList.add('resizing');
+    clearSelection();
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
     const rect = $('#grid').getBoundingClientRect();
     const start = col ? e.clientX : e.clientY;
@@ -721,6 +730,8 @@
     const up = () => {
       if (done) return;
       done = true;
+      document.body.classList.remove('resizing');
+      clearSelection();
       for (const t of ['pointermove', 'pointerup', 'pointercancel', 'lostpointercapture']) el.removeEventListener(t, t === 'pointermove' ? move : up);
       for (const t of ['pointerup', 'pointercancel', 'mouseup', 'blur']) window.removeEventListener(t, up);
       render(); saveSoon();
@@ -737,6 +748,7 @@
       ? (col ? 'Detach mode: drag left to shrink the left panel, or right to shrink the right panel and create empty space' : 'Detach mode: drag up to shrink the top panel, or down to shrink the bottom panel and create empty space')
       : (col ? 'Drag to change the width of the panels beside this line' : 'Drag to change the height of the panels above and below this line');
     grid.appendChild(s); gutEls.push({ el: s, a, b, col });
+    s.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
     s.addEventListener('pointerdown', e => {
       if (detachMode) dragSeamDetached(e, a, b, col, s);
       else dragEdges(e, [edgePlan(col, col ? a.x1 : a.y1, new Set([a]), new Set([b]))], s, false);
@@ -748,6 +760,7 @@
     s.className = 'gut ' + (col ? 'h' : 'v') + ' free'; s.title = 'Drag to resize this edge freely into or out of empty space';
     grid.appendChild(s); gutEls.push({ el: s, a, b: null, col, free: f });
     const hiSide = f === 'x1' || f === 'y1';
+    s.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
     s.addEventListener('pointerdown', e => dragEdges(e, [edgePlan(col, a[f], new Set(hiSide ? [a] : []), new Set(hiSide ? [] : [a]))], s, true));
   }
 
@@ -757,6 +770,7 @@
     s.className = 'dcorner ' + (ys === 'y0' ? 't' : 'b') + (xs === 'x0' ? 'l' : 'r');
     s.title = 'Drag to resize from this corner';
     grid.appendChild(s); cornerEls.push({ el: s, a, xs, ys });
+    s.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
     s.addEventListener('pointerdown', e => {
       const hiX = xs === 'x1', hiY = ys === 'y1', cx = a[xs], cy = a[ys];
       const loX = new Set(hiX ? [a] : []), hiXs = new Set(hiX ? [] : [a]), loY = new Set(hiY ? [a] : []), hiYs = new Set(hiY ? [] : [a]);
