@@ -269,11 +269,12 @@
     if (!L || !wb) return [];
     const r = wb.getBoundingClientRect();
     if (!r.width || !r.height) return [];
-    const slots = (L.slots || []).filter(s => !L.areas.some(a => hit(a, s)));
+    const shownAreas = L.areas.filter(a => a.panels.some(id => PANELS.has(id)));
+    const slots = (L.slots || []).filter(s => !shownAreas.some(a => hit(a, s)));
     const validSlots = filterSpacesByMinPx(slots, r.width, r.height, view, minPxW, minPxH);
     const gMinW = Math.min(MINW, (minPxW / r.width) * view.w);
     const gMinH = Math.min(MINH, (minPxH / r.height) * view.h);
-    const occAreas = L.areas.concat(slots);
+    const occAreas = shownAreas.concat(slots);
     const freeRest = filterSpacesByMinPx(findEmptySpaces(occAreas, gMinW, gMinH), r.width, r.height, view, minPxW, minPxH);
     return validSlots.concat(freeRest);
   }
@@ -959,10 +960,7 @@
         const f = d.g; f.x = d.groupDiv.offsetLeft; f.y = d.groupDiv.offsetTop; clampFloat(d.groupDiv);
         f.x = parseInt(d.groupDiv.style.left); f.y = parseInt(d.groupDiv.style.top); saveSoon(); return;
       }
-      // dropped outside any empty space: float it without shifting or resizing any other panel
-      detach(d.id, true);
-      L.floats.push({ panels: [d.id], active: d.id, x: e.clientX - 40, y: e.clientY - 14, w: 380, h: 340 });
-      maxed = null; commit();
+      // Dropped outside any valid empty space (or over the Panels menu): cancel and keep panel safely in place
     } catch (err) {
       console.error('TimotheosDock drop error:', err);
       render();
@@ -1179,7 +1177,9 @@
   function add(p) {
     register(p);
     if (!L) return;
-    if (!locate(p.id)) {
+    const at = locate(p.id);
+    if (!at || at.hidden) {
+      if (at && at.hidden) L.hidden = L.hidden.filter(x => x !== p.id);
       if (nextAddRect && !L.areas.some(a => hit(a, nextAddRect))) {
         L.areas.push({ ...nextAddRect, panels: [p.id], active: p.id });
         if (Array.isArray(L.slots)) L.slots = L.slots.filter(s => !hit(s, nextAddRect));
@@ -1188,6 +1188,8 @@
         nextAddRect = null;
         placeHome(L, p.id);
       }
+    } else {
+      nextAddRect = null;
     }
     commit();
   }

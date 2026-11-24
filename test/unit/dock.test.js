@@ -139,4 +139,30 @@ for (let c = 1; c <= 4; c++) {
   }
 }
 
+
+// Placing a panel into an empty space with detachMode never removes or hides other Bible panels
+{
+  const lay = {
+    v: 3,
+    areas: [
+      { x0: 0, y0: 0, x1: 1, y1: 1.5, panels: ['bv0'], active: 'bv0' },
+      { x0: 1, y0: 0, x1: 2, y1: 1.5, panels: ['bv1'], active: 'bv1' },
+      { x0: 2, y0: 0, x1: 3, y1: 1.5, panels: ['bv2'], active: 'bv2' },
+      { x0: 3, y0: 0, x1: 4, y1: 1.5, panels: ['bv3'], active: 'bv3' },
+      { x0: 1, y0: 1.5, x1: 2.5, y1: 3, panels: ['cmt'], active: 'cmt' }
+    ],
+    floats: [],
+    hidden: ['bsearch']
+  };
+  const emptySp = { x0: 0, y0: 1.5, x1: 1, y1: 3 };
+  const sim = dock.computeSmartDrop(lay, 'bsearch', { space: emptySp }, true);
+  assert.ok(sim && sim.layout, 'computeSmartDrop into empty space succeeds');
+  const ids = sim.layout.areas.flatMap(a => a.panels);
+  for (const bv of ['bv0', 'bv1', 'bv2', 'bv3', 'cmt', 'bsearch']) {
+    assert.ok(ids.includes(bv), `panel ${bv} remains docked after drop into empty space`);
+  }
+  console.log('ok - dropping panel into empty space with detachMode keeps all Bible panels intact');
+}
+
+passed++;
 console.log(`dock: ${passed} ok`);

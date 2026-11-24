@@ -1,0 +1,4 @@
+Timotheos 0.6.116
+
+- Fixed panel dragging when Detach edges is active so releasing a dragged panel outside a highlighted empty space (or over the Panels & Layouts dialog) cancels safely and keeps the panel in place instead of detaching it into an empty space, and ensured hidden Bible views restore cleanly into empty spaces.
+- Reduced desktop Bible view margins by three-quarters (from 24 px to 6 px in paragraph view, and from 14 px to 4 px in verse-by-verse view) to maximize reading width on PC.
