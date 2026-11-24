@@ -54,8 +54,15 @@
   function armClose(m) { clearTimeout(leaveTimer); leaveTimer = setTimeout(() => { const f = m.querySelector('input:focus'); if (!f) { m.remove(); openFor = null; } }, 0); }   // goes the moment the mouse is off it (the menu sits right under the label: no gap to cross)
   function bibleMenu(btn, i) {
     const v = views()[i]; if (!v) return;
-    const lbl = b => { const inf = state.infos.get(b.id); return (inf ? inf.abbr : b.abbr) + '|' + (inf ? inf.title : b.name); };
-    const list = state.modules.bibles.map(b => { const inf = state.infos.get(b.id); const f = dupFile(state.modules.bibles, b, lbl); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(inf ? inf.abbr : b.abbr)}</b> <span class="small">${esc(inf ? inf.title : b.name)}${f ? ` <span class="dupf">· ${esc(f)}</span>` : ''}</span></button>`; }).join('');
+    const abbrOf = b => { const inf = state.infos.get(b.id); return String((inf ? inf.abbr : b.abbr) || ''); };
+    const titleOf = b => { const inf = state.infos.get(b.id); return String((inf ? inf.title : b.name) || ''); };
+    const lbl = b => abbrOf(b) + '|' + titleOf(b);
+    const sorted = [...state.modules.bibles].sort((a, b) =>
+      abbrOf(a).localeCompare(abbrOf(b), undefined, { sensitivity: 'base', numeric: true })
+      || titleOf(a).localeCompare(titleOf(b), undefined, { sensitivity: 'base', numeric: true })
+      || String(a.id).localeCompare(String(b.id))
+    );
+    const list = sorted.map(b => { const f = dupFile(sorted, b, lbl); return `<button data-b="${esc(b.id)}" class="${b.id === v.bible ? 'on' : ''}"><b>${esc(abbrOf(b))}</b> <span class="small">${esc(titleOf(b))}${f ? ` <span class="dupf">· ${esc(f)}</span>` : ''}</span></button>`; }).join('');
     paneMenu(btn, `<div class="mh">Name of this view</div>
       <div class="bvname"><input type="text" class="bvnameinp" maxlength="60" value="${esc((window.viewTitle && !document.documentElement.classList.contains('sk') && !document.documentElement.classList.contains('mobile')) ? window.viewTitle(i) : viewName(i))}" placeholder="Name of this view" aria-label="Name of this Bible view"><button type="button" class="bvsave">Save</button><button type="button" class="bvreset" title="Back to the Bible's own title">Reset</button></div>
       ${document.documentElement.classList.contains('sk') ? '<button type="button" class="bvinfo">About this Bible (module information)</button>' : ''}

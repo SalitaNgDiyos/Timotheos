@@ -1,0 +1,3 @@
+Timotheos 0.6.111
+
+- Sorted the "Bible of this view" dropdown list alphabetically (case-insensitive, by abbreviation and title) so installed Bibles are easier to find.
