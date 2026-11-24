@@ -1,4 +1,5 @@
-Timotheos 0.6.102
+Timotheos 0.6.103
 
-- Desktop Bible View header layout swap: moved the Translation Name selector to the top panel caption bar and placed the Verse Picker together with the Bible navigation tools (previous/next book, chapter, verse, and history) in the bar directly below it (desktop only).
-- Desktop new Bible View defaults: every new Bible View opened on desktop now starts with Strong's and Morph off, Words of Jesus on, Translator's Notes on, Headings on, Verse numbers on, Left text alignment, 1.35 line spacing, Lemmas off, and Intralinear View off.
+- Multi-device PC Config Sync (Options -> Sync): syncs your panel layouts, saved layouts, themes, fonts, colours, Bible View settings, shortcuts, and all other portable app settings across multiple PCs using Google Drive (Gmail account), Dropbox, or Microsoft OneDrive.
+- Two connection modes: instant Cloud-synced folder sync (with auto-detection for Google Drive, Dropbox, and OneDrive folders on Linux, Windows, and macOS) and direct OAuth 2.0 PKCE browser sign-in to each provider's private App Folder.
+- Automatic and manual sync: supports automatic startup and background sync plus manual Sync now, Push this PC -> Cloud, and Pull Cloud -> this PC controls while keeping machine-local module folder paths untouched.

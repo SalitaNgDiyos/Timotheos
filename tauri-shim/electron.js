@@ -50,6 +50,8 @@ const dialog = {
 const shell = {
   openExternal: u => hostCall('openUrl', u), openPath: p => hostCall('openPath', p),
   showItemInFolder: p => N.json('reveal', { p }),
+  netRequest: (m, u, hd, b) => hostCall('netRequest', m, u, hd, b),
+  oauthAuth: (tpl, secs) => hostCall('oauthAuth', tpl, secs),
   trashItem: async p => { N.json('trash', { p }); },
 };
 const clipboard = { readText: () => hostCall('clipRead'), write: o => hostCall('clipWrite', o) };

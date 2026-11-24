@@ -15,6 +15,7 @@ const searchLib = require('./lib/search');
 const modprops = require('./lib/modprops');
 const usermod = require('./lib/usermod');
 const twstudy = require('./lib/twstudy');
+const syncLib = require('./lib/sync');
 
 // [E3] Portable Mode detection: if "Timotheos Data" or "portable.json" exists next to the executable
 // (or TIMOTHEOS_PORTABLE_DIR is set), keep settings, imported modules, and study data there.
@@ -349,6 +350,9 @@ app.whenReady().then(async () => {
     }
     // [F1] Keep canon.js order in sync whenever apocryphaPlacement changes
     if (patch && patch.apocryphaPlacement) canon.setOrder(patch.apocryphaPlacement);
+    if (patch && Object.keys(patch).some(k => !syncLib.LOCAL_ONLY_KEYS.has(k))) {
+      settings.sync = Object.assign({ enabled: false, provider: 'gdrive', mode: 'folder', autoSync: true }, settings.sync || {}, { localUpdatedAt: new Date().toISOString() });
+    }
     saveSettings();
     return settings;
   });
@@ -450,6 +454,92 @@ app.whenReady().then(async () => {
     return rescanAll();
   });
   handle('modules:importedFolder', () => MODULES_DIR());
+  // Multi-device PC config sync (Google Drive / Gmail, Dropbox, Microsoft OneDrive)
+  const SYNC_TOKENS_FILE = () => path.join(app.getPath('userData'), 'sync-tokens.json');
+  const readSyncTokens = () => { try { return JSON.parse(fs.readFileSync(SYNC_TOKENS_FILE(), 'utf8')); } catch (e) { return {}; } };
+  const writeSyncTokens = t => { const f = SYNC_TOKENS_FILE(); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(t, null, 2), 'utf8'); };
+  const syncCfg = () => Object.assign({ enabled: false, provider: 'gdrive', mode: 'folder', folder: '', autoSync: true, lastSyncAt: '', lastDevice: '', lastAction: '', localUpdatedAt: '', clientIds: {}, clientSecrets: {} }, settings.sync || {});
+  const syncHttpReq = async (method, url, headers, body) => {
+    if (shell.netRequest) return await shell.netRequest(method, url, headers || {}, body || '');
+    const res = await fetch(url, { method, headers: headers || {}, body: (method === 'GET' || method === 'HEAD') ? undefined : (body || '') });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 240)}`);
+    return { status: res.status, body: text };
+  };
+  handle('sync:status', () => {
+    const cfg = syncCfg(), toks = readSyncTokens();
+    return { cfg, signedIn: { gdrive: !!(toks.gdrive && toks.gdrive.refreshToken), dropbox: !!(toks.dropbox && toks.dropbox.refreshToken), onedrive: !!(toks.onedrive && toks.onedrive.refreshToken) }, detected: syncLib.detectCloudFolders() };
+  });
+  handle('sync:detectFolders', () => syncLib.detectCloudFolders());
+  handle('sync:chooseFolder', async () => {
+    const r = await dialog.showOpenDialog(win, { title: 'Choose your Google Drive, Dropbox, or OneDrive folder', properties: ['openDirectory'] });
+    if (r.canceled || !r.filePaths[0]) return null;
+    return r.filePaths[0];
+  });
+  handle('sync:saveConfig', patch => {
+    settings.sync = Object.assign(syncCfg(), patch || {});
+    saveSettings();
+    return { cfg: settings.sync };
+  });
+  handle('sync:signOut', provider => {
+    const toks = readSyncTokens();
+    if (provider) delete toks[provider]; else for (const k of Object.keys(toks)) delete toks[k];
+    writeSyncTokens(toks);
+    return { ok: true };
+  });
+  handle('sync:oauthSignIn', async (provider, clientId, clientSecret) => {
+    if (!shell.oauthAuth) throw new Error('Direct browser OAuth sign-in is only supported in the desktop app.');
+    const cfg = syncCfg();
+    const cid = String(clientId || (cfg.clientIds && cfg.clientIds[provider]) || '').trim();
+    const csec = String(clientSecret || (cfg.clientSecrets && cfg.clientSecrets[provider]) || '').trim();
+    const pkce = syncLib.createPkcePair();
+    const tpl = syncLib.buildAuthUrl(provider, { clientId: cid, redirectUri: '__REDIRECT_URI__', challenge: pkce.challenge, state: pkce.state }).replace(encodeURIComponent('__REDIRECT_URI__'), '__REDIRECT_URI__');
+    const cb = await shell.oauthAuth(tpl, 180);
+    if (cb.state !== pkce.state) throw new Error('OAuth state mismatch. Please try again.');
+    const tok = await syncLib.exchangeOAuthCode(provider, { clientId: cid, clientSecret: csec, code: cb.code, redirectUri: cb.redirectUri, verifier: pkce.verifier }, syncHttpReq);
+    const all = readSyncTokens();
+    all[provider] = tok;
+    writeSyncTokens(all);
+    cfg.provider = provider;
+    cfg.mode = 'account';
+    cfg.enabled = true;
+    cfg.clientIds = Object.assign({}, cfg.clientIds || {}, { [provider]: cid });
+    if (csec) cfg.clientSecrets = Object.assign({}, cfg.clientSecrets || {}, { [provider]: csec });
+    settings.sync = cfg;
+    saveSettings();
+    return { ok: true, cfg };
+  });
+  handle('sync:run', async direction => {
+    const cfg = syncCfg();
+    if (!cfg.enabled && direction === 'auto') return { action: 'disabled' };
+    const dir = direction || 'auto';
+    let res;
+    if (cfg.mode === 'account') {
+      const toks = readSyncTokens();
+      let tok = toks[cfg.provider];
+      if (!tok || !tok.accessToken) throw new Error(`Sign in to ${syncLib.PROVIDERS[cfg.provider].name} first.`);
+      const cid = (cfg.clientIds && cfg.clientIds[cfg.provider]) || '';
+      const csec = (cfg.clientSecrets && cfg.clientSecrets[cfg.provider]) || '';
+      if (!tok.expiresAt || Date.now() >= tok.expiresAt) {
+        tok = await syncLib.refreshOAuthToken(cfg.provider, { clientId: cid, clientSecret: csec, refreshToken: tok.refreshToken }, syncHttpReq);
+        toks[cfg.provider] = tok; writeSyncTokens(toks);
+      }
+      res = await syncLib.syncWithCloud(cfg.provider, tok.accessToken, settings, syncHttpReq, { direction: dir, localUpdatedAt: cfg.localUpdatedAt, lastSyncAt: cfg.lastSyncAt });
+    } else {
+      if (!cfg.folder) throw new Error('Choose a Google Drive, Dropbox, or OneDrive folder first.');
+      res = syncLib.syncWithFolder(settings, cfg.folder, { direction: dir, localUpdatedAt: cfg.localUpdatedAt, lastSyncAt: cfg.lastSyncAt });
+    }
+    if (res.action === 'pulled' && res.settings) {
+      settings = Object.assign(res.settings, { sync: Object.assign(cfg, { lastSyncAt: res.updatedAt, lastDevice: res.device || '', lastAction: 'pulled', localUpdatedAt: res.updatedAt }) });
+      if (settings.apocryphaPlacement) canon.setOrder(settings.apocryphaPlacement);
+      saveSettings();
+      return { action: 'pulled', updatedAt: res.updatedAt, device: res.device, settings };
+    }
+    settings.sync = Object.assign(cfg, { lastSyncAt: res.updatedAt || new Date().toISOString(), lastDevice: res.device || '', lastAction: res.action });
+    saveSettings();
+    return { action: res.action, updatedAt: settings.sync.lastSyncAt, device: settings.sync.lastDevice, settings };
+  });
+
   handle('modules:describe', () => lib.describeAll());
   handle('book:open', id => lib.bookOpen(id));
   handle('book:about', id => lib.bookAbout(id));

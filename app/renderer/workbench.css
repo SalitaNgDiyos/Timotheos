@@ -954,3 +954,7 @@ body.grabbing, body.grabbing * { cursor: grabbing !important; user-select: none 
 .bvcap .dnav .navpill { color: var(--heading); background: color-mix(in srgb, var(--card) 55%, transparent); }
 .bvcap .dnav .navpill:hover { background: var(--card); }
 .bvcap .dnav .dbtn.navic { color: var(--text); }
+
+/* Options -> Sync (PC) */
+.syncbox { margin: 8px 0 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.syncacts { gap: 8px; margin-top: 10px; }

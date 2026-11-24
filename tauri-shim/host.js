@@ -129,6 +129,8 @@ async function hostOp(op, a) {
     }
     case 'openUrl': return openUrl(a[0]);
     case 'openPath': return openPath(a[0]);
+    case 'netRequest': return invoke('net_request', { method: a[0], url: a[1], headers: a[2] || {}, body: a[3] || '' });
+    case 'oauthAuth': return invoke('oauth_auth', { authUrlTemplate: a[0], timeoutSecs: a[1] || 180 });
     case 'clipRead': try { return await readText(); } catch (e) { return ''; }
     case 'clipWrite': {
       const o = a[0] || {};
@@ -173,6 +175,9 @@ const api = {
   listModules: () => call('modules:list'), rescan: () => call('modules:rescan'), addFolder: () => call('modules:addFolder'),
   removeFolder: p => call('modules:removeFolder', p), importDialog: () => call('modules:importDialog'), importFiles: (p, o) => call('modules:import', p, o),
   removeImported: f => call('modules:removeImported', f), setHiddenModules: ids => call('modules:setHidden', ids), locateModuleFolder: id => call('modules:locateFolder', id), deleteModuleFile: id => call('modules:deleteFile', id),
+  syncStatus: () => call('sync:status'), syncDetectFolders: () => call('sync:detectFolders'), syncChooseFolder: () => call('sync:chooseFolder'),
+  syncSaveConfig: cfg => call('sync:saveConfig', cfg), syncRun: dir => call('sync:run', dir),
+  syncOAuthSignIn: (p, cid, csec) => call('sync:oauthSignIn', p, cid, csec), syncSignOut: p => call('sync:signOut', p),
   importedFolder: () => call('modules:importedFolder'), describeModules: () => call('modules:describe'),
   pathForFile: () => '',
   bibleInfo: (id, o) => call('bible:info', id, o), nav: ids => call('bible:nav', ids), chapter: (ids, b, c) => call('bible:chapter', ids, b, c),

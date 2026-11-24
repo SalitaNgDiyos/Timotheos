@@ -701,6 +701,107 @@ fn linux_update(f: &std::path::Path, name: &str) -> Result<String, String> {
 fn linux_update(_f: &std::path::Path, _name: &str) -> Result<String, String> { Err("This system installs updates in another way.".into()) }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+
+/// HTTPS request helper for PC cloud config sync (Google Drive, Dropbox, Microsoft OneDrive)
+#[tauri::command]
+fn net_request(method: String, url: String, headers: std::collections::HashMap<String, String>, body: String) -> Result<Value, String> {
+    if !net_url_ok(&url) { return Err("Only https addresses are allowed.".into()); }
+    let agent = ureq::AgentBuilder::new()
+        .resolver(NetResolver)
+        .https_only(!cfg!(debug_assertions))
+        .timeout_connect(std::time::Duration::from_secs(15))
+        .timeout_read(std::time::Duration::from_secs(30))
+        .build();
+    let mut req = agent.request(&method.to_uppercase(), &url).set("User-Agent", "Timotheos/1.0");
+    for (k, v) in headers { req = req.set(&k, &v); }
+    let res = if body.is_empty() && matches!(method.to_uppercase().as_str(), "GET" | "HEAD" | "DELETE") {
+        req.call()
+    } else {
+        req.send_string(&body)
+    };
+    match res {
+        Ok(r) => {
+            let status = r.status();
+            let text = r.into_string().unwrap_or_default();
+            Ok(json!({ "status": status, "body": text }))
+        }
+        Err(ureq::Error::Status(code, r)) => {
+            let text = r.into_string().unwrap_or_default();
+            Err(format!("HTTP {code}: {}", text.chars().take(240).collect::<String>()))
+        }
+        Err(ureq::Error::Transport(t)) => Err(format!("No connection: {t}")),
+    }
+}
+
+/// Bind a local loopback listener on 127.0.0.1:0, open the OAuth URL in the default browser, and wait for the callback code.
+#[tauri::command]
+async fn oauth_auth(auth_url_template: String, timeout_secs: Option<u64>) -> Result<Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        let _ = (auth_url_template, timeout_secs);
+        return Err("OAuth desktop sync is only available on PC.".into());
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let secs = timeout_secs.unwrap_or(180).clamp(15, 300);
+        tauri::async_runtime::spawn_blocking(move || -> Result<Value, String> {
+            use std::io::{Read, Write};
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
+            let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+            let redirect_uri = format!("http://127.0.0.1:{port}/callback");
+            let encoded_redir = url::form_urlencoded::byte_serialize(redirect_uri.as_bytes()).collect::<String>();
+            let full_url = auth_url_template.replace("__REDIRECT_URI__", &encoded_redir);
+            if !net_url_ok(&full_url) { return Err("Invalid OAuth URL.".into()); }
+            #[cfg(target_os = "windows")]
+            { let _ = std::process::Command::new("cmd").args(["/C", "start", "", &full_url]).spawn(); }
+            #[cfg(target_os = "macos")]
+            { let _ = std::process::Command::new("open").arg(&full_url).spawn(); }
+            #[cfg(all(unix, not(target_os = "macos")))]
+            { let _ = std::process::Command::new("xdg-open").arg(&full_url).spawn(); }
+
+            listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(secs);
+            loop {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(5)));
+                        let mut buf = [0u8; 4096];
+                        let n = stream.read(&mut buf).unwrap_or(0);
+                        let req_line = String::from_utf8_lossy(&buf[..n]).lines().next().unwrap_or("").to_string();
+                        let path_q = req_line.split_whitespace().nth(1).unwrap_or("/");
+                        let parsed = url::Url::parse(&format!("http://127.0.0.1:{port}{path_q}")).map_err(|e| e.to_string())?;
+                        let mut code = String::new();
+                        let mut state = String::new();
+                        let mut err = String::new();
+                        for (k, v) in parsed.query_pairs() {
+                            if k == "code" { code = v.to_string(); }
+                            else if k == "state" { state = v.to_string(); }
+                            else if k == "error" { err = v.to_string(); }
+                        }
+                        let html = if err.is_empty() && !code.is_empty() {
+                            "<html><body style='font-family:sans-serif;text-align:center;padding:48px'><h2>Signed in to Timotheos</h2><p>You can close this browser tab and return to Timotheos.</p></body></html>"
+                        } else {
+                            "<html><body style='font-family:sans-serif;text-align:center;padding:48px'><h2>Sign-in cancelled</h2><p>You can close this tab and return to Timotheos.</p></body></html>"
+                        };
+                        let resp = format!("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}", html.len(), html);
+                        let _ = stream.write_all(resp.as_bytes());
+                        if !err.is_empty() { return Err(format!("Sign-in failed: {err}")); }
+                        if code.is_empty() { return Err("No authorization code received.".into()); }
+                        return Ok(json!({ "code": code, "state": state, "redirectUri": redirect_uri }));
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        if std::time::Instant::now() >= deadline {
+                            return Err("Sign-in timed out. Please try again.".into());
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(120));
+                    }
+                    Err(e) => return Err(e.to_string()),
+                }
+            }
+        }).await.map_err(|e| e.to_string())?
+    }
+}
+
 pub fn run() {
     // Linux: WebKitGTK's GPU compositing shows soft, blurred text while scrolling. Software compositing keeps it sharp.
     // Set before any web view exists; a value the user already set (even "0") is respected.
@@ -737,7 +838,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_get, net_progress, net_stop, net_sha256, update_run])
+        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_get, net_progress, net_stop, net_sha256, update_run, net_request, oauth_auth])
         .run(tauri::generate_context!())
         .expect("error while running Timotheos");
 }

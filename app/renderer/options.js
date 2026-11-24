@@ -683,6 +683,7 @@
       return `<button data-preset="${id}" class="presetbtn presetcard">${thumb(p.layout)}<span class="preset-txt"><b>${esc(ttl)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
     }).join('');
     $('#layoutPresets').querySelectorAll('[data-preset]').forEach(b => b.onclick = () => TimotheosDock.applyPreset(b.dataset.preset));
+    wireSyncPage(); loadSyncPage();
     page(pg || 'look');
     $('#optionsDlg').classList.remove('hidden');
     fillFontSelects();
@@ -724,5 +725,147 @@
     if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(`Menus & panels size ${next} px`);
   }
 
-  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, syncDockToggles, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
+  
+  /* ------------------------------------------------------------ Multi-device PC Config Sync UI */
+  let syncWired = false;
+  let autoPushTimer = null;
+  function applyPulledSettings(nextSettings) {
+    if (!nextSettings || typeof nextSettings !== 'object') return;
+    Object.assign(state.settings, nextSettings);
+    apply();
+    if (window.TimotheosDock && nextSettings.dock) TimotheosDock.setLayout(nextSettings.dock);
+    renderSavedLayouts();
+    if (typeof window.refreshPaneNames === 'function') window.refreshPaneNames();
+    if (typeof window.refreshPaneLooks === 'function') window.refreshPaneLooks();
+    if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash('Synced layouts & settings from cloud');
+  }
+  async function loadSyncPage() {
+    if (!window.api || !api.syncStatus) return;
+    const st = await api.syncStatus();
+    const cfg = st.cfg || {};
+    const en = $('#syncEnabled'), au = $('#syncAuto'), pr = $('#syncProvider'), mo = $('#syncMode');
+    const fl = $('#syncFolder'), cid = $('#syncClientId'), csec = $('#syncClientSecret');
+    if (en) en.checked = !!cfg.enabled;
+    if (au) au.checked = cfg.autoSync !== false;
+    if (pr) pr.value = cfg.provider || 'gdrive';
+    if (mo) mo.value = cfg.mode || 'folder';
+    if (fl) fl.value = cfg.folder || '';
+    const p = pr ? pr.value : 'gdrive';
+    if (cid) cid.value = (cfg.clientIds && cfg.clientIds[p]) || '';
+    if (csec) csec.value = (cfg.clientSecrets && cfg.clientSecrets[p]) || '';
+    const isAcc = (mo && mo.value === 'account');
+    const fb = $('#syncFolderBox'), ab = $('#syncAccountBox'), sr = $('#syncSecretRow');
+    if (fb) fb.classList.toggle('hidden', isAcc);
+    if (ab) ab.classList.toggle('hidden', !isAcc);
+    if (sr) sr.classList.toggle('hidden', p !== 'gdrive');
+    const signed = !!(st.signedIn && st.signedIn[p]);
+    const as = $('#syncAuthState'), so = $('#syncSignOutBtn');
+    if (as) as.textContent = signed ? 'Signed in' : 'Not signed in';
+    if (so) so.classList.toggle('hidden', !signed);
+    const det = st.detected || {};
+    const dr = $('#syncDetectedRow');
+    if (dr) {
+      const btns = [['gdrive', 'Use detected Google Drive'], ['dropbox', 'Use detected Dropbox'], ['onedrive', 'Use detected OneDrive']]
+        .filter(([k]) => !!det[k])
+        .map(([k, lbl]) => `<button type="button" data-det-p="${k}" data-det-dir="${esc(det[k])}">${lbl}</button>`).join('');
+      dr.innerHTML = btns ? `<span class="olbl">Detected</span>${btns}` : '';
+      dr.querySelectorAll('[data-det-dir]').forEach(b => b.onclick = async () => {
+        if (pr) pr.value = b.dataset.detP;
+        if (fl) fl.value = b.dataset.detDir;
+        if (en) en.checked = true;
+        await api.syncSaveConfig({ enabled: true, provider: b.dataset.detP, mode: 'folder', folder: b.dataset.detDir });
+        loadSyncPage();
+      });
+    }
+    const msg = $('#syncStatusMsg');
+    if (msg) {
+      msg.textContent = cfg.lastSyncAt
+        ? `Last synced: ${new Date(cfg.lastSyncAt).toLocaleString()} (${cfg.lastAction || 'ok'}${cfg.lastDevice ? ' · ' + cfg.lastDevice : ''})`
+        : 'Not synced yet.';
+    }
+  }
+  function wireSyncPage() {
+    if (syncWired || !$('#syncProvider') || !window.api || !api.syncStatus) return;
+    syncWired = true;
+    const persist = async () => {
+      const p = $('#syncProvider').value;
+      const st = await api.syncStatus();
+      const cids = Object.assign({}, (st.cfg && st.cfg.clientIds) || {}, { [p]: ($('#syncClientId').value || '').trim() });
+      const csecs = Object.assign({}, (st.cfg && st.cfg.clientSecrets) || {});
+      if (p === 'gdrive') csecs.gdrive = ($('#syncClientSecret').value || '').trim();
+      await api.syncSaveConfig({
+        enabled: $('#syncEnabled').checked,
+        autoSync: $('#syncAuto').checked,
+        provider: p,
+        mode: $('#syncMode').value,
+        folder: ($('#syncFolder').value || '').trim(),
+        clientIds: cids,
+        clientSecrets: csecs,
+      });
+      loadSyncPage();
+    };
+    ['#syncEnabled', '#syncAuto', '#syncMode'].forEach(sel => { const el = $(sel); if (el) el.onchange = persist; });
+    $('#syncProvider').onchange = async () => {
+      await api.syncSaveConfig({ provider: $('#syncProvider').value });
+      loadSyncPage();
+    };
+    ['#syncClientId', '#syncClientSecret'].forEach(sel => { const el = $(sel); if (el) el.onchange = persist; });
+    $('#syncChooseFolderBtn').onclick = async () => {
+      const f = await api.syncChooseFolder();
+      if (!f) return;
+      $('#syncFolder').value = f;
+      $('#syncEnabled').checked = true;
+      await persist();
+    };
+    $('#syncSignInBtn').onclick = async () => {
+      const msg = $('#syncStatusMsg');
+      try {
+        await persist();
+        if (msg) msg.textContent = 'Opening browser for sign-in…';
+        await api.syncOAuthSignIn($('#syncProvider').value, $('#syncClientId').value.trim(), $('#syncClientSecret').value.trim());
+        if (msg) msg.textContent = 'Signed in successfully! Click Sync now to sync your config.';
+        loadSyncPage();
+      } catch (e) { if (msg) msg.textContent = 'Sign-in error: ' + e.message; }
+    };
+    $('#syncSignOutBtn').onclick = async () => {
+      await api.syncSignOut($('#syncProvider').value);
+      loadSyncPage();
+    };
+    const run = async dir => {
+      const msg = $('#syncStatusMsg');
+      if (msg) msg.textContent = 'Syncing…';
+      try {
+        await persist();
+        const r = await api.syncRun(dir);
+        if (r && r.action === 'pulled' && r.settings) applyPulledSettings(r.settings);
+        if (msg) msg.textContent = r.action === 'pushed' ? 'Pushed this PC’s layouts & settings to cloud.' : r.action === 'pulled' ? 'Pulled latest layouts & settings from cloud.' : 'Already up to date.';
+        loadSyncPage();
+      } catch (e) { if (msg) msg.textContent = 'Sync failed: ' + e.message; }
+    };
+    $('#syncNowBtn').onclick = () => run('auto');
+    $('#syncPushBtn').onclick = () => run('push');
+    $('#syncPullBtn').onclick = () => run('pull');
+  }
+  async function startupAutoSync() {
+    if (document.documentElement.classList.contains('mobile') || !window.api || !api.syncStatus) return;
+    try {
+      const st = await api.syncStatus();
+      if (!st || !st.cfg || !st.cfg.enabled || st.cfg.autoSync === false) return;
+      const r = await api.syncRun('auto');
+      if (r && r.action === 'pulled' && r.settings) applyPulledSettings(r.settings);
+    } catch (e) { /* quiet startup sync */ }
+  }
+  function scheduleAutoSyncPush() {
+    if (document.documentElement.classList.contains('mobile') || !window.api || !api.syncStatus) return;
+    clearTimeout(autoPushTimer);
+    autoPushTimer = setTimeout(async () => {
+      try {
+        const st = await api.syncStatus();
+        if (!st || !st.cfg || !st.cfg.enabled || st.cfg.autoSync === false) return;
+        await api.syncRun('auto');
+      } catch (e) { /* quiet background sync */ }
+    }, 4000);
+  }
+
+  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, syncDockToggles, startupAutoSync, scheduleAutoSyncPush, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
 })();

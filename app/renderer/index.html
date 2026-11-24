@@ -257,6 +257,7 @@
         <button data-o="speech" data-icon="speaker">Read aloud</button>
         <button data-o="mods" data-icon="puzzle">Modules</button>
         <button data-o="keys" data-icon="keyboard">Shortcuts</button>
+        <button data-o="sync" class="nophone" data-icon="refresh">Sync (PC)</button>
       </nav>
       <div class="optpages">
         <section class="optpage" data-o="look">
@@ -374,6 +375,48 @@
           <p class="small">Click any shortcut button below and press the new key or key combination. Press <kbd>Backspace</kbd> to clear a shortcut or <kbd>Esc</kbd> to cancel.</p>
           <div class="orow"><button id="resetShortcutsBtn">Reset all shortcuts to default</button></div>
           <div id="optKeysList"></div>
+        </section>
+        <section class="optpage hidden nophone" data-o="sync">
+          <h4>Multi-device PC Config Sync</h4>
+          <p class="small">Sync your panel layouts, saved layouts, themes, fonts, colours, Bible View preferences, shortcuts, and all other app settings across your computers using <b>Google Drive (Gmail)</b>, <b>Dropbox</b>, or <b>Microsoft OneDrive</b>. Machine-specific module folder paths stay local to each PC.</p>
+          <div class="orow"><label><input type="checkbox" id="syncEnabled"> Enable PC config sync</label></div>
+          <div class="orow"><label><input type="checkbox" id="syncAuto" checked> Sync automatically on startup and when layouts or settings change</label></div>
+          <div class="orow">
+            <span class="olbl">Cloud provider</span>
+            <select id="syncProvider">
+              <option value="gdrive">Google Drive (Gmail account)</option>
+              <option value="dropbox">Dropbox</option>
+              <option value="onedrive">Microsoft OneDrive</option>
+            </select>
+          </div>
+          <div class="orow">
+            <span class="olbl">Connection mode</span>
+            <select id="syncMode">
+              <option value="folder">Cloud-synced folder (instant, works with desktop Google Drive / Dropbox / OneDrive)</option>
+              <option value="account">Direct cloud account sign-in (OAuth 2.0 in browser)</option>
+            </select>
+          </div>
+          <div id="syncFolderBox" class="syncbox">
+            <div class="orow"><span class="olbl">Sync folder</span><input id="syncFolder" type="text" readonly placeholder="No folder selected" style="flex:1"><button type="button" id="syncChooseFolderBtn">Choose folder…</button></div>
+            <div class="orow" id="syncDetectedRow"></div>
+            <p class="small">Timotheos saves <code>Timotheos/timotheos-config-sync.json</code> inside this folder so your cloud app syncs it across all your PCs.</p>
+          </div>
+          <div id="syncAccountBox" class="syncbox hidden">
+            <div class="orow"><span class="olbl">OAuth Client ID</span><input id="syncClientId" type="text" placeholder="Paste your Google / Dropbox / Microsoft OAuth Client ID" style="flex:1"></div>
+            <div class="orow" id="syncSecretRow"><span class="olbl">Client Secret (optional)</span><input id="syncClientSecret" type="password" placeholder="Optional (Google Desktop OAuth)" style="flex:1"></div>
+            <div class="orow">
+              <button type="button" id="syncSignInBtn" class="primary">Sign in in browser…</button>
+              <button type="button" id="syncSignOutBtn" class="hidden">Sign out</button>
+              <span id="syncAuthState" class="small">Not signed in</span>
+            </div>
+            <p class="small">Signs in directly via your browser using OAuth 2.0 PKCE and stores <code>timotheos-config-sync.json</code> privately in your provider's App Folder (Google Drive <code>appDataFolder</code>, Dropbox App Folder, or OneDrive <code>approot</code>).</p>
+          </div>
+          <div class="orow syncacts">
+            <button type="button" id="syncNowBtn" class="primary">Sync now</button>
+            <button type="button" id="syncPushBtn">Push this PC → Cloud</button>
+            <button type="button" id="syncPullBtn">Pull Cloud → this PC</button>
+          </div>
+          <p id="syncStatusMsg" class="small"></p>
         </section>
       </div>
     </div>

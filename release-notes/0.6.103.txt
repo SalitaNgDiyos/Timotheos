@@ -1,0 +1,5 @@
+Timotheos 0.6.103
+
+- Multi-device PC Config Sync (Options -> Sync): syncs your panel layouts, saved layouts, themes, fonts, colours, Bible View settings, shortcuts, and all other portable app settings across multiple PCs using Google Drive (Gmail account), Dropbox, or Microsoft OneDrive.
+- Two connection modes: instant Cloud-synced folder sync (with auto-detection for Google Drive, Dropbox, and OneDrive folders on Linux, Windows, and macOS) and direct OAuth 2.0 PKCE browser sign-in to each provider's private App Folder.
+- Automatic and manual sync: supports automatic startup and background sync plus manual Sync now, Push this PC -> Cloud, and Pull Cloud -> this PC controls while keeping machine-local module folder paths untouched.
