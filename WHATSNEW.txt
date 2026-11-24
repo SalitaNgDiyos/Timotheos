@@ -1,4 +1,3 @@
-Timotheos 0.6.109
+Timotheos 0.6.110
 
-- Removed theWord Official from the Download modules repository list, keeping SalitaNgDiyos Official, WordModules.com (theWord), eBible.org, and any custom repositories you add.
-- Filtered out encrypted and locked downloadable files (including .ontx, .otx, .ntx, and encrypted or locked catalog entries) across all repositories so only usable unencrypted modules appear in Download modules.
+- Updated the default settings template for every new desktop Bible view: Strong's and Morph off, Words of Jesus on, Translator's Notes on, Headings on, Verse numbers on, Left alignment, 1.25 line spacing, Lemmas off, Intralinear View off, Added words in italics on, Cross-references on (written out in the text off), Commentary links off, and Show the module's tags off.
