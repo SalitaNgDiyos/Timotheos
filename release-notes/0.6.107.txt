@@ -1,0 +1,4 @@
+Timotheos 0.6.107
+
+- Added theWord Official and WordModules.com repositories to Download modules on both PC and Android.
+- Added theWord XML repository parser (<modules>) so both pre-listed theWord repositories and custom theWord XML repository URLs work in Download modules (filtering out paid modules and .exe installers so every listed item imports cleanly).

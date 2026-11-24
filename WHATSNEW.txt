@@ -1,3 +1,4 @@
-Timotheos 0.6.106
+Timotheos 0.6.107
 
-- Release build fix: fixed Rust compilation errors in the IPv4/DoH network fallback helper and restored the mobile entry-point attribute so Linux, Windows, and Android installers build cleanly (includes PC config sync, Android/VPN IPv4 network fix, and panel-resize text-selection fix).
+- Added theWord Official and WordModules.com repositories to Download modules on both PC and Android.
+- Added theWord XML repository parser (<modules>) so both pre-listed theWord repositories and custom theWord XML repository URLs work in Download modules (filtering out paid modules and .exe installers so every listed item imports cleanly).

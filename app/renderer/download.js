@@ -9,6 +9,8 @@ const TimotheosDownload = (() => {
   const DEFAULTS = {
     officialUser: 'SalitaNgDiyos',
     officialApi: 'https://api.github.com/users/SalitaNgDiyos/repos?per_page=100',
+    theword: 'https://www.theword.net/app/downloadmodules/module.list.php',
+    wordmodules: 'https://www.theword.net/app/downloadmodules/wordmodulescom.list.php',
     catalog: 'https://raw.githubusercontent.com/SalitaNgDiyos/Timotheos/timotheos-tauri/catalog/catalog.json',
     ebible: 'https://ebible.org/Scriptures/'
   };
@@ -27,8 +29,11 @@ const TimotheosDownload = (() => {
   }
   const userRepos = () => (typeof state !== 'undefined' && Array.isArray(state.settings.repos) ? state.settings.repos : []).filter(r => r && r.url);
   function repos() {
+    const p = places();
     return [
       { id: 'official', name: 'SalitaNgDiyos Official', official: true },
+      { id: 'theword', name: 'theWord Official', url: p.theword },
+      { id: 'wordmodules', name: 'WordModules.com (theWord)', url: p.wordmodules },
       { id: 'ebible', name: 'eBible.org', ebible: true }
     ].concat(userRepos().map((r, i) => ({ id: 'u' + i, name: r.name || r.url, url: r.url, user: true })));
   }
@@ -207,8 +212,57 @@ const TimotheosDownload = (() => {
     }).sort((a, b) => a.language.localeCompare(b.language) || a.title.localeCompare(b.title));
   }
 
+  function decodeXmlEnt(s) {
+    return String(s || '')
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+      .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+      .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  }
+  function xmlAttrs(tag) {
+    const out = {};
+    for (const m of String(tag || '').matchAll(/([A-Za-z0-9_:-]+)\s*=\s*"([^"]*)"/g)) {
+      out[m[1].toLowerCase()] = decodeXmlEnt(m[2]);
+    }
+    return out;
+  }
+  const TW_LANGS = { eng: 'English', grc: 'Greek', heb: 'Hebrew', por: 'Portuguese', spa: 'Spanish', fra: 'French', deu: 'German', ita: 'Italian', rus: 'Russian', ara: 'Arabic', zho: 'Chinese', tgl: 'Tagalog', lat: 'Latin', nld: 'Dutch', pol: 'Polish', kor: 'Korean', jpn: 'Japanese' };
+  const TW_IMPORTABLE_RE = /\.(twzip|zip|7z|rar|tar|gz|bz2|xz|zst|ont|ot|nt|twm|ontx|otx|ntx|usfm|sfm|usfx|mybible)$/i;
+  function readTheWordXml(text, base) {
+    const clean = String(text || '').replace(/^\uFEFF/, '');
+    const rootM = /<modules\b([^>]*)>/i.exec(clean);
+    if (!rootM) throw new Error('Not a valid theWord XML repository.');
+    const rootA = xmlAttrs(rootM[1]);
+    const baseUrl = (rootA.baseurl || base || '').replace(/^http:\/\/www\.theword\.net\//i, 'https://www.theword.net/');
+    const mods = [];
+    for (const m of clean.matchAll(/<module\b([^>]*?)\/?>/gi)) {
+      const a = xmlAttrs(m[1]);
+      if (!a.title || !a.url) continue;
+      if (a.price || a.produrl) continue; // skip paid/store items
+      let u; try { u = new URL(a.url, baseUrl || base).href; } catch (e) { continue; }
+      u = u.replace(/^http:\/\/www\.theword\.net\//i, 'https://www.theword.net/');
+      if (!okUrl(u)) continue;
+      const file = decodeURIComponent(u.split(/[?#]/)[0].split('/').pop() || 'module').replace(/[\\/:*?"<>|]+/g, '_');
+      if (!TW_IMPORTABLE_RE.test(file) || /\.lng\.twzip$/i.test(file) || /^theword[.\-]/i.test(file)) continue;
+      const lang = TW_LANGS[(a.lang || '').toLowerCase()] || a.lang || '';
+      const ver = (a.vermajor && a.verminor) ? `v${a.vermajor}.${a.verminor}` : '';
+      const desc = [a.type, a.author, ver, a.verdate ? `updated ${a.verdate}` : ''].filter(Boolean).join(' · ');
+      const kb = +a.dlsizekb || 0;
+      mods.push({
+        id: u, title: a.title, language: lang, own: '', description: desc,
+        licence: a.author ? `Author: ${a.author}` : '', size: kb ? kb * 1024 : 0, file, url: u,
+        find: `${a.title} ${a.abbr || ''} ${lang} ${a.type || ''} ${a.author || ''} ${file}`.toLowerCase()
+      });
+    }
+    return {
+      name: rootA.source || 'theWord Repository',
+      about: `Free importable modules from ${rootA.source || 'this theWord repository'} (${mods.length} modules; paid items and .exe installers are filtered out).`,
+      modules: mods
+    };
+  }
   function readCatalog(text, base) {
-    let j; try { j = JSON.parse(text.replace(/^﻿/, '')); } catch (e) { throw new Error('This address does not hold a Timotheos catalog (it is not a JSON list of modules).'); }
+    const trimmed = String(text || '').replace(/^\uFEFF/, '').trim();
+    if (/^<\?xml|^<modules\b/i.test(trimmed)) return readTheWordXml(trimmed, base);
+    let j; try { j = JSON.parse(trimmed); } catch (e) { throw new Error('This address does not hold a Timotheos JSON catalog or theWord XML repository.'); }
     const list = Array.isArray(j) ? j : j && Array.isArray(j.modules) ? j.modules : null;
     if (!list) throw new Error('This address does not hold a Timotheos catalog (no "modules" list in it).');
     const mods = [];
@@ -460,7 +514,7 @@ const TimotheosDownload = (() => {
     await p;
     if (busy) net().stop();
   }
-  return { open, parseCsv, ebibleList, readCatalog, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, checkModuleUpdates, checkModuleUpdatesStartup };
+  return { open, parseCsv, ebibleList, readCatalog, readTheWordXml, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, checkModuleUpdates, checkModuleUpdatesStartup };
 })();
 if (typeof window !== 'undefined') window.TimotheosDownload = TimotheosDownload;
 if (typeof module !== 'undefined' && module.exports) module.exports = TimotheosDownload;

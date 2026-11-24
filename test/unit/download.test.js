@@ -48,4 +48,16 @@ ok(u3.length === 0, 'ignored release tag is not re-prompted');
 const u4 = dl.findModuleUpdates(parsed, [], { gbl_epv: { tag: '2026-11-20_0900', updatedAt: '2026-11-20T09:00:00Z' } }, {});
 ok(u4.length === 1 && u4[0].remoteLabel === '2026-11-23_0805', 'detects update when saved version tag is older');
 
+// 7. readTheWordXml parses theWord XML repositories, filters paid/.exe items, and upgrades http://www.theword.net
+const sampleXml = `<?xml version="1.0" encoding="utf-8"?>
+<modules source="www.theword.net" baseurl="http://www.theword.net/">
+  <module identifier="rmac" type="Dictionaries" abbr="RMAC" title="Robinson's Morphological Analysis" author="Maurice Robinson" lang="eng" url="bin/get.php/rmac.morphx.twzip" vermajor="1" verminor="0" verdate="2020-01-01" dlsizekb="200"/>
+  <module identifier="paid" type="Bibles" title="Paid Bible" url="bin/get.php/paid.ontx.exe" price="19.95" dlsizekb="1000"/>
+  <module identifier="exe" type="Bibles" title="Free Exe Bible" url="bin/get.php/akjv.ont.exe" dlsizekb="1000"/>
+  <module identifier="lng" type="Misc" title="Hebrew Lang" url="bin/get.php/hebrew.lng.twzip" dlsizekb="50"/>
+</modules>`;
+const xmlCat = dl.readCatalog(sampleXml, 'https://www.theword.net/app/downloadmodules/module.list.php');
+ok(xmlCat.name === 'www.theword.net' && xmlCat.modules.length === 1 && xmlCat.modules[0].url === 'https://www.theword.net/bin/get.php/rmac.morphx.twzip' && xmlCat.modules[0].size === 200 * 1024,
+  'readTheWordXml keeps free importable modules, filters paid/.exe/.lng items, and uses https');
+
 console.log(`download: ${passed} ok`);
