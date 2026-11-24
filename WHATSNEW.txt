@@ -1,5 +1,4 @@
-Timotheos 0.6.108
+Timotheos 0.6.109
 
-- Pop-out multi-monitor Panels & Layouts window: click the pop-out button in the Panels & Layouts dialog header to open it as a native OS window that you can drag anywhere across your monitor or onto a second monitor.
-- Close all panels & Design your layout: you can now close every panel (including the last Bible view, or via Close all panels in Panels & Layouts) to reveal a centered "Design your layout" button.
-- Word-style animated 4x3 grid designer with adjustable dotted edges: clicking "Design your layout" opens an interactive 1x1 to 4x3 table-style grid picker; confirming displays dotted blueprint lines whose edges you can drag to resize before dragging panels from Panels & Layouts into each slot.
+- Removed theWord Official from the Download modules repository list, keeping SalitaNgDiyos Official, WordModules.com (theWord), eBible.org, and any custom repositories you add.
+- Filtered out encrypted and locked downloadable files (including .ontx, .otx, .ntx, and encrypted or locked catalog entries) across all repositories so only usable unencrypted modules appear in Download modules.

@@ -48,16 +48,54 @@ ok(u3.length === 0, 'ignored release tag is not re-prompted');
 const u4 = dl.findModuleUpdates(parsed, [], { gbl_epv: { tag: '2026-11-20_0900', updatedAt: '2026-11-20T09:00:00Z' } }, {});
 ok(u4.length === 1 && u4[0].remoteLabel === '2026-11-23_0805', 'detects update when saved version tag is older');
 
-// 7. readTheWordXml parses theWord XML repositories, filters paid/.exe items, and upgrades http://www.theword.net
+// 7. Default repos exclude theWord Official and keep SalitaNgDiyos Official, WordModules.com, and eBible.org
+const repoIds = dl.repos().map(r => r.id);
+ok(!repoIds.includes('theword') && repoIds.includes('official') && repoIds.includes('wordmodules') && repoIds.includes('ebible'),
+  'default repos exclude theWord Official and keep SalitaNgDiyos Official, WordModules.com, and eBible.org');
+
+// 8. readTheWordXml parses theWord XML repositories, filters encrypted/locked/paid/.exe/non-module items, and uses https
 const sampleXml = `<?xml version="1.0" encoding="utf-8"?>
-<modules source="www.theword.net" baseurl="http://www.theword.net/">
-  <module identifier="rmac" type="Dictionaries" abbr="RMAC" title="Robinson's Morphological Analysis" author="Maurice Robinson" lang="eng" url="bin/get.php/rmac.morphx.twzip" vermajor="1" verminor="0" verdate="2020-01-01" dlsizekb="200"/>
+<modules source="wordmodules.com" baseurl="http://www.theword.net/">
+  <module identifier="comm1" type="Commentaries" abbr="MHC" title="Matthew Henry Commentary" author="Matthew Henry" lang="eng" url="bin/get.php/mhc.cmt.twm.7z" vermajor="1" verminor="0" verdate="2020-01-01" dlsizekb="200"/>
+  <module identifier="enc1" type="Bibles" title="Encrypted Bible" url="bin/get.php/esv.ontx.twzip" dlsizekb="1000"/>
+  <module identifier="enc2" type="Bibles" title="Raw Encrypted OT" url="bin/get.php/sample.otx" dlsizekb="800"/>
+  <module identifier="enc3" type="Bibles" title="Raw Encrypted NT" url="bin/get.php/sample.ntx.zip" dlsizekb="500"/>
+  <module identifier="enc4" type="Books" title="Locked Book" url="bin/get.php/book.gbk.twm.7z" encrypted="1" dlsizekb="400"/>
+  <module identifier="enc5" type="Books" title="Secure Book" url="bin/get.php/book2.gbk.twm.7z" secure="1" dlsizekb="400"/>
+  <module identifier="enc6" type="Books" title="Some Encrypted Commentary" url="bin/get.php/book3.cmt.twm.7z" dlsizekb="400"/>
   <module identifier="paid" type="Bibles" title="Paid Bible" url="bin/get.php/paid.ontx.exe" price="19.95" dlsizekb="1000"/>
+  <module identifier="sku1" type="Bibles" title="Store Bible" url="bin/get.php/store.ont.zip" sku="ABC123" dlsizekb="1000"/>
   <module identifier="exe" type="Bibles" title="Free Exe Bible" url="bin/get.php/akjv.ont.exe" dlsizekb="1000"/>
-  <module identifier="lng" type="Misc" title="Hebrew Lang" url="bin/get.php/hebrew.lng.twzip" dlsizekb="50"/>
+  <module identifier="lng" type="Language Files" title="Hebrew Lang" url="bin/get.php/hebrew.lng.twzip" dlsizekb="50"/>
+  <module identifier="skn" type="Skins" title="Dark Skin" url="bin/get.php/dark.skn.twzip" dlsizekb="50"/>
 </modules>`;
-const xmlCat = dl.readCatalog(sampleXml, 'https://www.theword.net/app/downloadmodules/module.list.php');
-ok(xmlCat.name === 'www.theword.net' && xmlCat.modules.length === 1 && xmlCat.modules[0].url === 'https://www.theword.net/bin/get.php/rmac.morphx.twzip' && xmlCat.modules[0].size === 200 * 1024,
-  'readTheWordXml keeps free importable modules, filters paid/.exe/.lng items, and uses https');
+const xmlCat = dl.readCatalog(sampleXml, 'https://www.theword.net/app/downloadmodules/wordmodulescom.list.php');
+ok(xmlCat.name === 'wordmodules.com' && xmlCat.modules.length === 1 && xmlCat.modules[0].url === 'https://www.theword.net/bin/get.php/mhc.cmt.twm.7z' && xmlCat.modules[0].size === 200 * 1024,
+  'readTheWordXml keeps free unencrypted modules, filters encrypted/locked/paid/.exe/non-module items, and uses https');
+
+// 9. JSON catalogs and official releases also filter out encrypted files
+const jsonCat = dl.readCatalog(JSON.stringify({
+  name: 'Custom',
+  modules: [
+    { title: 'Open Bible', url: 'https://example.org/kjv.ont.zip' },
+    { title: 'Locked Bible', url: 'https://example.org/esv.ontx.zip' },
+    { title: 'Flagged Book', url: 'https://example.org/book.gbk.twm', encrypted: true }
+  ]
+}), 'https://example.org/catalog.json');
+ok(jsonCat.modules.length === 1 && jsonCat.modules[0].title === 'Open Bible',
+  'JSON catalog filters out encrypted modules by extension and flag');
+
+const offWithEnc = dl.parseOfficialRelease(
+  { name: 'TestRepo', description: 'Test' },
+  {
+    tag_name: '1.0',
+    assets: [
+      { name: 'open.ont.zip', size: 100, browser_download_url: 'https://example.org/open.ont.zip' },
+      { name: 'secret.ontx.zip', size: 100, browser_download_url: 'https://example.org/secret.ontx.zip' }
+    ]
+  }
+);
+ok(offWithEnc.length === 1 && offWithEnc[0].file === 'open.ont.zip',
+  'parseOfficialRelease skips encrypted .ontx archives');
 
 console.log(`download: ${passed} ok`);

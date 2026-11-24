@@ -9,7 +9,6 @@ const TimotheosDownload = (() => {
   const DEFAULTS = {
     officialUser: 'SalitaNgDiyos',
     officialApi: 'https://api.github.com/users/SalitaNgDiyos/repos?per_page=100',
-    theword: 'https://www.theword.net/app/downloadmodules/module.list.php',
     wordmodules: 'https://www.theword.net/app/downloadmodules/wordmodulescom.list.php',
     catalog: 'https://raw.githubusercontent.com/SalitaNgDiyos/Timotheos/timotheos-tauri/catalog/catalog.json',
     ebible: 'https://ebible.org/Scriptures/'
@@ -32,7 +31,6 @@ const TimotheosDownload = (() => {
     const p = places();
     return [
       { id: 'official', name: 'SalitaNgDiyos Official', official: true },
-      { id: 'theword', name: 'theWord Official', url: p.theword },
       { id: 'wordmodules', name: 'WordModules.com (theWord)', url: p.wordmodules },
       { id: 'ebible', name: 'eBible.org', ebible: true }
     ].concat(userRepos().map((r, i) => ({ id: 'u' + i, name: r.name || r.url, url: r.url, user: true })));
@@ -86,6 +84,21 @@ const TimotheosDownload = (() => {
     return 'Module';
   }
 
+  const ENCRYPTED_FILE_RE = /\.(?:ontx|otx|ntx|twx|enc|encrypted|locked)(?:\.(?:twzip|zip|7z|rar|tar|gz|bz2|xz|zst))?$/i;
+  const ENCRYPTED_TEXT_RE = /\b(?:encrypted|locked|drm[- ]?protected|password[- ]?protected|requires\s+(?:a\s+)?(?:key|unlock|password))\b/i;
+  const TRUTHY_FLAG = v => v === true || v === 1 || /^(?:1|true|yes)$/i.test(String(v || '').trim());
+  function isEncryptedModule(info) {
+    if (!info) return false;
+    if (TRUTHY_FLAG(info.encrypted) || TRUTHY_FLAG(info.locked) || TRUTHY_FLAG(info.protected) || TRUTHY_FLAG(info.secure) || TRUTHY_FLAG(info.drm) || TRUTHY_FLAG(info.paid)) return true;
+    if (info.price || info.produrl || info.sku) return true;
+    const file = String(info.file || '');
+    const url = String(info.url || '').split(/[?#]/)[0];
+    if (ENCRYPTED_FILE_RE.test(file) || ENCRYPTED_FILE_RE.test(url)) return true;
+    const text = `${info.title || ''} ${info.description || ''} ${file}`;
+    if (ENCRYPTED_TEXT_RE.test(text)) return true;
+    return false;
+  }
+
   function parseOfficialRelease(repo, rel) {
     if (!repo || !rel || !Array.isArray(rel.assets)) return [];
     const repoName = String(repo.name || '');
@@ -96,6 +109,7 @@ const TimotheosDownload = (() => {
     for (const a of rel.assets) {
       if (!a || !a.name || !a.browser_download_url) continue;
       if (!MOD_EXT_RE.test(a.name)) continue;
+      if (isEncryptedModule({ file: a.name, url: a.browser_download_url, title: a.name })) continue;
       if (/source|timotheos|ibiblia/i.test(a.name) && /\.zip$/i.test(a.name)) continue;
       const modKey = normalizeModuleKey(a.name);
       const updatedAt = String(a.updated_at || pubDate || '');
@@ -226,7 +240,8 @@ const TimotheosDownload = (() => {
     return out;
   }
   const TW_LANGS = { eng: 'English', grc: 'Greek', heb: 'Hebrew', por: 'Portuguese', spa: 'Spanish', fra: 'French', deu: 'German', ita: 'Italian', rus: 'Russian', ara: 'Arabic', zho: 'Chinese', tgl: 'Tagalog', lat: 'Latin', nld: 'Dutch', pol: 'Polish', kor: 'Korean', jpn: 'Japanese' };
-  const TW_IMPORTABLE_RE = /\.(twzip|zip|7z|rar|tar|gz|bz2|xz|zst|ont|ot|nt|twm|ontx|otx|ntx|usfm|sfm|usfx|mybible)$/i;
+  const TW_IMPORTABLE_RE = /\.(twzip|zip|7z|rar|tar|gz|bz2|xz|zst|ont|ot|nt|twm|usfm|sfm|usfx|mybible)$/i;
+  const TW_NONMOD_TYPE_RE = /^(?:language files|skins|spelling dictionaries|program|help)$/i;
   function readTheWordXml(text, base) {
     const clean = String(text || '').replace(/^\uFEFF/, '');
     const rootM = /<modules\b([^>]*)>/i.exec(clean);
@@ -237,12 +252,13 @@ const TimotheosDownload = (() => {
     for (const m of clean.matchAll(/<module\b([^>]*?)\/?>/gi)) {
       const a = xmlAttrs(m[1]);
       if (!a.title || !a.url) continue;
-      if (a.price || a.produrl) continue; // skip paid/store items
+      if (TW_NONMOD_TYPE_RE.test((a.type || '').trim())) continue;
       let u; try { u = new URL(a.url, baseUrl || base).href; } catch (e) { continue; }
       u = u.replace(/^http:\/\/www\.theword\.net\//i, 'https://www.theword.net/');
       if (!okUrl(u)) continue;
       const file = decodeURIComponent(u.split(/[?#]/)[0].split('/').pop() || 'module').replace(/[\\/:*?"<>|]+/g, '_');
-      if (!TW_IMPORTABLE_RE.test(file) || /\.lng\.twzip$/i.test(file) || /^theword[.\-]/i.test(file)) continue;
+      if (isEncryptedModule({ ...a, file, url: u })) continue; // skip encrypted/locked/paid items
+      if (!TW_IMPORTABLE_RE.test(file) || /\.(?:lng|skn|chm)\.twzip$/i.test(file) || /^(?:theword[.\-]|spelling\.)/i.test(file)) continue;
       const lang = TW_LANGS[(a.lang || '').toLowerCase()] || a.lang || '';
       const ver = (a.vermajor && a.verminor) ? `v${a.vermajor}.${a.verminor}` : '';
       const desc = [a.type, a.author, ver, a.verdate ? `updated ${a.verdate}` : ''].filter(Boolean).join(' · ');
@@ -255,7 +271,7 @@ const TimotheosDownload = (() => {
     }
     return {
       name: rootA.source || 'theWord Repository',
-      about: `Free importable modules from ${rootA.source || 'this theWord repository'} (${mods.length} modules; paid items and .exe installers are filtered out).`,
+      about: `Free unencrypted modules from ${rootA.source || 'this theWord repository'} (${mods.length} modules; encrypted, paid, and .exe files are filtered out).`,
       modules: mods
     };
   }
@@ -271,6 +287,7 @@ const TimotheosDownload = (() => {
       let u; try { u = new URL(String(m.url), base).href; } catch (e) { continue; }
       if (!okUrl(u)) continue;
       const file = String(m.file || decodeURIComponent(u.split(/[?#]/)[0].split('/').pop()) || 'module').replace(/[\\/:*?"<>|]+/g, '_');
+      if (isEncryptedModule({ ...m, file, url: u })) continue;
       mods.push({ id: u, title: String(m.title), language: String(m.language || ''), own: '', description: [m.kind, m.description].filter(Boolean).join(' · '),
         licence: String(m.licence || m.license || ''), size: +m.size || 0, file, url: u,
         find: (m.title + ' ' + (m.language || '') + ' ' + (m.description || '') + ' ' + (m.kind || '')).toLowerCase() });
@@ -514,7 +531,7 @@ const TimotheosDownload = (() => {
     await p;
     if (busy) net().stop();
   }
-  return { open, parseCsv, ebibleList, readCatalog, readTheWordXml, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, checkModuleUpdates, checkModuleUpdatesStartup };
+  return { open, repos, isEncryptedModule, parseCsv, ebibleList, readCatalog, readTheWordXml, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, checkModuleUpdates, checkModuleUpdatesStartup };
 })();
 if (typeof window !== 'undefined') window.TimotheosDownload = TimotheosDownload;
 if (typeof module !== 'undefined' && module.exports) module.exports = TimotheosDownload;
