@@ -227,13 +227,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p out dl
-          find dl -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.exe' \) -exec cp {} out/ \;
-          n=0; for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Timotheos_android-test-${n}.apk"; done
+          V=$(node -p "require('./package.json').version")
+          for f in $(find dl -type f \( -name '*.deb' -o -name '*.AppImage' \)); do
+            bn=$(basename "$f")
+            case "$bn" in
+              *_Linux_*|*Linux*) cp "$f" "out/$bn" ;;
+              *) cp "$f" "out/$(echo "$bn" | sed -E 's/_(amd64|x86_64|arm64|aarch64)\./_Linux_\1./; t; s/\.(deb|AppImage)$/_Linux.\1/')" ;;
+            esac
+          done
+          for f in $(find dl -type f -name '*.exe'); do
+            bn=$(basename "$f")
+            case "$bn" in
+              *_Windows_*|*Windows*) cp "$f" "out/$bn" ;;
+              *) cp "$f" "out/$(echo "$bn" | sed -E 's/_(x64-setup|x64|x86)\./_Windows_\1./; t; s/\.exe$/_Windows.exe/')" ;;
+            esac
+          done
+          n=0; for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Timotheos_${V}_Android$([ $n -gt 1 ] && echo "-${n}").apk"; done
           # AGPL: the complete source of exactly this build travels with its files
           git archive --format=zip --prefix="timotheos-${GITHUB_SHA::7}/" -o "out/timotheos-source-${GITHUB_SHA::7}.zip" "$GITHUB_SHA"
           ls -la out
           TAG="build-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
-          V=$(node -p "require('./package.json').version")
           head -1 WHATSNEW.txt | grep -q "Timotheos $V" || { echo "WHATSNEW.txt must begin with: Timotheos $V"; exit 1; }
           { cat WHATSNEW.txt; echo; echo "Build ${GITHUB_RUN_NUMBER} of ${GITHUB_SHA::7}"; } > notes.txt
           gh release create "$TAG" -R "$GITHUB_REPOSITORY" --latest --target "$GITHUB_SHA" --title "Timotheos_$V" --notes-file notes.txt out/*
