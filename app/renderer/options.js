@@ -364,8 +364,11 @@
   function wirePanelsDlgChrome(m) {
     if (panelsDlgWired) return;
     panelsDlgWired = true;
-    m.innerHTML = `<div class="pm-dlg-head" title="Drag to move this dialog"><span class="pm-dlg-grip">${TimotheosIcons.icon('grip', 14)}</span><span class="pm-dlg-title">Panels &amp; Layouts</span><button type="button" class="pm-dlg-close" aria-label="Close Panels" title="Close">${TimotheosIcons.icon('close', 15)}</button></div><div class="pm-dlg-body"></div>`;
+    const canPopout = !!(window.TimotheosHost && TimotheosHost.openPanelsWindow && !document.documentElement.classList.contains('mobile'));
+    m.innerHTML = `<div class="pm-dlg-head" title="Drag to move this dialog">${TimotheosIcons.icon('grip', 14)}<span class="pm-dlg-title">Panels &amp; Layouts</span>${canPopout ? `<button type="button" class="pm-dlg-popout" aria-label="Pop out to separate window" title="Pop out to a separate window (drag to any monitor)">${TimotheosIcons.icon('float', 14)}</button>` : ''}<button type="button" class="pm-dlg-close" aria-label="Close Panels" title="Close">${TimotheosIcons.icon('close', 15)}</button></div><div class="pm-dlg-body"></div>`;
     m.querySelector('.pm-dlg-close').onclick = () => closePanelsDialog();
+    const po = m.querySelector('.pm-dlg-popout');
+    if (po) po.onclick = () => { closePanelsDialog(); TimotheosHost.openPanelsWindow(); setTimeout(broadcastPanelsState, 250); };
     const head = m.querySelector('.pm-dlg-head');
     head.addEventListener('pointerdown', e => {
       if (e.button !== 0 || e.target.closest('.pm-dlg-close')) return;
@@ -418,6 +421,7 @@
     body.innerHTML = `<div class="mh">Panels <span class="small">(click, hold &amp; drag)</span></div>${warn}${rows}
       <div class="msep"></div><div class="mh">Arranging</div>
       <button data-act="detach" class="${detOn ? 'on' : ''}">${TimotheosIcons.icon(detOn ? 'check' : 'detach', 15)}Detach adjacent edges <span class="small">(leave empty spaces)</span></button>
+      <button data-act="clearall">${TimotheosIcons.icon('close', 15)}Close all panels <span class="small">(design layout)</span></button>
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
 `;
@@ -443,6 +447,7 @@
       });
     });
     body.querySelector('[data-act="detach"]').onclick = () => { TimotheosDock.toggleDetachMode(); syncDockToggles(); fillPanelsMenu(); };
+    body.querySelector('[data-act="clearall"]').onclick = () => { TimotheosDock.clearAll(); fillPanelsMenu(); };
     body.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TimotheosDock.applyPreset(b.dataset.preset); fillPanelsMenu(); });
     body.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TimotheosDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); fillPanelsMenu(); });
     body.querySelector('[data-act="save"]').onclick = () => { saveLayoutAs(); };
@@ -711,7 +716,7 @@
       if (!m || m.classList.contains('hidden') || document.body.classList.contains('dragging')) return;
       fillPanelsMenu();
     };
-    window.addEventListener('timotheos:dock-change', refreshOpenPanelsDlg);
+    window.addEventListener('timotheos:dock-change', () => { refreshOpenPanelsDlg(); broadcastPanelsState(); });
     window.addEventListener('resize', () => { const m = $('#panelsMenu'); if (m && !m.classList.contains('hidden')) { clampPanelsDlg(m); refreshOpenPanelsDlg(); } });
     syncDockToggles();
   }
@@ -867,5 +872,47 @@
     }, 4000);
   }
 
-  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, stepUiSize, syncDockToggles, startupAutoSync, scheduleAutoSyncPush, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
+  
+  /* Cross-window BroadcastChannel bridge for popped-out multi-monitor Panels & Layouts window */
+  const panelsCh = typeof BroadcastChannel === 'function' ? new BroadcastChannel('timotheos-panels') : null;
+  function broadcastPanelsState() {
+    if (!panelsCh || !window.TimotheosDock) return;
+    const kinds = [{ id: 'newbv', title: 'Bible View' }, ...TimotheosDock.panels().filter(p => !TimotheosDock.isBible(p.id)).map(p => ({ id: p.id, title: p.title }))];
+    const spaces = TimotheosDock.findAvailableSpaces ? TimotheosDock.findAvailableSpaces().length : 0;
+    const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => ({ id, title: presetParts(p.label)[0] }));
+    panelsCh.postMessage({ type: 'state', state: { spaces, kinds, presets, detach: TimotheosDock.getDetachMode() } });
+  }
+  if (panelsCh) {
+    panelsCh.onmessage = async e => {
+      const msg = e.data || {};
+      if (msg.type === 'hello') return broadcastPanelsState();
+      if (msg.type === 'dockBack') { openPanelsDialog(); return; }
+      if (msg.type === 'preset') { TimotheosDock.applyPreset(msg.id); broadcastPanelsState(); return; }
+      if (msg.type === 'cmd') {
+        if (msg.cmd === 'detach') { TimotheosDock.toggleDetachMode(); syncDockToggles(); }
+        else if (msg.cmd === 'clearAll') TimotheosDock.clearAll();
+        else if (msg.cmd === 'save') saveLayoutAs();
+        broadcastPanelsState();
+        return;
+      }
+      if (msg.type === 'place') {
+        const sps = TimotheosDock.findAvailableSpaces ? TimotheosDock.findAvailableSpaces() : [];
+        if (!sps.length) return broadcastPanelsState();
+        if (msg.id === 'newbv') {
+          const bid = (state.settings.views[state.active] || {}).bible || (state.modules.bibles[0] && state.modules.bibles[0].id);
+          if (bid) await window.addView(bid, sps[0]);
+        } else {
+          TimotheosDock.placeInSpace(msg.id, sps[0]);
+        }
+        broadcastPanelsState();
+      }
+    };
+  }
+  function openPanelsDialog() {
+    const m = $('#panelsMenu');
+    if (m && m.classList.contains('hidden')) togglePanelsDialog();
+    else if (m) fillPanelsMenu();
+  }
+
+  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, openPanelsDialog, stepUiSize, syncDockToggles, startupAutoSync, scheduleAutoSyncPush, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
 })();

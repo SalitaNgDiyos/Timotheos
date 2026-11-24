@@ -144,6 +144,7 @@ async function hostOp(op, a) {
     case 'print': window.print(); return true;
     case 'devtools': return true;
     case 'guide': return openGuide(a[0]);
+    case 'panelsWindow': return openPanelsWindow();
   }
   throw new Error('unknown host operation ' + op);
 }
@@ -166,6 +167,13 @@ async function openGuide(skin) {
   const ex = await WebviewWindow.getByLabel('guide');
   if (ex) { try { await ex.setFocus(); return; } catch (e) { /* closed */ } }
   new WebviewWindow('guide', { url, title: 'Timotheos – User Guide', width: 980, height: 820, minWidth: 560, minHeight: 400 });
+}
+async function openPanelsWindow() {
+  if (isMobile) return false;
+  const ex = await WebviewWindow.getByLabel('panels');
+  if (ex) { try { await ex.setFocus(); return true; } catch (e) {} }
+  new WebviewWindow('panels', { url: 'panels.html', title: 'Timotheos – Panels & Layouts', width: 360, height: 640, minWidth: 300, minHeight: 380 });
+  return true;
 }
 
 /* ---------- window.api (the former preload.js) ---------- */
@@ -237,7 +245,7 @@ const net = {
     return how;
   },
 };
-window.TimotheosHost = { isMobile, isAndroid, info: () => info, seedBundled, net };
+window.TimotheosHost = { isMobile, isAndroid, info: () => info, seedBundled, net, openPanelsWindow };
 
 /* ---------- window buttons, dragging, size memory (computer only) ---------- */
 function windowButtons() {

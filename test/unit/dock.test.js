@@ -131,4 +131,12 @@ const afterOthers = afterDrop.layout.areas.filter(a => !a.panels.includes('cmt')
 ok(JSON.stringify(beforeOthers) === JSON.stringify(afterOthers),
   'dropping a panel into an empty space never moves, resizes, or splits any other existing panel');
 
+// 10. Blueprint grid designer creates exact non-overlapping cols x rows slots from 1x1 up to 4x3
+for (let c = 1; c <= 4; c++) {
+  for (let r = 1; r <= 3; r++) {
+    const sl = dock.createBlueprintSlots(c, r);
+    ok(sl.length === c * r && noOverlaps(sl), `createBlueprintSlots(${c}, ${r}) creates ${c * r} non-overlapping slots`);
+  }
+}
+
 console.log(`dock: ${passed} ok`);

@@ -100,6 +100,7 @@
     for (const f of out.floats) if (!f.panels.includes(f.active)) f.active = f.panels[0];
     out.hidden = keep(out.hidden);
     for (const id of PANELS.keys()) if (!seen.has(id)) placeHome(out, id, true); // e.g. a panel new in this version, or a new Bible view
+    out.slots = Array.isArray(out.slots) ? out.slots.filter(s => s && s.x1 - s.x0 > EPS && s.y1 - s.y0 > EPS && !out.areas.some(a => hit(a, s))) : [];
     return out;
   }
 
@@ -248,15 +249,33 @@
     });
   }
 
-  /** live empty spaces on the workbench that are at least 1in x 1in (96px x 96px) */
+  /** build an evenly divided cols x rows blueprint grid across the 4x3 workbench (1..4 cols, 1..3 rows) */
+  function createBlueprintSlots(cols, rows) {
+    const c = Math.max(1, Math.min(NC, parseInt(cols, 10) || 1));
+    const r = Math.max(1, Math.min(NR, parseInt(rows, 10) || 1));
+    const cw = NC / c, rh = NR / r;
+    const slots = [];
+    for (let ry = 0; ry < r; ry++) {
+      for (let cx = 0; cx < c; cx++) {
+        slots.push({ x0: +(cx * cw).toFixed(4), y0: +(ry * rh).toFixed(4), x1: +((cx + 1) * cw).toFixed(4), y1: +((ry + 1) * rh).toFixed(4) });
+      }
+    }
+    return slots;
+  }
+
+  /** live empty spaces on the workbench that are at least 1in x 1in (96px x 96px); returns blueprint slots first when present */
   function findAvailableSpaces(minPxW = MIN_SPACE_PX, minPxH = MIN_SPACE_PX) {
     const wb = typeof document !== 'undefined' && $('#workbench');
     if (!L || !wb) return [];
     const r = wb.getBoundingClientRect();
     if (!r.width || !r.height) return [];
+    const slots = (L.slots || []).filter(s => !L.areas.some(a => hit(a, s)));
+    const validSlots = filterSpacesByMinPx(slots, r.width, r.height, view, minPxW, minPxH);
     const gMinW = Math.min(MINW, (minPxW / r.width) * view.w);
     const gMinH = Math.min(MINH, (minPxH / r.height) * view.h);
-    return filterSpacesByMinPx(findEmptySpaces(L.areas, gMinW, gMinH), r.width, r.height, view, minPxW, minPxH);
+    const occAreas = L.areas.concat(slots);
+    const freeRest = filterSpacesByMinPx(findEmptySpaces(occAreas, gMinW, gMinH), r.width, r.height, view, minPxW, minPxH);
+    return validSlots.concat(freeRest);
   }
 
   /** simulate dropping `id` onto a smart drop target (empty space, panel left/right/top/bottom/center, or outer workbench edge) */
@@ -269,6 +288,7 @@
       const hole = detachPanelFromLayout(next, id, true);
       if (next.areas.some(a => hit(a, sp))) return null;
       next.areas.push({ x0: sp.x0, y0: sp.y0, x1: sp.x1, y1: sp.y1, panels: [id], active: id });
+      if (Array.isArray(next.slots)) next.slots = next.slots.filter(s => !hit(s, sp));
       if (!keepHole && hole) fillHole(next, hole);
       return { layout: next, rect: sp, mode: 'space' };
     }
@@ -522,7 +542,46 @@
       const x = Math.min(...shown.map(a => a.x0)), y = Math.min(...shown.map(a => a.y0));
       view = { x, y, w: Math.max(...shown.map(a => a.x1)) - x, h: Math.max(...shown.map(a => a.y1)) - y };
     } else view = { x: 0, y: 0, w: NC, h: NR };
-    if (detachMode && !maxed && !focusMode) {
+    const activeSlots = (!maxed && !focusMode && Array.isArray(L.slots)) ? L.slots.filter(s => !shown.some(a => hit(a, s))) : [];
+    if (activeSlots.length) {
+      for (const sp of activeSlots) {
+        const sl = document.createElement('div');
+        sl.className = 'dslot';
+        Object.assign(sl.style, {
+          left: `${pct(sp.x0, view.x, view.w)}%`,
+          top: `${pct(sp.y0, view.y, view.h)}%`,
+          width: `${(sp.x1 - sp.x0) / view.w * 100}%`,
+          height: `${(sp.y1 - sp.y0) / view.h * 100}%`
+        });
+        sl.innerHTML = `<span class="dslot-lbl">Drop panel here</span>`;
+        grid.appendChild(sl);
+      }
+      // Draggable dotted edges between adjacent blueprint slots
+      const seenV = new Set(), seenH = new Set();
+      for (const a of activeSlots) for (const b of activeSlots) {
+        if (a === b) continue;
+        if (same(a.x1, b.x0) && ovl(a.y0, a.y1, b.y0, b.y1) > EPS) {
+          const k = a.x1.toFixed(3);
+          if (!seenV.has(k)) { seenV.add(k); addSlotGut(grid, activeSlots, true, a.x1); }
+        }
+        if (same(a.y1, b.y0) && ovl(a.x0, a.x1, b.x0, b.x1) > EPS) {
+          const k = a.y1.toFixed(3);
+          if (!seenH.has(k)) { seenH.add(k); addSlotGut(grid, activeSlots, false, a.y1); }
+        }
+      }
+      const bar = document.createElement('div');
+      bar.className = 'ld-bar';
+      bar.innerHTML = `<span>Drag dotted lines to resize · Drag panels from <b>Panels</b></span><button type="button" data-ld="pick">Change grid…</button><button type="button" data-ld="clear">Clear grid</button>`;
+      bar.querySelector('[data-ld="pick"]').onclick = e => openLayoutDesigner(e.currentTarget);
+      bar.querySelector('[data-ld="clear"]').onclick = () => { L.slots = []; commit(); };
+      grid.appendChild(bar);
+    } else if (shown.length === 0 && !L.floats.length && !document.documentElement.classList.contains('mobile')) {
+      const box = document.createElement('div');
+      box.className = 'ld-empty-cta';
+      box.innerHTML = `<button type="button" class="ld-cta-btn" id="designLayoutBtn">${ic('grid', 20)}<span>Design your layout</span></button><p class="ld-cta-sub">Pick a 1×1 up to 4×3 grid, adjust the dotted edges, then drag panels in from <b>Panels</b>.</p>`;
+      box.querySelector('#designLayoutBtn').onclick = e => openLayoutDesigner(e.currentTarget);
+      grid.appendChild(box);
+    } else if (detachMode && !maxed && !focusMode) {
       for (const sp of findEmptySpaces(shown)) {
         const em = document.createElement('div');
         em.className = 'dempty';
@@ -1123,6 +1182,7 @@
     if (!locate(p.id)) {
       if (nextAddRect && !L.areas.some(a => hit(a, nextAddRect))) {
         L.areas.push({ ...nextAddRect, panels: [p.id], active: p.id });
+        if (Array.isArray(L.slots)) L.slots = L.slots.filter(s => !hit(s, nextAddRect));
         nextAddRect = null;
       } else {
         nextAddRect = null;
@@ -1173,6 +1233,122 @@
     window.addEventListener('beforeunload', () => { if (saveT) { clearTimeout(saveT); saveT = null; if (opts.onSave && L) opts.onSave(clone(L)); } });
   }
 
+
+  /** draggable dotted divider between blueprint slots */
+  function addSlotGut(grid, slots, col, at) {
+    const s = document.createElement('div');
+    s.className = 'gut slot-gut ' + (col ? 'h' : 'v');
+    s.title = col ? 'Drag left or right to adjust dotted column widths' : 'Drag up or down to adjust dotted row heights';
+    if (col) Object.assign(s.style, { left: `calc(${pct(at, view.x, view.w)}% - 4px)`, width: '8px', top: '0', height: '100%' });
+    else Object.assign(s.style, { top: `calc(${pct(at, view.y, view.h)}% - 4px)`, height: '8px', left: '0', width: '100%' });
+    grid.appendChild(s);
+    s.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+    s.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation();
+      document.body.classList.add('resizing'); clearSelection();
+      const rect = $('#grid').getBoundingClientRect();
+      const start = col ? e.clientX : e.clientY;
+      const per = col ? view.w / rect.width : view.h / rect.height;
+      const lo = slots.filter(o => same(col ? o.x1 : o.y1, at));
+      const hi = slots.filter(o => same(col ? o.x0 : o.y0, at));
+      const min = col ? MINW : MINH;
+      const from = lo.length ? Math.max(...lo.map(o => col ? o.x0 : o.y0)) + min : min;
+      const to = hi.length ? Math.min(...hi.map(o => col ? o.x1 : o.y1)) - min : (col ? NC : NR) - min;
+      let done = false;
+      const move = ev => {
+        if (done) return;
+        if (ev.buttons === 0) { up(); return; }
+        const nx = Math.max(from, Math.min(to, at + ((col ? ev.clientX : ev.clientY) - start) * per));
+        for (const o of lo) o[col ? 'x1' : 'y1'] = nx;
+        for (const o of hi) o[col ? 'x0' : 'y0'] = nx;
+        render();
+      };
+      const up = () => {
+        if (done) return; done = true;
+        document.body.classList.remove('resizing'); clearSelection();
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('pointercancel', up);
+        window.removeEventListener('blur', up);
+        render(); saveSoon();
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('mouseup', up);
+      window.addEventListener('pointercancel', up);
+      window.addEventListener('blur', up);
+    });
+  }
+
+  /** Word-style animated 4x3 (column x row) interactive grid picker popover */
+  function openLayoutDesigner(anchor) {
+    document.querySelectorAll('.ld-picker').forEach(x => x.remove());
+    const pop = document.createElement('div');
+    pop.className = 'ld-picker';
+    let selC = 2, selR = 2;
+    let cellsHtml = '';
+    for (let r = 1; r <= NR; r++) {
+      for (let c = 1; c <= NC; c++) {
+        cellsHtml += `<button type="button" class="ld-cell" data-c="${c}" data-r="${r}" aria-label="${c} columns by ${r} rows"></button>`;
+      }
+    }
+    pop.innerHTML = `<div class="ld-head"><b>Design your layout</b><span class="ld-dim" id="ldDim">2 × 2 grid (4 panels)</span></div>
+      <div class="ld-grid" role="grid">${cellsHtml}</div>
+      <div class="ld-foot"><span class="small">Hover to preview · Click to confirm</span><button type="button" class="ld-cancel">Cancel</button></div>`;
+    document.body.appendChild(pop);
+    const r = anchor ? anchor.getBoundingClientRect() : { left: innerWidth / 2 - 120, bottom: innerHeight / 2 - 90 };
+    const pw = pop.offsetWidth || 250, ph = pop.offsetHeight || 220;
+    pop.style.left = Math.max(12, Math.min(innerWidth - pw - 12, r.left + (r.width || 0) / 2 - pw / 2)) + 'px';
+    pop.style.top = Math.max(12, Math.min(innerHeight - ph - 12, (r.bottom || innerHeight / 2) + 8)) + 'px';
+
+    const paint = (c, row) => {
+      selC = c; selR = row;
+      const total = c * row;
+      pop.querySelector('#ldDim').textContent = `${c} × ${row} grid (${total} panel${total === 1 ? '' : 's'})`;
+      pop.querySelectorAll('.ld-cell').forEach(el => {
+        const ec = +el.dataset.c, er = +el.dataset.r;
+        el.classList.toggle('lit', ec <= c && er <= row);
+      });
+    };
+    paint(selC, selR);
+    const close = () => { document.removeEventListener('mousedown', outClick, true); pop.remove(); };
+    const outClick = e => { if (!pop.contains(e.target) && (!anchor || !anchor.contains(e.target))) close(); };
+    document.addEventListener('mousedown', outClick, true);
+    pop.querySelector('.ld-cancel').onclick = close;
+    pop.querySelectorAll('.ld-cell').forEach(el => {
+      el.addEventListener('mouseenter', () => paint(+el.dataset.c, +el.dataset.r));
+      el.addEventListener('focus', () => paint(+el.dataset.c, +el.dataset.r));
+      el.addEventListener('click', () => {
+        const c = +el.dataset.c, row = +el.dataset.r;
+        close();
+        setBlueprintGrid(c, row);
+        if (window.TimotheosOptions && TimotheosOptions.openPanelsDialog) TimotheosOptions.openPanelsDialog();
+      });
+    });
+  }
+
+  function setBlueprintGrid(cols, rows) {
+    if (!L) return;
+    L.slots = createBlueprintSlots(cols, rows);
+    maxed = null; focusMode = false;
+    commit();
+  }
+
+  /** close every open panel and float, leaving an empty workbench ready for "Design your layout" */
+  function clearAll() {
+    if (!L) return;
+    const hid = new Set(L.hidden || []);
+    for (const a of L.areas || []) for (const id of a.panels || []) hid.add(id);
+    for (const f of L.floats || []) for (const id of f.panels || []) hid.add(id);
+    L.areas = [];
+    L.floats = [];
+    L.slots = [];
+    L.hidden = [...hid];
+    maxed = null; focusMode = false;
+    commit();
+  }
+
   function applyPreset(name) {
     const p = PRESETS[name]; if (!p) return;
     L = normalize(p.layout); maxed = null; focusMode = false; commit();
@@ -1207,7 +1383,7 @@
   const apiObj = {
     init, register, add, remove, retitle, render, show, hide, activate, toggleFloat, toggleFocus, applyPreset, setLayout, isVisible, arrangeBible,
     setDetachMode, toggleDetachMode, getDetachMode, setSnapGrid, toggleSnapGrid, getSnapGrid,
-    setNextRect, placeInSpace, startMenuDrag,
+    setNextRect, placeInSpace, startMenuDrag, clearAll, setBlueprintGrid, openLayoutDesigner, createBlueprintSlots,
     thumbnailSvg, findEmptySpaces: () => findEmptySpaces(L ? L.areas : []),
     findAvailableSpaces,
     panels: () => [...PANELS.values()], panel: id => PANELS.get(id), state: () => clone(L), located: id => locate(id), PRESETS, isBible,
@@ -1219,7 +1395,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       NC, NR, EPS, MINW, MINH, MIN_SPACE_PX, PRESETS,
-      normalize, findEmptySpaces, filterSpacesByMinPx, detachPanelFromLayout, fillHole,
+      normalize, findEmptySpaces, filterSpacesByMinPx, createBlueprintSlots, detachPanelFromLayout, fillHole,
       computeSmartDrop, computeGridDrop, thumbnailSvg
     };
   }
