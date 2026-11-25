@@ -74,6 +74,34 @@ try {
       `buildAuthUrl builds valid OAuth 2.0 PKCE URL for ${pid}`);
   }
 
+  // 5. tauri-shim/os.js hostname() and extractSyncPayload safe hostname fallback
+  const shimOs = require('../../tauri-shim/os');
+  ok(typeof shimOs.hostname === 'function', 'tauri-shim/os exports hostname()');
+  const prevHost = globalThis.__HOST;
+  try {
+    delete globalThis.__HOST;
+    ok(shimOs.hostname() === 'pc', 'tauri-shim os.hostname() falls back cleanly when __HOST is absent');
+    globalThis.__HOST = { platform: 'linux' };
+    ok(shimOs.hostname() === 'linux', 'tauri-shim os.hostname() falls back to platform when hostname is absent');
+    globalThis.__HOST = { platform: 'linux', hostname: 'study-pc' };
+    ok(shimOs.hostname() === 'study-pc', 'tauri-shim os.hostname() returns __HOST.hostname when set');
+  } finally {
+    if (prevHost === undefined) delete globalThis.__HOST;
+    else globalThis.__HOST = prevHost;
+  }
+
+  const defaultPayload = sync.extractSyncPayload(pcA);
+  ok(typeof defaultPayload.device === 'string' && defaultPayload.device.length > 0, 'extractSyncPayload fills non-empty device when deviceName is omitted');
+
+  const origHostname = os.hostname;
+  try {
+    os.hostname = undefined;
+    const fallbackPayload = sync.extractSyncPayload(pcA);
+    ok(typeof fallbackPayload.device === 'string' && fallbackPayload.device.length > 0, 'extractSyncPayload falls back safely when os.hostname is undefined');
+  } finally {
+    os.hostname = origHostname;
+  }
+
   console.log(`sync: ${passed} ok`);
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });

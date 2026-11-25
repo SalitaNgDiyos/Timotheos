@@ -58,6 +58,23 @@ function clone(o) {
   return JSON.parse(JSON.stringify(o));
 }
 
+function getHostname() {
+  try {
+    if (os && typeof os.hostname === 'function') {
+      const h = os.hostname();
+      if (h) return String(h);
+    }
+  } catch (e) { /* fallback below */ }
+  try {
+    if (globalThis.__HOST && globalThis.__HOST.hostname) return String(globalThis.__HOST.hostname);
+  } catch (e) { /* ignore */ }
+  try {
+    const envHost = (typeof process !== 'undefined' && process.env && (process.env.COMPUTERNAME || process.env.HOSTNAME)) || '';
+    if (envHost) return String(envHost);
+  } catch (e) { /* ignore */ }
+  return 'pc';
+}
+
 /** Extract all portable layouts and settings from settings.json (stripping machine-local paths/tokens) */
 function extractSyncPayload(settings, deviceName) {
   const out = {};
@@ -68,7 +85,7 @@ function extractSyncPayload(settings, deviceName) {
   return {
     timotheosSync: 1,
     updatedAt: new Date().toISOString(),
-    device: String(deviceName || os.hostname() || 'pc'),
+    device: String(deviceName || getHostname() || 'pc'),
     settings: out,
   };
 }

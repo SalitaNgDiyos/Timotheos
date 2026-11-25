@@ -222,16 +222,21 @@ async function seedBundled() {
 }
 // The internet, for the "Download modules" window only: one file at a time is fetched by the program itself (not by the
 // page, which is not allowed to reach other sites) into the temporary folder, where the ordinary import takes it.
+let dlSeq = 0;
 const net = {
   MAX: 400 << 20,
   async get(url, name, onProgress) {
     await infoP;
-    const dest = info.tmp + '/download-' + Date.now() + '/' + (String(name || 'file').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_').slice(0, 150) || 'file');
+    const dest = info.tmp + '/download-' + Date.now() + '-' + (++dlSeq) + '/' + (String(name || 'file').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_').slice(0, 150) || 'file');
     const t = onProgress ? setInterval(async () => { try { onProgress(await invoke('net_progress')); } catch (e) { /* no progress */ } }, 350) : null;
     try { await invoke('net_get', { url, dest, max: net.MAX }); } catch (e) { throw new Error(String(e && e.message || e)); } finally { if (t) clearInterval(t); }
     return dest;
   },
-  async text(url) { const p = await net.get(url, 'list.txt'); return invoke('read_text_file', { path: p }); },
+  async text(url) {
+    await infoP;
+    try { return await invoke('net_text', { url }); }
+    catch (e) { throw new Error(String(e && e.message || e)); }
+  },
   stop: () => invoke('net_stop'),
   sha256: path => invoke('net_sha256', { path }),
   // the downloaded installer: Windows starts it (and Timotheos closes, below), Linux installs it and starts Timotheos again, Android's own installer screen opens

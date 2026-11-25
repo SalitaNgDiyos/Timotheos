@@ -185,6 +185,8 @@ function wireDrop() {
 /* ---------------- dialogs ---------------- */
 function modal(title, html, buttons, wide) {
   return new Promise(resolve => {
+    const box = $('#modal .box');
+    if (box) { box.classList.remove('cvmbox', 'aboutbox'); box.style.width = ''; box.style.height = ''; }
     $('#modalTitle').textContent = title; $('#modalBody').innerHTML = html;
     $('#modal').classList.toggle('wide', !!wide);
     const bar = $('#modalBtns'); bar.innerHTML = '';

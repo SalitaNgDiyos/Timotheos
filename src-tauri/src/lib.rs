@@ -461,9 +461,27 @@ fn host_info(app: tauri::AppHandle) -> Value {
         }
     }
     let os = if cfg!(target_os = "android") { "android" } else if cfg!(target_os = "windows") { "win32" } else if cfg!(target_os = "macos") { "darwin" } else { "linux" };
+    let hostname = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .or_else(|| fs::read_to_string("/etc/hostname").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()))
+        .or_else(|| {
+            #[cfg(not(target_os = "android"))]
+            {
+                std::process::Command::new("hostname").output().ok()
+                    .filter(|o| o.status.success())
+                    .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                    .filter(|s| !s.is_empty())
+            }
+            #[cfg(target_os = "android")]
+            { None }
+        })
+        .unwrap_or_else(|| os.to_string());
     let fwd = |s: String| s.replace('\\', "/");
     let (data, exe, home, tmp) = (fwd(data), fwd(exe), fwd(home), fwd(tmp));
-    json!({ "dataDir": data, "exeDir": exe, "home": home, "tmp": tmp, "platform": os, "appImage": std::env::var("APPIMAGE").ok().filter(|x| !x.is_empty()), "version": env!("CARGO_PKG_VERSION"),
+    json!({ "dataDir": data, "exeDir": exe, "home": home, "tmp": tmp, "platform": os, "hostname": hostname, "appImage": std::env::var("APPIMAGE").ok().filter(|x| !x.is_empty()), "version": env!("CARGO_PKG_VERSION"),
             "env": { "TIMOTHEOS_SCRIPT": std::env::var("TIMOTHEOS_SCRIPT").ok(), "TIMOTHEOS_MODULES": std::env::var("TIMOTHEOS_MODULES").ok(), "TIMOTHEOS_PORTABLE_DIR": std::env::var("TIMOTHEOS_PORTABLE_DIR").ok(),
                       "TIMOTHEOS_WAIT": std::env::var("TIMOTHEOS_WAIT").ok(), "TIMOTHEOS_REPOS": std::env::var("TIMOTHEOS_REPOS").ok() } })
 }
@@ -580,6 +598,41 @@ impl ureq::Resolver for NetResolver {
         Err(first.unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no address for this name")))
     }
 }
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+struct CachedHttp {
+    etag: String,
+    body: String,
+}
+static HTTP_CACHE: std::sync::OnceLock<Mutex<HashMap<String, CachedHttp>>> = std::sync::OnceLock::new();
+
+fn is_github_api(url: &str) -> bool {
+    url::Url::parse(url).ok().and_then(|p| p.host_str().map(|h| h.eq_ignore_ascii_case("api.github.com"))).unwrap_or(false)
+}
+fn apply_net_headers(mut req: ureq::Request, url: &str, etag: Option<&str>) -> ureq::Request {
+    if is_github_api(url) {
+        req = req.set("Accept", "application/vnd.github+json").set("X-GitHub-Api-Version", "2022-11-28");
+    }
+    if let Some(e) = etag {
+        if !e.is_empty() { req = req.set("If-None-Match", e); }
+    }
+    req
+}
+fn load_http_cache(cache_file: Option<&Path>) -> &'static Mutex<HashMap<String, CachedHttp>> {
+    HTTP_CACHE.get_or_init(|| {
+        let map = cache_file
+            .and_then(|p| fs::read_to_string(p).ok())
+            .and_then(|s| serde_json::from_str::<HashMap<String, CachedHttp>>(&s).ok())
+            .unwrap_or_default();
+        Mutex::new(map)
+    })
+}
+fn save_http_cache(cache_file: Option<&Path>, map: &HashMap<String, CachedHttp>) {
+    let Some(p) = cache_file else { return; };
+    if let Some(dir) = p.parent() { let _ = fs::create_dir_all(dir); }
+    if let Ok(json_str) = serde_json::to_string(map) {
+        let _ = fs::write(p, json_str);
+    }
+}
 fn make_net_agent<R: ureq::Resolver + 'static>(r: R) -> ureq::Agent {
     ureq::AgentBuilder::new()
         .resolver(r)
@@ -590,12 +643,55 @@ fn make_net_agent<R: ureq::Resolver + 'static>(r: R) -> ureq::Agent {
         .user_agent(concat!("Timotheos/", env!("CARGO_PKG_VERSION")))
         .build()
 }
+fn net_fetch_text(cache_file: Option<&Path>, url: &str) -> Result<String, String> {
+    if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
+    let cache_lock = load_http_cache(cache_file);
+    let cached = cache_lock.lock().ok().and_then(|m| m.get(url).cloned());
+    let etag = cached.as_ref().map(|c| c.etag.as_str()).filter(|s| !s.is_empty());
+    let first_try = apply_net_headers(make_net_agent(NetResolver).get(url), url, etag).call();
+    let res = match first_try {
+        Err(ureq::Error::Transport(_)) => apply_net_headers(make_net_agent(DohIpv4Resolver).get(url), url, etag).call(),
+        other => other,
+    };
+    match res {
+        Ok(resp) => {
+            if resp.status() == 304 {
+                if let Some(c) = cached { return Ok(c.body); }
+            }
+            let new_etag = resp.header("ETag").unwrap_or("").to_string();
+            let mut body = String::new();
+            let mut rd = resp.into_reader().take(20 << 20);
+            rd.read_to_string(&mut body).map_err(|e| format!("The download broke off: {e}"))?;
+            if (!new_etag.is_empty() || is_github_api(url)) && !body.is_empty() {
+                if let Ok(mut m) = cache_lock.lock() {
+                    if m.len() >= 80 && !m.contains_key(url) { m.clear(); }
+                    m.insert(url.to_string(), CachedHttp { etag: new_etag, body: body.clone() });
+                    save_http_cache(cache_file, &m);
+                }
+            }
+            Ok(body)
+        }
+        Err(ureq::Error::Status(304, _)) => {
+            cached.map(|c| c.body).ok_or_else(|| "The site answered with error 304.".into())
+        }
+        Err(ureq::Error::Status(c, resp)) => {
+            if matches!(c, 403 | 429) && is_github_api(url) {
+                if let Some(c_hit) = cached { return Ok(c_hit.body); }
+                if resp.header("X-RateLimit-Remaining") == Some("0") {
+                    return Err(format!("GitHub API rate limit exceeded (error {c})."));
+                }
+            }
+            Err(format!("The site answered with error {c}."))
+        }
+        Err(ureq::Error::Transport(t)) => Err(format!("No connection: {t}")),
+    }
+}
 fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
-    let first_try = make_net_agent(NetResolver).get(url).call();
+    let first_try = apply_net_headers(make_net_agent(NetResolver).get(url), url, None).call();
     let resp = match first_try {
         Ok(r) => r,
-        Err(ureq::Error::Transport(_)) => make_net_agent(DohIpv4Resolver).get(url).call().map_err(|e| match e {
+        Err(ureq::Error::Transport(_)) => apply_net_headers(make_net_agent(DohIpv4Resolver).get(url), url, None).call().map_err(|e| match e {
             ureq::Error::Status(c, _) => format!("The site answered with error {c}."),
             ureq::Error::Transport(t) => format!("No connection: {t}"),
         })?,
@@ -629,6 +725,12 @@ fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     let _ = fs::remove_file(dest);
     fs::rename(&part, dest).map_err(|e| e.to_string())?;
     Ok(done)
+}
+/// fetch small text (catalogs, release lists, JSON) directly with GitHub ETag caching without touching download-* temp folders
+#[tauri::command(async)]
+fn net_text(app: tauri::AppHandle, url: String) -> Result<String, String> {
+    let cache_file = temp_dir_of(&app).join("timotheos-http-cache.json");
+    net_fetch_text(Some(&cache_file), &url)
 }
 /// fetch one file into the temporary folder of Timotheos (nowhere else), for the "Download modules" window
 #[tauri::command(async)]
@@ -884,7 +986,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_get, net_progress, net_stop, net_sha256, update_run, net_request, oauth_auth])
+        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_text, net_get, net_progress, net_stop, net_sha256, update_run, net_request, oauth_auth])
         .run(tauri::generate_context!())
         .expect("error while running Timotheos");
 }
@@ -899,6 +1001,8 @@ mod tests {
         assert!(!net_url_ok("file:///etc/passwd"));
         assert!(!net_url_ok("ftp://example.org/x"));
         assert!(!net_url_ok("nonsense"));
+        assert!(is_github_api("https://api.github.com/users/SalitaNgDiyos/repos"));
+        assert!(!is_github_api("https://github.com/SalitaNgDiyos/Timotheos"));
     }
     /// needs the internet: run with `cargo test -- --ignored` (the build on GitHub does)
     #[test]

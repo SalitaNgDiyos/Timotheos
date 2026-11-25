@@ -1,0 +1,5 @@
+Timotheos 0.6.118
+
+- Fixed Multi-Device PC Config Sync failing with "os.hostname is not a function" by implementing os.hostname() in the Tauri host shim and adding a safe hostname fallback in sync.js.
+- Fixed the Study Desk floating verse action pill on Android so its background, borders, highlight dots, and icons follow the active light or dark theme instead of using a hardcoded dark background.
+- Fixed Download modules: eliminated GitHub 403 rate-limit failures on "Check for updates" using GitHub API headers, ETag caching, and web fallback; added support for adding GitHub repository URLs (such as https://github.com/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes); removed duplicate module rows; and fixed right-side horizontal clipping.

@@ -120,7 +120,7 @@ const TimotheosDownload = (() => {
         .trim();
       const shortDate = updatedAt ? updatedAt.slice(0, 10) : '';
       out.push({
-        id: `official:${repoName}:${modKey}`,
+        id: `official:${repoName}:${a.name.toLowerCase()}`,
         modKey,
         official: true,
         repo: repoName,
@@ -295,20 +295,147 @@ const TimotheosDownload = (() => {
     return { name: Array.isArray(j) ? '' : String(j.name || ''), about: Array.isArray(j) ? '' : String(j.about || ''), modules: mods };
   }
 
+  const GH_RESERVED = new Set(['settings', 'orgs', 'marketplace', 'topics', 'explore', 'search', 'notifications', 'login', 'signup', 'sponsors', 'features', 'pricing', 'about', 'collections', 'events', 'pulls', 'issues']);
+  function rewriteGitHubBlobUrl(u) {
+    try {
+      const p = new URL(u);
+      if (!/^(?:www\.)?github\.com$/i.test(p.hostname)) return u;
+      const m = /^\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/.exec(p.pathname);
+      if (!m) return u;
+      return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}/${m[4]}`;
+    } catch (e) { return u; }
+  }
+  function parseGitHubRepoUrl(u) {
+    try {
+      const p = new URL(String(u || '').trim());
+      if (p.protocol !== 'https:' || !/^(?:www\.)?github\.com$/i.test(p.hostname)) return null;
+      const segs = p.pathname.split('/').filter(Boolean);
+      if (segs.length < 2) return null;
+      const owner = segs[0];
+      const repo = segs[1].replace(/\.git$/i, '');
+      if (!owner || !repo || GH_RESERVED.has(owner.toLowerCase())) return null;
+      if (segs.length > 2 && !/^(releases|tree)$/i.test(segs[2])) return null;
+      return { owner, repo, url: `https://github.com/${owner}/${repo}` };
+    } catch (e) { return null; }
+  }
+  function parseHumanSize(s) {
+    const m = /([0-9]+(?:\.[0-9]+)?)\s*(bytes?|kb|kib|mb|mib|gb|gib)/i.exec(String(s || ''));
+    if (!m) return 0;
+    const n = parseFloat(m[1]), unit = m[2].toLowerCase();
+    if (unit.startsWith('g')) return Math.round(n * 1073741824);
+    if (unit.startsWith('m')) return Math.round(n * 1048576);
+    if (unit.startsWith('k')) return Math.round(n * 1024);
+    return Math.round(n);
+  }
+  function parseGitHubReposHtml(html, owner) {
+    const out = [], seen = new Set();
+    const escOwner = String(owner || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`href="/${escOwner}/([^"/?#]+)"`, 'gi');
+    let m;
+    while ((m = re.exec(String(html || '')))) {
+      const name = decodeURIComponent(m[1]);
+      const low = name.toLowerCase();
+      if (!name || APP_REPOS.has(low) || seen.has(low)) continue;
+      seen.add(low);
+      out.push({ name, description: '', archived: false });
+    }
+    return out;
+  }
+  function parseGitHubExpandedAssets(html, owner, repoName, tag, repoDesc = '') {
+    const text = String(html || '');
+    const items = text.split(/<li\b/i).slice(1);
+    const blocks = items.length ? items : [text];
+    const assets = [];
+    const seenHref = new Set();
+    let pubDate = '';
+    for (const blk of blocks) {
+      const lm = /href="(\/[^"]+\/releases\/download\/[^"]+)"/i.exec(blk);
+      if (!lm) continue;
+      const href = decodeXmlEnt(lm[1]);
+      if (seenHref.has(href)) continue;
+      seenHref.add(href);
+      const rawName = href.split(/[?#]/)[0].split('/').pop() || '';
+      let name = rawName;
+      try { name = decodeURIComponent(rawName); } catch (e) { /* keep rawName */ }
+      if (!name) continue;
+      const dm = /datetime="([^"]+)"/i.exec(blk);
+      const updatedAt = dm ? dm[1] : '';
+      if (updatedAt && !pubDate) pubDate = updatedAt;
+      const sm = />\s*([0-9]+(?:\.[0-9]+)?\s*(?:Bytes?|KB|KiB|MB|MiB|GB|GiB))\s*</i.exec(blk);
+      const size = sm ? parseHumanSize(sm[1]) : 0;
+      assets.push({ name, size, updated_at: updatedAt, browser_download_url: 'https://github.com' + href });
+    }
+    return parseOfficialRelease({ name: repoName, description: repoDesc }, { tag_name: tag, published_at: pubDate, assets });
+  }
+  function dedupeModules(mods) {
+    const byKey = new Map();
+    for (const m of (mods || [])) {
+      if (!m) continue;
+      const fileKey = String(m.file || '').trim().toLowerCase();
+      const urlKey = String(m.url || '').split(/[?#]/)[0].toLowerCase();
+      const k = fileKey || urlKey || String(m.id || '');
+      if (!k) continue;
+      const prev = byKey.get(k);
+      if (!prev) { byKey.set(k, m); continue; }
+      const cmp = compareStamps(m.stamp || extractStamp(m.updatedAt), prev.stamp || extractStamp(prev.updatedAt));
+      if (cmp > 0 || (cmp === 0 && (m.updatedAt || '') > (prev.updatedAt || ''))) byKey.set(k, m);
+    }
+    return [...byKey.values()];
+  }
+  const isRateLimitErr = e => /(?:error\s*(?:403|429)|rate limit)/i.test(String(e && e.message || e || ''));
+
+  async function fetchGitHubRepoViaWeb(owner, repoName, repoDesc = '') {
+    const relHtml = await net().text(`https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/releases/latest`);
+    const m = /releases\/expanded_assets\/([^"'<>\s?#]+)/i.exec(relHtml);
+    if (!m) return [];
+    const tagEnc = m[1];
+    let tag = tagEnc;
+    try { tag = decodeURIComponent(tagEnc); } catch (e) { /* keep tagEnc */ }
+    const assetsHtml = await net().text(`https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/releases/expanded_assets/${tagEnc}`);
+    return parseGitHubExpandedAssets(assetsHtml, owner, repoName, tag, repoDesc);
+  }
+  async function fetchGitHubRepoModules(owner, repoName, repoDesc = '', preferWeb = false) {
+    if (!preferWeb) {
+      try {
+        const rels = JSON.parse(await net().text(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/releases?per_page=3`));
+        const out = [];
+        for (const rel of (Array.isArray(rels) ? rels : [])) out.push(...parseOfficialRelease({ name: repoName, description: repoDesc }, rel));
+        return { mods: dedupeModules(out), rateLimited: false };
+      } catch (e) {
+        if (!isRateLimitErr(e)) return { mods: [], rateLimited: false };
+      }
+    }
+    try {
+      return { mods: dedupeModules(await fetchGitHubRepoViaWeb(owner, repoName, repoDesc)), rateLimited: preferWeb || true };
+    } catch (e) {
+      return { mods: [], rateLimited: preferWeb };
+    }
+  }
+
   async function loadOfficial(forceRefresh = false) {
     const key = '__official__';
     if (!forceRefresh && cache.has(key)) return cache.get(key);
     const p = places();
-    const rawRepos = JSON.parse(await net().text(p.officialApi));
+    let rawRepos = null, useWeb = false;
+    try {
+      rawRepos = JSON.parse(await net().text(p.officialApi));
+    } catch (e) {
+      if (!isRateLimitErr(e)) throw e;
+      useWeb = true;
+      const html = await net().text(`https://github.com/${encodeURIComponent(p.officialUser)}?tab=repositories`);
+      rawRepos = parseGitHubReposHtml(html, p.officialUser);
+    }
     const modRepos = (Array.isArray(rawRepos) ? rawRepos : []).filter(r => r && r.name && !r.archived && !APP_REPOS.has(r.name.toLowerCase()));
-    const mods = [];
-    await Promise.all(modRepos.map(async r => {
-      try {
-        const rels = JSON.parse(await net().text(`https://api.github.com/repos/${encodeURIComponent(p.officialUser)}/${encodeURIComponent(r.name)}/releases?per_page=1`));
-        if (Array.isArray(rels) && rels[0]) mods.push(...parseOfficialRelease(r, rels[0]));
-      } catch (e) { /* repo has no releases or transient fetch error */ }
-    }));
-    mods.sort((a, b) => a.repo.localeCompare(b.repo) || a.title.localeCompare(b.title));
+    const rawMods = [];
+    for (let i = 0; i < modRepos.length; i += 3) {
+      const batch = modRepos.slice(i, i + 3);
+      const res = await Promise.all(batch.map(r => fetchGitHubRepoModules(p.officialUser, r.name, r.description || '', useWeb)));
+      for (const item of res) {
+        if (item.rateLimited) useWeb = true;
+        rawMods.push(...item.mods);
+      }
+    }
+    const mods = dedupeModules(rawMods).sort((a, b) => a.repo.localeCompare(b.repo) || a.title.localeCompare(b.title));
     const cat = {
       name: 'SalitaNgDiyos Official',
       about: 'Official Bible translations, Septuagint texts, interlinears, morphology codes, and lexicons published under the SalitaNgDiyos GitHub account.',
@@ -318,9 +445,35 @@ const TimotheosDownload = (() => {
     return cat;
   }
 
+  async function loadGitHubRepo(gh, forceRefresh = false) {
+    const key = `gh:${gh.owner.toLowerCase()}/${gh.repo.toLowerCase()}`;
+    if (!forceRefresh && cache.has(key)) return cache.get(key);
+    let mods = (await fetchGitHubRepoModules(gh.owner, gh.repo, '', false)).mods;
+    if (!mods.length) {
+      try {
+        const rawCat = readCatalog(await net().text(`https://raw.githubusercontent.com/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}/HEAD/catalog.json`), gh.url);
+        if (rawCat && rawCat.modules && rawCat.modules.length) {
+          const catOut = { name: rawCat.name || gh.repo, about: rawCat.about || `Modules from GitHub repository ${gh.owner}/${gh.repo}.`, modules: dedupeModules(rawCat.modules) };
+          cache.set(key, catOut);
+          return catOut;
+        }
+      } catch (e) { /* no catalog.json in repo */ }
+    }
+    if (!mods.length) throw new Error('This GitHub repository has no downloadable module releases yet.');
+    const cat = {
+      name: gh.repo,
+      about: `Modules from GitHub repository ${gh.owner}/${gh.repo}.`,
+      modules: mods.sort((a, b) => a.title.localeCompare(b.title))
+    };
+    cache.set(key, cat);
+    return cat;
+  }
+
   async function load(repo, forceRefresh = false) {
     if (repo.official) return loadOfficial(forceRefresh);
     if (repo.ebible) { if (!ebibleRows) ebibleRows = ebibleList(await net().text(places().ebible + 'translations.csv')); return { about: 'Bibles in very many languages, which their publishers allow to be shared. Each comes as a USFM file, which Timotheos imports as one Bible.', modules: ebibleRows }; }
+    const gh = repo.url && parseGitHubRepoUrl(repo.url);
+    if (gh) return loadGitHubRepo(gh, forceRefresh);
     if (forceRefresh || !cache.has(repo.url)) cache.set(repo.url, readCatalog(await net().text(repo.url), repo.url));
     return cache.get(repo.url);
   }
@@ -358,9 +511,9 @@ const TimotheosDownload = (() => {
       <div class="dlbar"><label>Repository <select id="dlRepo">${rs.map(r => `<option value="${r.id}"${r.id === current ? ' selected' : ''}>${E(r.name)}</option>`).join('')}</select></label>
         ${cur.official ? '<button type="button" id="dlCheckUpd">Check for updates</button>' : ''}
         <button type="button" id="dlAddBtn">Add a repository…</button>${cur.user ? '<button type="button" id="dlRemove">Remove this one</button>' : ''}</div>
-      <div id="dlAdd" class="dladd hidden"><label>Address of a catalog (https://…) <input id="dlAddUrl" type="url" placeholder="https://example.org/catalog.json" autocomplete="off" spellcheck="false"></label>
-        <button type="button" id="dlAddGo">Add</button><button type="button" id="dlAddNo">Cancel</button>
-        <p class="small">A catalog is a small list of modules that a site publishes for Timotheos. The User Guide shows how to make one. Add only addresses you trust: the modules come from that site, not from Timotheos.</p></div>
+      <div id="dlAdd" class="dladd hidden"><label>Address of a catalog or GitHub repository (https://…) <input id="dlAddUrl" type="url" placeholder="https://example.org/catalog.json or https://github.com/owner/repo" autocomplete="off" spellcheck="false"></label>
+        <div class="dladd-btns"><button type="button" id="dlAddGo">Add</button><button type="button" id="dlAddNo">Cancel</button></div>
+        <p class="small">Enter a Timotheos catalog address or a GitHub repository URL whose releases contain modules. Add only addresses you trust: the modules come from that site, not from Timotheos.</p></div>
       <input id="dlFind" type="search" placeholder="Find by language or title" autocomplete="off" value="${E(filter)}">
       <div id="dlAbout" class="small"></div>
       <div id="dlList" class="dllist"><p class="hint">Fetching the list…</p></div>
@@ -487,14 +640,20 @@ const TimotheosDownload = (() => {
   }
 
   async function addRepo() {
-    const url = (q('#dlAddUrl').value || '').trim();
+    const rawUrl = (q('#dlAddUrl').value || '').trim();
+    const url = rewriteGitHubBlobUrl(rawUrl);
     if (!okUrl(url)) return status('Give an address that starts with https://', true);
-    if (repos().some(r => r.url === url)) return status('That repository is already in the list.', true);
-    status('Reading the catalog…');
-    let cat; try { cat = readCatalog(await net().text(url), url); } catch (e) { return status(`Not added. ${E(e.message)}`, true); }
-    cache.set(url, cat);
-    let name = cat.name; if (!name) { try { name = new URL(url).hostname; } catch (e) { name = url; } }
-    const list = userRepos().concat([{ name: name.slice(0, 60), url }]);
+    const gh = parseGitHubRepoUrl(url);
+    const storeUrl = gh ? gh.url : url;
+    if (repos().some(r => r.url && (r.url === storeUrl || (gh && r.url.toLowerCase() === storeUrl.toLowerCase())))) return status('That repository is already in the list.', true);
+    status(gh ? 'Reading the GitHub repository releases…' : 'Reading the catalog…');
+    let cat;
+    try {
+      cat = gh ? await loadGitHubRepo(gh, true) : readCatalog(await net().text(url), url);
+    } catch (e) { return status(`Not added. ${E(e.message)}`, true); }
+    if (!gh) cache.set(storeUrl, cat);
+    let name = cat.name; if (!name) { try { name = new URL(storeUrl).hostname; } catch (e) { name = storeUrl; } }
+    const list = userRepos().concat([{ name: name.slice(0, 60), url: storeUrl }]);
     await save({ repos: list }); current = 'u' + (list.length - 1); filter = '';
     redraw(); status(`Added the repository <b>${E(name)}</b> with ${cat.modules.length} module${cat.modules.length === 1 ? '' : 's'}.`);
   }
@@ -531,7 +690,7 @@ const TimotheosDownload = (() => {
     await p;
     if (busy) net().stop();
   }
-  return { open, repos, isEncryptedModule, parseCsv, ebibleList, readCatalog, readTheWordXml, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, checkModuleUpdates, checkModuleUpdatesStartup };
+  return { open, repos, isEncryptedModule, parseCsv, ebibleList, readCatalog, readTheWordXml, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, checkModuleUpdates, checkModuleUpdatesStartup, dedupeModules, parseGitHubRepoUrl, rewriteGitHubBlobUrl, parseHumanSize, parseGitHubExpandedAssets, parseGitHubReposHtml };
 })();
 if (typeof window !== 'undefined') window.TimotheosDownload = TimotheosDownload;
 if (typeof module !== 'undefined' && module.exports) module.exports = TimotheosDownload;

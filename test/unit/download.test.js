@@ -98,4 +98,56 @@ const offWithEnc = dl.parseOfficialRelease(
 ok(offWithEnc.length === 1 && offWithEnc[0].file === 'open.ont.zip',
   'parseOfficialRelease skips encrypted .ontx archives');
 
+// 10. parseOfficialRelease uses distinct IDs per asset filename and dedupeModules removes duplicate entries
+const lxxRel = dl.parseOfficialRelease(
+  { name: 'Septuagint-English-Interlinear', description: 'Septuagint English Interlinear' },
+  {
+    tag_name: 'Interlinear',
+    published_at: '2019-03-05T06:25:11Z',
+    assets: [
+      { name: 'lxx+i.bbl.mybible', size: 14123008, updated_at: '2019-03-28T06:52:45Z', browser_download_url: 'https://github.com/SalitaNgDiyos/Septuagint-English-Interlinear/releases/download/Interlinear/lxx+i.bbl.mybible' },
+      { name: 'LXX+i.ot', size: 13161902, updated_at: '2019-03-28T06:52:50Z', browser_download_url: 'https://github.com/SalitaNgDiyos/Septuagint-English-Interlinear/releases/download/Interlinear/LXX+i.ot' },
+      { name: 'LXXiBrenton.ot', size: 7259044, updated_at: '2019-05-21T03:27:34Z', browser_download_url: 'https://github.com/SalitaNgDiyos/Septuagint-English-Interlinear/releases/download/Interlinear/LXXiBrenton.ot' }
+    ]
+  }
+);
+ok(lxxRel.length === 3 && new Set(lxxRel.map(m => m.id)).size === 3,
+  'parseOfficialRelease gives unique IDs to different module formats of the same translation');
+
+const duped = dl.dedupeModules([
+  ...lxxRel,
+  { ...lxxRel[1], repo: 'OT-Deuterocanon-Apocrypha', id: 'official:OT-Deuterocanon-Apocrypha:lxx+i.ot' },
+  { ...lxxRel[2], repo: 'OT-Deuterocanon-Apocrypha', id: 'official:OT-Deuterocanon-Apocrypha:lxxibrenton.ot' }
+]);
+ok(duped.length === 3 && duped.filter(m => m.file === 'LXX+i.ot').length === 1 && duped.filter(m => m.file === 'LXXiBrenton.ot').length === 1,
+  'dedupeModules removes duplicate LXX+i.ot and LXXiBrenton.ot entries while keeping distinct formats');
+
+// 11. parseGitHubRepoUrl handles GitHub repository URLs cleanly
+const gh1 = dl.parseGitHubRepoUrl('https://github.com/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes');
+const gh2 = dl.parseGitHubRepoUrl('https://github.com/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes/releases/');
+const gh3 = dl.parseGitHubRepoUrl('https://github.com/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes.git');
+const ghBlob = dl.parseGitHubRepoUrl('https://github.com/SalitaNgDiyos/Timotheos/blob/Neon/catalog/catalog.json');
+ok(gh1 && gh1.owner === 'SalitaNgDiyos' && gh1.repo === 'LXX-Strongs-and-Morph-Codes' && gh1.url === 'https://github.com/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes',
+  'parseGitHubRepoUrl parses standard GitHub repo URL');
+ok(gh2 && gh2.url === gh1.url && gh3 && gh3.url === gh1.url && ghBlob === null,
+  'parseGitHubRepoUrl normalizes /releases and .git URLs and leaves /blob/ files to raw rewriting');
+ok(dl.rewriteGitHubBlobUrl('https://github.com/SalitaNgDiyos/Timotheos/blob/Neon/catalog/catalog.json') === 'https://raw.githubusercontent.com/SalitaNgDiyos/Timotheos/Neon/catalog/catalog.json',
+  'rewriteGitHubBlobUrl converts /blob/ URLs to raw.githubusercontent.com');
+
+// 12. GitHub HTML fallback parsers extract repos and release assets when API is rate-limited
+const htmlRepos = dl.parseGitHubReposHtml(
+  '<a href="/SalitaNgDiyos/Timotheos">Timotheos</a><a href="/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes">LXX</a><a href="/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes">LXX</a><a href="/SalitaNgDiyos/Ang-Malayang-Biblia-Translation">AMB</a>',
+  'SalitaNgDiyos'
+);
+ok(htmlRepos.length === 2 && htmlRepos.some(r => r.name === 'LXX-Strongs-and-Morph-Codes') && !htmlRepos.some(r => r.name === 'Timotheos'),
+  'parseGitHubReposHtml extracts unique module repositories and skips app repos');
+
+const htmlAssets = dl.parseGitHubExpandedAssets(
+  `<ul><li><a href="/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes/releases/download/2026-11-21_2015/LXX_Brenton_2026-11-21_2015.ot">LXX_Brenton_2026-11-21_2015.ot</a><span>20 MB</span><relative-time datetime="2026-11-21T13:01:20Z"></relative-time></li>
+   <li><a href="/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes/releases/download/2026-11-21_2015/Packard_s_and_Robinson_s_Morphological_Analysis_Codes_dct_2026-11-21_2015.dct.twm">morph</a><span>5.07 MB</span><relative-time datetime="2026-11-21T13:01:20Z"></relative-time></li></ul>`,
+  'SalitaNgDiyos', 'LXX-Strongs-and-Morph-Codes', '2026-11-21_2015', 'OT LXX'
+);
+ok(htmlAssets.length === 2 && htmlAssets[0].file === 'LXX_Brenton_2026-11-21_2015.ot' && htmlAssets[0].size === 20 * 1048576 && htmlAssets[1].stamp === '2026-11-21_2015',
+  'parseGitHubExpandedAssets parses release assets, sizes, and timestamps from GitHub HTML');
+
 console.log(`download: ${passed} ok`);
