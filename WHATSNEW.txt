@@ -1,5 +1,5 @@
-Timotheos 0.6.118
+Timotheos 0.6.119
 
-- Fixed Multi-Device PC Config Sync failing with "os.hostname is not a function" by implementing os.hostname() in the Tauri host shim and adding a safe hostname fallback in sync.js.
-- Fixed the Study Desk floating verse action pill on Android so its background, borders, highlight dots, and icons follow the active light or dark theme instead of using a hardcoded dark background.
-- Fixed Download modules: eliminated GitHub 403 rate-limit failures on "Check for updates" using GitHub API headers, ETag caching, and web fallback; added support for adding GitHub repository URLs (such as https://github.com/SalitaNgDiyos/LXX-Strongs-and-Morph-Codes); removed duplicate module rows; and fixed right-side horizontal clipping.
+- Fixed eBible.org and USFM 3.0 Bible rendering when word tags (\+w ... \+w*) are nested inside Words of Jesus (\wj), book titles (\bk), Selah (\qs), or other inline markers, which previously showed raw |strong="..." attributes in the verse text.
+- Fixed USFM cross-reference links (tw://...) being corrupted by // line-break replacement and cleanly unwrapped nested markers (such as \+wh) inside footnotes.
+- Improved HTML view-toggle handling for USFM added words, cross-references, and nested headings.

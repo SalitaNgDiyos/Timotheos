@@ -127,63 +127,79 @@ function renderTaggedWord(wordHtml, strongs, morphs, lemma) {
 function usfmInlineToHtml(raw, state = {}) {
   let s = String(raw || '');
 
-  // 1. Handle USFM 3.0 alignment milestones: \zaln-s |... \* ... \zaln-e\*
-  const zalnStack = [];
-  s = s.replace(/\\zaln-s\s*\|([^\\]*?)\\\*|\\zaln-e\\\*|\\w\s+([\s\S]*?)\\w\*/g, (m, zAttrs, wBody) => {
-    if (zAttrs !== undefined) {
-      const st = (/x-strong="([^"]*)"/.exec(zAttrs) || [])[1] || '';
-      const mo = (/x-morph="([^"]*)"/.exec(zAttrs) || [])[1] || '';
-      const le = (/x-lemma="([^"]*)"/.exec(zAttrs) || [])[1] || '';
-      zalnStack.push({ st, mo, le });
-      return '';
-    }
-    if (m.startsWith('\\zaln-e')) {
-      zalnStack.pop();
-      return '';
-    }
-    if (wBody !== undefined) {
-      return renderUsfmWord(wBody, zalnStack[zalnStack.length - 1], state);
-    }
-    return m;
+  // 1. Extract footnotes (\f / \fe) and cross-references (\x) before word/tag parsing so nested markers
+  //    or URLs (e.g. tw://bible...) inside data-note attributes are never mutated or double-escaped.
+  const notes = [];
+  const holdNote = html => {
+    if (!html) return '';
+    const idx = notes.length;
+    notes.push(html);
+    return `\uE000N${idx}\uE001`;
+  };
+  s = s.replace(/\\f(?:e)?\s+([^\s\\]+\s+)?([\s\S]*?)\\f(?:e)?\*/g, (_, _caller, body) => {
+    const noteHtml = formatUsfmNote(body, false);
+    return noteHtml ? holdNote(`<sup class="fn" data-note="${escA(noteHtml)}">f</sup>`) : '';
   });
+  s = s.replace(/\\x\s+([^\s\\]+\s+)?([\s\S]*?)\\x\*/g, (_, _caller, body) => {
+    const xrefHtml = formatUsfmNote(body, true);
+    return xrefHtml ? holdNote(`<sup class="fn xref" data-note="${escA(xrefHtml)}">x</sup>`) : '';
+  });
+
+  // 2. Strip figures \fig ... \fig* and alternate verse/chapter numbers \va...\va*, \vp...\vp*, \ca...\ca*
+  s = s.replace(/\\(?:fig|va|vp|ca)\b[\s\S]*?\\(?:fig|va|vp|ca)\*/g, '');
+
+  // 3. Handle USFM 3.0 alignment milestones (\zaln-s |... \* ... \zaln-e\*), word tags (\w ... \w* and nested \+w ... \+w*),
+  //    and USFM 2.x trailing \wg / \wh / \wm tags in a single pass.
+  const zalnStack = [];
+  s = s.replace(
+    /\\zaln-s\s*\|([^\\]*?)\\\*|\\zaln-e\\\*|\\(\+?)w\s+([\s\S]*?)\\\2w\*((?:\s*\\\+?w[ghm]\s+[\s\S]*?\\\+?w[ghm]\*)*)/g,
+    (m, zAttrs, _plus, wBody, trailing) => {
+      if (zAttrs !== undefined) {
+        const st = (/x-strong=["']([^"']*)["']/.exec(zAttrs) || [])[1] || '';
+        const mo = (/x-morph=["']([^"']*)["']/.exec(zAttrs) || [])[1] || '';
+        const le = (/x-lemma=["']([^"']*)["']/.exec(zAttrs) || [])[1] || '';
+        zalnStack.push({ st, mo, le });
+        return '';
+      }
+      if (m.startsWith('\\zaln-e')) {
+        zalnStack.pop();
+        return '';
+      }
+      if (wBody !== undefined) {
+        let extraAttrs = '';
+        if (trailing) {
+          const sts = [], mos = [];
+          for (const tm of trailing.matchAll(/\\\+?w([ghm])\s+([\s\S]*?)\\\+?w\1\*/gi)) {
+            const k = tm[1].toLowerCase(), val = tm[2].trim();
+            if (!val) continue;
+            if (k === 'g' || k === 'h') sts.push(val);
+            else if (k === 'm') mos.push(val);
+          }
+          if (sts.length) extraAttrs += ` strong="${sts.join(' ')}"`;
+          if (mos.length) extraAttrs += ` x-morph="${mos.join(' ')}"`;
+        }
+        const bodyWithExtra = extraAttrs
+          ? (wBody.includes('|') ? `${wBody}${extraAttrs}` : `${wBody}|${extraAttrs.trim()}`)
+          : wBody;
+        return renderUsfmWord(bodyWithExtra, zalnStack[zalnStack.length - 1], state);
+      }
+      return m;
+    }
+  );
 
   // Strip any other remaining USFM 3.0 milestones like \ts\*, \qt-s |...\*, \qt-e\*
   s = s.replace(/\\[a-z0-9]+-[se](?:\s*\|[^\\]*?)?\\\*/gi, '').replace(/\\ts\\\*/gi, '');
 
-  // 2. Footnotes: \f + ... \f* and \fe + ... \fe*
-  s = s.replace(/\\f(?:e)?\s+([^\s\\]+\s+)?([\s\S]*?)\\f(?:e)?\*/g, (_, _caller, body) => {
-    const noteHtml = formatUsfmNote(body, false);
-    return noteHtml ? `<sup class="fn" data-note="${escA(noteHtml)}">f</sup>` : '';
-  });
-
-  // 3. Cross-references: \x - ... \x*
-  s = s.replace(/\\x\s+([^\s\\]+\s+)?([\s\S]*?)\\x\*/g, (_, _caller, body) => {
-    const xrefHtml = formatUsfmNote(body, true);
-    return xrefHtml ? `<sup class="fn xref" data-note="${escA(xrefHtml)}">x</sup>` : '';
-  });
-
-  // 4. Strip figures \fig ... \fig* and alternate verse/chapter numbers \va...\va*, \vp...\vp*, \ca...\ca*
-  s = s.replace(/\\(?:fig|va|vp|ca)\b[\s\S]*?\\(?:fig|va|vp|ca)\*/g, '');
-
-  // 5. Handle USFM 2.x word + adjacent \wg / \wh / \wm tags, and standalone \w ... \w*
-  s = s.replace(/\\w\s+([\s\S]*?)\\w\*(?:\s*\\w([ghm])\s+([\s\S]*?)\\w\2\*)*/g, (m, wBody, kind, extra) => {
-    let attrs = '';
-    if (kind && extra) {
-      const k = kind.toLowerCase();
-      if (k === 'g' || k === 'h') attrs = `strong="${extra.trim()}"`;
-      else if (k === 'm') attrs = `x-morph="${extra.trim()}"`;
-    }
-    return renderUsfmWord(attrs ? `${wBody}|${attrs}` : wBody, null, state);
-  });
-  // Standalone \wg H1234\wg* or \wh H1234\wh* not preceded by \w
-  s = s.replace(/\\w([gh])\s+([^\s\\]+)\s*\\w\1\*/gi, (_, l, num) => {
-    const st = normStrong(num.startsWith('G') || num.startsWith('H') ? num : l.toUpperCase() + num);
-    if (!st.length) return '';
+  // 4. Standalone \wg / \wh (and nested \+wg / \+wh) not preceded by \w
+  s = s.replace(/\\(\+?)w([gh])\s+([\s\S]*?)\\\1w\2\*/gi, (_, _p, l, rawVal) => {
+    const val = rawVal.trim();
+    const st = normStrong(/^[GH]?\d/i.test(val) ? (/^[GH]/i.test(val) ? val : l.toUpperCase() + val) : '');
+    if (!st.length) return escT(val);
     state.hasStrongs = true;
     return st.map(x => `<sup class="strong" data-strong="${escA(x)}">${escT(x)}</sup>`).join('');
   });
 
-  // 6. Paired character markers: \wj...\wj*, \add...\add*, \nd...\nd*, \bd...\bd*, \it...\it*, \bdit...\bdit*, \sc...\sc*, \qt...\qt*, \qs...\qs*, \tl...\tl*, \bk...\bk*, \k...\k*
+  // 5. Paired character markers: \wj...\wj*, \add...\add*, \nd...\nd*, \bd...\bd*, \it...\it*, \bdit...\bdit*, \sc...\sc*, \qt...\qt*, \qs...\qs*, \tl...\tl*, \bk...\bk*, \k...\k*
   const charPairs = [
     ['wj', 'span', ' class="woj"'],
     ['add', 'span', ' class="added"'],
@@ -200,18 +216,21 @@ function usfmInlineToHtml(raw, state = {}) {
     ['k', 'b', ''],
     ['sup', 'sup', ''],
   ];
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass < 3; pass++) {
     for (const [tag, elem, attr] of charPairs) {
-      const re = new RegExp(`\\\\\\+?${tag}\\s+([\\s\\S]*?)\\\\\\+?${tag}\\*`, 'g');
-      s = s.replace(re, (_, inner) => `<${elem}${attr}>${inner}</${elem}>`);
+      const re = new RegExp(`\\\\(\\+?)${tag}\\s+([\\s\\S]*?)\\\\\\1${tag}\\*`, 'g');
+      s = s.replace(re, (_, _p, inner) => `<${elem}${attr}>${inner}</${elem}>`);
     }
   }
 
   // Strip any remaining unknown paired or unpaired backslash markers cleanly
-  s = s.replace(/\\\+?[a-z0-9]+\*/gi, '');
-  s = s.replace(/\\\+?[a-z0-9]+\s?/gi, '');
-  // Clean up USFM ~ (non-breaking space) and // (optional line break)
-  s = s.replace(/~/g, '\u00A0').replace(/\s*\/\/\s*/g, '<br>');
+  s = s.replace(/\\\+?[a-z0-9-]+\*/gi, '');
+  s = s.replace(/\\\+?[a-z0-9-]+\s?/gi, '');
+  // Clean up USFM ~ (non-breaking space) and // (optional line break) outside HTML tags and URLs
+  s = s.replace(/(<[^>]+>)|~/g, (m, tag) => tag || '\u00A0');
+  s = s.replace(/(<[^>]+>)|([A-Za-z]+:\/\/[^\s<]+)|(\s*\/\/\s*)/g, (m, tag, url) => tag || url || '<br>');
+  // Restore footnotes and cross-references
+  s = s.replace(/\uE000N(\d+)\uE001/g, (_, idx) => notes[+idx] || '');
   return s.replace(/\s+/g, ' ').trim();
 }
 
@@ -225,9 +244,9 @@ function renderUsfmWord(wBody, zaln, state) {
     if (!attrStr.includes('=')) {
       strongs = attrStr;
     } else {
-      strongs = ((/(?:x-)?strong="([^"]*)"/i.exec(attrStr) || [])[1]) || '';
-      morphs = ((/(?:x-)?morph="([^"]*)"/i.exec(attrStr) || [])[1]) || '';
-      lemma = ((/(?:x-)?lemma="([^"]*)"/i.exec(attrStr) || [])[1]) || '';
+      strongs = ((/(?:x-)?strong=["']([^"']*)["']/i.exec(attrStr) || [])[1]) || '';
+      morphs = ((/(?:x-)?morph=["']([^"']*)["']/i.exec(attrStr) || [])[1]) || '';
+      lemma = ((/(?:x-)?lemma=["']([^"']*)["']/i.exec(attrStr) || [])[1]) || '';
     }
   }
   if (zaln) {
@@ -241,12 +260,28 @@ function renderUsfmWord(wBody, zaln, state) {
 
 function formatUsfmNote(body, isXref) {
   let s = String(body || '');
-  s = s.replace(/\\(?:fr|xo)\s+([^\\]+)/g, (_, r) => `<b>${escT(r.trim())}</b> `);
-  s = s.replace(/\\(?:fk|xk)\s+([^\\]+)/g, (_, k) => `<b>${escT(k.trim())}:</b> `);
-  s = s.replace(/\\(?:fq|fqa)\s+([^\\]+)/g, (_, q) => `<i>${escT(q.trim())}</i> `);
-  s = s.replace(/\\(?:ft|xt|fv)\s+([^\\]+)/g, (_, t) => `${escT(t.trim())} `);
-  s = s.replace(/\\[a-z0-9]+\*?/gi, '');
-  s = s.replace(/\s+/g, ' ').trim();
+  s = s.replace(/~/g, '\u00A0').replace(/([A-Za-z]+:\/\/[^\s\\]+)|(\s*\/\/\s*)/g, (m, url) => url || ' ');
+  s = s.replace(/\\(\+?)w\s+([^\\|]*?)(?:\|[^\\]*?)?\\\1w\*/g, '$2');
+  const tags = [];
+  const mark = h => { const i = tags.length; tags.push(h); return `\uE002T${i}\uE003`; };
+  const wrap = (txt, open, close) => mark(open) + txt + mark(close);
+  for (let pass = 0; pass < 2; pass++) {
+    s = s.replace(/\\(\+?)(?:bk|it|em)\s+([\s\S]*?)\\\1(?:bk|it|em)\*/gi, (_, _p, inner) => wrap(inner.trim(), '<i>', '</i>'));
+    s = s.replace(/\\(\+?)(?:bd|k)\s+([\s\S]*?)\\\1(?:bd|k)\*/gi, (_, _p, inner) => wrap(inner.trim(), '<b>', '</b>'));
+    s = s.replace(/\\(\+?)(?:nd|sc)\s+([\s\S]*?)\\\1(?:nd|sc)\*/gi, (_, _p, inner) => wrap(inner.trim(), '<span class="sc">', '</span>'));
+    s = s.replace(/\\(\+?)(?:wh|wg|wm|tl|qt)\s+([\s\S]*?)\\\1(?:wh|wg|wm|tl|qt)\*/gi, (_, _p, inner) => inner.trim());
+    s = s.replace(/\\(\+?)fq(?:a)?\s+([\s\S]*?)\\\1fq(?:a)?\*/gi, (_, _p, inner) => wrap(inner.trim(), '<i>', '</i>') + ' ');
+    s = s.replace(/\\(\+?)(?:fr|xo)\s+([\s\S]*?)\\\1(?:fr|xo)\*/gi, (_, _p, inner) => wrap(inner.trim(), '<b>', '</b>') + ' ');
+    s = s.replace(/\\(\+?)(?:fk|xk)\s+([\s\S]*?)\\\1(?:fk|xk)\*/gi, (_, _p, inner) => wrap(inner.trim() + ':', '<b>', '</b>') + ' ');
+    s = s.replace(/\\(\+?)(?:ft|xt|fv|fl|fp)\s+([\s\S]*?)\\\1(?:ft|xt|fv|fl|fp)\*/gi, (_, _p, inner) => inner);
+  }
+  s = s.replace(/\\(?:fr|xo)\s+([^\\]+)/g, (_, r) => wrap(r.trim(), '<b>', '</b>') + ' ');
+  s = s.replace(/\\(?:fk|xk)\s+([^\\]+)/g, (_, k) => wrap(k.trim() + ':', '<b>', '</b>') + ' ');
+  s = s.replace(/\\(?:fq|fqa)\s+([^\\]+)/g, (_, q) => wrap(q.trim(), '<i>', '</i>') + ' ');
+  s = s.replace(/\\(?:ft|xt|fv|fl|fp)\s+([^\\]+)/g, (_, t) => t + ' ');
+  s = s.replace(/\\\+?[a-z0-9-]+\*?/gi, '');
+  s = escT(s).replace(/\uE002T(\d+)\uE003/g, (_, idx) => tags[+idx] || '');
+  s = s.replace(/\s+/g, ' ').replace(/([“‘(])\s+/g, '$1').replace(/\s+([”’).,;:!?])/g, '$1').trim();
   return isXref ? linkHtml(s) : s;
 }
 
@@ -319,7 +354,7 @@ function parseUsfmTexts(texts) {
       }
 
       if (!curBook) continue;
-      if (/^\\(ide|sts|rem|h|toc[1-3]?|mt[1-4]?|mte[1-2]?|i[pm]|iot|io[1-4]?|is[1-2]?)\b/.test(line)) continue;
+      if (/^\\(ide|sts|rem|h|toc[1-3]?|mt[1-4]?|mte[1-2]?|cl|cp|i[pm]|iot|io[1-4]?|is[1-2]?|ili[1-4]?)\b/.test(line)) continue;
 
       const mChap = /^\\c\s+(\d+)/.exec(line);
       if (mChap) {

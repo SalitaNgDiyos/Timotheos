@@ -90,6 +90,28 @@
     return { meta, nolink, target: target.join('|') };
   }
 
+  function stripHeadingSpans(html) {
+    let out = '', i = 0;
+    const re = /<span\s+class="heading\b[^"]*"[^>]*>/g;
+    let m;
+    while ((m = re.exec(html))) {
+      out += html.slice(i, m.index);
+      let depth = 1, pos = m.index + m[0].length;
+      const tagRe = /<\/?span\b[^>]*>/gi;
+      tagRe.lastIndex = pos;
+      let tm;
+      while (depth > 0 && (tm = tagRe.exec(html))) {
+        if (tm[0][1] === '/') depth--;
+        else depth++;
+        pos = tm.index + tm[0].length;
+      }
+      if (depth > 0) pos = html.length;
+      i = pos;
+      re.lastIndex = i;
+    }
+    return out + html.slice(i);
+  }
+
   /**
    * @param raw  verse text
    * @param mod  {rules:[...], tagRules:[...]}
@@ -104,8 +126,10 @@
       if (!show.strongs) h = h.replace(/class="strong"/g, 'class="strong hide"');
       if (!show.morph) h = h.replace(/class="morph"/g, 'class="morph hide"');
       if (!show.woj) h = h.replace(/class="woj"/g, 'class="woj plain"');
+      if (!show.added) h = h.replace(/class="added"/g, 'class="added plain"');
       if (!show.footnotes) h = h.replace(/<sup class="fn"[^>]*>[^<]*<\/sup>/g, '');
-      if (!show.headings) h = h.replace(/<span class="heading[^"]*">[^<]*<\/span>/g, '');
+      if (!show.xrefs) h = h.replace(/<sup class="fn xref"[^>]*>[^<]*<\/sup>/g, '');
+      if (!show.headings) h = stripHeadingSpans(h);
       return h;
     }
     let s = raw;
