@@ -48,11 +48,7 @@
         ['Clipboard Monitor', '', 'clipmon', 'copy'],
         '-',
         ['Skins…', '', 'skins', 'palette'],
-        ['Layout & Panels', '', null, 'layout', [
-          ['Panels…', '', 'panels', 'layout'],
-          ['Edit Layout', '', 'detachEdges', 'detach'],
-          ['Reset Layout', '', 'resetLayout', 'refresh'],
-        ]],
+        ['Layout & Panels…', '', 'panels', 'layout'],   // Edit Layout and Reset Layout are inside that window
         '-',
         ['Developer Tools', sc('devtools'), 'devtools'],
       ]],

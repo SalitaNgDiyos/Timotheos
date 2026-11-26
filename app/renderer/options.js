@@ -430,6 +430,7 @@
     body.innerHTML = `<div class="mh">Panels <span class="small">(click, hold &amp; drag)</span></div>${warn}${rows}
       <div class="msep"></div><div class="mh">Arranging</div>
       <button data-act="detach" class="${detOn ? 'on' : ''}">${TimotheosIcons.icon(detOn ? 'check' : 'detach', 15)}Edit Layout <span class="small">(leave empty spaces)</span></button>
+      <button data-act="reset">${TimotheosIcons.icon('refresh', 15)}Reset Layout <span class="small">(back to Classic)</span></button>
       <button data-act="clearall">${TimotheosIcons.icon('close', 15)}Close all panels <span class="small">(design layout)</span></button>
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
@@ -456,6 +457,7 @@
       });
     });
     body.querySelector('[data-act="detach"]').onclick = () => { TimotheosDock.toggleDetachMode(); syncDockToggles(); fillPanelsMenu(); };
+    body.querySelector('[data-act="reset"]').onclick = () => { window.runCommand('resetLayout'); fillPanelsMenu(); };
     body.querySelector('[data-act="clearall"]').onclick = () => { TimotheosDock.clearAll(); fillPanelsMenu(); };
     body.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { TimotheosDock.applyPreset(b.dataset.preset); fillPanelsMenu(); });
     body.querySelectorAll('[data-saved]').forEach(b => b.onclick = () => { TimotheosDock.setLayout(state.settings.savedLayouts[b.dataset.saved]); fillPanelsMenu(); });
@@ -906,6 +908,7 @@
       if (msg.type === 'cmd') {
         if (msg.cmd === 'detach') { TimotheosDock.toggleDetachMode(); syncDockToggles(); }
         else if (msg.cmd === 'clearAll') TimotheosDock.clearAll();
+        else if (msg.cmd === 'reset') window.runCommand('resetLayout');
         else if (msg.cmd === 'save') saveLayoutAs();
         else if (msg.cmd === 'undo') await TimotheosDock.undo();
         else if (msg.cmd === 'redo') await TimotheosDock.redo();

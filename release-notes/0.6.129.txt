@@ -1,9 +1,9 @@
 Timotheos 0.6.129
 
-- Tidier menus: items of one kind sit together in a submenu (▸).
-  - View → Layout & Panels ▸ Panels…, Edit Layout, Reset Layout (Edit Layout and Reset Panel Layout are no longer separate View items).
-  - File → Modules ▸ New User Module…, Import…, Download…, Where to Get Them…, Add Folder…, Show Imported Folder, Rescan.
-  - File → My Study ▸ Export Topics…, Back Up…, Restore…
-  - File → Print ▸ This Window…, Library Topic.
+- Edit Layout and Reset Layout are no longer separate View menu items. Both are now in the View → Layout & Panels… window, under Arranging (also in the popped-out window).
+- File menu: items of one kind sit together in a submenu (▸).
+  - Modules ▸ New User Module…, Import…, Download…, Where to Get Them…, Add Folder…, Show Imported Folder, Rescan.
+  - My Study ▸ Export Topics…, Back Up…, Restore…
+  - Print ▸ This Window…, Library Topic.
 - Keyboard: → or Enter opens a submenu, ← or Esc goes back. Shortcut keys are unchanged.
 - The User Guide uses the new menu paths.

@@ -11,28 +11,26 @@ try { window.__stage = window.__stage || (window.location.hash.includes('file') 
   const top = i => $$(`.tmdrop[data-i="${i}"] > button, .tmdrop[data-i="${i}"] > .tmsubwrap > button`).map(b => b.textContent.replace(/\s+/g, ' ').trim());
   ok(JSON.stringify(top(0).map(t => t.replace(/(Ctrl|Alt)\S*$/, ''))) === JSON.stringify(['Modules▸', 'My Study▸', 'Print▸', 'Options…', 'Exit']), 'File: ' + top(0).join(' / '));
   const v = top(1);
-  ok(v.includes('Layout & Panels▸') && !v.some(t => /Edit Layout|Reset/.test(t)), 'View: Edit Layout and Reset are no longer on the View menu itself');
-  const lp = $$('.tmdrop[data-i="1"] .tmsub')[0];
-  ok(lp && [...lp.querySelectorAll('button')].map(b => b.textContent.trim()).join('|') === 'Panels…|Edit Layout|Reset Layout', 'Layout & Panels ▸ Panels… / Edit Layout / Reset Layout');
-  // keyboard: Alt+V, go to Layout & Panels, → opens, Enter on Edit Layout toggles it
-  $('.tmenu[data-i="1"]').click(); await sl(150);
-  const sb = $('.tmdrop[data-i="1"] .tmsubbtn'); sb.focus(); key('ArrowRight'); await sl(150);
-  ok(sb.parentElement.classList.contains('open') && document.activeElement.dataset.cmd === 'panels', '→ opens the submenu on its first item');
-  key('ArrowDown'); await sl(50);
-  ok(document.activeElement.dataset.cmd === 'detachEdges', '↓ moves inside the submenu');
-  key('ArrowLeft'); await sl(50);
-  ok(document.activeElement === sb && !sb.parentElement.classList.contains('open'), '← goes back to Layout & Panels');
-  const before = TimotheosDock.getDetachMode();
-  sb.click(); await sl(100); $('.tmsub button[data-cmd="detachEdges"]').click(); await sl(300);
-  ok(TimotheosDock.getDetachMode() === !before, 'Edit Layout in the submenu switches Edit Layout');
-  $('.tmenu[data-i="1"]').click(); await sl(150);
-  const sb2 = $('.tmdrop[data-i="1"] .tmsubbtn'); sb2.parentElement.dispatchEvent(new MouseEvent('mouseenter')); await sl(150);
-  ok(/check/.test($('.tmsub button[data-cmd="detachEdges"] .tmic').innerHTML) || $('.tmsub button[data-cmd="detachEdges"]').classList.contains('on'), 'Edit Layout shows its tick while on');
+  ok(v.some(t => /^Layout & Panels…/.test(t)) && !v.some(t => /Edit Layout|Reset|▸/.test(t)), 'View: one Layout & Panels… item, no Edit Layout / Reset items');
+  $('.tmenu[data-i="1"]').click(); await sl(150); $('.tmdrop[data-i="1"] button[data-cmd="panels"]').click(); await sl(500);
+  const dlg = $('#panelsMenu');
+  ok(dlg && dlg.querySelector('[data-act="detach"]') && dlg.querySelector('[data-act="reset"]'), 'the Layout & Panels window has Edit Layout and Reset Layout');
+  const before = TimotheosDock.getDetachMode(); dlg.querySelector('[data-act="detach"]').click(); await sl(300);
+  ok(TimotheosDock.getDetachMode() === !before, 'Edit Layout in the window switches Edit Layout');
   TimotheosDock.setDetachMode(before);
+  TimotheosDock.setLayout({ v: 3, areas: [{ x0: 0, y0: 0, x1: 4, y1: 3, panels: ['bv0'], active: 'bv0' }], floats: [], hidden: [] }); await sl(300);
+  $('#panelsMenu [data-act="reset"]').click(); await sl(500);
+  ok(TimotheosDock.state().areas.length > 2, 'Reset Layout in the window brings back the classic layout');
+  $('.tmenu[data-i="0"]').click(); await sl(150);
+  const sb = $('.tmdrop[data-i="0"] .tmsubbtn'); sb.focus(); key('ArrowRight'); await sl(150);
+  ok(sb.parentElement.classList.contains('open') && document.activeElement.dataset.cmd === 'newUserMod', 'File: → opens Modules on its first item');
+  key('ArrowDown'); await sl(50); ok(document.activeElement.dataset.cmd === 'import', '↓ moves inside the submenu');
+  key('ArrowLeft'); await sl(50); ok(document.activeElement === sb && !sb.parentElement.classList.contains('open'), '← goes back');
+  key('Escape'); await sl(50);
+  if (window.__stage !== 'file') { console.log('RESULT ' + out.join(' | ')); return; }
+  $('#panelsMenu .pm-dlg-close, #panelsMenu [data-act="close"]') && $('#panelsMenu .pm-dlg-close, #panelsMenu [data-act="close"]').click();
   // File → Modules hover for the picture
-  key('Escape'); key('Escape'); await sl(100);
-  if (window.__stage !== 'file') { $('.tmenu[data-i="1"]').click(); await sl(100); $('.tmdrop[data-i="1"] .tmsubbtn').parentElement.dispatchEvent(new MouseEvent('mouseenter')); }
-  else { $('.tmenu[data-i="0"]').click(); await sl(100); $('.tmdrop[data-i="0"] .tmsubbtn').parentElement.dispatchEvent(new MouseEvent('mouseenter')); }
+  $('.tmenu[data-i="0"]').click(); await sl(100); $('.tmdrop[data-i="0"] .tmsubbtn').parentElement.dispatchEvent(new MouseEvent('mouseenter'));
   await sl(200);
 } catch (e) { ok(false, 'error ' + e.message); }
 console.log('RESULT ' + out.join(' | '));
