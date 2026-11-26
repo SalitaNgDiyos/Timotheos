@@ -254,7 +254,7 @@
       return out;
     };
     const cellHtml = (c, k, v) => c.h == null ? `<div class="pcell pmiss">${isPhone() ? '—' : 'not in this Bible'}</div>`
-      : `<div class="pcell${infos[k].rtl ? ' rtl' : ''}"${infos[k].rtl ? ' dir="rtl"' : ''}>${c.h}${c.pct != null ? ` <span class="diffpct" title="share of words that differ from ${esc(abbrOf(ids[base]))}">${c.pct}%</span>` : ''}</div>`;
+      : `<div class="pcell${infos[k].rtl ? ' rtl' : ''}" data-bid="${esc(ids[k])}"${c.plain ? ' data-plain="1"' : ''}${infos[k].rtl ? ' dir="rtl"' : ''}>${c.h}${c.pct != null ? ` <span class="diffpct" title="share of words that differ from ${esc(abbrOf(ids[base]))}">${c.pct}%</span>` : ''}</div>`;
     const curV = (r.b === state.ref.b && r.c === state.ref.c) || !follow() ? r.v : 0;
     let html = '';
     if (gone.length) html += `<p class="hint parwarn">Not installed any more: ${esc(gone.map(x => x.replace(/^\w+:/, '')).join(', '))}</p>`;
@@ -274,6 +274,10 @@
     const keep = body.scrollTop;
     body.innerHTML = html;
     if (typeof markGlosses === 'function') try { markGlosses(body); } catch (e) { /* */ }
+    // the user's highlights, as in the Bible views (not while differences are marked: the text is shown plain then)
+    if (window.TimotheosStudy && TimotheosStudy.paintHighlights && (S().show || {}).highlights !== false) body.querySelectorAll('.pcell[data-bid]:not([data-plain])').forEach(cell => {
+      const row = cell.closest('[data-pv]'); if (row && +row.dataset.pv) try { TimotheosStudy.paintHighlights(cell, cell.dataset.bid, r.b, r.c, +row.dataset.pv); } catch (e) { /* */ }
+    });
     drawBar();
     if (wantScroll) { wantScroll = false; const el = boxOf(body.querySelector(`.pvrow[data-pv="${curV}"]`)); if (el && curV > 1) el.scrollIntoView({ block: 'center' }); else body.scrollTop = 0; }
     else body.scrollTop = keep;
@@ -332,5 +336,5 @@
   }
   function onModulesChanged() { if (curSet()) { drawBar(); render(false); } }
 
-  window.TimotheosParallel = { init, render, onRef, onModulesChanged, setupDialog, chooseSetDialog, wake, wordPopupAllowed: shift => !!(shift || S().parWpop), MAX };
+  window.TimotheosParallel = { shownRef: () => (shown ? { ...shown } : { ...ref() }), following: follow, init, render, onRef, onModulesChanged, setupDialog, chooseSetDialog, wake, wordPopupAllowed: shift => !!(shift || S().parWpop), MAX };
 })();

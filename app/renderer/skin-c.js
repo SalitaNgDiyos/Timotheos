@@ -85,11 +85,11 @@
   // two Bibles on Study Desk work as on the other screens: the lower Bible with its own strip, no desk around it
   function par(on) { deskClose(); closeAll(); return window.TimotheosSkins.parallel(on == null ? !TimotheosPhone.splitId() : on); }
   async function desk(chip) {
-    if (chip === 'par') return par();
+    if (chip === 'par') { deskClose(); closeAll(); return P().fullPanel('par'); }   // the Parallel Bibles panel (the old two-Bible split is gone)
     closeAll(); const p = P(); const d = $('.c-desk'); deskChip = chip || deskChip;
     if (!d.classList.contains('on')) P().pushBack(() => deskClose(true), 'desk');
     d.classList.add('on'); root.classList.add('c-deskon'); layoutDesk();
-    d.querySelectorAll('[data-dc]').forEach(b => b.classList.toggle('on', b.dataset.dc === deskChip || (b.dataset.dc === 'par' && !!TimotheosPhone.splitId())));
+    d.querySelectorAll('[data-dc]').forEach(b => b.classList.toggle('on', b.dataset.dc === deskChip));
     const body = d.querySelector('.db'); body.innerHTML = '';
     if (deskChip === 'cmt') p.commentaryCards(body, { ...state.ref });
     else if (deskChip === 'lib') p.libraryInto(body);
@@ -107,7 +107,7 @@
     ['Copy verses…', 'copy', 'View', () => TimotheosStudy.copyDialog()], ['Clipboard monitor', 'clipboard', 'View', () => runCommand('clipmon')], ['Daily readings', 'calendar', 'View', () => P().studySection('plans')],
     ['Devotionals today', 'book', 'View', () => P().devotionals()], ['My Study', 'study', 'View', () => P().studyPage()], ['My notes', 'note', 'View', () => P().studySection('notes')], ['Highlights', 'highlight', 'View', () => P().highlightsPage()],
     ['Bookmarks', 'bookmark', 'View', () => P().studySection('marks')], ['Verse lists', 'study', 'View', () => P().studySection('lists')], ['Library', 'library', 'View', () => P().library()], ['Commentary', 'commentary', 'View', () => studyDrawer('commentary')],
-    ['Reading view: size, what to show', 'text', 'View', () => P().readingSheet()], ['Choose the Bible', 'bible', 'View', () => P().chooseBible()], ['Parallel Bible', 'compare', 'View', () => par()], ['Parallel Bibles (sets of up to 8)', 'compare', 'View', () => P().fullPanel('par')],
+    ['Reading view: size, what to show', 'text', 'View', () => P().readingSheet()], ['Choose the Bible', 'bible', 'View', () => P().chooseBible()], ['Parallel Bibles (up to 8, verse by verse)', 'compare', 'View', () => P().fullPanel('par')],
     ['Reset panel layout', 'layout', 'View', () => runCommand('resetLayout')], ['Quick settings', 'tune', 'View', () => quick()], ['User guide', 'guide', 'Help', () => runCommand('guide')],
     ['About Timotheos', 'info', 'Help', () => runCommand('about')], ['Change screen', 'grid', 'Help', () => window.TimotheosSkins.picker(true)]];
   let palT = 0, palSeq = 0;
@@ -208,7 +208,7 @@
         k.classList.toggle('on', on); return; }
       const l = e.target.closest('[data-l]'); if (!l) return; closeAll();
       ({ options: () => runCommand('options'), mods: () => p.modulesSheet(), voices: () => p.readAloudPage(), view: () => p.readingSheet(), help: () => p.helpSheet(),
-        layouts: () => { const s = p.sheet(`<div class="rows"><button type="button" class="prr" data-x="par">${p.ic('compare', 20)}<span>Parallel Bible below</span></button><button type="button" class="prr" data-x="pset">${p.ic('compare', 20)}<span>Parallel Bibles (sets of up to 8)</span></button><button type="button" class="prr nophone" data-x="reset">${p.ic('layout', 20)}<span>Reset panel layout</span></button><button type="button" class="prr" data-x="screen">${p.ic('grid', 20)}<span>Change screen</span></button></div>`, { title: 'Layouts' }); s.onclick = ev => { const x = ev.target.closest('[data-x]'); if (!x) return; p.closeSheet(); if (x.dataset.x === 'par') par(); if (x.dataset.x === 'pset') p.fullPanel('par'); if (x.dataset.x === 'reset') runCommand('resetLayout'); if (x.dataset.x === 'screen') window.TimotheosSkins.picker(true); }; } }[l.dataset.l] || (() => {}))();
+        layouts: () => { const s = p.sheet(`<div class="rows"><button type="button" class="prr" data-x="pset">${p.ic('compare', 20)}<span>Parallel Bibles</span><small>Up to 8 Bibles, verse by verse</small></button><button type="button" class="prr nophone" data-x="reset">${p.ic('layout', 20)}<span>Reset panel layout</span></button><button type="button" class="prr" data-x="screen">${p.ic('grid', 20)}<span>Change screen</span></button></div>`, { title: 'Layouts' }); s.onclick = ev => { const x = ev.target.closest('[data-x]'); if (!x) return; p.closeSheet(); if (x.dataset.x === 'pset') p.fullPanel('par'); if (x.dataset.x === 'reset') runCommand('resetLayout'); if (x.dataset.x === 'screen') window.TimotheosSkins.picker(true); }; } }[l.dataset.l] || (() => {}))();
     };
     cc.oninput = e => { const z = e.target.closest('[data-zoom]'); if (!z) return; const cur = (views()[state.active] || {}).zoom || 1; const d = Math.round((+z.value - cur) * 10); if (d) zoomView(state.active, d); };
   }

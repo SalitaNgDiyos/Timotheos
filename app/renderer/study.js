@@ -179,9 +179,9 @@ function selectionTarget(fallbackEl) {
   return null;
 }
 function highlight(t, style) {
-  const id = state.settings.openBibles[t.col]; if (!id) return;
+  const id = t.bid || state.settings.openBibles[t.col]; if (!id) return;
   const hl = study.ud.highlights[id] || (study.ud.highlights[id] = {});
-  const sec = panes()[t.col]; const [rb, rc] = sec && sec.dataset.ref ? sec.dataset.ref.split('.').map(Number) : [state.ref.b, state.ref.c];
+  const sec = t.bid ? null : panes()[t.col]; const [rb, rc] = t.bid ? [t.b, t.c] : sec && sec.dataset.ref ? sec.dataset.ref.split('.').map(Number) : [state.ref.b, state.ref.c];
   const k = vkey(rb, rc, t.v);
   let list = (hl[k] || []).filter(m => m.e <= t.s || m.s >= t.e || (style !== null && m.style !== style && isDeco(m.style) !== isDeco(style)));
   if (style) list.push({ s: t.s, e: t.e, style });
@@ -190,6 +190,25 @@ function highlight(t, style) {
   saveUD('highlights');
   window.getSelection().removeAllRanges();
   if (!state.settings.show.highlights && style) setShow('highlights', true); else renderChapter();
+  if (window.TimotheosParallel) TimotheosParallel.render(false);
+}
+/** a verse cell of the Parallel Bibles panel: the selected part of it, or the whole verse */
+function cellTarget(cell, info) {
+  const sel = window.getSelection(); const nodes = coreNodes(cell);
+  if (sel && sel.rangeCount && String(sel).trim()) {
+    const range = sel.getRangeAt(0); let pos = 0, s = null, e = null;
+    if (cell.contains(range.startContainer)) for (const n of nodes) {
+      if (range.intersectsNode(n)) { const from = n === range.startContainer ? range.startOffset : 0; const to = n === range.endContainer ? range.endOffset : n.length; if (s === null) s = pos + from; e = pos + to; }
+      pos += n.length;
+    }
+    if (s !== null && e > s) return Object.assign({ s, e, partial: true }, info);
+  }
+  return Object.assign({ s: 0, e: nodes.reduce((a, n) => a + n.length, 0), partial: false }, info);
+}
+/** the saved highlights of one verse of one Bible, painted into an element (the Parallel Bibles panel) */
+function paintHighlights(el, id, b, c, v) {
+  const list = ((study.ud.highlights || {})[id] || {})[vkey(b, c, v)]; if (!list) return;
+  for (const m of list) wrapRange(el, m.s, m.e, m.style);
 }
 
 /* ======================================================================= compare differences */
@@ -447,7 +466,7 @@ function countVerses(from, to, id) {
 }
 
 async function buildCopy(from, to, fmt, limit) {
-  let id = fmt.bible && state.settings.openBibles.includes(fmt.bible) ? fmt.bible : state.settings.openBibles[0];
+  let id = fmt.forceBible || (fmt.bible && state.settings.openBibles.includes(fmt.bible) ? fmt.bible : state.settings.openBibles[0]);
   if (!(await verseText(id, from.b, from.c, from.v)).length) { const alt = await textAny(from); if (alt.id) id = alt.id; }
   const inf = state.infos.get(id) || { abbr: '' };
   const bname = b => { const bk = state.nav.find(x => x.id === b) || { name: '', abbr: '' }; return fmt.shortNames ? bk.abbr : bk.name; };
@@ -481,9 +500,10 @@ async function buildCopy(from, to, fmt, limit) {
   text += footer; html += esc(footer).replace(/\n/g, '<br>');
   return { text, html: `<div style="font-family:Georgia,serif">${html}</div>`, count, shown };
 }
-async function quickCopy(target) {
+async function quickCopy(target, bibleId) {
   const from = target || { ...state.ref }; const to = target ? { ...target, v: target.v2 || target.v } : { ...state.ref };
-  const fmt = copyFormat(); const out = await buildCopy(from, to, fmt);
+  const fmt = copyFormat(); if (bibleId) fmt.forceBible = bibleId;   // from the Parallel Bibles panel: that column's Bible
+  const out = await buildCopy(from, to, fmt);
   await api.copyText(out.text, fmt.textOnly ? null : out.html);
   flash('Copied ' + rangeLabel(from, to, true));
 }
@@ -650,23 +670,30 @@ async function copyDialog(range) {
 /* ======================================================================= context menu */
 function hideCtx() { $('#ctxMenu').classList.add('hidden'); }
 function wireContextMenu() {
-  $('#workbench').addEventListener('contextmenu', e => {
-    const vEl = e.target.closest('[data-v]'); if (!vEl) return;
+  // the Parallel Bibles panel shown as a page on the phone is outside the workbench: it gets the same menu
+  document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('.parpanel') && !e.target.closest('#workbench')) onCtx(e); });
+  $('#workbench').addEventListener('contextmenu', e => onCtx(e));
+  function onCtx(e) {
+    // the Parallel Bibles panel (0.6.126): the same menu, for the Bible and verse right-clicked there
+    const par = e.target.closest('.parpanel');
+    const pCell = par ? e.target.closest('.pcell[data-bid]') : null;
+    const vEl = par ? e.target.closest('[data-pv]') : e.target.closest('[data-v]'); if (!vEl || (par && (!pCell || !+vEl.dataset.pv))) return;
     e.preventDefault();
-    const v = +vEl.dataset.v;
-    const cellEl = e.target.closest('[data-col]') || vEl.querySelector('[data-col]') || (vEl.matches('[data-col]') ? vEl : null);
+    const v = par ? +vEl.dataset.pv : +vEl.dataset.v;
+    const pRef = par && window.TimotheosParallel ? TimotheosParallel.shownRef() : null;
+    const cellEl = par ? null : e.target.closest('[data-col]') || vEl.querySelector('[data-col]') || (vEl.matches('[data-col]') ? vEl : null);
     const col = cellEl ? +cellEl.dataset.col : 0;
-    const sv = selectedVerses();
-    const tgt = selectionTarget(cellEl);
+    const sv = par ? null : selectedVerses();
+    const tgt = par ? cellTarget(pCell, { bid: pCell.dataset.bid, b: pRef.b, c: pRef.c, v }) : selectionTarget(cellEl);
     const sel = TimotheosModules.selectedText(), selWord = sel && !/\s/.test(sel) ? sel.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '') : '';   // what is selected comes first
     const word = selWord || (TimotheosModules.wordAt(e) || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
     const copyTxt = sel || word, shortQ = t => t.length > 28 ? t.slice(0, 27) + '…' : t;
     const strongEl = e.target.closest('[data-strong]');
     const strongs = strongEl ? strongEl.dataset.strong.split(/\s+/).filter(Boolean) : [];
-    const ref = { b: state.ref.b, c: state.ref.c, v };
+    const ref = pRef ? { b: pRef.b, c: pRef.c, v } : { b: state.ref.b, c: state.ref.c, v };
     const rangeRef = sv && sv.v2 > sv.v1 ? { ...ref, v: sv.v1, v2: sv.v2 } : ref;
     const label = rangeRef.v2 ? `${refName(ref).replace(/:\d+$/, '')}:${rangeRef.v}–${rangeRef.v2}` : refName(ref);
-    const id = state.settings.openBibles[col]; const abbr = (state.infos.get(id) || {}).abbr || '';
+    const id = par ? pCell.dataset.bid : state.settings.openBibles[col]; const abbr = (state.infos.get(id) || {}).abbr || '';
     const nk = vkey(ref.b, ref.c, v);
     const sc = window.TimotheosOptions && TimotheosOptions.shortcuts ? TimotheosOptions.shortcuts() : {};
     const items = [
@@ -693,9 +720,13 @@ function wireContextMenu() {
       hideCtx();
       const a = bt.dataset.a;
       if (a === 'copyword') { await api.copyText(bt.dataset.q, null); flash(`Copied “${shortQ(bt.dataset.q)}”`); return; }
-      if (a !== 'hl') selectVerse(v, false);
-      if (a === 'copy') quickCopy(rangeRef);
-      else if (a === 'copydlg') copyDialog(sv);
+      if (par) {   // the main Bible view goes to this verse when the panel follows it; the panel marks it
+        const quiet = ['hl', 'copy', 'copydlg', 'list', 'bm', 'note'].includes(a);   // these work on the verse itself
+        if (!quiet && (ref.b !== state.ref.b || ref.c !== state.ref.c)) await go({ ...ref });
+        else if (!quiet) selectVerse(v, false);
+      } else if (a !== 'hl') selectVerse(v, false);
+      if (a === 'copy') quickCopy(rangeRef, par ? id : null);
+      else if (a === 'copydlg') copyDialog(par ? rangeRef : sv);
       else if (a === 'list') addToList([rangeRef]);
       else if (a === 'bm') { study.ud.bookmarks[slot(+bt.dataset.d)] = { ...ref }; saveUD('bookmarks', true); flash(`Bookmark ${bt.dataset.d}: ${refName(ref)}`); }
       else if (a === 'hl') { if (tgt) highlight(tgt, bt.dataset.s || null); }
@@ -706,7 +737,7 @@ function wireContextMenu() {
       else if (a === 'find') window.TimotheosSearch.find(bt.dataset.q);
       else if (a === 'look') TimotheosModules.lookupWord(bt.dataset.q);
     };
-  });
+  }
   $('#workbench').addEventListener('click', e => { const n = e.target.closest('.unote, .noteicon'); if (n) { e.stopPropagation(); editNote(n.dataset.note); } }, true);
 }
 
@@ -985,4 +1016,4 @@ function showKeys() {
   setTimeout(() => { const b = $('#editKeysFromHelp'); if (b) b.onclick = () => { $('#modal').classList.add('hidden'); TimotheosOptions.open('keys'); }; }, 30);
 }
 
-window.TimotheosStudy = { backupStudy, restoreStudy, highlight, selectionTarget, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, noteSubs, flash, verseText, study };
+window.TimotheosStudy = { backupStudy, restoreStudy, highlight, selectionTarget, paintHighlights, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, noteSubs, flash, verseText, study };

@@ -1,0 +1,5 @@
+Timotheos 0.6.126
+
+- Parallel Bibles: right-clicking a verse (press and hold on the phone) gives the same menu as in a Bible view, for that Bible and verse: copy, Copy verses..., add to a verse list, bookmark, highlight (the verse or the selected words), my note, cross-references, commentaries, find, and look up. Highlights now show in the panel too.
+- Phone: the old two-Bible "Parallel" (one Bible above the other) is removed from all three screens. "Parallel" now opens the Parallel Bibles panel. A two-Bible split that was left on is closed when the app starts.
+- User Guide updated.

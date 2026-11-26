@@ -73,6 +73,17 @@ try {
   ok($$('.parmenu [data-set]').length === 2 && $('.parmenu [data-m="new"]'), 'the set menu lists both sets');
   if (stage !== 'menu') document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   await go({ b: 43, c: 3, v: 16 }); await sl(900);
+  // the right-click menu of a Bible view, for the Bible and verse right-clicked (0.6.126)
+  $('#tab-par [data-a="cols"]').click(); await sl(600);
+  await until(() => $$('#tab-par .pvrow[data-pv="16"] .pcell[data-bid]').length >= 2);
+  const cell = $$('#tab-par .pvrow[data-pv="16"] .pcell[data-bid]')[1];
+  cell.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 600, clientY: 300 })); await sl(300);
+  const menu = $('#ctxMenu');
+  ok(!menu.classList.contains('hidden') && /3:16/.test(menu.textContent) && /Copy verse/.test(menu.textContent) && /Bookmark/.test(menu.textContent) && /note/.test(menu.textContent) && /Cross-references/.test(menu.textContent), 'right-click: the Bible view menu: ' + menu.querySelector('.mh').textContent);
+  menu.querySelector('button[data-a="hl"]').click(); await sl(900);
+  const hl = (TimotheosStudy.study.ud.highlights || {})[cell.dataset.bid] || {};
+  ok(hl['43.3.16'] && hl['43.3.16'].length, 'highlight saved for that Bible');
+  ok($$('#tab-par .pvrow[data-pv="16"] .pcell')[1].querySelector('mark.hl'), 'the highlight shows in the panel');
   // the phone starts stacked
   const keepL = state.settings.parLayout; save({ parLayout: {} }); document.documentElement.classList.add('mobile');
   await TimotheosParallel.render(false); await sl(400);

@@ -212,7 +212,11 @@
     pendingBoot = () => { if (isReady()) finish(); };
     go();
   }
-  function onAppReady() { if (pendingBoot) pendingBoot(); }
+  function onAppReady() {
+    if (pendingBoot) pendingBoot();
+    // the old two-Bible split (top and bottom) is no longer offered (0.6.126): a split left on is closed
+    setTimeout(() => { try { if (root.classList.contains('mobile') && window.TimotheosPhone && TimotheosPhone.splitId()) parallel(false); } catch (e) { /* */ } }, 1200);
+  }
   function init() {
     wireDivider();
     if (root.classList.contains('mobile')) start();
