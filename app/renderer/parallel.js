@@ -225,7 +225,7 @@
   /** first-time setup, a new set, or changing a set. Returns the saved set or null. */
   async function setupDialog(set, first) {
     const all = installed();
-    if (all.length < MIN) { await TimotheosModules.modal('Parallel Bibles', `<p>Parallel Bibles needs at least ${MIN} Bibles. Import or download another Bible first (File → Import, or Download modules).</p>`, [{ label: 'OK', value: 1, primary: true }]); return null; }
+    if (all.length < MIN) { await TimotheosModules.modal('Parallel Bibles', `<p>Parallel Bibles needs at least ${MIN} Bibles. Import or download another Bible first (File → Modules → Import… or Download…).</p>`, [{ label: 'OK', value: 1, primary: true }]); return null; }
     let picked = set ? set.bibles.filter(bibleOf) : [];
     const html = `<div class="parsetup">
       ${first ? '<p class="hint">Show several Bibles verse by verse. Make a set of them now; you can make more sets later and choose which one to open.</p>' : ''}

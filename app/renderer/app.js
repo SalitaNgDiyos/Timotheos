@@ -1583,7 +1583,7 @@ async function getModules() {
        <li>Timotheos keeps its own copy and tells you what it imported. Bibles appear in the list of Bibles, the rest in the Library and Commentary.</li>`
     : `<li>Open one of the sites and download the module to your computer, for example to <b>Downloads</b>.</li>
        <li>Do not run the file. There is no need to unzip it.</li>
-       <li>In Timotheos click <b>Import</b> (toolbar, <i>File → Import Modules…</i> or <kbd>Ctrl+I</kbd>) and choose the files, or drag them onto the Timotheos window. You can choose many at once.</li>
+       <li>In Timotheos click <b>Import</b> (toolbar, <i>File → Modules → Import…</i> or <kbd>Ctrl+I</kbd>) and choose the files, or drag them onto the Timotheos window. You can choose many at once.</li>
        <li>A report says what was imported. Bibles appear in the list of Bibles of each view, commentaries in the <b>Commentary</b> panel, dictionaries and books in the <b>Library</b>.</li>`;
   const html = `<div class="getmods">
     <p>Timotheos reads modules made for <b>theWord</b> and <b>e-Sword</b>. These sites offer them without charge. Bibles from eBible.org can also be fetched inside Timotheos: <b>Download modules</b>, below.</p>
@@ -1736,7 +1736,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.128')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.129')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

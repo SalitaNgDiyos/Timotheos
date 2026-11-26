@@ -311,6 +311,15 @@ body.altkeys .tmenu u { text-decoration: underline; }
 .tmdrop > button:focus { background: var(--accent-soft); outline: none; }
 .tmdrop .tmic { width: 16px; display: grid; color: var(--muted); }
 .tmdrop .tml { flex: 1; }
+.tmdrop .tmsubwrap { position: relative; }
+.tmdrop .tmsubbtn { display: flex; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; padding: 4px 12px; gap: 8px; color: inherit; }
+.tmdrop .tmsubwrap.open > .tmsubbtn, .tmdrop .tmsubbtn:hover, .tmdrop .tmsubbtn:focus { background: var(--accent-soft); outline: none; }
+.tmdrop .tmarrow { margin-left: auto; color: var(--muted); font-size: 11px; }
+.tmdrop .tmsub { display: none; top: -7px; left: calc(100% - 4px); min-width: 230px; color: var(--text); }
+.tmdrop .tmsub.left { left: auto; right: calc(100% - 4px); }
+.tmdrop .tmsubwrap.open > .tmsub { display: block; }
+.tmdrop .tmsub > button { gap: 8px; }
+.tmdrop .tmsub > button:focus { background: var(--accent-soft); outline: none; }
 .tbdrag { flex: 1; height: 100%; }
 .toolbar { border-top: 1px solid color-mix(in srgb, var(--tooltext) 10%, transparent); }
 

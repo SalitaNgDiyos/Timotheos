@@ -13,36 +13,46 @@
   function getMenus() {
     return [
       ['File', 'f', [
-        ['New User Module…', '', 'newUserMod', 'plus'],
-        ['Import Modules…', sc('import'), 'import', 'import'],
-        ['Download Modules…', '', 'downloadModules'],
-        ['Where to Get Modules…', '', 'getModules'],
-        ['Add Module Folder…', sc('addFolder'), 'addFolder', 'folder'],
-        ['Show Imported Modules Folder', '', 'modulesFolder'],
-        ['Rescan Modules', sc('rescan'), 'rescan', 'refresh'],
+        // Items of one kind sit together in a submenu (▸), and the submenu name is not repeated in its items.
+        ['Modules', '', null, 'library', [
+          ['New User Module…', '', 'newUserMod', 'plus'],
+          ['Import…', sc('import'), 'import', 'import'],
+          ['Download…', '', 'downloadModules'],
+          ['Where to Get Them…', '', 'getModules'],
+          '-',
+          ['Add Folder…', sc('addFolder'), 'addFolder', 'folder'],
+          ['Show Imported Folder', '', 'modulesFolder'],
+          ['Rescan', sc('rescan'), 'rescan', 'refresh'],
+        ]],
+        ['My Study', '', null, 'study', [
+          ['Export Topics…', '', 'exportTopics', 'import'],
+          ['Back Up…', '', 'backupStudy'],
+          ['Restore…', '', 'restoreStudy'],
+        ]],
+        ['Print', '', null, 'print', [
+          ['This Window…', 'Ctrl+P', 'print', 'print'],
+          ['Library Topic', '', 'printTopic'],
+        ]],
         '-',
-        ['Export Topics…', '', 'exportTopics', 'import'],
-        ['Back Up My Study…', '', 'backupStudy'],
-        ['Restore My Study…', '', 'restoreStudy'],
-        ['Print the Library Topic', '', 'printTopic', 'print'],
         ['Options…', sc('options'), 'options', 'gear'],
-        ['Print…', 'Ctrl+P', 'print', 'print'],
         '-',
         ['Exit', 'Alt+F4', 'quit'],
       ]],
       ['View', 'v', [
         ['Bible Search', sc('search'), 'search', 'search'],
         ['Book Search', sc('bookSearch'), 'bookSearch', 'book'],
-        ['Read Aloud: Voices…', '', 'voices', 'speaker'],
-        ['Clipboard Monitor', '', 'clipmon', 'copy'],
         ['Go to Reference', sc('goto'), 'goto'],
         ['Copy Verses…', sc('copyVerses'), 'copyVerses', 'copy'],
         ['Daily Readings', '', 'daily', 'study'],
+        ['Read Aloud: Voices…', '', 'voices', 'speaker'],
+        ['Clipboard Monitor', '', 'clipmon', 'copy'],
         '-',
         ['Skins…', '', 'skins', 'palette'],
-        ['Layout & Panels', '', 'panels', 'layout'],
-        ['Edit Layout', '', 'detachEdges', 'detach'],
-        ['Reset Panel Layout', '', 'resetLayout', 'layout'],
+        ['Layout & Panels', '', null, 'layout', [
+          ['Panels…', '', 'panels', 'layout'],
+          ['Edit Layout', '', 'detachEdges', 'detach'],
+          ['Reset Layout', '', 'resetLayout', 'refresh'],
+        ]],
         '-',
         ['Developer Tools', sc('devtools'), 'devtools'],
       ]],
@@ -69,13 +79,22 @@
     bar.querySelectorAll('.tmdrop').forEach(d => {
       const items = menus[+d.dataset.i][2];
       const ti = window.toolbarItemsState ? window.toolbarItemsState() : {};
-      d.innerHTML = items.map(it => {
+      const item = it => {
         if (it === '-') return '<div class="msep"></div>';
+        if (Array.isArray(it[4])) {
+          return `<div class="tmsubwrap"><button class="tmsubbtn" aria-haspopup="true"><span class="tmic">${it[3] ? TimotheosIcons.icon(it[3], 15) : ''}</span><span class="tml">${tr(it[0])}</span><span class="tmarrow">▸</span></button><div class="menu tmsub">${it[4].map(item).join('')}</div></div>`;
+        }
         const isTb = String(it[2] || '').startsWith('tb:');
         const tbKey = isTb ? it[2].slice(3) : '';
         const icHtml = isTb ? (ti[tbKey] !== false ? TimotheosIcons.icon('check', 14) : '') : (it[3] ? TimotheosIcons.icon(it[3], 15) : '');
         return `<button data-cmd="${it[2]}"><span class="tmic">${icHtml}</span><span class="tml">${tr(it[0])}</span>${it[1] ? `<kbd>${it[1]}</kbd>` : ''}</button>`;
-      }).join('');
+      };
+      d.innerHTML = items.map(item).join('');
+      d.querySelectorAll('.tmsubbtn').forEach(b => {
+        b.onclick = e => { e.stopPropagation(); openSub(b, true); };
+        b.parentElement.onmouseenter = () => openSub(b, false);
+      });
+      d.querySelectorAll(':scope > button').forEach(b => b.addEventListener('mouseenter', () => closeSubs()));
       d.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => { close(); if (b.dataset.cmd.startsWith('tb:') && window.setToolbarItem) window.setToolbarItem(b.dataset.cmd.slice(3)); else window.runCommand(b.dataset.cmd); });
     });
     bar.querySelectorAll('.tmenu').forEach(b => {
@@ -98,7 +117,18 @@
     open = i;
     const first = d.querySelector('button'); if (first) first.focus();
   }
+  // Submenus: open on hover, click, Enter or →; ← or Esc goes back to the parent item
+  function closeSubs(except) {
+    document.querySelectorAll('.tmsubwrap.open').forEach(w => { if (w !== except) w.classList.remove('open'); });
+  }
+  function openSub(btn, focusFirst) {
+    const w = btn.parentElement; closeSubs(w); w.classList.add('open');
+    const sub = w.querySelector('.tmsub');
+    sub.classList.toggle('left', w.getBoundingClientRect().right + 280 > window.innerWidth);
+    if (focusFirst) { const f = sub.querySelector('button'); if (f) f.focus(); }
+  }
   function close() {
+    closeSubs();
     document.querySelectorAll('.tmdrop').forEach(d => d.classList.add('hidden'));
     document.querySelectorAll('.tmenu.on').forEach(b => b.classList.remove('on'));
     open = null;
@@ -121,8 +151,16 @@
     document.addEventListener('keydown', e => {
       const menus = getMenus();
       if (open != null) {
-        const d = document.querySelector(`.tmdrop[data-i="${open}"]`); const items = [...d.querySelectorAll('button')]; const at = items.indexOf(document.activeElement);
-        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
+        const d = document.querySelector(`.tmdrop[data-i="${open}"]`);
+        const inSub = document.activeElement && document.activeElement.closest && document.activeElement.closest('.tmsub');
+        const scope = inSub || d;
+        const items = [...scope.querySelectorAll(':scope > button, :scope > .tmsubwrap > button')]; const at = items.indexOf(document.activeElement);
+        const backToParent = () => { const w = inSub.parentElement; w.classList.remove('open'); w.querySelector('.tmsubbtn').focus(); };
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (inSub) backToParent(); else close(); return; }
+        const cur = document.activeElement;
+        if ((e.key === 'ArrowRight' || e.key === 'Enter' || e.key === ' ') && cur && cur.classList && cur.classList.contains('tmsubbtn')) { e.preventDefault(); e.stopPropagation(); openSub(cur, true); return; }
+        if (e.key === 'ArrowLeft' && inSub) { e.preventDefault(); e.stopPropagation(); backToParent(); return; }
+        if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !inSub) closeSubs();
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); items[(at + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); return; }
         if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); show((open + (e.key === 'ArrowRight' ? 1 : -1) + menus.length) % menus.length); return; }
       }
