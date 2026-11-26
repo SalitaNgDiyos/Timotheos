@@ -39,6 +39,8 @@
     'Print': 'I-print',
     'Import': 'Mag-import',
     'Panels': 'Mga Panel',
+    'Layout & Panels': 'Ayos at mga Panel',
+    'Parallel Bibles': 'Magkatabing Bibliya',
     'Focus': 'Pokus',
     'Skin': 'Tema',
     'Options': 'Mga Opsyon',

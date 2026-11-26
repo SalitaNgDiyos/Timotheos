@@ -172,6 +172,8 @@ function initDock() {
     ['cmt', 'Commentary', 'commentary', 'cmt', '#tab-cmt'], ['lib', 'Library', 'book', 'lib', '#tab-lib'],
     ['search', 'Bible search', 'search', 'search', '#tab-search'], ['bsearch', 'Book search', 'search', 'search', '#tab-bsearch'], ['study', 'My Study', 'study', 'study', '#tab-study']];
   for (const [id, title, icon, cap, sel] of P) TimotheosDock.register({ id, title, icon, cap, el: $(sel) });
+  // Parallel Bibles (0.6.120): waits in Layout & Panels until it is dragged in
+  if (window.TimotheosParallel && $('#tab-par')) { TimotheosParallel.init(); TimotheosDock.register({ id: 'par', title: 'Parallel Bibles', icon: 'parallel', cap: 'bible', el: $('#tab-par'), startHidden: true }); }
   ensurePanes(); // the Bible views are panels of the grid too
   TimotheosDock.init(state.settings.dock, {
     onSave: layout => save({ dock: layout }),
@@ -345,6 +347,7 @@ async function refreshModules(list) {
     catch (e) { /* the app starts empty, as before */ }
   }
   state.modules = visibleModules(state.allModules);
+  if (window.TimotheosParallel) setTimeout(() => TimotheosParallel.onModulesChanged(), 0);
   const ids = state.modules.bibles.map(b => b.id);
   const prevZoom = (views()[0] && views()[0].zoom) || state.settings.bibleZoom || 1;
   let vs = views().filter(v => ids.includes(v.bible));
@@ -591,6 +594,7 @@ function commitRef() {
   if (v && !v.linked) { v.ref = state.ref; storeViews(); } else { state.linkRef = state.ref; save({ ref: state.ref }); }
   const bk = (state.nav || []).find(x => x.id === state.ref.b);
   if (bk) document.title = `${bk.name} ${state.ref.c}:${state.ref.v} - Timotheos`;
+  if (window.TimotheosParallel) TimotheosParallel.onRef();
   if (Date.now() >= extSyncSuppressUntil && api.syncOut) {
     api.syncOut({ ref: state.ref, bookName: bk ? bk.name : '' }).catch(() => {});
   }
@@ -1424,6 +1428,7 @@ const isWordTarget = el => !!el && el.matches('[data-strong],[data-morph]') && !
 /** word pop-ups of a Bible view are off at first: the pop-up of a tagged word then needs Shift + hover (View's button in its left icon bar) */
 function wordPopupAllowed(el, shift) {
   if (!isWordTarget(el)) return true;
+  if (el.closest('.parpanel') && window.TimotheosParallel) return TimotheosParallel.wordPopupAllowed(shift);
   const bv = el.closest('.bv'); if (!bv) return true;
   const v = views()[+bv.dataset.i];
   return !!(shift || (v && v.wpop));
@@ -1686,7 +1691,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.119')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.120')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>

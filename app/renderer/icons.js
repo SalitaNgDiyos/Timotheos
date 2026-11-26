@@ -66,6 +66,8 @@ const ICONS = {
   speaker: '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="1.5"/>',
   detach: '<rect x="2.5" y="4" width="6.5" height="16" rx="1.2"/><rect x="15" y="4" width="6.5" height="16" rx="1.2"/><path d="M12 4v3M12 10.5v3M12 17v3"/>',
+  star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+  parallel: '<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="9.5" y="4" width="5" height="16" rx="1"/><rect x="16" y="4" width="5" height="16" rx="1"/>',
   layout: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>'
 };
 /** an inline SVG for an icon name */

@@ -622,3 +622,74 @@ html.sk .dlmods .dllist { max-height: 44vh; } html.sk .dlmods .dlget, html.sk .d
 sup.gloss, sup.gloss font { font: italic 400 .66em var(--font-text); color: var(--gloss, #4f8ff7) !important; margin: 0 .25em 0 .08em; vertical-align: super; }
 .bvtext.colmode sup.gloss.cl-gloss { font: italic 0.8em/1.25 var(--font-text); vertical-align: baseline; margin: 0; white-space: nowrap; min-height: 1.25em; }
 .bvtext.colmode sup.gloss.cl-gloss font { font: inherit; color: inherit !important; }
+
+/* ---------------- Parallel Bibles panel (0.6.120) ---------------- */
+.tab.parpanel { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.parbar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--panel); font: 12.5px var(--font-ui); }
+.parbar button { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 6px; padding: 3px 8px; cursor: pointer; font: inherit; }
+.parbar button:hover { border-color: var(--accent); }
+.parbar button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.parbar .tog.on, .parseg button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text); font-weight: 600; }
+.parbar .parset b { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.parchips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.pchipb { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 1px 2px 1px 9px; font-weight: 600; cursor: grab; user-select: none; }
+.pchipb.base { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pchipb.drag { opacity: .45; }
+.parbar .pchipb .px { border: 0; background: none; padding: 0 5px; color: var(--muted); font-weight: 400; }
+.pargrow { flex: 1; }
+.parseg { display: inline-flex; }
+.parseg button { border-radius: 0; }
+.parseg button:first-child { border-radius: 6px 0 0 6px; }
+.parseg button + button { border-left: 0; border-radius: 0 6px 6px 0; }
+.parnav { display: inline-flex; align-items: center; gap: 3px; }
+.parnav .parref { min-width: 5.5em; text-align: center; font-weight: 600; white-space: nowrap; }
+.parbar .wpglyph { font: 600 12px var(--font-text); }
+.parbody { flex: 1; min-height: 0; overflow: auto; font-size: var(--size, 17px); font-family: var(--font-text); line-height: var(--lh, 1.55); }
+.parbody .hint { margin: 10px 12px; }
+.parnone { padding: 28px 16px; text-align: center; font-family: var(--font-ui); }
+.parnone .primary { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 7px 14px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.ptable { display: grid; grid-template-columns: 2.6em repeat(var(--n), minmax(13em, 1fr)); min-width: min-content; }
+.ptable .phd, .ptable .pvrow { display: contents; }
+.ptable .phd > * { position: sticky; top: 0; z-index: 1; background: var(--card); border-bottom: 2px solid var(--line); padding: 6px 10px; font: 12.5px var(--font-ui); }
+.ptable .pth b { margin-right: 6px; }
+.ptable .pth small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.ptable .pth.base b { color: var(--accent); }
+.ptable .pvn { text-align: right; padding: 7px 6px 0 0; color: var(--accent); font: 700 12.5px var(--font-ui); border-bottom: 1px solid var(--line); cursor: pointer; }
+.ptable .pcell { padding: 6px 10px 8px; border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); cursor: pointer; }
+.ptable .pvrow.cur > * { background: var(--sel); }
+.pcell.pmiss { color: var(--muted); font: italic 12px var(--font-ui); background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(127,127,127,.07) 6px 12px); }
+.pcell.rtl { text-align: right; }
+.pstack .psv { padding: 6px 12px 8px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.pstack .psv.cur { background: var(--sel); }
+.pstack .psh { font: 700 12.5px var(--font-ui); color: var(--accent); margin-bottom: 2px; }
+.pstack .psl { display: grid; grid-template-columns: 4.2em 1fr; gap: 8px; padding: 2px 0; }
+.pstack .plb { font: 600 11.5px var(--font-ui); color: var(--muted); padding-top: .3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pstack .psl.base .plb { color: var(--accent); }
+.parbody .phl { background: color-mix(in srgb, var(--strong) 22%, transparent); color: var(--strong); border-radius: 3px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--strong) 22%, transparent); }
+.parmenu { position: fixed; z-index: 3000; background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 6px; min-width: 240px; max-width: 360px; font: 13px var(--font-ui); }
+.parmenu .mh { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 4px 8px; }
+.parmenu .msep { height: 1px; background: var(--line); margin: 4px 0; }
+.parmenu button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: none; color: var(--text); padding: 6px 8px; border-radius: 5px; cursor: pointer; font: inherit; }
+.parmenu button:hover, .parmenu button.on { background: var(--accent-soft); }
+.parmenu button span { display: flex; flex-direction: column; min-width: 0; }
+.parmenu small, .parchoose small { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.parsetup .field { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 4px; }
+.parsetup input[type="text"] { width: 100%; }
+.parcats { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 8px; }
+.parcats button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 12px; padding: 2px 10px; cursor: pointer; font: 12px var(--font-ui); }
+.parcats button:hover { border-color: var(--accent); }
+.parpick { max-height: 46vh; overflow: auto; border: 1px solid var(--line); border-radius: 6px; margin: 6px 0; }
+.parpick .ppr, .parchoose .ppr { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+.parpick .ppr.on, .parchoose .ppr.on { background: var(--accent-soft); }
+.parpick .ppr.full { opacity: .5; }
+.parpick .ppr label { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; cursor: pointer; }
+.parpick .ppr label span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.parpick .ppr small { color: var(--muted); font-size: 11px; }
+.ppord { display: inline-flex; align-items: center; gap: 2px; font: 700 12px var(--font-ui); color: var(--accent); }
+.ppord button { border: 1px solid var(--line); background: var(--card); border-radius: 4px; padding: 0 5px; cursor: pointer; font-size: 10px; color: var(--text); }
+.ppord button:disabled { opacity: .35; cursor: default; }
+.parchoose .ppr { cursor: pointer; }
+.parchoose .ppr span { display: flex; flex-direction: column; min-width: 0; }
+html.mobile .parbar { gap: 4px; padding: 6px; }
+html.mobile .parbar [data-a="wpop"], html.mobile .parbar [data-a="zin"], html.mobile .parbar [data-a="zout"] { display: none; }
+html.mobile .ptable { grid-template-columns: 2em repeat(var(--n), minmax(10.5em, 1fr)); }

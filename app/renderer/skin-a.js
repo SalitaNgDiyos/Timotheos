@@ -42,7 +42,7 @@
   }
 
   const TILES = [['library', 'Library', 'Books, dictionaries', () => P().library()], ['search', 'Bible search', 'Words, phrases, G/H', () => P().search()], ['lexicon', 'Book search', 'Every library book', () => P().search({ mode: 'books' })],
-    ['commentary', 'Commentary', 'Single or all', () => P().commentarySheet({ ...state.ref })], ['study', 'My Study', 'Notes, lists, marks', () => P().studyPage()], ['compare', 'Parallel views', 'Bibles side by side', () => window.TimotheosSkins.parallel()],
+    ['commentary', 'Commentary', 'Single or all', () => P().commentarySheet({ ...state.ref })], ['study', 'My Study', 'Notes, lists, marks', () => P().studyPage()], ['compare', 'Parallel views', 'Bibles side by side', () => window.TimotheosSkins.parallel()], ['compare', 'Parallel Bibles', 'Sets of up to 8 Bibles, verse by verse', () => P().fullPanel('par')],
     ['copy', 'Copy verses', 'Ranges & formats', () => TimotheosStudy.copyDialog()], ['calendar', 'Daily readings', 'Plans, devotionals', () => P().studySection('plans')], ['speaker', 'Read aloud', 'Voices, repeat', () => readNow()],
     ['import', 'Modules', 'Import, uninstall', () => P().modulesSheet()], ['tune', 'Options', 'Skins, fonts, layout', () => runCommand('options')], ['guide', 'Help', 'Guide, about', () => P().helpSheet()]];
   const PILLS = [['text', 'Reading view', () => P().readingSheet()], ['gear', 'Read aloud settings', () => P().readAloudPage()], ['print', 'Print', () => runCommand('print')], ['clipboard', 'Clipboard monitor', () => runCommand('clipmon')],

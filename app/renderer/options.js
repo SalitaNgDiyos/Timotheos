@@ -365,7 +365,7 @@
     if (panelsDlgWired) return;
     panelsDlgWired = true;
     const canPopout = !!(window.TimotheosHost && TimotheosHost.openPanelsWindow && !document.documentElement.classList.contains('mobile'));
-    m.innerHTML = `<div class="pm-dlg-head" title="Drag to move this dialog">${TimotheosIcons.icon('grip', 14)}<span class="pm-dlg-title">Panels &amp; Layouts</span>${canPopout ? `<button type="button" class="pm-dlg-popout" aria-label="Pop out to separate window" title="Pop out to a separate window (drag to any monitor)">${TimotheosIcons.icon('float', 14)}</button>` : ''}<button type="button" class="pm-dlg-close" aria-label="Close Panels" title="Close">${TimotheosIcons.icon('close', 15)}</button></div><div class="pm-dlg-body"></div>`;
+    m.innerHTML = `<div class="pm-dlg-head" title="Drag to move this dialog">${TimotheosIcons.icon('grip', 14)}<span class="pm-dlg-title">Layout &amp; Panels</span>${canPopout ? `<button type="button" class="pm-dlg-popout" aria-label="Pop out to separate window" title="Pop out to a separate window (drag to any monitor)">${TimotheosIcons.icon('float', 14)}</button>` : ''}<button type="button" class="pm-dlg-close" aria-label="Close Panels" title="Close">${TimotheosIcons.icon('close', 15)}</button></div><div class="pm-dlg-body"></div>`;
     m.querySelector('.pm-dlg-close').onclick = () => closePanelsDialog();
     const po = m.querySelector('.pm-dlg-popout');
     if (po) po.onclick = () => { closePanelsDialog(); TimotheosHost.openPanelsWindow(); setTimeout(broadcastPanelsState, 250); };

@@ -1,0 +1,82 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Edmund P. Valdez
+// Parallel Bibles panel: hidden at first and listed in Layout & Panels; first-time setup; columns, stacked, differences,
+// Strong's light-up, following the main view, choosing among saved sets.
+// FOLDERS='["/home/claude/partest"]' bash test/tauri/run.sh test/tauri/parallel.js /tmp/par.png 1500   (STAGE=... picks the end state)
+(async () => { const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m); const sl = ms => new Promise(r => setTimeout(r, ms));
+const until = async (f, n = 60) => { for (let i = 0; i < n; i++) { try { if (f()) return true; } catch (e) { /* */ } await sl(200); } return false; };
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const stage = (window.__TEST_STAGE || '');
+try {
+  await until(() => state.modules && state.modules.bibles.length >= 3 && state.nav && state.nav.length, 100);
+  ok(state.modules.bibles.length >= 3, 'Bibles: ' + state.modules.bibles.map(b => b.abbr).join(', '));
+  const loc = TimotheosDock.located('par');
+  ok(loc && loc.hidden, 'the new panel starts hidden');
+  runCommand('panels'); await sl(500);
+  ok(/Layout & Panels/.test($('#panelsMenu .pm-dlg-title').textContent) && /Parallel Bibles/.test($('#panelsMenu').textContent), 'listed in the Layout & Panels dialog');
+  runCommand('panels'); await sl(200);
+  // first time: the set-up dialog
+  TimotheosDock.show('par');
+  ok(await until(() => /Set up Parallel Bibles/.test($('#modalTitle').textContent) && !$('#modal').classList.contains('hidden')), 'first time: the set-up dialog opens');
+  const okBtn = () => $$('#modalBtns button').find(b => b.classList.contains('primary'));
+  ok(okBtn().disabled, 'Save is off while fewer than 2 Bibles are picked');
+  $$('.parcats [data-cat]').find(b => b.dataset.cat === 'Tagalog').click();
+  ok($('#parName').value === 'Tagalog', 'a kind fills the name');
+  const tick = abbr => { const b = state.modules.bibles.find(x => x.abbr === abbr); const r = $$('#parPick .ppr').find(x => x.dataset.id === b.id); r.querySelector('input').click(); };
+  const ab = state.modules.bibles.map(b => b.abbr);
+  tick(ab.find(a => /^AMB$/i.test(a)) || ab[0]); await sl(100);
+  ok(okBtn().disabled && /1 of 8/.test($('#parCount').textContent), 'one picked: ' + $('#parCount').textContent);
+  tick(ab.find(a => /AMBV/i.test(a)) || ab[1]); await sl(100);
+  tick(ab.find(a => /wyc|purvey/i.test(a)) || ab[2]); await sl(100);
+  ok(!okBtn().disabled && /3 of 8/.test($('#parCount').textContent), 'three picked: ' + $('#parCount').textContent);
+  // order: move the third up
+  const rows = $$('#parPick .ppr.on'); rows[2].querySelector('[data-mv="-1"]').click(); await sl(100);
+  const order = $$('#parPick .ppr.on b').map(b => b.textContent);
+  ok(order.length === 3, 'order after ▲: ' + order.join(','));
+  if (stage === 'setup') { console.log('RESULT ' + out.join(' | ')); return; }
+  okBtn().click();
+  ok(await until(() => $('#tab-par .ptable .pvrow')), 'the set is drawn in columns');
+  const set = state.settings.parSets[0];
+  ok(set && set.name === 'Tagalog' && set.bibles.length === 3 && state.settings.parSetId === set.id, 'set saved: ' + JSON.stringify(set));
+  ok($$('#tab-par .pth').length === 3 && $('#tab-par .pvrow.cur'), 'three columns, the current verse marked: ' + ($('#tab-par .pvrow.cur') || {}).dataset?.pv);
+  // follow the main view
+  await go({ b: 43, c: 1, v: 14 }); await sl(800);
+  ok($('#tab-par .parref').textContent.includes('1') && $('#tab-par .pvrow.cur').dataset.pv === '14', 'follows the main view: ' + $('#tab-par .parref').textContent);
+  // Strong's light-up
+  const w = $('#tab-par [data-strong]');
+  if (w) { w.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); await sl(100); ok($$('#tab-par .phl').length >= 1, 'Strong\'s ' + w.dataset.strong + ' lights up ' + $$('#tab-par .phl').length + ' words'); }
+  else ok(false, 'no tagged word found');
+  // differences
+  $('#tab-par [data-a="diff"]').click(); await until(() => $('#tab-par mark.dif'));
+  ok($$('#tab-par mark.dif').length > 0 && $('#tab-par .pth.base'), 'differences marked against the ★ Bible');
+  // a chip makes another Bible the ★ one
+  const chips = $$('#tab-par .pchipb'); chips[1].click(); await sl(600);
+  ok(state.settings.parSets[0].base === chips[1].dataset.chip, 'clicking a chip makes it the ★ Bible');
+  // stacked
+  $('#tab-par [data-a="stack"]').click(); await until(() => $('#tab-par .pstack .psv'));
+  ok($$('#tab-par .pstack .psv').length > 5 && state.settings.parLayout.pc === 'stack', 'stacked layout');
+  if (stage === 'stack') { await go({ b: 43, c: 3, v: 16 }); await sl(900); console.log('RESULT ' + out.join(' | ')); return; }
+  $('#tab-par [data-a="cols"]').click(); await sl(300);
+  $('#tab-par [data-a="diff"]').click(); await sl(300);
+  // a second set, then the choice between sets
+  const p2 = TimotheosParallel.setupDialog(null); await sl(300);
+  $('#parName').value = 'Old English'; $$('#parPick .ppr input')[0].click(); await sl(50); $$('#parPick .ppr input')[1].click(); await sl(50);
+  okBtn().click(); await p2; await sl(500);
+  ok(state.settings.parSets.length === 2 && state.settings.parSetId === state.settings.parSets[1].id, 'a second set is saved and opened');
+  const p3 = TimotheosParallel.chooseSetDialog(); await sl(300);
+  ok($$('input[name="parPickSet"]').length === 2, 'with two sets, it asks which to open');
+  $$('input[name="parPickSet"]')[0].click(); $$('#modalBtns button').find(b => /Open/.test(b.textContent)).click(); await p3; await sl(300);
+  ok(state.settings.parSetId === state.settings.parSets[0].id, 'the chosen set is opened');
+  await TimotheosParallel.render(true); await sl(400);
+  // the ★ menu
+  $('#tab-par [data-a="sets"]').click(); await sl(300);
+  ok($$('.parmenu [data-set]').length === 2 && $('.parmenu [data-m="new"]'), 'the set menu lists both sets');
+  if (stage !== 'menu') document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await go({ b: 43, c: 3, v: 16 }); await sl(900);
+  // the phone starts stacked
+  const keepL = state.settings.parLayout; save({ parLayout: {} }); document.documentElement.classList.add('mobile');
+  await TimotheosParallel.render(false); await sl(400);
+  ok($('#tab-par [data-a="stack"]').classList.contains('on'), 'phone: stacked by default');
+  document.documentElement.classList.remove('mobile'); save({ parLayout: keepL }); await TimotheosParallel.render(false);
+} catch (e) { out.push('✗ script error ' + e.message + ' ' + (e.stack || '').split('\n')[1]); }
+console.log('RESULT ' + out.join(' | ')); })();

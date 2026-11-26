@@ -621,10 +621,10 @@
   }
   /** one of the old full panels (search with all its options, book search), as a page */
   function fullPanel(id) {
-    const el = { search: '#tab-search', bsearch: '#tab-bsearch', cmt: '#tab-cmt', study: '#tab-study', tree: '#pane-tree' }[id];
-    const p = pushPage({ title: { search: 'Bible search', bsearch: 'Book search', cmt: 'Commentary', study: 'My Study', tree: 'Books & chapters' }[id] || '' , cls: 'fullpanel' });
+    const el = { search: '#tab-search', bsearch: '#tab-bsearch', cmt: '#tab-cmt', study: '#tab-study', tree: '#pane-tree', par: '#tab-par' }[id];
+    const p = pushPage({ title: { search: 'Bible search', bsearch: 'Book search', cmt: 'Commentary', study: 'My Study', tree: 'Books & chapters', par: 'Parallel Bibles' }[id] || '' , cls: 'fullpanel' });
     const back = borrow($(el), p.body); stack[stack.length - 1].o.onClose = back;
-    try { if (id === 'search') window.TimotheosSearch.onOpen(true); if (id === 'bsearch') window.TimotheosBookSearch.onOpen(true); if (id === 'study') TimotheosStudy.onOpen(); if (id === 'cmt') TimotheosModules.updateCommentary(); } catch (e) { /* */ }
+    try { if (id === 'search') window.TimotheosSearch.onOpen(true); if (id === 'bsearch') window.TimotheosBookSearch.onOpen(true); if (id === 'study') TimotheosStudy.onOpen(); if (id === 'cmt') TimotheosModules.updateCommentary(); if (id === 'par' && window.TimotheosParallel) setTimeout(() => TimotheosParallel.wake(), 60); } catch (e) { /* */ }
     return p;
   }
   function search(o = {}) { const p = pushPage({ title: 'Search', big: true }); const box = document.createElement('div'); p.body.appendChild(box); const s = searchInto(box, Object.assign({ onGo: () => clearPages() }, o)); if (!o.q) setTimeout(s.focus, 250); return p; }

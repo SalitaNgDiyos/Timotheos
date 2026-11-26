@@ -1,0 +1,11 @@
+Timotheos 0.6.120
+
+- New: Parallel Bibles panel. Up to 8 Bibles verse by verse, from parallel sets you save. Drag it in from View > Layout & Panels.
+- The first time it opens, it asks you to set up a set: what kind of Bibles or a name (optional; Modern English, Old English, Tagalog, Original languages, Mixed languages fill it in), and which Bibles (required, 2 to 8, with up and down arrows for the order). With two or more saved sets it asks which set to open; with one set, that set simply opens.
+- Columns (side by side) or Stacked (each verse with every Bible under it). The phone starts Stacked.
+- Differences: marks the words that differ from the star Bible and shows the share in %. Click a Bible chip to make it the star Bible. Any two Bibles can be compared.
+- Follows the main Bible view (or reads on by itself), marks the current verse, and lights up every word with the same Strong's number in all the Bibles when the mouse rests on one.
+- Bible chips can be dragged to change the order and removed with x; the star menu switches, makes, changes or deletes sets.
+- On the phone: Parallel Bibles is in the Layout / More / command menus of each screen. The older two-Bible view (top and bottom) is still there.
+- View > Panels is now called Layout & Panels.
+- User Guide updated (computer and phone).

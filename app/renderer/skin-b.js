@@ -43,8 +43,8 @@
   }
   const esc = s => P().esc(s);
   function layoutSheet() {
-    const p = P(); const s = p.sheet(`<div class="rows"><button type="button" class="prr" data-x="par">${p.ic('compare', 20)}<span>Parallel Bibles</span><small>${window.TimotheosPhone.splitId() ? 'On' : 'Off'}</small></button><button type="button" class="prr nophone" data-x="reset">${p.ic('layout', 20)}<span>Reset panel layout</span></button><button type="button" class="prr" data-x="screen">${p.ic('grid', 20)}<span>Change screen</span></button></div>`, { title: 'Layout' });
-    s.onclick = e => { const x = e.target.closest('[data-x]'); if (!x) return; p.closeSheet(); if (x.dataset.x === 'par') { setTab('read'); window.TimotheosSkins.parallel(); } if (x.dataset.x === 'reset') runCommand('resetLayout'); if (x.dataset.x === 'screen') window.TimotheosSkins.picker(true); };
+    const p = P(); const s = p.sheet(`<div class="rows"><button type="button" class="prr" data-x="par">${p.ic('compare', 20)}<span>Second Bible below</span><small>${window.TimotheosPhone.splitId() ? 'On' : 'Off'}</small></button><button type="button" class="prr" data-x="pset">${p.ic('compare', 20)}<span>Parallel Bibles</span><small>Sets of up to 8</small></button><button type="button" class="prr nophone" data-x="reset">${p.ic('layout', 20)}<span>Reset panel layout</span></button><button type="button" class="prr" data-x="screen">${p.ic('grid', 20)}<span>Change screen</span></button></div>`, { title: 'Layout' });
+    s.onclick = e => { const x = e.target.closest('[data-x]'); if (!x) return; p.closeSheet(); if (x.dataset.x === 'par') { setTab('read'); window.TimotheosSkins.parallel(); } if (x.dataset.x === 'pset') p.fullPanel('par'); if (x.dataset.x === 'reset') runCommand('resetLayout'); if (x.dataset.x === 'screen') window.TimotheosSkins.picker(true); };
   }
 
   /* the toolbar of a tapped verse */

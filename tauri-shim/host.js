@@ -172,7 +172,7 @@ async function openPanelsWindow() {
   if (isMobile) return false;
   const ex = await WebviewWindow.getByLabel('panels');
   if (ex) { try { await ex.setFocus(); return true; } catch (e) {} }
-  new WebviewWindow('panels', { url: 'panels.html', title: 'Timotheos – Panels & Layouts', width: 360, height: 640, minWidth: 300, minHeight: 380 });
+  new WebviewWindow('panels', { url: 'panels.html', title: 'Timotheos – Layout & Panels', width: 360, height: 640, minWidth: 300, minHeight: 380 });
   return true;
 }
 

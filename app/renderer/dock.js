@@ -99,7 +99,7 @@
     out.floats = (out.floats || []).map(f => ({ panels: keep(f.panels), active: f.active, x: +f.x || 80, y: +f.y || 80, w: +f.w || 360, h: +f.h || 320 })).filter(f => f.panels.length);
     for (const f of out.floats) if (!f.panels.includes(f.active)) f.active = f.panels[0];
     out.hidden = keep(out.hidden);
-    for (const id of PANELS.keys()) if (!seen.has(id)) placeHome(out, id, true); // e.g. a panel new in this version, or a new Bible view
+    for (const id of PANELS.keys()) if (!seen.has(id)) { if (PANELS.get(id).startHidden) out.hidden.push(id); else placeHome(out, id, true); } // e.g. a panel new in this version, or a new Bible view (a panel that starts hidden waits in Layout & Panels)
     out.slots = Array.isArray(out.slots) ? out.slots.filter(s => s && s.x1 - s.x0 > EPS && s.y1 - s.y0 > EPS && !out.areas.some(a => hit(a, s))) : [];
     return out;
   }
@@ -572,7 +572,7 @@
       }
       const bar = document.createElement('div');
       bar.className = 'ld-bar';
-      bar.innerHTML = `<span>Drag dotted lines to resize · Drag panels from <b>Panels</b></span><button type="button" data-ld="pick">Change grid…</button><button type="button" data-ld="clear">Clear grid</button>`;
+      bar.innerHTML = `<span>Drag dotted lines to resize · Drag panels from <b>Layout &amp; Panels</b></span><button type="button" data-ld="pick">Change grid…</button><button type="button" data-ld="clear">Clear grid</button>`;
       bar.querySelector('[data-ld="pick"]').onclick = e => openLayoutDesigner(e.currentTarget);
       bar.querySelector('[data-ld="clear"]').onclick = () => { L.slots = []; commit(); };
       grid.appendChild(bar);

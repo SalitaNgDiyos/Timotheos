@@ -40,7 +40,7 @@
         ['Daily Readings', '', 'daily', 'study'],
         '-',
         ['Skins…', '', 'skins', 'palette'],
-        ['Panels', '', 'panels', 'layout'],
+        ['Layout & Panels', '', 'panels', 'layout'],
         ['Detach edges', '', 'detachEdges', 'detach'],
         ['Reset Panel Layout', '', 'resetLayout', 'layout'],
         '-',
