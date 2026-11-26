@@ -1,9 +1,6 @@
-Timotheos 0.6.129
+Timotheos 0.6.130
 
-- Edit Layout and Reset Layout are no longer separate View menu items. Both are now in the View → Layout & Panels… window, under Arranging (also in the popped-out window).
-- File menu: items of one kind sit together in a submenu (▸).
-  - Modules ▸ New User Module…, Import…, Download…, Where to Get Them…, Add Folder…, Show Imported Folder, Rescan.
-  - My Study ▸ Export Topics…, Back Up…, Restore…
-  - Print ▸ This Window…, Library Topic.
-- Keyboard: → or Enter opens a submenu, ← or Esc goes back. Shortcut keys are unchanged.
-- The User Guide uses the new menu paths.
+- Closing a panel (also a Bible view) never makes another panel grow, whether Edit Layout is on or off: its place stays an empty space.
+- Releases: a new version number is released once a day at 12 am Manila time, only on days with changes. Fixes made during the day are built at once as builds of the same version (for example 0.6.130 · build 812), and Check for updates and the start-up card offer them right away.
+- Check for updates: "Include today's builds" is on by default; About shows the build number.
+- Linux (.deb): a build of the same version installs over the one you have.

@@ -24,7 +24,7 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/releases" --paginate -q '.[] | [.id, .name] | @tsv' > rel.tsv
           for f in release-notes/*.txt; do
             V=$(basename "$f" .txt)
-            awk -F'\t' -v a="Timotheos_$V" -v b="Timotheos_$V (test build)" '$2==a || $2==b {print $1}' rel.tsv | while read -r id; do
+            awk -F'\t' -v a="Timotheos_$V" -v b="Timotheos_$V (test build)" '$2==a || $2==b || index($2, a " build ")==1 {print $1}' rel.tsv | while read -r id; do
               old=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" -q .body)
               tail=$(printf '%s\n' "$old" | grep -E '^(Build [0-9]+ of|Test build )' | tail -1 || true)
               body=$(cat "$f")

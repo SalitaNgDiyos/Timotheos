@@ -829,7 +829,7 @@ fn linux_update(f: &std::path::Path, name: &str) -> Result<String, String> {
         let exe = std::env::current_exe().map_err(|e| e.to_string())?;
         let exe = PathBuf::from(exe.to_string_lossy().trim_end_matches(" (deleted)").to_string());
         let out = std::process::Command::new("pkexec")
-            .args(["env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "install", "-y", "--allow-downgrades"]).arg(f)
+            .args(["env", "DEBIAN_FRONTEND=noninteractive", "apt-get", "install", "-y", "--reinstall", "--allow-downgrades"]).arg(f)
             .stdin(std::process::Stdio::null()).output().map_err(|e| format!("The installer could not be started: {e}"))?;
         match out.status.code() {
             Some(0) => {}

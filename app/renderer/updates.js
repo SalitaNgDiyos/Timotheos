@@ -7,15 +7,15 @@
 const TimotheosUpdates = (() => {
   const E = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const DEFAULT = 'https://api.github.com/repos/SalitaNgDiyos/Timotheos/releases/latest';
-  const TEST = 'https://api.github.com/repos/SalitaNgDiyos/Timotheos/releases/tags/test';   // the pre-release the builds of the test branch are put in
+  const TEST = 'https://api.github.com/repos/SalitaNgDiyos/Timotheos/releases/tags/test';   // today's build: every fix since the last release (the public release is made at 12 am Manila time)
   const PAGE = 'https://github.com/SalitaNgDiyos/Timotheos/releases';
   const net = () => (window.TimotheosHost && TimotheosHost.net) || null;
   const env = () => { try { return JSON.parse((TimotheosHost.info().env || {}).TIMOTHEOS_REPOS || '{}'); } catch (e) { return {}; } };
   const place = () => env().updates || DEFAULT;
   const testPlace = () => env().test || TEST;
-  const parts = v => (String(v || '').match(/\d+/g) || []).slice(0, 3).map(Number);
-  /** 1 when a is newer than b, -1 when older, 0 when the same */
-  function compare(a, b) { const x = parts(a), y = parts(b); for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; }
+  const parts = v => (String(v || '').match(/\d+/g) || []).slice(0, 4).map(Number);
+  /** 1 when a is newer than b, -1 when older, 0 when the same (version, then build: "0.6.130.812" is build 812 of 0.6.130) */
+  function compare(a, b) { const x = parts(a), y = parts(b); for (let i = 0; i < 4; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; } return 0; }
   const versionOf = r => { for (const t of [r.tag_name, r.name]) { const m = String(t || '').match(/\d+\.\d+(?:\.\d+)?/); if (m) return m[0]; } return ''; };
   /** what the answer of GitHub says: { latest, url, notes } or throws a plain message */
   function read(text) {
@@ -24,8 +24,12 @@ const TimotheosUpdates = (() => {
     const v = versionOf(r); if (!v) throw new Error('The newest release has no version number in its name (' + String(r.tag_name || r.name).slice(0, 40) + ').');
     const url = /^https:\/\//.test(r.html_url || '') ? r.html_url : PAGE;
     const assets = (Array.isArray(r.assets) ? r.assets : []).map(a => ({ name: String(a.name || ''), url: String(a.browser_download_url || ''), size: +a.size || 0, sha256: /^sha256:([0-9a-f]{64})$/i.test(a.digest || '') ? RegExp.$1.toLowerCase() : '' })).filter(a => a.name && /^https?:\/\//.test(a.url));
-    return { latest: v, url, notes: String(r.body || '').trim(), name: r.name || r.tag_name, assets };
+    const bm = String(r.name || '').match(/\bbuild (\d+)/i) || String(r.body || '').match(/^Build (\d+) of /m);
+    return { latest: v, build: bm ? +bm[1] : 0, url, notes: String(r.body || '').trim(), name: r.name || r.tag_name, assets };
   }
+  /** version and build of what this device would install from a release: the build is in the file's name (Timotheos_0.6.130_b812_…) */
+  function keyOf(r) { const f = fileFor(r), m = f && /_b(\d+)_/.exec(f.name); return r.latest + '.' + (m ? +m[1] : f ? 0 : r.build || 0); }
+  const shown = k => { const p = parts(k); return p.slice(0, 3).join('.') + (p[3] ? ' · build ' + p[3] : ''); };
   /** the file of a release that suits this system: the Windows setup, the Android APK, the Linux AppImage (when this one runs as an AppImage) or .deb */
   function fileFor(r) {
     const os = (window.TimotheosHost && TimotheosHost.info() || {}).platform;
@@ -60,14 +64,16 @@ const TimotheosUpdates = (() => {
       failed: 'The installer could not be started.'
     }[how] || 'Done.', how === 'failed' ? 'uperr' : '');
   }
-  const here = () => String((state.settings && state.settings.version) || '');
+  const myBuild = () => (window.TIMOTHEOS_BUILD && +TIMOTHEOS_BUILD.n) || 0;
+  const here = () => String((state.settings && state.settings.version) || '') + '.' + myBuild();
+  const daily = () => !(state.settings && state.settings.updDaily === false);   // today's builds are offered unless turned off
   async function ask(withTest) {
     const n = net(); if (!n) throw new Error('This build of Timotheos cannot go on the internet.');
     let stable = null, test = null, err = null;
     try { stable = read(await n.text(place())); }
     catch (e) { if (!/error 404/.test(e.message)) err = e; }
     if (withTest) { try { test = read(await n.text(testPlace())); test.test = true; } catch (e) { if (!/error 404/.test(e.message) && !err && !stable) err = e; } }
-    const best = stable && test ? (compare(test.latest, stable.latest) > 0 ? test : stable) : (stable || test);
+    const best = stable && test ? (compare(keyOf(test), keyOf(stable)) > 0 ? test : stable) : (stable || test);
     if (best) return best;
     if (err) throw err;
     const x = new Error('none'); x.none = true; throw x;
@@ -75,14 +81,14 @@ const TimotheosUpdates = (() => {
   const notes = t => t ? `<h4>What is new</h4><pre class="upnotes">${E(t.length > 1800 ? t.slice(0, 1800) + '…' : t)}</pre>` : '';
   async function check() {
     if (!net()) return TimotheosModules.messageBox('Check for updates', '<p>This build of Timotheos cannot go on the internet. Look for a newer version at <a class="link" data-href="' + PAGE + '">' + PAGE + '</a>.</p>');
-    const me = here(); const withTest = !!(state.settings && state.settings.updTest); let result, html, btns = [{ label: 'Close', value: null, primary: true }];
-    const shell = h => `<div class="updates"><p>Installed: <b>Timotheos ${E(me)}</b></p>${h}<p><label><input type="checkbox" id="upTest"${withTest ? ' checked' : ''}> Include test builds</label></p><p><label><input type="checkbox" id="upAuto"${(state.settings && state.settings.updAuto === false) ? '' : ' checked'}> Look for a new version when Timotheos starts</label></p><p class="small">Timotheos goes on the internet here only to read the newest release on GitHub: when you ask, and when it starts unless you turn that off. Nothing is installed or sent. (If this device cannot look up GitHub's address, Timotheos asks a public DNS service, Cloudflare 1.1.1.1 or Google 8.8.8.8, for it: only the site's name is sent.)</p></div>`;
+    const me = here(); const withTest = daily(); let result, html, btns = [{ label: 'Close', value: null, primary: true }];
+    const shell = h => `<div class="updates"><p>Installed: <b>Timotheos ${E(shown(me))}</b></p>${h}<p><label><input type="checkbox" id="upTest"${withTest ? ' checked' : ''}> Include today's builds <span class="small">(fixes made since the last release; the release is made at 12 am Manila time)</span></label></p><p><label><input type="checkbox" id="upAuto"${(state.settings && state.settings.updAuto === false) ? '' : ' checked'}> Look for a new version when Timotheos starts</label></p><p class="small">Timotheos goes on the internet here only to read the newest release on GitHub: when you ask, and when it starts unless you turn that off. Nothing is installed or sent. (If this device cannot look up GitHub's address, Timotheos asks a public DNS service, Cloudflare 1.1.1.1 or Google 8.8.8.8, for it: only the site's name is sent.)</p></div>`;
     const p = TimotheosModules.modal('Check for updates', shell('<p id="upState">Looking for the newest version…</p>'), btns);
     try {
       result = await ask(withTest);
-      if (compare(result.latest, me) > 0) {
-        html = `<p id="upState" class="upnew">A newer version is available: <b>${E(result.latest)}</b>${result.test ? ' (a test build)' : ''}.</p>${notes(result.notes)}<div id="upProg"></div><div id="upAct">${fileFor(result) && net() ? `<p><button type="button" class="pill gold" id="upDo">Download and install</button> <span class="small">${E(fileFor(result).name)} · ${mb(fileFor(result).size)}</span></p>` : ''}<p><button type="button" class="pill${fileFor(result) ? '' : ' gold'}" id="upGet" data-href="${E(result.url)}">Open the download page</button></p></div>`;
-      } else html = `<p id="upState" class="upok">You have the newest version (the newest release is ${E(result.latest)}).</p>`;
+      if (compare(keyOf(result), me) > 0) {
+        html = `<p id="upState" class="upnew">A newer version is available: <b>${E(shown(keyOf(result)))}</b>${result.test ? " (today's build)" : ''}.</p>${notes(result.notes)}<div id="upProg"></div><div id="upAct">${fileFor(result) && net() ? `<p><button type="button" class="pill gold" id="upDo">Download and install</button> <span class="small">${E(fileFor(result).name)} · ${mb(fileFor(result).size)}</span></p>` : ''}<p><button type="button" class="pill${fileFor(result) ? '' : ' gold'}" id="upGet" data-href="${E(result.url)}">Open the download page</button></p></div>`;
+      } else html = `<p id="upState" class="upok">You have the newest version (the newest is ${E(shown(keyOf(result)))}).</p>`;
     } catch (e) {
       html = e.none ? `<p id="upState">No release has been published yet, so there is nothing newer to offer. Releases are listed at <a class="link" data-href="${PAGE}">${PAGE}</a>.</p>`
         : `<p id="upState" class="uperr">Could not check: ${E(e.message)}</p>`;
@@ -90,7 +96,7 @@ const TimotheosUpdates = (() => {
     const box = document.querySelector('#modalBody .updates');
     if (box && !document.querySelector('#modal').classList.contains('hidden')) {
       box.innerHTML = shell(html).replace(/^<div class="updates">|<\/div>$/g, '');
-      const tb = box.querySelector('#upTest'); if (tb) tb.onchange = async () => { await save({ updTest: tb.checked }); const c = document.querySelector('#modalBtns button'); if (c) c.click(); setTimeout(check, 150); };
+      const tb = box.querySelector('#upTest'); if (tb) tb.onchange = async () => { await save({ updDaily: tb.checked }); const c = document.querySelector('#modalBtns button'); if (c) c.click(); setTimeout(check, 150); };
       const au = box.querySelector('#upAuto'); if (au) au.onchange = () => save({ updAuto: au.checked });
       const dobtn = box.querySelector('#upDo'); if (dobtn) dobtn.onclick = () => { dobtn.disabled = true; getAndInstall(result, fileFor(result)).finally(() => { if (dobtn.isConnected) dobtn.disabled = false; }); };
       const g = box.querySelector('#upGet'); if (g) g.onclick = () => api.openExternal(g.dataset.href);
@@ -105,7 +111,7 @@ const TimotheosUpdates = (() => {
     if (document.getElementById('updNotice')) return;
     const f = fileFor(r), canGet = !!(f && net()), lines = noteLines(r.notes);
     const d = document.createElement('div'); d.id = 'updNotice'; d.className = 'updn'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true'); d.setAttribute('aria-labelledby', 'updnT');
-    d.innerHTML = `<div class="updn-box updates"><h3 id="updnT">A new version is ready</h3><div class="updn-v">Timotheos ${E(r.latest)}${r.test ? ' (test build)' : ''}</div>
+    d.innerHTML = `<div class="updn-box updates"><h3 id="updnT">A new version is ready</h3><div class="updn-v">Timotheos ${E(shown(keyOf(r)))}${r.test ? " (today's build)" : ''}</div>
       ${lines.length ? `<h4>What is new</h4><ul class="updn-list">${lines.map(l => `<li>${E(l)}</li>`).join('')}</ul>` : ''}
       <p id="upState" class="small"></p><div id="upProg"></div>
       <button type="button" class="updn-go" id="updnGo">${canGet ? 'Download and install' : 'Open the download page'}</button>
@@ -115,7 +121,7 @@ const TimotheosUpdates = (() => {
     const close = () => { document.removeEventListener('keydown', key, true); d.remove(); };
     const key = e => { if (e.key === 'Escape' && !busy) { e.stopPropagation(); close(); } };   // Escape: not now (it asks again next time)
     document.addEventListener('keydown', key, true);
-    no.onclick = async () => { if (busy) return; if (no.dataset.close) return close(); try { await save({ updIgnore: r.latest }); } catch (e) { /* kept for this run only */ } close(); };
+    no.onclick = async () => { if (busy) return; if (no.dataset.close) return close(); try { await save({ updIgnore: keyOf(r) }); } catch (e) { /* kept for this run only */ } close(); };
     go.onclick = () => {
       if (!canGet) { api.openExternal(r.url); return close(); }
       busy = true; go.disabled = true; no.textContent = 'Close'; no.dataset.close = '1'; no.disabled = true;
@@ -126,12 +132,12 @@ const TimotheosUpdates = (() => {
   async function startup() {
     const s = state.settings || {};
     if (s.updAuto === false || !net() || quiet()) return;
-    let r; try { r = await ask(!!s.updTest); } catch (e) { return; }   // no connection, no release, ...: nothing to say
-    if (compare(r.latest, here()) <= 0) return;
+    let r; try { r = await ask(daily()); } catch (e) { return; }   // no connection, no release, ...: nothing to say
+    if (compare(keyOf(r), here()) <= 0) return;
     if (!fileFor(r)) return;   // skip platform-only releases that have no installer/APK for this device
-    if (s.updIgnore && compare(s.updIgnore, r.latest) >= 0) return;   // "Ignore": this version is not offered again (a newer one is)
+    if (s.updIgnore && compare(s.updIgnore, keyOf(r)) >= 0) return;   // "Ignore": this version is not offered again (a newer one is)
     notice(r);
   }
-  return { check, compare, read, fileFor, startup, noteLines };
+  return { check, compare, read, fileFor, keyOf, here, startup, noteLines };
 })();
 window.TimotheosUpdates = TimotheosUpdates;

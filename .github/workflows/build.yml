@@ -212,7 +212,8 @@ jobs:
           path: signed/Timotheos-android.apk
 
   draft:
-    # publishes built files in a public release whenever at least one platform succeeded and none failed
+    # puts the built files in the pre-release "test" (today's build) whenever at least one platform succeeded and none failed.
+    # The public release Timotheos_<version> is made once a day at 12 am Manila time by nightly-release.yml.
     if: ${{ always() && !cancelled() && github.event_name != 'release' && needs.linux.result != 'failure' && needs.windows.result != 'failure' && needs.android.result != 'failure' && (needs.linux.result == 'success' || needs.windows.result == 'success' || needs.android.result == 'success') }}
     needs: [changes, linux, windows, android]
     runs-on: ubuntu-latest
@@ -222,7 +223,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { path: dl }
-      - name: Publish the files in a release
+      - name: Put the files in today's build (the pre-release "test", what Check for updates offers)
+        if: ${{ github.ref_name == 'Neon' || github.ref_name == 'timotheos-tauri' || github.event_name == 'workflow_dispatch' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -245,21 +247,22 @@ jobs:
           n=0; for a in $(find dl -name '*.apk'); do n=$((n+1)); cp "$a" "out/Timotheos_${V}_Android$([ $n -gt 1 ] && echo "-${n}").apk"; done
           # AGPL: the complete source of exactly this build travels with its files
           git archive --format=zip --prefix="timotheos-${GITHUB_SHA::7}/" -o "out/timotheos-source-${GITHUB_SHA::7}.zip" "$GITHUB_SHA"
+          # every installer carries its build number (the app compares version and build, so fixes of the same day are offered too)
+          N=${GITHUB_RUN_NUMBER}
+          for f in out/Timotheos_${V}_*; do [ -e "$f" ] || continue; b=$(basename "$f"); mv "$f" "out/Timotheos_${V}_b${N}_${b#Timotheos_${V}_}"; done
+          # a platform not built this time keeps its file from the build before
+          mkdir -p prev
+          gh release download test -R "$GITHUB_REPOSITORY" -D prev -p '*.apk' -p '*.exe' -p '*.deb' -p '*.AppImage' 2>/dev/null || true
+          for pat in '*.apk' '*_x64-setup.exe' '*.deb' '*.AppImage'; do
+            ls out/$pat >/dev/null 2>&1 && continue
+            for f in prev/$pat; do [ -e "$f" ] && cp "$f" out/ && echo "kept from the build before: $(basename "$f")"; done
+          done
           ls -la out
-          TAG="build-${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}"
           head -1 WHATSNEW.txt | grep -q "Timotheos $V" || { echo "WHATSNEW.txt must begin with: Timotheos $V"; exit 1; }
-          { cat WHATSNEW.txt; echo; echo "Build ${GITHUB_RUN_NUMBER} of ${GITHUB_SHA::7}"; } > notes.txt
-          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --latest --target "$GITHUB_SHA" --title "Timotheos_$V" --notes-file notes.txt out/*
-      - name: Keep the newest test build in the pre-release "test" (what Check for updates reads when "Include test builds" is on)
-        if: ${{ github.event_name == 'push' && (github.ref_name == 'timotheos-tauri' || github.ref_name == 'Neon') }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          V=$(node -p "require('./package.json').version")
-          { cat WHATSNEW.txt; echo; echo "Test build ${V} of ${GITHUB_SHA::7}. Not a finished release: the files are replaced by the next test build."; } > notes.txt
+          { cat WHATSNEW.txt; echo; echo "Build ${N} of ${GITHUB_SHA::7}"; } > notes.txt
           gh release delete neon -R "$GITHUB_REPOSITORY" --cleanup-tag -y >/dev/null 2>&1 || true
           gh release delete test -R "$GITHUB_REPOSITORY" --cleanup-tag -y >/dev/null 2>&1 || true
-          gh release create test -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Timotheos_$V (test build)" --notes-file notes.txt out/*
+          gh release create test -R "$GITHUB_REPOSITORY" --prerelease --target "$GITHUB_SHA" --title "Timotheos_$V build $N" --notes-file notes.txt out/*
       - name: Prune older releases (keep newest 10 plus test)
         env:
           GH_TOKEN: ${{ github.token }}

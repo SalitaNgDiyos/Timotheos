@@ -23,6 +23,9 @@ await build({
 });
 fs.cpSync(path.join(root, 'app', 'renderer'), dist, { recursive: true });
 fs.copyFileSync(shim('host.css'), path.join(dist, 'host.css'));
+// the build number of a GitHub build (Check for updates offers a newer build of the same version)
+{ const n = parseInt(process.env.GITHUB_RUN_NUMBER || '0', 10) || 0, sha = String(process.env.GITHUB_SHA || '').slice(0, 7).replace(/[^0-9a-f]/g, '');
+  fs.writeFileSync(path.join(dist, 'buildinfo.js'), `/* SPDX-License-Identifier: AGPL-3.0-or-later */\nwindow.TIMOTHEOS_BUILD = { n: ${n}, sha: '${sha}' };\n`); }
 // the archive reader: 7-Zip as WebAssembly (lib/archive.js fetches it next to worker.js)
 fs.copyFileSync(path.join(root, 'node_modules', '7z-wasm', '7zz.wasm'), path.join(dist, '7zz.wasm'));
 // the licence texts travel with the program (AGPL-3.0-or-later; shown in About → Legal)

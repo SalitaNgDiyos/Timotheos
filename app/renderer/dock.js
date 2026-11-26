@@ -619,7 +619,7 @@
       box.innerHTML = `<button type="button" class="ld-cta-btn" id="designLayoutBtn">${ic('grid', 20)}<span>Design your layout</span></button><p class="ld-cta-sub">Pick a 1×1 up to 6×3 grid (as many as fit the window), adjust the dotted edges, then drag panels in from <b>Panels</b>.</p>`;
       box.querySelector('#designLayoutBtn').onclick = e => openLayoutDesigner(e.currentTarget);
       grid.appendChild(box);
-    } else if (detachMode && !maxed && !focusMode) {
+    } else if (!maxed && !focusMode) {   // empty spaces show in both modes (a closed panel leaves one); Split… only in Edit Layout
       for (const sp of findEmptySpaces(shown.concat(activeSlots))) {
         const em = document.createElement('div');
         em.className = 'dempty';
@@ -630,7 +630,7 @@
           height: `calc(${(sp.y1 - sp.y0) / view.h * 100}% - 6px)`
         });
         const fit = fitGrid(boxPx(sp).w, boxPx(sp).h);
-        em.innerHTML = `<span>Empty space — drag a panel here</span>${fit.cols * fit.rows > 1 ? `<button type="button" class="dsplit" title="Divide this empty space into several empty places (up to ${fit.cols} × ${fit.rows} here)">${ic('grid', 15)}Split…</button>` : ''}`;
+        em.innerHTML = `<span>Empty space — drag a panel here</span>${detachMode && fit.cols * fit.rows > 1 ? `<button type="button" class="dsplit" title="Divide this empty space into several empty places (up to ${fit.cols} × ${fit.rows} here)">${ic('grid', 15)}Split…</button>` : ''}`;
         const sb = em.querySelector('.dsplit'); if (sb) sb.onclick = e => { e.stopPropagation(); openLayoutDesigner(sb, { x0: sp.x0, y0: sp.y0, x1: sp.x1, y1: sp.y1 }); };
         grid.appendChild(em);
       }
@@ -1158,7 +1158,7 @@
   }
 
   function hide(id) {
-    detach(id); L.hidden.push(id);
+    detach(id, true); L.hidden.push(id);   // closing never makes another panel grow: its place stays an empty space (Edit Layout on or off)
     if (maxed === id) maxed = null;
     commit();
   }
@@ -1304,7 +1304,7 @@
    * view's place is left (an empty space in Detach edges mode; otherwise the neighbours grow into it) */
   function closeBibleView(i, n) {
     if (!L) return;
-    detach('bv' + i);
+    detach('bv' + i, true);   // its place stays empty; no other panel grows
     if (maxed === 'bv' + i) maxed = null;
     const ren = id => { const m = /^bv(\d+)$/.exec(id); return m && +m[1] > i ? 'bv' + (+m[1] - 1) : id; };
     for (const g of [...L.areas, ...L.floats]) { g.panels = g.panels.map(ren); g.active = ren(g.active); }
