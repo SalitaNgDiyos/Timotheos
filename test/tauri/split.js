@@ -33,6 +33,25 @@ try {
   // undo the split
   await TimotheosDock.undo(); await sl(300); await TimotheosDock.undo(); await sl(500);
   ok(!(TimotheosDock.state().slots || []).length && $('.dempty .dsplit'), 'undo takes the split back');
+  // change the grid of a split block from 5 to 2: at once, only inside that block (0.6.125)
+  $('.dempty .dsplit').click(); await sl(300);
+  $$('.ld-picker .ld-cell').find(c => c.dataset.c === '3' && c.dataset.r === '1').click(); await sl(600);
+  ok(TimotheosDock.state().slots.length === 3, 'split into 3');
+  $('.dslot-tools [data-ld="pick"]').click(); await sl(300);
+  ok($$('.ld-picker .ld-cell.lit').length === 3, 'the picker starts at the present 3 × 1');
+  const p2 = $$('.ld-picker .ld-cell').find(c => c.dataset.c === '2' && c.dataset.r === '1');
+  p2.dispatchEvent(new MouseEvent('mouseenter')); await sl(200);
+  ok($$('.dslot').length === 2, 'hovering 2 × 1 shows 2 places at once (preview)');
+  p2.click(); await sl(500);
+  const s2 = TimotheosDock.state().slots;
+  ok(s2.length === 2 && s2.every(x => x.x0 >= 2 - 1e-6) && $$('.dslot').length === 2 && JSON.stringify(TimotheosDock.state().areas.map(x => x.panels.join())) === '["tree","bv0"]', 'changed to 2 places in one click, only inside that block');
+  $('.dslot-tools [data-ld="pick"]').click(); await sl(300);
+  $$('.ld-picker .ld-cell').find(c => c.dataset.c === '3' && c.dataset.r === '2').dispatchEvent(new MouseEvent('mouseenter')); await sl(200);
+  ok($$('.dslot').length === 6, 'preview 3 × 2');
+  $('.ld-picker .ld-cancel').click(); await sl(300);
+  ok(TimotheosDock.state().slots.length === 2 && $$('.dslot').length === 2, 'Cancel puts the 2 places back');
+  await TimotheosDock.undo(); await sl(400);
+  ok(TimotheosDock.state().slots.length === 3, 'undo: back to 3');
   // whole-window designer: 6 × 3 in a wide window
   TimotheosDock.clearAll(); await sl(400);
   $('#designLayoutBtn').click(); await sl(300);

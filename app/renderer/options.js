@@ -369,13 +369,15 @@
     if (panelsDlgWired) return;
     panelsDlgWired = true;
     const canPopout = !!(window.TimotheosHost && TimotheosHost.openPanelsWindow && !document.documentElement.classList.contains('mobile'));
-    m.innerHTML = `<div class="pm-dlg-head" title="Drag to move this dialog">${TimotheosIcons.icon('grip', 14)}<span class="pm-dlg-title">Layout &amp; Panels</span>${canPopout ? `<button type="button" class="pm-dlg-popout" aria-label="Pop out to separate window" title="Pop out to a separate window (drag to any monitor)">${TimotheosIcons.icon('float', 14)}</button>` : ''}<button type="button" class="pm-dlg-close" aria-label="Close Panels" title="Close">${TimotheosIcons.icon('close', 15)}</button></div><div class="pm-dlg-body"></div>`;
+    m.innerHTML = `<div class="pm-dlg-head" title="Drag to move this dialog">${TimotheosIcons.icon('grip', 14)}<span class="pm-dlg-title">Layout &amp; Panels</span><span class="pm-dlg-hist" role="group" aria-label="Undo and redo layout changes"><button type="button" data-hist="undo" disabled title="Undo a layout change (${esc(shortcutOf('undoLayout'))})">${TimotheosIcons.icon('undo', 15)}</button><button type="button" data-hist="redo" disabled title="Redo a layout change (${esc(shortcutOf('redoLayout'))})">${TimotheosIcons.icon('redo', 15)}</button></span>${canPopout ? `<button type="button" class="pm-dlg-popout" aria-label="Pop out to separate window" title="Pop out to a separate window (drag to any monitor)">${TimotheosIcons.icon('float', 14)}</button>` : ''}<button type="button" class="pm-dlg-close" aria-label="Close Panels" title="Close">${TimotheosIcons.icon('close', 15)}</button></div><div class="pm-dlg-body"></div>`;
     m.querySelector('.pm-dlg-close').onclick = () => closePanelsDialog();
+    m.querySelectorAll('[data-hist]').forEach(b => b.onclick = async e => { e.stopPropagation(); if (b.dataset.hist === 'undo') await TimotheosDock.undo(); else await TimotheosDock.redo(); syncLayoutHistory(); });
+    syncLayoutHistory();
     const po = m.querySelector('.pm-dlg-popout');
     if (po) po.onclick = () => { closePanelsDialog(); TimotheosHost.openPanelsWindow(); setTimeout(broadcastPanelsState, 250); };
     const head = m.querySelector('.pm-dlg-head');
     head.addEventListener('pointerdown', e => {
-      if (e.button !== 0 || e.target.closest('.pm-dlg-close')) return;
+      if (e.button !== 0 || e.target.closest('.pm-dlg-close, .pm-dlg-hist, .pm-dlg-popout')) return;
       e.preventDefault();
       const r = m.getBoundingClientRect();
       const ox = e.clientX - r.left, oy = e.clientY - r.top;
@@ -410,7 +412,7 @@
     ];
     const spaces = TimotheosDock.findAvailableSpaces ? TimotheosDock.findAvailableSpaces() : [];
     const hasSpace = spaces.length > 0;
-    const warn = hasSpace ? '' : `<div class="pm-warn" role="status"><div class="pm-warn-title">There is no more space available.</div><div class="pm-warn-sub">To make available space, enable <b>Detach edges</b> and move or resize some panels to open an empty space (at least 1&Prime; &times; 1&Prime;).</div></div>`;
+    const warn = hasSpace ? '' : `<div class="pm-warn" role="status"><div class="pm-warn-title">There is no more space available.</div><div class="pm-warn-sub">To make available space, turn on <b>Edit Layout</b> and move or resize some panels to open an empty space (at least 1&Prime; &times; 1&Prime;).</div></div>`;
     const rows = kinds.map(k =>
       `<div class="pm-drag${hasSpace ? '' : ' disabled'}" data-drag-kind="${esc(k.id)}" role="button" tabindex="${hasSpace ? '0' : '-1'}" aria-disabled="${hasSpace ? 'false' : 'true'}" title="${hasSpace ? 'Click, hold, and drag onto an empty space' : 'No empty space available (at least 1&Prime; &times; 1&Prime; needed)'}"><span class="pm-grip">${TimotheosIcons.icon('grip', 14)}</span><span class="pic" style="color:var(--cap-${k.cap})">${TimotheosIcons.icon(k.icon, 15)}</span><span class="pm-lbl">${esc(k.title)}</span>${hasSpace ? '<span class="small">drag</span>' : ''}</div>`
     ).join('');
@@ -424,7 +426,7 @@
     const saved = Object.keys(savedObj).map(n => `<button class="laymenu-btn" data-saved="${esc(n)}">${thumb(savedObj[n])}<span class="laymenu-txt"><b>${esc(n)}</b></span></button>`).join('');
     body.innerHTML = `<div class="mh">Panels <span class="small">(click, hold &amp; drag)</span></div>${warn}${rows}
       <div class="msep"></div><div class="mh">Arranging</div>
-      <button data-act="detach" class="${detOn ? 'on' : ''}">${TimotheosIcons.icon(detOn ? 'check' : 'detach', 15)}Detach adjacent edges <span class="small">(leave empty spaces)</span></button>
+      <button data-act="detach" class="${detOn ? 'on' : ''}">${TimotheosIcons.icon(detOn ? 'check' : 'detach', 15)}Edit Layout <span class="small">(leave empty spaces)</span></button>
       <button data-act="clearall">${TimotheosIcons.icon('close', 15)}Close all panels <span class="small">(design layout)</span></button>
       <div class="msep"></div><div class="mh">Layouts</div>${presets}${saved}
       <div class="msep"></div><button data-act="save">${TimotheosIcons.icon('plus', 15)}Save current layout as…</button>
@@ -872,6 +874,16 @@
   }
 
   
+  /* undo / redo of layout changes live only in the Layout & Panels window (here, or popped out) */
+  let panelsPopped = false;
+  function shortcutOf(k) { try { return (shortcuts()[k] || '').trim(); } catch (e) { return ''; } }
+  function layoutWindowOpen() { const m = $('#panelsMenu'); return panelsPopped || !!(m && !m.classList.contains('hidden')); }
+  function syncLayoutHistory() {
+    const u = !!(window.TimotheosDock && TimotheosDock.canUndo && TimotheosDock.canUndo()), r = !!(window.TimotheosDock && TimotheosDock.canRedo && TimotheosDock.canRedo());
+    const a = document.querySelector('#panelsMenu [data-hist="undo"]'), b = document.querySelector('#panelsMenu [data-hist="redo"]');
+    if (a) a.disabled = !u; if (b) b.disabled = !r;
+    if (panelsPopped) broadcastPanelsState();
+  }
   /* Cross-window BroadcastChannel bridge for popped-out multi-monitor Panels & Layouts window */
   const panelsCh = typeof BroadcastChannel === 'function' ? new BroadcastChannel('timotheos-panels') : null;
   function broadcastPanelsState() {
@@ -879,18 +891,21 @@
     const kinds = [{ id: 'newbv', title: 'Bible View' }, ...TimotheosDock.panels().filter(p => !TimotheosDock.isBible(p.id)).map(p => ({ id: p.id, title: p.title }))];
     const spaces = TimotheosDock.findAvailableSpaces ? TimotheosDock.findAvailableSpaces().length : 0;
     const presets = Object.entries(TimotheosDock.PRESETS).map(([id, p]) => ({ id, title: presetParts(p.label)[0] }));
-    panelsCh.postMessage({ type: 'state', state: { spaces, kinds, presets, detach: TimotheosDock.getDetachMode() } });
+    panelsCh.postMessage({ type: 'state', state: { spaces, kinds, presets, detach: TimotheosDock.getDetachMode(), canUndo: !!(TimotheosDock.canUndo && TimotheosDock.canUndo()), canRedo: !!(TimotheosDock.canRedo && TimotheosDock.canRedo()) } });
   }
   if (panelsCh) {
     panelsCh.onmessage = async e => {
       const msg = e.data || {};
-      if (msg.type === 'hello') return broadcastPanelsState();
+      if (msg.type === 'hello') { panelsPopped = true; return broadcastPanelsState(); }
+      if (msg.type === 'bye') { panelsPopped = false; return; }
       if (msg.type === 'dockBack') { openPanelsDialog(); return; }
       if (msg.type === 'preset') { TimotheosDock.applyPreset(msg.id); broadcastPanelsState(); return; }
       if (msg.type === 'cmd') {
         if (msg.cmd === 'detach') { TimotheosDock.toggleDetachMode(); syncDockToggles(); }
         else if (msg.cmd === 'clearAll') TimotheosDock.clearAll();
         else if (msg.cmd === 'save') saveLayoutAs();
+        else if (msg.cmd === 'undo') await TimotheosDock.undo();
+        else if (msg.cmd === 'redo') await TimotheosDock.redo();
         broadcastPanelsState();
         return;
       }
@@ -911,7 +926,7 @@
     if (!window.TimotheosDock) return false;
     const on = TimotheosDock.toggleDetachMode();
     syncDockToggles();
-    if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(on ? 'Detach edges ON — drag any panel edge inward to open space' : 'Detach edges OFF');
+    if (window.TimotheosStudy && TimotheosStudy.flash) TimotheosStudy.flash(on ? 'Edit Layout ON — drag any panel edge inward to open space' : 'Edit Layout OFF');
     return on;
   }
   function openPanelsDialog() {
@@ -920,5 +935,5 @@
     else if (m) fillPanelsMenu();
   }
 
-  window.TimotheosOptions = { init, apply, importMyFx, loadMyFx, open, openPanelsDialog, togglePanelsDialog, toggleDetachEdges, stepUiSize, syncDockToggles, startupAutoSync, scheduleAutoSyncPush, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
+  window.TimotheosOptions = { layoutWindowOpen, syncLayoutHistory, init, apply, importMyFx, loadMyFx, open, openPanelsDialog, togglePanelsDialog, toggleDetachEdges, stepUiSize, syncDockToggles, startupAutoSync, scheduleAutoSyncPush, SKINS, DEFAULTS, DEFAULT_SHORTCUTS, shortcuts, setSkin, appearance: () => A(), fonts: () => [...new Set([...BUNDLED, ...COMMON, ...(installed || [])])].filter(f => BUNDLED.includes(f) || hasFont(f)) };
 })();

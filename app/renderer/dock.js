@@ -270,6 +270,19 @@
   function fitGrid(wPx, hPx) {
     return { cols: Math.max(1, Math.min(PICK_MAXC, Math.floor(wPx / PICK_MIN_W))), rows: Math.max(1, Math.min(PICK_MAXR, Math.floor(hPx / PICK_MIN_H))) };
   }
+  /** empty places that touch each other form a block; each block with its outline box and its columns × rows */
+  function slotGroups(slots) {
+    const left = [...slots], out = [];
+    const touch = (a, b) => (ovl(a.x0, a.x1, b.x0, b.x1) > EPS && (same(a.y1, b.y0) || same(a.y0, b.y1))) || (ovl(a.y0, a.y1, b.y0, b.y1) > EPS && (same(a.x1, b.x0) || same(a.x0, b.x1)));
+    while (left.length) {
+      const grp = [left.shift()];
+      for (let k = 0; k < grp.length; k++) for (let j = left.length - 1; j >= 0; j--) if (touch(grp[k], left[j])) grp.push(left.splice(j, 1)[0]);
+      const box = { x0: Math.min(...grp.map(a => a.x0)), y0: Math.min(...grp.map(a => a.y0)), x1: Math.max(...grp.map(a => a.x1)), y1: Math.max(...grp.map(a => a.y1)) };
+      const uniq = arr => [...new Set(arr.map(v => v.toFixed(3)))].length;
+      out.push({ slots: grp, box, dims: { cols: uniq(grp.map(a => a.x0)), rows: uniq(grp.map(a => a.y0)) } });
+    }
+    return out;
+  }
   /** the size on screen of a part of the workbench */
   function boxPx(box) {
     const wb = typeof document !== 'undefined' && $('#workbench'); const r = wb ? wb.getBoundingClientRect() : { width: 1200, height: 700 };
@@ -584,10 +597,19 @@
           if (!seenH.has(k)) { seenH.add(k); addSlotGut(grid, activeSlots, false, a.y1); }
         }
       }
+      // each block of empty places has its own "Change grid…": it changes only that block, at once (0.6.125)
+      for (const grp of slotGroups(activeSlots)) {
+        const t = document.createElement('div');
+        t.className = 'dslot-tools';
+        Object.assign(t.style, { left: `${pct((grp.box.x0 + grp.box.x1) / 2, view.x, view.w)}%`, top: `calc(${pct(grp.box.y0, view.y, view.h)}% + 8px)` });
+        t.innerHTML = `<button type="button" data-ld="pick" title="Change how many places this block has">${ic('grid', 14)}Change grid…</button><button type="button" data-ld="clear" title="Remove these empty places">${ic('close', 13)}</button>`;
+        t.querySelector('[data-ld="pick"]').onclick = e => openLayoutDesigner(e.currentTarget, grp.box, grp.dims);
+        t.querySelector('[data-ld="clear"]').onclick = () => { L.slots = (L.slots || []).filter(x => !grp.slots.includes(x)); commit(); };
+        grid.appendChild(t);
+      }
       const bar = document.createElement('div');
       bar.className = 'ld-bar';
-      bar.innerHTML = `<span>Drag dotted lines to resize · Drag panels from <b>Layout &amp; Panels</b></span><button type="button" data-ld="pick">Change grid…</button><button type="button" data-ld="clear">Clear grid</button>`;
-      bar.querySelector('[data-ld="pick"]').onclick = e => openLayoutDesigner(e.currentTarget);
+      bar.innerHTML = `<span>Drag dotted lines to resize · Drag panels from <b>Layout &amp; Panels</b></span><button type="button" data-ld="clear">Clear all empty places</button>`;
       bar.querySelector('[data-ld="clear"]').onclick = () => { L.slots = []; commit(); };
       grid.appendChild(bar);
     }
@@ -1251,6 +1273,7 @@
 
   /* ---- undo / redo of layout changes (0.6.122). Changes coming within 0.4 s of each other are one step. The app adds its
    * own part (the Bible views) through opts.snapshot / opts.restore, so a closed Bible view comes back with its Bible. ---- */
+  const HISTORY_MAX = 10;   // undo / redo levels
   const UNDO = [], REDO = []; let lastSnap = null, lastJson = '', lastAt = 0, restoring = false;
   const snapNow = () => ({ L: clone(L), x: opts.snapshot ? opts.snapshot() : null });
   const keyOf = sn => JSON.stringify(sn.L) + '|' + JSON.stringify(sn.x);
@@ -1259,7 +1282,7 @@
     if (!L || restoring) return;
     const sn = snapNow(), j = keyOf(sn); if (j === lastJson) return;
     const now = Date.now();
-    if (lastSnap && now - lastAt > 400) { UNDO.push(lastSnap); if (UNDO.length > 60) UNDO.shift(); }
+    if (lastSnap && now - lastAt > 400) { UNDO.push(lastSnap); if (UNDO.length > HISTORY_MAX) UNDO.shift(); }
     REDO.length = 0; lastSnap = sn; lastJson = j; lastAt = now;
     if (opts.onHistory) opts.onHistory(canUndo(), canRedo());
   }
@@ -1275,7 +1298,7 @@
     if (opts.onHistory) opts.onHistory(canUndo(), canRedo());
   }
   async function undo() { if (!UNDO.length || restoring) return false; REDO.push(snapNow()); await applySnap(UNDO.pop()); return true; }
-  async function redo() { if (!REDO.length || restoring) return false; UNDO.push(snapNow()); await applySnap(REDO.pop()); return true; }
+  async function redo() { if (!REDO.length || restoring) return false; UNDO.push(snapNow()); if (UNDO.length > HISTORY_MAX) UNDO.shift(); await applySnap(REDO.pop()); return true; }
 
   /** a Bible view is closed and the views after it move down one number: their panels keep their places, so only the closed
    * view's place is left (an empty space in Detach edges mode; otherwise the neighbours grow into it) */
@@ -1343,12 +1366,19 @@
 
   /** Word-style animated 4x3 (column x row) interactive grid picker popover */
   /** the grid picker: the whole workbench, or (box given) one empty space to split. Offers up to 6 × 3, only what fits. */
-  function openLayoutDesigner(anchor, box) {
+  function openLayoutDesigner(anchor, box, dims) {
     document.querySelectorAll('.ld-picker').forEach(x => x.remove());
     const pop = document.createElement('div');
     pop.className = 'ld-picker';
     const px = boxPx(box); const fit = fitGrid(px.w, px.h);
-    let selC = Math.min(2, fit.cols), selR = Math.min(2, fit.rows);
+    let selC = Math.min(dims ? dims.cols : 2, fit.cols), selR = Math.min(dims ? dims.rows : 2, fit.rows);
+    // live preview: the places on the workbench change as the mouse moves over the picker; Cancel puts them back
+    const orig = clone(L.slots || []); let previewed = false;
+    const preview = (c, row) => {
+      L.slots = box ? orig.filter(s => !hit(s, box)).concat(createBlueprintSlots(c, row, box)) : createBlueprintSlots(c, row);
+      previewed = true; maxed = null; render();
+    };
+    const restore = () => { if (previewed) { L.slots = clone(orig); previewed = false; render(); } };
     let cellsHtml = '';
     for (let r = 1; r <= fit.rows; r++) {
       for (let c = 1; c <= fit.cols; c++) {
@@ -1356,7 +1386,7 @@
       }
     }
     const room = fit.cols < PICK_MAXC || fit.rows < PICK_MAXR ? `<div class="ld-room small">Up to ${PICK_MAXC} × ${PICK_MAXR}; ${box ? 'this space' : 'this window'} has room for ${fit.cols} × ${fit.rows}.</div>` : '';
-    pop.innerHTML = `<div class="ld-head"><b>${box ? 'Split this empty space' : 'Design your layout'}</b><span class="ld-dim" id="ldDim">2 × 2 grid (4 panels)</span></div>
+    pop.innerHTML = `<div class="ld-head"><b>${dims ? 'Change this grid' : box ? 'Split this empty space' : 'Design your layout'}</b><span class="ld-dim" id="ldDim">2 × 2 grid (4 panels)</span></div>
       <div class="ld-grid" role="grid" style="grid-template-columns:repeat(${fit.cols}, 1fr)">${cellsHtml}</div>${room}
       <div class="ld-foot"><span class="small">Hover to preview · Click to confirm</span><button type="button" class="ld-cancel">Cancel</button></div>`;
     pop.style.width = Math.max(250, fit.cols * 54 + 40) + 'px';
@@ -1376,16 +1406,21 @@
       });
     };
     paint(selC, selR);
-    const close = () => { document.removeEventListener('mousedown', outClick, true); pop.remove(); };
-    const outClick = e => { if (!pop.contains(e.target) && (!anchor || !anchor.contains(e.target))) close(); };
+    const close = () => { document.removeEventListener('mousedown', outClick, true); document.removeEventListener('keydown', onKey, true); pop.remove(); };
+    const cancel = () => { close(); restore(); };
+    const outClick = e => { if (!pop.contains(e.target) && (!anchor || !anchor.isConnected || !anchor.contains(e.target))) cancel(); };
+    const onKey = e => { if (e.key === 'Escape') { e.stopPropagation(); cancel(); } };
     document.addEventListener('mousedown', outClick, true);
-    pop.querySelector('.ld-cancel').onclick = close;
+    document.addEventListener('keydown', onKey, true);
+    pop.querySelector('.ld-cancel').onclick = cancel;
+    const hover = (c, row) => { paint(c, row); preview(c, row); };
     pop.querySelectorAll('.ld-cell').forEach(el => {
-      el.addEventListener('mouseenter', () => paint(+el.dataset.c, +el.dataset.r));
-      el.addEventListener('focus', () => paint(+el.dataset.c, +el.dataset.r));
+      el.addEventListener('mouseenter', () => hover(+el.dataset.c, +el.dataset.r));
+      el.addEventListener('focus', () => hover(+el.dataset.c, +el.dataset.r));
       el.addEventListener('click', () => {
         const c = +el.dataset.c, row = +el.dataset.r;
         close();
+        L.slots = clone(orig);   // the change is made once, as one undo step
         setBlueprintGrid(c, row, box);
         if (window.TimotheosOptions && TimotheosOptions.openPanelsDialog) TimotheosOptions.openPanelsDialog();
       });

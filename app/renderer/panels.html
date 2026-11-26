@@ -25,6 +25,7 @@
   .item:disabled { opacity:.45; cursor:not-allowed; }
   .item .hint { margin-left:auto; font-size:11px; color:var(--muted); }
   .act.on { border-color:var(--accent); background:var(--accent-soft); font-weight:600; }
+  .hist { display:flex; gap:6px; } .hist .act { justify-content:center; } .act:disabled { opacity:.4; cursor:default; }
   .sub { font-size:11.5px; color:var(--muted); margin:4px 0 8px; }
 </style>
 </head>
@@ -48,7 +49,7 @@
     const hasSpace = st.spaces > 0;
     const warn = hasSpace
       ? `<p class="sub">${st.spaces} empty slot${st.spaces === 1 ? '' : 's'} ready. Click any panel below to place it into the next empty space.</p>`
-      : `<div class="warn"><b>There is no more space available.</b><small>Enable Detach edges and move or resize panels, or click Close all panels to design a fresh grid.</small></div>`;
+      : `<div class="warn"><b>There is no more space available.</b><small>Turn on Edit Layout and move or resize panels, or click Close all panels to design a fresh grid.</small></div>`;
     const kinds = (st.kinds || []).map(k =>
       `<button type="button" class="item" data-place="${esc(k.id)}"${hasSpace ? '' : ' disabled'}><span>${esc(k.title)}</span><span class="hint">${hasSpace ? 'place' : ''}</span></button>`
     ).join('');
@@ -56,10 +57,11 @@
       `<button type="button" class="act" data-preset="${esc(p.id)}"><b>${esc(p.title)}</b></button>`
     ).join('');
     root.innerHTML = `
+      <div class="hist"><button type="button" class="act" data-cmd="undo" title="Undo a layout change"${st.canUndo ? '' : ' disabled'}>↶ Undo</button><button type="button" class="act" data-cmd="redo" title="Redo a layout change"${st.canRedo ? '' : ' disabled'}>↷ Redo</button></div>
       <div class="mh">Panels (click to place in empty space)</div>
       ${warn}${kinds}
       <div class="mh">Arranging</div>
-      <button type="button" class="act${st.detach ? ' on' : ''}" data-cmd="detach">${st.detach ? '✓ ' : ''}Detach adjacent edges</button>
+      <button type="button" class="act${st.detach ? ' on' : ''}" data-cmd="detach">${st.detach ? '✓ ' : ''}Edit Layout (leave empty spaces)</button>
       <button type="button" class="act" data-cmd="clearAll">Close all panels (Design your layout)</button>
       <div class="mh">Layouts</div>
       ${presets}
@@ -72,6 +74,9 @@
   document.getElementById('dockBackBtn').onclick = () => { send({ type: 'dockBack' }); window.close(); };
   ch.onmessage = e => { if (e.data && e.data.type === 'state') { st = e.data.state; render(); } };
   send({ type: 'hello' });
+  window.addEventListener('beforeunload', () => send({ type: 'bye' }));
+  // Ctrl+Alt+Z / Ctrl+Alt+Y work in this window too
+  document.addEventListener('keydown', e => { if (e.ctrlKey && e.altKey && !e.shiftKey && /^[zy]$/i.test(e.key)) { e.preventDefault(); send({ type: 'cmd', cmd: e.key.toLowerCase() === 'z' ? 'undo' : 'redo' }); } });
 })();
 </script>
 </body>

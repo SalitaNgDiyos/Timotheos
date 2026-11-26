@@ -41,9 +41,7 @@
         '-',
         ['Skins…', '', 'skins', 'palette'],
         ['Layout & Panels', '', 'panels', 'layout'],
-        ['Detach edges', '', 'detachEdges', 'detach'],
-        ['Undo Layout Change', sc('undoLayout'), 'undoLayout', 'undo'],
-        ['Redo Layout Change', sc('redoLayout'), 'redoLayout', 'redo'],
+        ['Edit Layout', '', 'detachEdges', 'detach'],
         ['Reset Panel Layout', '', 'resetLayout', 'layout'],
         '-',
         ['Developer Tools', sc('devtools'), 'devtools'],
@@ -67,9 +65,7 @@
     bar.innerHTML = menus.map(([name], i) => {
       const lbl = tr(name);
       return `<div class="tmwrap"><button class="tmenu" data-i="${i}" aria-haspopup="true"><u>${lbl[0]}</u>${lbl.slice(1)}</button><div class="menu tmdrop hidden" data-i="${i}"></div></div>`;
-    }).join('') + `<span class="tbhist" role="group" aria-label="Layout history"><button type="button" class="tbhbtn" data-hist="undoLayout" disabled title="${tr('Undo a layout change')}${sc('undoLayout') ? ' (' + sc('undoLayout') + ')' : ''}">${TimotheosIcons.icon('undo', 15)}</button><button type="button" class="tbhbtn" data-hist="redoLayout" disabled title="${tr('Redo a layout change')}${sc('redoLayout') ? ' (' + sc('redoLayout') + ')' : ''}">${TimotheosIcons.icon('redo', 15)}</button></span>`;
-    bar.querySelectorAll('[data-hist]').forEach(b => b.onclick = e => { e.stopPropagation(); window.runCommand(b.dataset.hist); });
-    history();
+    }).join('');
     bar.querySelectorAll('.tmdrop').forEach(d => {
       const items = menus[+d.dataset.i][2];
       const ti = window.toolbarItemsState ? window.toolbarItemsState() : {};
@@ -157,11 +153,5 @@
   }
 
   function init() { build(); wireKeys(); sync(); new MutationObserver(sync).observe(document.documentElement, { attributes: true, attributeFilter: ['data-skin', 'style'] }); }
-  /** the undo / redo arrows: usable only when there is something to undo / redo */
-  function history(u, r) {
-    if (u == null && window.TimotheosDock && TimotheosDock.canUndo) { u = TimotheosDock.canUndo(); r = TimotheosDock.canRedo(); }
-    const a = document.querySelector('[data-hist="undoLayout"]'), b = document.querySelector('[data-hist="redoLayout"]');
-    if (a) a.disabled = !u; if (b) b.disabled = !r;
-  }
-  window.TimotheosTitlebar = { init, rebuild: build, sync, close, history };
+  window.TimotheosTitlebar = { init, rebuild: build, sync, close };
 })();

@@ -14,7 +14,10 @@ try {
   TimotheosDock.setLayout({ v: 3, areas: [{ x0: 0, y0: 0, x1: 1, y1: 3, panels: ['tree'], active: 'tree' }, { x0: 1, y0: 0, x1: 2, y1: 3, panels: ['bv0'], active: 'bv0' }, { x0: 2, y0: 0, x1: 3, y1: 2, panels: ['bv1'], active: 'bv1' }, { x0: 3, y0: 0, x1: 4, y1: 2, panels: ['bv2'], active: 'bv2' }, { x0: 2, y0: 2, x1: 4, y1: 3, panels: ['cmt'], active: 'cmt' }], floats: [], hidden: ['lib', 'search', 'bsearch', 'study', 'par'] });
   await sl(600);
   TimotheosDock.setDetachMode(true); await sl(300);
-  ok($('[data-hist="undoLayout"]') && $('[data-hist="redoLayout"]'), 'undo and redo arrows beside the menus');
+  ok(!$('#tbMenus [data-hist]'), 'no undo / redo arrows in the title bar');
+  runCommand('panels'); await sl(400);
+  ok($('#panelsMenu [data-hist="undo"]') && $('#panelsMenu [data-hist="redo"]'), 'undo and redo arrows in the Layout & Panels window');
+  ok(/Edit Layout/.test($('#panelsMenu').textContent) && !/Detach adjacent edges/.test($('#panelsMenu').textContent), 'the mode is called Edit Layout');
   // close the Commentary panel
   const before = areas();
   const capClose = id => { const g = $$('#workbench .dgroup').find(x => x.querySelector(`.dtab[data-id="${id}"]`)); g.querySelector('.dbtn[data-act="close"]').click(); };
@@ -29,17 +32,26 @@ try {
   ok(views().length === 2 && views()[1].bible === third, 'the closed view is gone, the third view is now the second');
   ok(JSON.stringify(a2) === JSON.stringify([['tree', 0, 0, 1, 3], ['bv0', 1, 0, 2, 3], ['bv1', 3, 0, 4, 2]]), 'the views that stay keep their places: ' + JSON.stringify(a2));
   ok(TimotheosDock.findAvailableSpaces().some(s => Math.abs(s.x0 - 2) < .01 && Math.abs(s.y0) < .01), 'an empty space where the closed view was');
-  ok(!$('[data-hist="undoLayout"]').disabled && $('[data-hist="redoLayout"]').disabled, 'undo is available, redo is not');
+  ok(!$('#panelsMenu [data-hist="undo"]').disabled && $('#panelsMenu [data-hist="redo"]').disabled, 'undo is available, redo is not');
   // undo brings the Bible view back with its Bible, then the commentary
-  $('[data-hist="undoLayout"]').click(); await sl(1500);
+  $('#panelsMenu [data-hist="undo"]').click(); await sl(1500);
   ok(views().length === 3 && TimotheosDock.state().areas.some(a => a.panels.includes('bv2') && a.x0 === 3) && TimotheosDock.state().areas.some(a => a.panels.includes('bv1') && a.x0 === 2), 'undo: the Bible view is back in its place');
-  $('[data-hist="undoLayout"]').click(); await sl(800);
+  $('#panelsMenu [data-hist="undo"]').click(); await sl(800);
   ok(TimotheosDock.state().areas.some(a => a.panels.includes('cmt') && a.x0 === 2 && a.y0 === 2), 'undo again: Commentary is back');
-  ok(!$('[data-hist="redoLayout"]').disabled, 'redo is available');
-  $('[data-hist="redoLayout"]').click(); await sl(800);
+  ok(!$('#panelsMenu [data-hist="redo"]').disabled, 'redo is available');
+  $('#panelsMenu [data-hist="redo"]').click(); await sl(800);
   ok(!TimotheosDock.state().areas.some(a => a.panels.includes('cmt')), 'redo: Commentary closed again');
   runCommand('redoLayout'); await sl(1500);
   ok(views().length === 2, 'redo (Ctrl+Alt+Y command): the Bible view closed again');
-  ok($('[data-hist="redoLayout"]').disabled, 'nothing more to redo');
+  ok($('#panelsMenu [data-hist="redo"]').disabled, 'nothing more to redo');
+  // only while the Layout & Panels window is open
+  runCommand('panels'); await sl(300);
+  const n0 = views().length; runCommand('undoLayout'); await sl(1000);
+  ok(views().length === n0, 'with the window closed, Ctrl+Alt+Z does nothing');
+  runCommand('panels'); await sl(300);
+  // at most 10 steps
+  for (let k = 0; k < 14; k++) { TimotheosDock.setLayout({ v: 3, areas: [{ x0: 0, y0: 0, x1: 1 + k * 0.1, y1: 3, panels: ['tree'], active: 'tree' }, { x0: 1 + k * 0.1, y0: 0, x1: 4, y1: 3, panels: ['bv0'], active: 'bv0' }], floats: [], hidden: ['cmt', 'lib', 'search', 'bsearch', 'study', 'par'] }); await sl(450); }
+  let steps = 0; while (TimotheosDock.canUndo() && steps < 30) { await TimotheosDock.undo(); steps++; }
+  ok(steps === 10, 'undo goes back at most 10 steps: ' + steps);
 } catch (e) { out.push('✗ script error ' + e.message + ' ' + (e.stack || '').split('\n')[1]); }
 console.log('RESULT ' + out.join(' | ')); })();

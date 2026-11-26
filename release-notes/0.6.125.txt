@@ -1,0 +1,6 @@
+Timotheos 0.6.125
+
+- "Detach adjacent edges" is now called "Edit Layout" (Layout & Panels window and View menu).
+- The undo / redo arrows moved from the title bar into the Layout & Panels window (also when it is popped out). They, and Ctrl+Alt+Z / Ctrl+Alt+Y, work only while that window is open. Up to 10 steps back.
+- Changing the grid of empty places now works at once: each block of empty places has its own "Change grid..." button that changes only that block (before, it re-made the grid over the whole window, so a split could collapse into one place). The picker starts at the block's present grid, the block changes on screen while the mouse moves over the picker, a click keeps it, and Cancel or Esc puts it back. A small x removes that block's empty places.
+- User Guide updated.
