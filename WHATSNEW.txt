@@ -1,5 +1,4 @@
-Timotheos 0.6.122
+Timotheos 0.6.123
 
-- Detach edges mode: closing a panel now leaves an empty space where it was, and no other panel moves or grows. This also holds for Bible views: closing one Bible view leaves its own place empty and the other views stay where they are (before, the views after it shifted into its place).
-- New: undo and redo arrows beside the Help menu for layout changes (closing, opening, moving and resizing panels, layouts chosen, Bible views closed; a closed Bible view comes back with its Bible). Also View > Undo / Redo Layout Change, and Ctrl+Alt+Z / Ctrl+Alt+Y (changeable in Options > Shortcuts).
+- The Translation Accuracy Rating (TAR) tool added in 0.6.121 is removed: the TAR button of the Parallel Bibles panel, View > Translation Accuracy Rating, AI settings and the grades shown in the panel. Parallel Bibles itself stays as it was.
 - User Guide updated.

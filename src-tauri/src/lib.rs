@@ -880,38 +880,6 @@ fn net_request(method: String, url: String, headers: std::collections::HashMap<S
     }
 }
 
-/// AI requests for the Translation Accuracy Rating (0.6.121): https to any AI service, or plain http to a model running on this
-/// computer (Ollama, LM Studio: localhost / 127.0.0.1 / [::1]). Runs off the main thread and waits up to `timeout_secs`
-/// (an AI may take minutes for a whole chapter). The reply is returned whatever its status, so the page can show the service's own message.
-fn ai_url_ok(u: &str) -> bool {
-    let p = match url::Url::parse(u) { Ok(p) => p, Err(_) => return false };
-    match p.scheme() {
-        "https" => p.host_str().is_some(),
-        "http" => matches!(p.host_str(), Some("localhost") | Some("127.0.0.1") | Some("[::1]") | Some("::1")),
-        _ => false,
-    }
-}
-#[tauri::command]
-async fn ai_request(method: String, url: String, headers: std::collections::HashMap<String, String>, body: String, timeout_secs: Option<u64>) -> Result<Value, String> {
-    if !ai_url_ok(&url) { return Err("Use an https address, or http://localhost for a model on this computer.".into()); }
-    let secs = timeout_secs.unwrap_or(300).clamp(10, 1800);
-    tauri::async_runtime::spawn_blocking(move || -> Result<Value, String> {
-        let agent = ureq::AgentBuilder::new()
-            .resolver(NetResolver)
-            .timeout_connect(std::time::Duration::from_secs(20))
-            .timeout_read(std::time::Duration::from_secs(secs))
-            .build();
-        let mut req = agent.request(&method.to_uppercase(), &url).set("User-Agent", "Timotheos/1.0");
-        for (k, v) in headers { req = req.set(&k, &v); }
-        let res = if body.is_empty() && matches!(method.to_uppercase().as_str(), "GET" | "HEAD" | "DELETE") { req.call() } else { req.send_string(&body) };
-        match res {
-            Ok(r) => { let status = r.status(); Ok(json!({ "status": status, "body": r.into_string().unwrap_or_default() })) }
-            Err(ureq::Error::Status(code, r)) => Ok(json!({ "status": code, "body": r.into_string().unwrap_or_default() })),
-            Err(ureq::Error::Transport(t)) => Err(format!("No connection: {t}")),
-        }
-    }).await.map_err(|e| e.to_string())?
-}
-
 /// Bind a local loopback listener on 127.0.0.1:0, open the OAuth URL in the default browser, and wait for the callback code.
 #[tauri::command]
 async fn oauth_auth(auth_url_template: String, timeout_secs: Option<u64>) -> Result<Value, String> {
@@ -1018,7 +986,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_text, net_get, net_progress, net_stop, net_sha256, update_run, net_request, ai_request, oauth_auth])
+        .invoke_handler(tauri::generate_handler![host_info, test_report, read_text_file, quit, write_b64, net_text, net_get, net_progress, net_stop, net_sha256, update_run, net_request, oauth_auth])
         .run(tauri::generate_context!())
         .expect("error while running Timotheos");
 }

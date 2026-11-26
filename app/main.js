@@ -454,60 +454,6 @@ app.whenReady().then(async () => {
     return rescanAll();
   });
   handle('modules:importedFolder', () => MODULES_DIR());
-  // Translation Accuracy Rating (0.6.121): the AI service of the user's choice. The key stays in ai-config.json on this
-  // device (not in the settings, so it is never synced or exported); the page never gets it back.
-  const tarLib = require('./lib/tar');
-  const AI_FILE = () => path.join(app.getPath('userData'), 'ai-config.json');
-  const TAR_DIR = () => path.join(app.getPath('userData'), 'tar');
-  const aiCfg = () => { try { return Object.assign({ provider: 'anthropic', base: '', model: '', key: '' }, JSON.parse(fs.readFileSync(AI_FILE(), 'utf8'))); } catch (e) { return { provider: 'anthropic', base: '', model: '', key: '' }; } };
-  const aiPublic = c => ({ provider: c.provider, base: c.base || '', model: c.model || '', hasKey: !!c.key, noTemperature: !!c.noTemperature, providers: tarLib.PROVIDERS });
-  const aiMerge = o => { const c = aiCfg(); const n = Object.assign({}, c, o || {}); if (!o || o.key == null) n.key = c.key; return n; };
-  const aiHttp = async (req, secs) => {
-    const body = req.body == null ? '' : typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    if (shell.aiRequest) return await shell.aiRequest(req.method, req.url, req.headers || {}, body, secs || 300);
-    const res = await fetch(req.url, { method: req.method, headers: req.headers || {}, body: req.method === 'GET' ? undefined : body });
-    return { status: res.status, body: await res.text() };
-  };
-  const sleep = ms => new Promise(r => setTimeout(r, ms));
-  /** one prompt to the AI; waits and tries again when the service says "too many requests" or is busy */
-  async function aiAsk(cfg, system, user) {
-    for (let tries = 0; ; tries++) {
-      const req = tarLib.buildRequest(cfg, system, user);
-      const r = await aiHttp(req, 600);
-      if (r.status >= 200 && r.status < 300) return tarLib.answerText(cfg, r.body);
-      if (r.status === 400 && !cfg.noTemperature && /temperature/i.test(r.body)) { cfg = Object.assign({}, cfg, { noTemperature: true }); continue; }
-      if ((r.status === 429 || r.status === 503 || r.status === 529 || r.status === 500) && tries < 4) { await sleep([15, 30, 60, 120][tries] * 1000); continue; }
-      const e = new Error(tarLib.errorText(r.body, r.status)); e.status = r.status; throw e;
-    }
-  }
-  handle('ai:config', () => aiPublic(aiCfg()));
-  handle('ai:setConfig', o => {
-    const n = aiMerge(o); if (o && o.key === '') n.key = '';
-    fs.mkdirSync(path.dirname(AI_FILE()), { recursive: true }); fs.writeFileSync(AI_FILE(), JSON.stringify(n), { encoding: 'utf8', mode: 0o600 });
-    return aiPublic(n);
-  });
-  handle('ai:models', async o => {
-    const c = aiMerge(o); const r = await aiHttp(tarLib.modelsRequest(c), 60);
-    if (r.status < 200 || r.status >= 300) throw new Error(tarLib.errorText(r.body, r.status));
-    return tarLib.parseModels(c, r.body).sort();
-  });
-  handle('ai:test', async o => {
-    const c = aiMerge(o);
-    const t = await aiAsk(c, 'Answer with JSON only.', 'Reply with exactly {"ok":true}');
-    tarLib.extractJson(t); return { ok: true, model: c.model };
-  });
-  handle('tar:rate', async job => {
-    const c = aiCfg();
-    const text = await aiAsk(c, tarLib.systemPrompt(job), tarLib.userPrompt(job));
-    const grades = tarLib.readGrades(text, job.verses.map(x => x.v));
-    if (!Object.keys(grades).length) throw new Error('The AI gave no grades for these verses.');
-    const model = `${tarLib.provider(c.provider).name.replace(/ \(.*$/, '')} · ${c.model}`;
-    tarLib.store(TAR_DIR(), job.translation, Object.assign({}, job, { model }), grades);
-    return { grades, model, missing: job.verses.map(x => x.v).filter(v => !grades[v]) };
-  });
-  handle('tar:load', id => tarLib.load(TAR_DIR(), id));
-  handle('tar:remove', (id, source, approach) => tarLib.remove(TAR_DIR(), id, source, approach));
-  handle('tar:summary', (id, source, approach) => { const all = tarLib.load(TAR_DIR(), id); return tarLib.summary(all.pairs[tarLib.pairKey(source, approach)]); });
   // Multi-device PC config sync (Google Drive / Gmail, Dropbox, Microsoft OneDrive)
   const SYNC_TOKENS_FILE = () => path.join(app.getPath('userData'), 'sync-tokens.json');
   const readSyncTokens = () => { try { return JSON.parse(fs.readFileSync(SYNC_TOKENS_FILE(), 'utf8')); } catch (e) { return {}; } };

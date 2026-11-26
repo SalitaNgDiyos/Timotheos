@@ -80,8 +80,6 @@ contextBridge.exposeInMainWorld('api', {
   modSave: (id, changes, about) => call('mod:save', id, changes, about),
   modCompress: (id, opts) => call('mod:compress', id, opts),
   modRestore: id => call('mod:restore', id),
-  aiConfig: () => call('ai:config'), aiSetConfig: o => call('ai:setConfig', o), aiModels: o => call('ai:models', o), aiTest: o => call('ai:test', o),
-  tarRate: job => call('tar:rate', job), tarLoad: id => call('tar:load', id), tarRemove: (id, s, a) => call('tar:remove', id, s, a), tarSummary: (id, s, a) => call('tar:summary', id, s, a),
   modVerseLinks: (id, opts, write) => call('mod:verselinks', id, opts, write),
   // [A1-A4] User modules
   userModCreate: opts => call('usermod:create', opts),

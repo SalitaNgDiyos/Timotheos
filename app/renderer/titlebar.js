@@ -37,7 +37,6 @@
         ['Clipboard Monitor', '', 'clipmon', 'copy'],
         ['Go to Reference', sc('goto'), 'goto'],
         ['Copy Verses…', sc('copyVerses'), 'copyVerses', 'copy'],
-        ['Translation Accuracy Rating (TAR)…', '', 'tar', 'star'],
         ['Daily Readings', '', 'daily', 'study'],
         '-',
         ['Skins…', '', 'skins', 'palette'],

@@ -1,0 +1,4 @@
+Timotheos 0.6.123
+
+- The Translation Accuracy Rating (TAR) tool added in 0.6.121 is removed: the TAR button of the Parallel Bibles panel, View > Translation Accuracy Rating, AI settings and the grades shown in the panel. Parallel Bibles itself stays as it was.
+- User Guide updated.

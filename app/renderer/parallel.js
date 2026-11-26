@@ -71,7 +71,6 @@
       <span class="pargrow"></span>
       <span class="parseg" role="group" aria-label="Layout"><button type="button" data-a="cols" class="${mode === 'cols' ? 'on' : ''}" title="Bibles side by side">Columns</button><button type="button" data-a="stack" class="${mode === 'stack' ? 'on' : ''}" title="Each verse with every Bible under it">Stacked</button></span>
       <button type="button" data-a="diff" class="tog${S().parDiff ? ' on' : ''}" title="Mark the words that differ from the ★ Bible">≠ Differences</button>
-      <button type="button" data-a="tar" class="tog${window.TimotheosTAR && TimotheosTAR.running() ? ' on' : ''}" title="Translation Accuracy Rating (TAR): an AI grades how faithfully a translation renders its source text (Poor · Not Bad · Good · Faithful)">TAR</button>
       <button type="button" data-a="follow" class="tog${follow() ? ' on' : ''}" title="Follow the main Bible view (click to read on by itself)">${ic('link', 14)}Follow</button>
       <span class="parnav"><button type="button" data-a="prev" title="Chapter before">${ic('prev', 14)}</button><span class="parref">${esc(bk ? bk.name : '')} ${r.c || ''}</span><button type="button" data-a="next" title="Chapter after">${ic('next', 14)}</button></span>
       <button type="button" data-a="wpop" class="tog${S().parWpop ? ' on' : ''}" title="Word pop-ups when the mouse rests on a word (otherwise hold Shift)"><span class="wpglyph">Ωא</span></button>
@@ -93,7 +92,6 @@
     }
     if (a === 'cols' || a === 'stack') { save({ parLayout: Object.assign({}, S().parLayout || {}, { [isPhone() ? 'phone' : 'pc']: a }) }); drawBar(); return render(true); }
     if (a === 'diff') { save({ parDiff: !S().parDiff }); drawBar(); return render(false); }
-    if (a === 'tar') { const s = curSet(); return window.TimotheosTAR && TimotheosTAR.open({ ids: s ? s.bibles.filter(bibleOf) : [], ref: ref() }); }
     if (a === 'wpop') { save({ parWpop: !S().parWpop }); return drawBar(); }
     if (a === 'follow') { const on = !follow(); save(on ? { parFollow: true } : { parFollow: false, parRef: { ...state.ref } }); drawBar(); return render(true); }
     if (a === 'zin' || a === 'zout') return zoom(a === 'zin' ? 1 : -1);
@@ -229,7 +227,6 @@
     const gone = set.bibles.filter(id => !bibleOf(id));
     if (!ids.length) { body.innerHTML = '<div class="parnone"><p>The Bibles of this set are not installed any more.</p></div>'; return; }
     await Promise.all(ids.map(id => ensureInfo(id)));
-    if (window.TimotheosTAR) await TimotheosTAR.preload(ids);
     const r = ref();
     let data;
     try { data = await api.chapter(ids, r.b, r.c); } catch (e) { if (my === seq) body.innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
@@ -256,9 +253,8 @@
       out[base] = { h: bw.map((w, j) => baseMark.has(j) ? `<mark class="dif">${esc(w)}</mark>` : esc(w)).join(' '), pct: null, plain: true };
       return out;
     };
-    const tarB = (k, v) => (window.TimotheosTAR && v ? TimotheosTAR.badge(ids[k], ids, r.b, r.c, v) : '');
     const cellHtml = (c, k, v) => c.h == null ? `<div class="pcell pmiss">${isPhone() ? '—' : 'not in this Bible'}</div>`
-      : `<div class="pcell${infos[k].rtl ? ' rtl' : ''}"${infos[k].rtl ? ' dir="rtl"' : ''}>${c.h}${c.pct != null ? ` <span class="diffpct" title="share of words that differ from ${esc(abbrOf(ids[base]))}">${c.pct}%</span>` : ''}${tarB(k, v)}</div>`;
+      : `<div class="pcell${infos[k].rtl ? ' rtl' : ''}"${infos[k].rtl ? ' dir="rtl"' : ''}>${c.h}${c.pct != null ? ` <span class="diffpct" title="share of words that differ from ${esc(abbrOf(ids[base]))}">${c.pct}%</span>` : ''}</div>`;
     const curV = (r.b === state.ref.b && r.c === state.ref.c) || !follow() ? r.v : 0;
     let html = '';
     if (gone.length) html += `<p class="hint parwarn">Not installed any more: ${esc(gone.map(x => x.replace(/^\w+:/, '')).join(', '))}</p>`;
