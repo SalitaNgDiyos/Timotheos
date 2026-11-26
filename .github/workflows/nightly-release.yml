@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Edmund P. Valdez
+# Once a day at 12 am Manila time (16:00 UTC): when today's version was built (the pre-release "test" is Timotheos_<version> build N)
+# and has no public release yet, its files become the public release Timotheos_<version>, its notes are kept in
+# release-notes/<version>.txt, and the version number is raised by one for the next day (commit under Edmund Valdez's name).
+# A day without changes makes no release. During the day every build is offered at once through "test" (build.yml).
+name: Nightly release
+on:
+  schedule:
+    - cron: "0 16 * * *"
+  workflow_dispatch:
+
+concurrency: { group: nightly-release, cancel-in-progress: false }
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: Neon, fetch-depth: 0 }
+      - name: Publish today's build and raise the version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          V=$(node -p "require('./package.json').version")
+          echo "Version in the code: $V"
+          if gh release view "Timotheos_$V" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "Timotheos_$V is already released: nothing new today."; exit 0; fi
+          T=$(gh release view test -R "$GITHUB_REPOSITORY" --json name -q .name 2>/dev/null || true)
+          case "$T" in "Timotheos_$V build "*) ;; *) echo "No build of $V yet (today's build is: ${T:-none}): nothing to release."; exit 0 ;; esac
+          SHA=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/test" -q .target_commitish)
+          mkdir -p rel && gh release download test -R "$GITHUB_REPOSITORY" -D rel
+          gh release view test -R "$GITHUB_REPOSITORY" --json body -q .body > notes.txt
+          ls -la rel
+          gh release create "Timotheos_$V" -R "$GITHUB_REPOSITORY" --latest --target "$SHA" --title "Timotheos_$V" --notes-file notes.txt rel/*
+          echo "Released Timotheos_$V from $T ($SHA)"
+
+          # the next day's version
+          N=$(node -p "const p='$V'.split('.').map(Number); p[2]++; p.join('.')")
+          git config user.name "Edmund Valdez"; git config user.email "46296587+SalitaNgDiyos@users.noreply.github.com"
+          for try in 1 2 3; do
+            git fetch -q origin Neon && git reset -q --hard origin/Neon
+            V2=$(node -p "require('./package.json').version"); [ "$V2" = "$V" ] || { echo "The code is already at $V2"; exit 0; }
+            mkdir -p release-notes
+            grep -v '^Build [0-9]* of ' notes.txt > "release-notes/$V.txt"
+            printf 'Timotheos %s\n\n' "$N" > WHATSNEW.txt
+            python3 - "$V" "$N" <<'PY'
+          import re, sys
+          v, n = sys.argv[1], sys.argv[2]
+          def sub(path, pat, rep, count=1):
+              s = open(path, encoding='utf-8').read(); t = re.sub(pat, rep, s, count=count)
+              if t == s: raise SystemExit(f'{path}: version {v} not found')
+              open(path, 'w', encoding='utf-8').write(t)
+          sub('package.json', r'"version": "%s"' % re.escape(v), '"version": "%s"' % n)
+          sub('package-lock.json', r'"version": "%s"' % re.escape(v), '"version": "%s"' % n)
+          sub('src-tauri/tauri.conf.json', r'"version": "%s"' % re.escape(v), '"version": "%s"' % n)
+          sub('src-tauri/Cargo.toml', r'(?m)^version = "%s"' % re.escape(v), 'version = "%s"' % n)
+          sub('src-tauri/Cargo.lock', r'(name = "timotheos"\nversion = )"%s"' % re.escape(v), r'\1"%s"' % n)
+          sub('app/renderer/app.js', r"'%s'" % re.escape(v), "'%s'" % n)
+          PY
+            git add -A
+            git commit -q -m "Timotheos $V released; the next version is $N [skip ci]"
+            git push -q origin HEAD:Neon && { echo "Version raised to $N"; exit 0; }
+            echo "Push did not go through (a new change arrived); trying again"
+          done
+          echo "Could not raise the version"; exit 1
+      - name: Prune older releases (keep newest 10 plus test)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --paginate --slurp | python3 -c '
+          import json, os, re, subprocess, sys
+          repo = os.environ["GITHUB_REPOSITORY"]
+          rels = [r for page in json.load(sys.stdin) for r in page]
+          def ver(r):
+              m = re.search(r"(\d+)\.(\d+)\.(\d+)", r.get("name") or r.get("tag_name") or "")
+              return tuple(map(int, m.groups())) if m else (0, 0, 0)
+          non_test = sorted([r for r in rels if r.get("tag_name") != "test"], key=lambda r: (ver(r), r.get("created_at") or ""), reverse=True)
+          keep, seen = {r["id"] for r in rels if r.get("tag_name") == "test"}, set()
+          for r in non_test:
+              if ver(r) in seen: continue
+              seen.add(ver(r)); keep.add(r["id"])
+              if len(seen) == 10: break
+          for r in rels:
+              if r["id"] in keep: continue
+              tag, rid = r.get("tag_name") or "", r["id"]
+              subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/releases/{rid}"], check=False)
+              if tag and tag != "test": subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/git/refs/tags/{tag}"], stderr=subprocess.DEVNULL, check=False)
+              print("Pruned:", r.get("name"))
+          '
