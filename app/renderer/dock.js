@@ -25,6 +25,8 @@
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const A = (c, r, cs, rs, panels, active) => ({ x0: c, y0: r, x1: c + cs, y1: r + rs, panels, active: active || panels[0] });
   const EPS = 1e-3, MINW = 0.2, MINH = 0.25, MIN_SPACE_PX = 96; // 1 CSS inch = 96px
+  // the layout designer / "Split" (0.6.124): at most 6 columns × 3 rows, and only as many as fit the space on screen
+  const PICK_MAXC = 6, PICK_MAXR = 3, PICK_MIN_W = 200, PICK_MIN_H = 150;
   let nextAddRect = null;
 
   const PRESETS = {
@@ -250,17 +252,29 @@
   }
 
   /** build an evenly divided cols x rows blueprint grid across the 4x3 workbench (1..4 cols, 1..3 rows) */
-  function createBlueprintSlots(cols, rows) {
-    const c = Math.max(1, Math.min(NC, parseInt(cols, 10) || 1));
-    const r = Math.max(1, Math.min(NR, parseInt(rows, 10) || 1));
-    const cw = NC / c, rh = NR / r;
+  /** cols × rows empty slots filling `box` (the whole workbench when not given); up to 6 × 3 */
+  function createBlueprintSlots(cols, rows, box) {
+    const b = box || { x0: 0, y0: 0, x1: NC, y1: NR };
+    const c = Math.max(1, Math.min(PICK_MAXC, parseInt(cols, 10) || 1));
+    const r = Math.max(1, Math.min(PICK_MAXR, parseInt(rows, 10) || 1));
+    const cw = (b.x1 - b.x0) / c, rh = (b.y1 - b.y0) / r;
     const slots = [];
     for (let ry = 0; ry < r; ry++) {
       for (let cx = 0; cx < c; cx++) {
-        slots.push({ x0: +(cx * cw).toFixed(4), y0: +(ry * rh).toFixed(4), x1: +((cx + 1) * cw).toFixed(4), y1: +((ry + 1) * rh).toFixed(4) });
+        slots.push({ x0: +(b.x0 + cx * cw).toFixed(4), y0: +(b.y0 + ry * rh).toFixed(4), x1: +(cx === c - 1 ? b.x1 : b.x0 + (cx + 1) * cw).toFixed(4), y1: +(ry === r - 1 ? b.y1 : b.y0 + (ry + 1) * rh).toFixed(4) });
       }
     }
     return slots;
+  }
+  /** how many columns and rows (at most 6 × 3) fit a space of w × h pixels, each panel at least 200 × 150 px */
+  function fitGrid(wPx, hPx) {
+    return { cols: Math.max(1, Math.min(PICK_MAXC, Math.floor(wPx / PICK_MIN_W))), rows: Math.max(1, Math.min(PICK_MAXR, Math.floor(hPx / PICK_MIN_H))) };
+  }
+  /** the size on screen of a part of the workbench */
+  function boxPx(box) {
+    const wb = typeof document !== 'undefined' && $('#workbench'); const r = wb ? wb.getBoundingClientRect() : { width: 1200, height: 700 };
+    const b = box || { x0: 0, y0: 0, x1: NC, y1: NR };
+    return { w: (b.x1 - b.x0) / view.w * r.width, h: (b.y1 - b.y0) / view.h * r.height };
   }
 
   /** live empty spaces on the workbench that are at least 1in x 1in (96px x 96px); returns blueprint slots first when present */
@@ -576,14 +590,15 @@
       bar.querySelector('[data-ld="pick"]').onclick = e => openLayoutDesigner(e.currentTarget);
       bar.querySelector('[data-ld="clear"]').onclick = () => { L.slots = []; commit(); };
       grid.appendChild(bar);
-    } else if (shown.length === 0 && !L.floats.length && !document.documentElement.classList.contains('mobile')) {
+    }
+    if (shown.length === 0 && !activeSlots.length && !L.floats.length && !document.documentElement.classList.contains('mobile')) {
       const box = document.createElement('div');
       box.className = 'ld-empty-cta';
-      box.innerHTML = `<button type="button" class="ld-cta-btn" id="designLayoutBtn">${ic('grid', 20)}<span>Design your layout</span></button><p class="ld-cta-sub">Pick a 1×1 up to 4×3 grid, adjust the dotted edges, then drag panels in from <b>Panels</b>.</p>`;
+      box.innerHTML = `<button type="button" class="ld-cta-btn" id="designLayoutBtn">${ic('grid', 20)}<span>Design your layout</span></button><p class="ld-cta-sub">Pick a 1×1 up to 6×3 grid (as many as fit the window), adjust the dotted edges, then drag panels in from <b>Panels</b>.</p>`;
       box.querySelector('#designLayoutBtn').onclick = e => openLayoutDesigner(e.currentTarget);
       grid.appendChild(box);
     } else if (detachMode && !maxed && !focusMode) {
-      for (const sp of findEmptySpaces(shown)) {
+      for (const sp of findEmptySpaces(shown.concat(activeSlots))) {
         const em = document.createElement('div');
         em.className = 'dempty';
         Object.assign(em.style, {
@@ -592,7 +607,9 @@
           width: `calc(${(sp.x1 - sp.x0) / view.w * 100}% - 6px)`,
           height: `calc(${(sp.y1 - sp.y0) / view.h * 100}% - 6px)`
         });
-        em.innerHTML = '<span>Empty space — drag a panel here</span>';
+        const fit = fitGrid(boxPx(sp).w, boxPx(sp).h);
+        em.innerHTML = `<span>Empty space — drag a panel here</span>${fit.cols * fit.rows > 1 ? `<button type="button" class="dsplit" title="Divide this empty space into several empty places (up to ${fit.cols} × ${fit.rows} here)">${ic('grid', 15)}Split…</button>` : ''}`;
+        const sb = em.querySelector('.dsplit'); if (sb) sb.onclick = e => { e.stopPropagation(); openLayoutDesigner(sb, { x0: sp.x0, y0: sp.y0, x1: sp.x1, y1: sp.y1 }); };
         grid.appendChild(em);
       }
     }
@@ -1325,20 +1342,24 @@
   }
 
   /** Word-style animated 4x3 (column x row) interactive grid picker popover */
-  function openLayoutDesigner(anchor) {
+  /** the grid picker: the whole workbench, or (box given) one empty space to split. Offers up to 6 × 3, only what fits. */
+  function openLayoutDesigner(anchor, box) {
     document.querySelectorAll('.ld-picker').forEach(x => x.remove());
     const pop = document.createElement('div');
     pop.className = 'ld-picker';
-    let selC = 2, selR = 2;
+    const px = boxPx(box); const fit = fitGrid(px.w, px.h);
+    let selC = Math.min(2, fit.cols), selR = Math.min(2, fit.rows);
     let cellsHtml = '';
-    for (let r = 1; r <= NR; r++) {
-      for (let c = 1; c <= NC; c++) {
+    for (let r = 1; r <= fit.rows; r++) {
+      for (let c = 1; c <= fit.cols; c++) {
         cellsHtml += `<button type="button" class="ld-cell" data-c="${c}" data-r="${r}" aria-label="${c} columns by ${r} rows"></button>`;
       }
     }
-    pop.innerHTML = `<div class="ld-head"><b>Design your layout</b><span class="ld-dim" id="ldDim">2 × 2 grid (4 panels)</span></div>
-      <div class="ld-grid" role="grid">${cellsHtml}</div>
+    const room = fit.cols < PICK_MAXC || fit.rows < PICK_MAXR ? `<div class="ld-room small">Up to ${PICK_MAXC} × ${PICK_MAXR}; ${box ? 'this space' : 'this window'} has room for ${fit.cols} × ${fit.rows}.</div>` : '';
+    pop.innerHTML = `<div class="ld-head"><b>${box ? 'Split this empty space' : 'Design your layout'}</b><span class="ld-dim" id="ldDim">2 × 2 grid (4 panels)</span></div>
+      <div class="ld-grid" role="grid" style="grid-template-columns:repeat(${fit.cols}, 1fr)">${cellsHtml}</div>${room}
       <div class="ld-foot"><span class="small">Hover to preview · Click to confirm</span><button type="button" class="ld-cancel">Cancel</button></div>`;
+    pop.style.width = Math.max(250, fit.cols * 54 + 40) + 'px';
     document.body.appendChild(pop);
     const r = anchor ? anchor.getBoundingClientRect() : { left: innerWidth / 2 - 120, bottom: innerHeight / 2 - 90 };
     const pw = pop.offsetWidth || 250, ph = pop.offsetHeight || 220;
@@ -1348,7 +1369,7 @@
     const paint = (c, row) => {
       selC = c; selR = row;
       const total = c * row;
-      pop.querySelector('#ldDim').textContent = `${c} × ${row} grid (${total} panel${total === 1 ? '' : 's'})`;
+      pop.querySelector('#ldDim').textContent = `${c} × ${row} grid (${total} ${box ? 'place' : 'panel'}${total === 1 ? '' : 's'})`;
       pop.querySelectorAll('.ld-cell').forEach(el => {
         const ec = +el.dataset.c, er = +el.dataset.r;
         el.classList.toggle('lit', ec <= c && er <= row);
@@ -1365,15 +1386,16 @@
       el.addEventListener('click', () => {
         const c = +el.dataset.c, row = +el.dataset.r;
         close();
-        setBlueprintGrid(c, row);
+        setBlueprintGrid(c, row, box);
         if (window.TimotheosOptions && TimotheosOptions.openPanelsDialog) TimotheosOptions.openPanelsDialog();
       });
     });
   }
 
-  function setBlueprintGrid(cols, rows) {
+  function setBlueprintGrid(cols, rows, box) {
     if (!L) return;
-    L.slots = createBlueprintSlots(cols, rows);
+    // a split of one empty space keeps the empty places elsewhere; the whole-window designer starts over
+    L.slots = box ? (L.slots || []).filter(s => !hit(s, box)).concat(createBlueprintSlots(cols, rows, box)) : createBlueprintSlots(cols, rows);
     maxed = null; focusMode = false;
     commit();
   }
@@ -1439,7 +1461,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       NC, NR, EPS, MINW, MINH, MIN_SPACE_PX, PRESETS,
-      normalize, findEmptySpaces, filterSpacesByMinPx, createBlueprintSlots, detachPanelFromLayout, fillHole,
+      normalize, findEmptySpaces, filterSpacesByMinPx, createBlueprintSlots, fitGrid, detachPanelFromLayout, fillHole,
       computeSmartDrop, computeGridDrop, thumbnailSvg
     };
   }

@@ -138,6 +138,16 @@ for (let c = 1; c <= 4; c++) {
     ok(sl.length === c * r && noOverlaps(sl), `createBlueprintSlots(${c}, ${r}) creates ${c * r} non-overlapping slots`);
   }
 }
+// 10b. up to 6 x 3, a split of one empty space stays inside it, and the picker offers only what fits (0.6.124)
+{
+  const six = dock.createBlueprintSlots(6, 3);
+  ok(six.length === 18 && noOverlaps(six) && Math.abs(six[5].x1 - dock.NC) < 1e-9 && Math.abs(six[17].y1 - dock.NR) < 1e-9, '6 x 3 slots cover the whole workbench');
+  ok(dock.createBlueprintSlots(9, 5).length === 18, 'never more than 6 x 3');
+  const box = { x0: 2, y0: 1, x1: 4, y1: 3 }; const part = dock.createBlueprintSlots(3, 2, box);
+  ok(part.length === 6 && noOverlaps(part) && part.every(s => s.x0 >= 2 - 1e-9 && s.x1 <= 4 + 1e-9 && s.y0 >= 1 - 1e-9 && s.y1 <= 3 + 1e-9) && Math.abs(part[2].x1 - 4) < 1e-9 && Math.abs(part[5].y1 - 3) < 1e-9, 'a split fills exactly the empty space it was asked for');
+  const f1 = dock.fitGrid(1430, 800), f2 = dock.fitGrid(700, 330), f3 = dock.fitGrid(150, 100);
+  ok(f1.cols === 6 && f1.rows === 3 && f2.cols === 3 && f2.rows === 2 && f3.cols === 1 && f3.rows === 1, `fit: ${JSON.stringify([f1, f2, f3])}`);
+}
 
 
 // Placing a panel into an empty space with detachMode never removes or hides other Bible panels

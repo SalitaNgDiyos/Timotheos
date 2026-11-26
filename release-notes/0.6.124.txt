@@ -1,0 +1,5 @@
+Timotheos 0.6.124
+
+- Detach edges mode: every empty space now has a Split... button in its middle. It opens the same grid picker as Design your layout (hover to preview, click to choose) and divides that space into empty places for panels. The open panels do not move, and Undo takes a split back.
+- The grid picker goes up to 6 x 3 (was 4 x 3), but offers only as many columns and rows as fit: each place gets at least about 200 x 150 pixels, so a smaller space or window offers fewer.
+- User Guide updated.
