@@ -1016,4 +1016,4 @@ function showKeys() {
   setTimeout(() => { const b = $('#editKeysFromHelp'); if (b) b.onclick = () => { $('#modal').classList.add('hidden'); TimotheosOptions.open('keys'); }; }, 30);
 }
 
-window.TimotheosStudy = { backupStudy, restoreStudy, highlight, selectionTarget, paintHighlights, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, noteSubs, flash, verseText, study };
+window.TimotheosStudy = { backupStudy, restoreStudy, highlight, selectionTarget, paintHighlights, cellTarget, init, afterRender, markDifferences, renderTree, copyDialog, quickCopy, addToList, openStudy, onOpen, showKeys, editNote, noteSubs, flash, verseText, study };

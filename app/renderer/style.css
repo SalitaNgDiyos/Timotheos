@@ -693,3 +693,27 @@ sup.gloss, sup.gloss font { font: italic 400 .66em var(--font-text); color: var(
 html.mobile .parbar { gap: 4px; padding: 6px; }
 html.mobile .parbar [data-a="wpop"], html.mobile .parbar [data-a="zin"], html.mobile .parbar [data-a="zout"] { display: none; }
 html.mobile .ptable { grid-template-columns: 2em repeat(var(--n), minmax(10.5em, 1fr)); }
+/* Parallel Bibles: the icons beside the text, one-row bar, the verse picker (0.6.128) */
+.tab.parpanel .parmain { flex: 1; min-height: 0; display: flex; }
+.tab.parpanel .parmain .parbody { flex: 1; min-width: 0; }
+.parbar { flex-wrap: nowrap; overflow: hidden; }
+.parbar .parset { min-width: 0; flex: 0 1 auto; }
+.parbar .navpill.parpill { height: 26px; border: 1px solid var(--line); background: var(--card); color: var(--text); font-weight: 600; white-space: nowrap; }
+.parbar .navpill.parpill:hover { border-color: var(--accent); background: var(--card); }
+.parbar .navpill.parpill .np-lbl { max-width: 12em; overflow: hidden; text-overflow: ellipsis; }
+.parbody[data-hfam] .heading { font-family: var(--h-font) !important; }
+.parbody[data-hsz] .heading { font-size: calc(var(--h-scale) * 1em) !important; }
+.parbody[data-hcol] .heading { color: var(--h-color) !important; }
+.parbody[data-hb="1"] .heading { font-weight: 700 !important; }
+.parbody[data-hi="1"] .heading { font-style: italic !important; }
+.parbody[data-align="center"] .pcell { text-align: center; }
+.parbody[data-align="right"] .pcell { text-align: right; }
+.parbody[data-align="justify"] .pcell { text-align: justify; -webkit-hyphens: auto; hyphens: auto; }
+.parbody .pcell { line-height: var(--lh, 1.55); }
+.parbody.grabon { cursor: grab; }
+/* a narrow panel: the words of Differences and Follow give way to their signs */
+@container parbar (max-width: 560px) { .parbar .lbl { display: none; } }
+.parbar { container: parbar / inline-size; }
+html.mobile .tab.parpanel .parside { display: none; }
+html.mobile .parbar { flex-wrap: wrap; }
+.tab.parpanel .parside > button { margin: 0 !important; }

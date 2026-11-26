@@ -51,6 +51,7 @@ const ICONS = {
   folder: '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/>',
   type: '<path d="M4 7V5h16v2M9 20h6M12 5v15"/>',
+  lineSpacing: '<path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 8l2-3 2 3M4 16l2 3 2-3M6 5v14"/>',
   hash: '<path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/>',
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/>',
   puzzle: '<path d="M10 3h4v3a1.5 1.5 0 0 0 3 0V5h3v5h-1a1.5 1.5 0 0 0 0 3h1v6h-6v-1a1.5 1.5 0 0 0-3 0v1H4v-6h1a1.5 1.5 0 0 0 0-3H4V5h6z"/>',

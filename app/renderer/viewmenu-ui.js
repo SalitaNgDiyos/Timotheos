@@ -185,6 +185,7 @@
   function setPen(pen) {
     state.pen = pen || null;
     if (window.refreshPaneLooks) window.refreshPaneLooks();
+    if (window.TimotheosParallel && TimotheosParallel.syncSide) TimotheosParallel.syncSide();
     const mob = document.documentElement.classList.contains('mobile') || document.documentElement.classList.contains('sk');
     flashMsg(pen ? `${pen.kind === 'ul' ? 'Underline' : 'Highlighter'}: ${pen.label} – select text to mark it${mob ? '' : ' (Esc: stop)'}` : 'Highlighter off');
   }
@@ -216,6 +217,14 @@
       setTimeout(() => {
         const sel = window.getSelection(); if (!sel || sel.isCollapsed || !state.pen) return;
         const n = sel.anchorNode; const el = n && (n.nodeType === 3 ? n.parentElement : n);
+        // the Parallel Bibles panel (0.6.128): the highlighter and underline work there too
+        const pc = el && el.closest && el.closest('.parpanel .pcell[data-bid]:not([data-plain])');
+        if (pc && window.TimotheosParallel) {
+          const row = pc.closest('[data-pv]'); const r = TimotheosParallel.shownRef();
+          const t2 = row && TimotheosStudy.cellTarget(pc, { bid: pc.dataset.bid, b: r.b, c: r.c, v: +row.dataset.pv });
+          if (t2 && t2.partial) TimotheosStudy.highlight(t2, state.pen.style);
+          return;
+        }
         if (!el || !el.closest || !el.closest('.bv .bvtext')) return;
         const tgt = TimotheosStudy.selectionTarget(null);
         if (tgt && tgt.partial) TimotheosStudy.highlight(tgt, state.pen.style);

@@ -14,7 +14,7 @@
   const ready = () => typeof state !== 'undefined' && state && state.settings;
   const SKIP = 'button, a, input, select, textarea, label, summary, .menu, .scrollbar, [contenteditable], [draggable="true"], .splitter, .vsplit, .hsplit, .cvsplit, .lsplitter, #libSplitter, .dhandle, .panelhead, .dcap, .nchip, .pdot';
   // the panels: where the text is, and which setting belongs to it
-  const AREAS = [['cmt', '#cmtBody'], ['lib', '#libFeed, #libBody'], ['search', '#searchResults, #searchBooks, #searchStats'], ['bsearch', '#bsResults'], ['study', '#studyBody']];
+  const AREAS = [['cmt', '#cmtBody'], ['lib', '#libFeed, #libBody'], ['search', '#searchResults, #searchBooks, #searchStats'], ['bsearch', '#bsResults'], ['study', '#studyBody'], ['par', '#tab-par .parbody']];
   /** which panel the text under `t` belongs to: { key: 'cmt', ... } or { key: 'v', i: 2 } for the third Bible view */
   function panelOf(t) {
     const bv = t.closest('.bv'); if (bv && t.closest('.bvtext')) return { key: 'v', i: +bv.dataset.i };

@@ -1,0 +1,6 @@
+Timotheos 0.6.128
+
+- Parallel Bibles, the bar: one row with the star set, the verse picker of a Bible view (book, chapter and verse), Columns / Stacked, Differences and Follow. "+ Bible" and the chapter arrows are gone; Bibles are added, removed and ordered with the star set button > Change this set. With Follow off, the picker moves only the panel. In a narrow panel the words "Differences" and "Follow" give way to their signs.
+- Parallel Bibles, the icons beside the text, as in a Bible view: drag to scroll, word pop-ups, text larger / smaller, font colour, font, headings, background of the current verse, highlighter and underline, plus text alignment and line spacing. They set this panel's look only.
+- Parallel Bibles at start-up: the panel shows its last text at once while the Bibles are read, and the Bibles of the panel are read before the other Bibles.
+- User Guide updated.

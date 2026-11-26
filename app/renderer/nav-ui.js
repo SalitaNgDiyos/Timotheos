@@ -158,7 +158,10 @@
     popState.open = false;
   }
 
-  function openNavPopover(initialStep, anchorEl, paneIdx = null) {
+  /** opts (0.6.128, the Parallel Bibles panel): { ref: where to start, onPick(ref): called instead of moving the Bible views } */
+  /** where the picker takes you: the Bible views (go), or the caller's own place (opts.onPick) */
+  function navGo(r) { if (popState.onPick) { popState.from = { ...r }; return popState.onPick(r); } return go(r); }
+  function openNavPopover(initialStep, anchorEl, paneIdx = null, opts = null) {
     const pop = $('#navPop');
     if (!pop || !state.nav || !state.nav.length) return;
     if (popState.open && popState.step === initialStep && !pop.classList.contains('hidden')) {
@@ -166,8 +169,10 @@
     }
     popState.open = true;
     popState.step = initialStep || 'book';
-    popState.selB = state.ref.b;
-    popState.selC = state.ref.c;
+    popState.from = (opts && opts.ref) || null;
+    popState.onPick = (opts && opts.onPick) || null;
+    popState.selB = (popState.from || state.ref).b;
+    popState.selC = (popState.from || state.ref).c;
     popState.filter = '';
     popState.targetPane = paneIdx;
 
@@ -299,7 +304,8 @@
   }
 
   function buildVersesHtml(bk, c, vMax) {
-    const curV = (bk.id === state.ref.b && c === state.ref.c) ? state.ref.v : 1;
+    const R = popState.from || state.ref;
+    const curV = (bk.id === R.b && c === R.c) ? R.v : 1;
     const out = [];
     for (let v = 1; v <= vMax; v++) {
       out.push(`<button type="button" data-v="${v}" class="${v === curV ? 'on' : ''}">:${v}</button>`);
@@ -310,7 +316,7 @@
   function wireNavPopoverEvents(pop, bk, layout, tileStyle) {
     $('#npClose').onclick = closeNavPopover;
     $('#npGoNow').onclick = () => {
-      go({ b: bk.id, c: popState.selC, v: 1 });
+      navGo({ b: bk.id, c: popState.selC, v: 1 });
       closeNavPopover();
     };
     $('#npBookStyleBtn').onclick = () => {
@@ -370,7 +376,7 @@
         popState.selC = nb.chapterList[0] || 1;
         popState.filter = '';
         if (nb.chapterList.length === 1) {
-          go({ b: nb.id, c: popState.selC, v: 1 });
+          navGo({ b: nb.id, c: popState.selC, v: 1 });
           popState.step = 'verse';
         } else {
           popState.step = 'chapter';
@@ -379,7 +385,7 @@
       };
       bt.ondblclick = () => {
         const nb = navList().find(x => x.id === +bt.dataset.b) || navList()[0];
-        go({ b: nb.id, c: nb.chapterList[0] || 1, v: 1 });
+        navGo({ b: nb.id, c: nb.chapterList[0] || 1, v: 1 });
         closeNavPopover();
       };
     });
@@ -387,7 +393,7 @@
     pop.querySelectorAll('[data-c]').forEach(bt => {
       bt.onclick = async () => {
         popState.selC = +bt.dataset.c;
-        await go({ b: popState.selB, c: popState.selC, v: 1 });
+        await navGo({ b: popState.selB, c: popState.selC, v: 1 });
         popState.step = 'verse';
         drawNavPopover();
       };
@@ -397,7 +403,8 @@
       bt.onclick = async () => {
         const v = +bt.dataset.v;
         closeNavPopover();
-        if (popState.selB !== state.ref.b || popState.selC !== state.ref.c) {
+        if (popState.onPick) { popState.from = { b: popState.selB, c: popState.selC, v }; popState.onPick({ b: popState.selB, c: popState.selC, v }); }
+        else if (popState.selB !== state.ref.b || popState.selC !== state.ref.c) {
           await go({ b: popState.selB, c: popState.selC, v });
         } else {
           selectVerse(v, true);

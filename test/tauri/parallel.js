@@ -41,7 +41,7 @@ try {
   ok($$('#tab-par .pth').length === 3 && $('#tab-par .pvrow.cur'), 'three columns, the current verse marked: ' + ($('#tab-par .pvrow.cur') || {}).dataset?.pv);
   // follow the main view
   await go({ b: 43, c: 1, v: 14 }); await sl(800);
-  ok($('#tab-par .parref').textContent.includes('1') && $('#tab-par .pvrow.cur').dataset.pv === '14', 'follows the main view: ' + $('#tab-par .parref').textContent);
+  ok(/1:14/.test($('#tab-par .parpill').textContent) && $('#tab-par .pvrow.cur').dataset.pv === '14', 'follows the main view: ' + $('#tab-par .parpill').textContent);
   // Strong's light-up
   const w = $('#tab-par [data-strong]');
   if (w) { w.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); await sl(100); ok($$('#tab-par .phl').length >= 1, 'Strong\'s ' + w.dataset.strong + ' lights up ' + $$('#tab-par .phl').length + ' words'); }
@@ -85,6 +85,36 @@ try {
   const hl = (TimotheosStudy.study.ud.highlights || {})[cell.dataset.bid] || {};
   ok(hl['43.3.16'] && hl['43.3.16'].length, 'highlight saved for that Bible');
   ok($$('#tab-par .pvrow[data-pv="16"] .pcell')[1].querySelector('mark.hl'), 'the highlight shows in the panel');
+  // the bar: one row, the verse picker, no + Bible; the icons beside the text (0.6.128)
+  ok(!$('#tab-par [data-a="edit"]') && !$('#tab-par [data-a="prev"]') && $('#tab-par .parpill'), 'no + Bible and no chapter arrows; a verse picker');
+  const bar = $('#tab-par .parbar'); ok(bar.scrollHeight <= 44, 'the bar is one row: ' + bar.scrollHeight + ' px');
+  const sideKeys = [...$$('#tab-par .parside [data-s]')].map(b => b.dataset.s).join(',');
+  ok(sideKeys === 'wpop,zin,zout,fcolor,font,hfont,selbg,pen,ul,align,lh' && $('#tab-par .parside [data-grab="par"]') && !$('#tab-par .parside [data-s="menu"], #tab-par .parside [data-s="copyv"]'), 'side icons: ' + sideKeys);
+  // follow off: the picker moves only the panel
+  $('#tab-par [data-a="follow"]').click(); await sl(400);
+  $('#tab-par .parpill').click(); await sl(400);
+  ok(!$('#navPop').classList.contains('hidden'), 'the picker opens');
+  const mainRef = JSON.stringify(state.ref);
+  const bk = $$('#navPop [data-b]').find(x => +x.dataset.b === 45); bk.click(); await sl(300);
+  const ch = $$('#navPop [data-c]').find(x => +x.dataset.c === 8); ch.click(); await sl(700);
+  const vv = $$('#navPop button[data-v]').find(x => +x.dataset.v === 28); if (vv) { vv.click(); await sl(800); }
+  ok(JSON.stringify(state.ref) === mainRef && /8:28/.test($('#tab-par .parpill').textContent), 'Follow off: the panel goes to ' + $('#tab-par .parpill').textContent + ', the Bible view stays');
+  $('#tab-par [data-a="follow"]').click(); await sl(600);
+  // alignment and line spacing
+  $('#tab-par .parside [data-s="align"]').click(); await sl(300);
+  $$('.bvmenu [data-al], .menu [data-al]').find(x => x.dataset.al === 'justify').click(); await sl(300);
+  ok($('#tab-par .parbody').dataset.align === 'justify' && state.settings.parLook.align === 'justify', 'text alignment: justified');
+  document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); document.body.click(); await sl(200);
+  $('#tab-par .parside [data-s="lh"]').click(); await sl(300);
+  $$('[data-lh="1"]').pop().click(); await sl(300);
+  ok(+state.settings.parLook.lh > 1.5 && $('#tab-par .parbody').style.getPropertyValue('--lh'), 'line spacing: ' + state.settings.parLook.lh);
+  document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); document.body.click(); await sl(200);
+  // start-up: the panel's last text is kept and comes back at once (0.6.128)
+  await sl(1600);
+  const pb = $('#tab-par .parbody'); const n0 = pb.querySelectorAll('.pvrow').length; pb.innerHTML = '';
+  ok(TimotheosParallel.showSnapshot() && pb.querySelectorAll('.pvrow').length === n0 && pb.classList.contains('parsnap'), 'the last text of the panel comes back at once (' + n0 + ' verses)');
+  await TimotheosParallel.render(false); await sl(300);
+  ok(!pb.classList.contains('parsnap'), 'then the freshly read text replaces it');
   // the phone starts stacked
   const keepL = state.settings.parLayout; save({ parLayout: {} }); document.documentElement.classList.add('mobile');
   await TimotheosParallel.render(false); await sl(400);

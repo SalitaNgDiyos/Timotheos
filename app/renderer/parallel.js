@@ -8,7 +8,7 @@
 (function () {
   const MAX = 8, MIN = 2;
   const CATS = ['Modern English', 'Old English', 'Tagalog', 'Original languages', 'Mixed languages'];
-  let root = null, body = null, bar = null;
+  let root = null, body = null, bar = null, side = null;
   let askedThisSession = false, seq = 0, shown = null, dirty = true, busy = false;
 
   const S = () => state.settings;
@@ -32,21 +32,24 @@
   function init() {
     root = document.getElementById('tab-par'); if (!root) return;
     root.classList.add('parpanel');
-    root.innerHTML = '<div class="parbar"></div><div class="parbody" tabindex="0"></div>';
-    bar = root.querySelector('.parbar'); body = root.querySelector('.parbody');
+    // the bar on top; beside the text, the icons of a Bible view (0.6.128)
+    root.innerHTML = `<div class="parbar"></div><div class="parmain"><nav class="parside bvside" aria-label="Settings of the Parallel Bibles panel">${sideHtml()}</nav><div class="parbody" tabindex="0"></div></div>`;
+    bar = root.querySelector('.parbar'); body = root.querySelector('.parbody'); side = root.querySelector('.parside');
     bar.addEventListener('click', onBar);
+    side.addEventListener('click', onSide);
+    applyLook();
+    showSnapshot();
     body.addEventListener('click', onBody);
     body.addEventListener('mouseover', onHover);
     body.addEventListener('mouseleave', () => lightUp(null));
     body.addEventListener('wheel', e => { if (e.ctrlKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1 : -1); } }, { passive: false });
-    wireChipDrag();
     // the panel was hidden and is now on screen: ask for / choose a set the first time, and draw it
     new ResizeObserver(() => { if (visible()) wake(); }).observe(root);
     drawBar();
   }
   async function wake() {
     if (busy) return;
-    if (!state.modules || !installed().length || !(state.nav && state.nav.length)) { dirty = true; setTimeout(() => { if (visible()) wake(); }, 600); return; }   // still starting up
+    if (!state.modules || !installed().length || !(state.nav && state.nav.length)) { dirty = true; setTimeout(() => { if (visible()) wake(); }, 150); return; }   // still starting up
     if (!askedThisSession) {
       askedThisSession = true;
       if (!sets().length) { busy = true; try { await setupDialog(null, true); } finally { busy = false; } }
@@ -64,15 +67,102 @@
     const ids = set ? set.bibles.filter(bibleOf) : [];
     const base = set && ids.includes(set.base) ? set.base : ids[0];
     const r = ref(); const bk = (state.nav || []).find(x => x.id === r.b);
-    bar.innerHTML = `<button type="button" class="parset" data-a="sets" title="Choose another parallel set, make a new one, or change this one">${ic('star', 14)}<b>${esc(set ? setName(set) : 'No set yet')}</b>${ic('down', 13)}</button>
-      ${set ? `<button type="button" data-a="edit" title="Add or remove Bibles (up to ${MAX})">${ic('plus', 14)}Bible</button>` : `<button type="button" class="primary" data-a="new">${ic('plus', 14)}Set up parallel Bibles</button>`}
+    // one row: the set, the verse picker (as in a Bible view), then the layout, Differences and Follow (0.6.128)
+    bar.innerHTML = `<button type="button" class="parset" data-a="sets" title="Choose another parallel set, make a new one, or change this one (add, remove or order its Bibles)">${ic('star', 14)}<b>${esc(set ? setName(set) : 'No set yet')}</b>${ic('down', 13)}</button>
+      ${set ? `<button type="button" class="navpill parpill" data-a="pick" title="Choose the book, chapter and verse${follow() ? ' (the Bible views go along: Follow is on)' : ''}"><span class="np-cat">📜</span><span class="np-lbl">${esc(bk ? bk.name : '')} ${r.c || ''}:${r.v || 1}</span><span class="np-caret">▾</span></button>` : `<button type="button" class="primary" data-a="new">${ic('plus', 14)}Set up parallel Bibles</button>`}
       <span class="pargrow"></span>
       <span class="parseg" role="group" aria-label="Layout"><button type="button" data-a="cols" class="${mode === 'cols' ? 'on' : ''}" title="Bibles side by side">Columns</button><button type="button" data-a="stack" class="${mode === 'stack' ? 'on' : ''}" title="Each verse with every Bible under it">Stacked</button></span>
-      <button type="button" data-a="diff" class="tog${S().parDiff ? ' on' : ''}" title="Mark the words that differ from the ★ Bible">≠ Differences</button>
-      <button type="button" data-a="follow" class="tog${follow() ? ' on' : ''}" title="Follow the main Bible view (click to read on by itself)">${ic('link', 14)}Follow</button>
-      <span class="parnav"><button type="button" data-a="prev" title="Chapter before">${ic('prev', 14)}</button><span class="parref">${esc(bk ? bk.name : '')} ${r.c || ''}</span><button type="button" data-a="next" title="Chapter after">${ic('next', 14)}</button></span>
-      <button type="button" data-a="wpop" class="tog${S().parWpop ? ' on' : ''}" title="Word pop-ups when the mouse rests on a word (otherwise hold Shift)"><span class="wpglyph">Ωא</span></button>
-      <button type="button" data-a="zout" title="Text smaller">${ic('textDown', 15)}</button><button type="button" data-a="zin" title="Text larger">${ic('textUp', 15)}</button>`;
+      <button type="button" data-a="diff" class="tog${S().parDiff ? ' on' : ''}" title="Mark the words that differ from the ★ Bible (click a column title to choose it)">≠<span class="lbl"> Differences</span></button>
+      <button type="button" data-a="follow" class="tog${follow() ? ' on' : ''}" title="Follow the main Bible view (click to read on by itself)">${ic('link', 14)}<span class="lbl">Follow</span></button>`;
+    syncSide();
+  }
+  /* ---------------------------------------------------------------- the icons beside the text (as in a Bible view) */
+  const AL = ['left', 'center', 'justify', 'right'];
+  const look = () => S().parLook || {};
+  function setLook(k, v) { const o = Object.assign({}, look()); if (v == null || v === '') delete o[k]; else o[k] = v; save({ parLook: o }); applyLook(); }
+  function sideHtml() {
+    const al = window.TimotheosAlign ? TimotheosAlign.icon('left', 15) : ic('menu', 15);
+    return `<button data-grab="par" class="pgrab bvgrab" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text)" aria-pressed="false">${ic('hand', 15)}</button>
+      <button data-s="wpop" class="pwpop" title="Word pop-ups when the mouse rests on a word (otherwise hold Shift)"><span class="wpglyph">Ωא</span></button>
+      <button data-s="zin" title="Font up (Ctrl + mouse wheel up)">${ic('textUp', 15)}</button>
+      <button data-s="zout" title="Font down (Ctrl + mouse wheel down)">${ic('textDown', 15)}</button>
+      <button data-s="fcolor" class="pfcolor" title="Font colour">${ic('fontColor', 15)}<i class="bar"></i></button>
+      <button data-s="font" title="Font of this panel">${ic('type', 15)}</button>
+      <button data-s="hfont" title="Headings: font, size, colour">${ic('outline', 15)}</button>
+      <button data-s="selbg" class="pselbg" title="Background of the current verse">${ic('verseBg', 15)}<i class="bar"></i></button>
+      <button data-s="pen" class="ppen" title="Highlighter: choose a colour, then select text">${ic('highlighter', 15)}<i class="bar"></i></button>
+      <button data-s="ul" class="pul" title="Underline: choose a style and colour, then select text">${ic('underline', 15)}</button>
+      <span class="bvsep"></span>
+      <button data-s="align" class="palign" title="Text alignment: left, centre, justified, right">${al}</button>
+      <button data-s="lh" title="Line spacing">${ic('lineSpacing', 15) || '↕'}</button>`;
+  }
+  function syncSide() {
+    if (!side) return;
+    const L = look();
+    const w = side.querySelector('.pwpop'); if (w) w.classList.toggle('on', !!S().parWpop);
+    const a = side.querySelector('.palign'); if (a && window.TimotheosAlign) a.innerHTML = TimotheosAlign.icon(L.align || 'left', 15);
+    const bar2 = (q, c) => { const b = side.querySelector(q + ' .bar'); if (b) b.style.background = c || 'transparent'; };
+    bar2('.pfcolor', L.color); bar2('.pselbg', L.selBg); bar2('.ppen', state.pen && state.pen.color);
+    const pb = side.querySelector('.ppen'); if (pb) pb.classList.toggle('on', !!(state.pen && state.pen.kind === 'hl'));
+    const ub = side.querySelector('.pul'); if (ub) ub.classList.toggle('on', !!(state.pen && state.pen.kind === 'ul'));
+  }
+  /** the panel's own look: font, colour, headings, current-verse background, alignment, line spacing */
+  function applyLook() {
+    if (!body) return; const L = look(); const t = body;
+    const fam = L.font ? `'TwGreek', 'TwHebrew', '${String(L.font).replace(/['\\]/g, '')}', var(--font-text)` : '';
+    t.style.fontFamily = fam;
+    if (L.color) t.style.color = L.color; else t.style.removeProperty('color');
+    if (L.selBg) t.style.setProperty('--sel', L.selBg); else t.style.removeProperty('--sel');
+    if (L.align) t.dataset.align = L.align; else delete t.dataset.align;
+    if (L.lh) t.style.setProperty('--lh', L.lh); else t.style.removeProperty('--lh');
+    const h = L.head || {}; const hd = (k, val, prop, css) => { if (val != null && val !== '') { t.dataset[k] = typeof val === 'boolean' ? (val ? '1' : '0') : '1'; if (prop) t.style.setProperty(prop, css); } else { delete t.dataset[k]; if (prop) t.style.removeProperty(prop); } };
+    hd('hfam', h.font, '--h-font', h.font ? `'${String(h.font).replace(/['\\]/g, '')}', var(--font-text)` : '');
+    hd('hsz', h.size, '--h-scale', String(h.size || 1)); hd('hcol', h.color, '--h-color', h.color || ''); hd('hb', h.bold, null); hd('hi', h.italic, null);
+    applyZoom(); syncSide();
+  }
+  function onSide(e) {
+    const b = e.target.closest('[data-s]'); if (!b) return;
+    const a = b.dataset.s, L = look();
+    if (a === 'wpop') { save({ parWpop: !S().parWpop }); return syncSide(); }
+    if (a === 'zin' || a === 'zout') return zoom(a === 'zin' ? 1 : -1);
+    if (a === 'fcolor') return TimotheosViewUI.colorMenu(b, 'Font colour of this panel', L.color, c => setLook('color', c || null));
+    if (a === 'selbg') return TimotheosViewUI.colorMenu(b, 'Background of the current verse', L.selBg, c => setLook('selBg', c || null));
+    if (a === 'pen') return TimotheosViewUI.penMenu(b);
+    if (a === 'ul') return TimotheosViewUI.underlineMenu(b);
+    if (a === 'font') {
+      const fonts = TimotheosOptions.fonts();
+      return paneMenu(b, `<div class="mh">Font of this panel</div><select class="bvfont" size="12"><option value="">As in Options</option>${fonts.map(f => `<option value="${esc(f)}" style="font-family:'${esc(String(f).replace(/['\\]/g, ''))}'"${f === L.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select>`, m => {
+        const sl = m.querySelector('select'); if (!L.font) sl.value = '';
+        sl.onchange = () => setLook('font', sl.value || null);
+      });
+    }
+    if (a === 'hfont') {
+      const fonts = TimotheosOptions.fonts(); const hh = L.head || {};
+      const SZ = [['', 'Automatic'], ['0.8', 'Small'], ['1', 'As the text'], ['1.2', 'Large'], ['1.45', 'Larger'], ['1.75', 'Largest']];
+      return paneMenu(b, `<div class="mh">Headings of this panel</div><div class="hfopts">
+        <label>Font <select data-h="font"><option value="">As the screen sets it</option>${fonts.map(f => `<option value="${esc(f)}"${f === hh.font ? ' selected' : ''}>${esc(f)}</option>`).join('')}</select></label>
+        <label>Size <select data-h="size">${SZ.map(([k, l]) => `<option value="${k}"${String(hh.size || '') === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label><input type="checkbox" data-h="bold"${hh.bold ? ' checked' : ''}> Bold</label><label><input type="checkbox" data-h="italic"${hh.italic ? ' checked' : ''}> Italic</label>
+        <label>Colour <input type="color" data-h="color" value="${esc(hh.color || '#888888')}"> <button type="button" data-h="nocolor">Default colour</button></label>
+        <button type="button" data-h="reset">Headings as the screen sets them</button></div>`, m => {
+        const put = (k, val) => { const o = Object.assign({}, look().head || {}); if (val == null || val === '' || val === false) delete o[k]; else o[k] = val; setLook('head', Object.keys(o).length ? o : null); };
+        m.addEventListener('change', e2 => { const k = e2.target.dataset.h; if (!k) return; if (k === 'bold' || k === 'italic') put(k, e2.target.checked); else if (k === 'size') put(k, e2.target.value ? +e2.target.value : null); else if (k !== 'color') put(k, e2.target.value || null); });
+        m.addEventListener('input', e2 => { if (e2.target.dataset.h === 'color') put('color', e2.target.value); });
+        m.addEventListener('click', e2 => { const x = e2.target.closest('button[data-h]'); if (!x) return; if (x.dataset.h === 'nocolor') put('color', null); else { setLook('head', null); m.remove(); } });
+      });
+    }
+    if (a === 'align') {
+      const cur = L.align || 'left';
+      return paneMenu(b, `<div class="mh">Text alignment</div>${TimotheosAlign.row(cur)}`, m => {
+        m.addEventListener('click', e2 => { const x = e2.target.closest('button[data-al]'); if (!x) return; setLook('align', x.dataset.al === 'left' ? null : x.dataset.al); m.querySelectorAll('[data-al]').forEach(y => y.classList.toggle('on', y === x)); });
+      });
+    }
+    if (a === 'lh') {
+      const now = () => +(look().lh || TimotheosOptions.appearance().lineH || 1.65);
+      return paneMenu(b, `<div class="mh">Line spacing</div><div class="alignrow lhrow"><button type="button" data-lh="-1" title="Less space between lines">−</button><b class="lhv">${now().toFixed(2)}</b><button type="button" data-lh="1" title="More space between lines">+</button><button type="button" data-lh="0" title="As set in Options">Default</button></div>`, m => {
+        m.addEventListener('click', e2 => { const x = e2.target.closest('button[data-lh]'); if (!x) return; const d = +x.dataset.lh; setLook('lh', d ? Math.round(Math.min(3, Math.max(1, now() + d * 0.05)) * 100) / 100 : null); m.querySelector('.lhv').textContent = now().toFixed(2); });
+      });
+    }
   }
   async function onBar(e) {
     const b = e.target.closest('[data-a]');
@@ -92,11 +182,9 @@
     if (a === 'diff') { save({ parDiff: !S().parDiff }); drawBar(); return render(false); }
     if (a === 'wpop') { save({ parWpop: !S().parWpop }); return drawBar(); }
     if (a === 'follow') { const on = !follow(); save(on ? { parFollow: true } : { parFollow: false, parRef: { ...state.ref } }); drawBar(); return render(true); }
-    if (a === 'zin' || a === 'zout') return zoom(a === 'zin' ? 1 : -1);
-    if (a === 'prev' || a === 'next') {
-      const r = ref(); const n = typeof adjChapter === 'function' ? adjChapter(r.b, r.c, a === 'next' ? 1 : -1) : null; if (!n) return;
-      if (follow()) return go({ b: n.b, c: n.c, v: 1 });
-      save({ parRef: { b: n.b, c: n.c, v: 1 } }); drawBar(); return render(true);
+    if (a === 'pick' && window.TimotheosNav) {
+      // the Bible view's book / chapter / verse picker; with Follow off it moves only this panel
+      return TimotheosNav.openNavPopover('book', b, null, follow() ? null : { ref: ref(), onPick: r => { save({ parRef: { b: r.b, c: r.c, v: r.v || 1 } }); drawBar(); render(true); } });
     }
   }
   function zoom(d) {
@@ -105,20 +193,6 @@
   }
   function applyZoom() { if (body) body.style.setProperty('--size', Math.round((S().fontSize || 17) * (+S().parZoom || 1) * 10) / 10 + 'px'); }
   function flash(t) { if (typeof flashMsg === 'function') flashMsg(t); }
-
-  /* chips: drag to change the order (mouse); the set dialog has ↑ ↓ for touch */
-  function wireChipDrag() {
-    let from = null;
-    bar.addEventListener('dragstart', e => { const c = e.target.closest('[data-chip]'); if (!c) return; from = c.dataset.chip; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', from); } catch (x) { /* */ } c.classList.add('drag'); });
-    bar.addEventListener('dragover', e => { if (from && e.target.closest('[data-chip]')) e.preventDefault(); });
-    bar.addEventListener('dragend', () => { from = null; bar.querySelectorAll('.drag').forEach(x => x.classList.remove('drag')); });
-    bar.addEventListener('drop', e => {
-      const c = e.target.closest('[data-chip]'); const s = curSet(); if (!c || !from || !s) return; e.preventDefault();
-      const to = c.dataset.chip; if (to === from) return;
-      const l = s.bibles.filter(x => x !== from); l.splice(l.indexOf(to) + (e.offsetX > c.clientWidth / 2 ? 1 : 0), 0, from);
-      s.bibles = l; from = null; saveSets([...sets()]); drawBar(); render(false);
-    });
-  }
 
   /* the ★ menu: other sets, new, change, delete */
   function setMenu(btn) {
@@ -270,15 +344,37 @@
       html += '</div>';
     }
     const keep = body.scrollTop;
-    body.innerHTML = html;
+    body.innerHTML = html; body.classList.remove('parsnap');
     if (typeof markGlosses === 'function') try { markGlosses(body); } catch (e) { /* */ }
     // the user's highlights, as in the Bible views (not while differences are marked: the text is shown plain then)
     if (window.TimotheosStudy && TimotheosStudy.paintHighlights && (S().show || {}).highlights !== false) body.querySelectorAll('.pcell[data-bid]:not([data-plain])').forEach(cell => {
       const row = cell.closest('[data-pv]'); if (row && +row.dataset.pv) try { TimotheosStudy.paintHighlights(cell, cell.dataset.bid, r.b, r.c, +row.dataset.pv); } catch (e) { /* */ }
     });
     drawBar();
+    snapshotSoon();
     if (wantScroll) { wantScroll = false; const el = boxOf(body.querySelector(`.pvrow[data-pv="${curV}"]`)); if (el && curV > 1) el.scrollIntoView({ block: 'center' }); else body.scrollTop = 0; }
     else body.scrollTop = keep;
+  }
+  /* ---- start-up (0.6.128): what the panel showed last time is put on screen at once, while the Bibles are read;
+   * the freshly read text replaces it. Kept in this browser's storage, only for the same set, place and layout. */
+  function snapKey() {
+    const st = curSet(); if (!st) return '';
+    const r = ref();
+    return JSON.stringify([st.id, st.bibles, st.base, r.b, r.c, layoutMode(), !!S().parDiff, S().parZoom || 1]);
+  }
+  let snapT = 0;
+  function snapshotSoon() {
+    clearTimeout(snapT);
+    snapT = setTimeout(() => { try { const html = body.innerHTML; if (html.length < 900000) localStorage.setItem('tw.parSnap', JSON.stringify({ k: snapKey(), html, st: body.scrollTop })); } catch (e) { /* storage full or off */ } }, 1200);
+  }
+  function showSnapshot() {
+    try {
+      const sn = JSON.parse(localStorage.getItem('tw.parSnap') || 'null'); const k = snapKey();
+      if (!sn || !k || sn.k !== k || body.querySelector('.pvrow')) return false;
+      body.innerHTML = sn.html; body.classList.add('parsnap');
+      requestAnimationFrame(() => { body.scrollTop = sn.st || 0; });
+      return true;
+    } catch (e) { return false; }
   }
   function plainOf(h) { const d = document.createElement('div'); d.innerHTML = h; d.querySelectorAll('sup, .heading, .fnbody, .gloss').forEach(x => x.remove()); return d.textContent.replace(/\s+/g, ' ').trim(); }
   function words(t) { return String(t || '').split(' ').filter(Boolean); }
@@ -337,5 +433,5 @@
   }
   function onModulesChanged() { if (curSet()) { drawBar(); render(false); } }
 
-  window.TimotheosParallel = { shownRef: () => (shown ? { ...shown } : { ...ref() }), following: follow, init, render, onRef, onModulesChanged, setupDialog, chooseSetDialog, wake, wordPopupAllowed: shift => !!(shift || S().parWpop), MAX };
+  window.TimotheosParallel = { showSnapshot, setBibles: () => { const st = curSet(); return st ? st.bibles.filter(bibleOf) : []; }, visible, syncSide, shownRef: () => (shown ? { ...shown } : { ...ref() }), following: follow, init, render, onRef, onModulesChanged, setupDialog, chooseSetDialog, wake, wordPopupAllowed: shift => !!(shift || S().parWpop), MAX };
 })();
