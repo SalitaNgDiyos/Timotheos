@@ -63,10 +63,8 @@
     const set = curSet(); const mode = layoutMode();
     const ids = set ? set.bibles.filter(bibleOf) : [];
     const base = set && ids.includes(set.base) ? set.base : ids[0];
-    const chips = ids.map(id => `<span class="pchipb${id === base ? ' base' : ''}" draggable="true" data-chip="${esc(id)}" title="${esc(titleOf(id))} · click: compare the others with this Bible (★) · drag: change the order">${id === base ? '★ ' : ''}${esc(abbrOf(id))}<button type="button" class="px" data-a="remove" data-id="${esc(id)}" title="Take this Bible out of the set">×</button></span>`).join('');
     const r = ref(); const bk = (state.nav || []).find(x => x.id === r.b);
     bar.innerHTML = `<button type="button" class="parset" data-a="sets" title="Choose another parallel set, make a new one, or change this one">${ic('star', 14)}<b>${esc(set ? setName(set) : 'No set yet')}</b>${ic('down', 13)}</button>
-      <span class="parchips">${chips}</span>
       ${set ? `<button type="button" data-a="edit" title="Add or remove Bibles (up to ${MAX})">${ic('plus', 14)}Bible</button>` : `<button type="button" class="primary" data-a="new">${ic('plus', 14)}Set up parallel Bibles</button>`}
       <span class="pargrow"></span>
       <span class="parseg" role="group" aria-label="Layout"><button type="button" data-a="cols" class="${mode === 'cols' ? 'on' : ''}" title="Bibles side by side">Columns</button><button type="button" data-a="stack" class="${mode === 'stack' ? 'on' : ''}" title="Each verse with every Bible under it">Stacked</button></span>
@@ -260,14 +258,14 @@
     if (gone.length) html += `<p class="hint parwarn">Not installed any more: ${esc(gone.map(x => x.replace(/^\w+:/, '')).join(', '))}</p>`;
     if (!rows.length) html += `<p class="hint">${esc(bkName)} ${r.c} is in none of these Bibles.</p>`;
     else if (layoutMode() === 'cols') {
-      html += `<div class="ptable${diff ? ' diffon' : ''}" style="--n:${ids.length}"><div class="phd"><span class="pvn"></span>${ids.map((id, k) => `<div class="pth${k === base && diff ? ' base' : ''}" title="${esc(titleOf(id))}"><b>${k === base && diff ? '★ ' : ''}${esc(abbrOf(id))}</b><small>${esc(titleOf(id))}</small></div>`).join('')}</div>`;
+      html += `<div class="ptable${diff ? ' diffon' : ''}" style="--n:${ids.length}"><div class="phd"><span class="pvn"></span>${ids.map((id, k) => `<div class="pth${k === base && diff ? ' base' : ''}" data-chip="${esc(id)}" title="${esc(titleOf(id))} · click: compare the others with this Bible (★ for Differences)"><b>${k === base && diff ? '★ ' : ''}${esc(abbrOf(id))}</b><small>${esc(titleOf(id))}</small></div>`).join('')}</div>`;
       for (const row of rows) html += `<div class="pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}"><span class="pvn">${row.v === 0 ? '¶' : row.v}</span>${cellsOf(row).map((c, k) => cellHtml(c, k, row.v)).join('')}</div>`;
       html += '</div>';
     } else {
       html += `<div class="pstack${diff ? ' diffon' : ''}">`;
       for (const row of rows) {
         const cs = cellsOf(row);
-        html += `<div class="psv pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}"><div class="psh">${esc(bkName)} ${r.c}:${row.v === 0 ? '¶' : row.v}</div>${cs.map((c, k) => `<div class="psl${k === base && diff ? ' base' : ''}"><span class="plb" title="${esc(titleOf(ids[k]))}">${k === base && diff ? '★' : ''}${esc(abbrOf(ids[k]))}</span>${cellHtml(c, k, row.v)}</div>`).join('')}</div>`;
+        html += `<div class="psv pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}"><div class="psh">${esc(bkName)} ${r.c}:${row.v === 0 ? '¶' : row.v}</div>${cs.map((c, k) => `<div class="psl${k === base && diff ? ' base' : ''}"><span class="plb" data-chip="${esc(ids[k])}" title="${esc(titleOf(ids[k]))} · click: compare the others with this Bible (★ for Differences)">${k === base && diff ? '★' : ''}${esc(abbrOf(ids[k]))}</span>${cellHtml(c, k, row.v)}</div>`).join('')}</div>`;
       }
       html += '</div>';
     }
@@ -298,6 +296,9 @@
   /* ---------------------------------------------------------------- verses, words */
   function onBody(e) {
     if (e.target.closest('[data-a2="new"]')) return setupDialog(null, !sets().length);
+    // a column title (or the name in Stacked) makes that Bible the ★ one the others are compared with (the chips are gone, 0.6.127)
+    const ch = e.target.closest('[data-chip]');
+    if (ch) { const st = curSet(); if (st && st.base !== ch.dataset.chip) { st.base = ch.dataset.chip; saveSets([...sets()]); drawBar(); render(false); } return; }
     if (e.target.closest('a, [data-href], sup.fn, sup.xref, button')) return;
     const row = e.target.closest('.pvrow[data-pv]'); if (!row) return;
     const v = +row.dataset.pv; if (!v) return;

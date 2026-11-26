@@ -1,5 +1,6 @@
-Timotheos 0.6.126
+Timotheos 0.6.127
 
-- Parallel Bibles: right-clicking a verse (press and hold on the phone) gives the same menu as in a Bible view, for that Bible and verse: copy, Copy verses..., add to a verse list, bookmark, highlight (the verse or the selected words), my note, cross-references, commentaries, find, and look up. Highlights now show in the panel too.
-- Phone: the old two-Bible "Parallel" (one Bible above the other) is removed from all three screens. "Parallel" now opens the Parallel Bibles panel. A two-Bible split that was left on is closed when the app starts.
+- Faster Bible text at start-up: the chapter you were reading shows at once when Timotheos starts, and the freshly read text replaces it a moment later. The module list and the open Bible are read at the same time as the window is set up, and the other Bibles and library modules are read only after the text is on screen.
+- Copy verses is now F9 (was F5). If you had F5 saved, it moves to F9.
+- Parallel Bibles: the row of Bible chips is removed from the bar. Click a column title (or a Bible's name in Stacked) to make it the star Bible for Differences; + Bible changes the order and takes Bibles out.
 - User Guide updated.

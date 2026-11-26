@@ -50,8 +50,9 @@ try {
   $('#tab-par [data-a="diff"]').click(); await until(() => $('#tab-par mark.dif'));
   ok($$('#tab-par mark.dif').length > 0 && $('#tab-par .pth.base'), 'differences marked against the ★ Bible');
   // a chip makes another Bible the ★ one
-  const chips = $$('#tab-par .pchipb'); chips[1].click(); await sl(600);
-  ok(state.settings.parSets[0].base === chips[1].dataset.chip, 'clicking a chip makes it the ★ Bible');
+  ok(!$('#tab-par .pchipb'), 'no Bible chips on the bar any more');
+  const chips = $$('#tab-par .pth[data-chip]'); chips[1].click(); await sl(600);
+  ok(state.settings.parSets[0].base === chips[1].dataset.chip, 'clicking a column title makes it the ★ Bible');
   // stacked
   $('#tab-par [data-a="stack"]').click(); await until(() => $('#tab-par .pstack .psv'));
   ok($$('#tab-par .pstack .psv').length > 5 && state.settings.parLayout.pc === 'stack', 'stacked layout');

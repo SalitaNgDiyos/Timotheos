@@ -51,7 +51,7 @@
     search: 'Ctrl+F',
     bookSearch: 'Ctrl+Shift+F',
     goto: 'Ctrl+G',
-    copyVerses: 'F5',
+    copyVerses: 'F9',
     undoLayout: 'Ctrl+Alt+Z',
     redoLayout: 'Ctrl+Alt+Y',
     guide: 'F1',
@@ -129,7 +129,10 @@
 
   const A = () => state.settings.appearance;
   function shortcuts() {
-    return Object.assign({}, DEFAULT_SHORTCUTS, (state && state.settings && state.settings.shortcuts) || {});
+    const own = (state && state.settings && state.settings.shortcuts) || {};
+    // 0.6.127: Copy verses moved from F5 to F9; a saved F5 (the old default) follows it
+    if (own.copyVerses === 'F5' && !state.settings.scCopyF9) { own.copyVerses = 'F9'; try { save({ shortcuts: own, scCopyF9: true }); } catch (e) { /* */ } }
+    return Object.assign({}, DEFAULT_SHORTCUTS, own);
   }
   /* ------------------------------------------------------------ Firefox themes (copied from the user's own Firefox)
      A Firefox theme gives the frame, toolbar, popup and field colours and a header picture. The frame and toolbar take them

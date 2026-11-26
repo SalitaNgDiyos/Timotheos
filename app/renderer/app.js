@@ -88,8 +88,13 @@ async function init() {
   state.settings = await api.getSettings();
   state.ref = state.settings.ref || state.ref;
   initViews();
+  // the Bible text comes first (0.6.127): the list of modules and the Bible of the open view are asked for at once, so
+  // the module work runs while the rest of the window is being set up
+  const firstList = api.listModules().catch(() => null);
+  { const v = views()[state.active] || views()[0]; if (v && v.bible) prefetchInfo(v.bible); }
   TimotheosOptions.init();
   initDock();
+  showPaneSnapshots();   // the chapter that was on screen last time shows at once; the real one replaces it moments later
   wireZoom();
   wirePopupResize();
   for (const cb of document.querySelectorAll('[data-show]')) cb.addEventListener('change', () => setShow(cb.dataset.show, cb.checked));
@@ -105,7 +110,7 @@ async function init() {
   TimotheosBookSearch.init();
   TimotheosTools.init();
   window.BOOK_ABBR = {}; for (const bk of await api.books()) window.BOOK_ABBR[bk.id] = bk.abbr;
-  await refreshModules();
+  await refreshModules((await firstList) || undefined);
   if (window.TimotheosSkins && TimotheosSkins.onAppReady) TimotheosSkins.onAppReady();
   api.onMenu(cmd => runCommand(cmd));
   TimotheosTitlebar.init();
@@ -364,23 +369,29 @@ async function refreshModules(list) {
   for (const v of vs) await ensureInfo(v.bible);
   renderModuleList(); renderDictSelects(); renderPopupSelects(); renderFolders(); renderModuleManager();
   TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); if (window.TimotheosSearch && TimotheosSearch.fillBibleList) TimotheosSearch.fillBibleList();
-  if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.allModules = Object.assign(l, { errors: state.modules.errors }); state.modules = visibleModules(state.allModules); renderDictSelects(); renderModuleManager(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {});
+  const describeLater = () => { if ((state.modules.books || []).some(b => !b.opened)) api.describeModules().then(l => { state.allModules = Object.assign(l, { errors: state.modules.errors }); state.modules = visibleModules(state.allModules); renderDictSelects(); renderModuleManager(); TimotheosModules.renderLibraryList(); TimotheosModules.fillLibSelect(); TimotheosBookSearch.fillScope(); }).catch(() => {}); };
   $('#empty').classList.toggle('hidden', ids.length > 0);
   const ei = $('#emptyImport'); if (ei && !ei.onclick) ei.onclick = () => runCommand('import');
   const eg = $('#emptyGet'); if (eg && !eg.onclick) eg.onclick = () => runCommand('getModules');
   statusMods();
   $('#grid').classList.toggle('hidden', ids.length === 0);
-  preloadBibles();
   await rebuildNav();
   await go(state.ref, false);
+  // the Bible text comes first (0.6.127): reading the other Bibles and the library modules waits until it is on screen,
+  // so that work does not hold up the text on a computer or phone with many modules
+  setTimeout(() => { preloadBibles(); describeLater(); }, 400);
 }
 function statusMods() {
   const ids = state.modules.bibles;
   $('#stMods').textContent = `${ids.length} Bible${ids.length === 1 ? '' : 's'} · ${(state.modules.books || []).length} library modules · ${views().length} Bible view${views().length === 1 ? '' : 's'}${state.settings.portable ? ' · Portable' : ''}`;
 }
 
+const infoPending = new Map();
+/** start reading a Bible's information early (see init); ensureInfo picks it up */
+function prefetchInfo(id) { if (state.infos.has(id) || infoPending.has(id)) return; infoPending.set(id, api.bibleInfo(id).then(info => { state.infos.set(id, info); return info; }, () => null).finally(() => infoPending.delete(id))); }
 async function ensureInfo(id, transient) {
   if (state.infos.has(id)) return state.infos.get(id);
+  if (infoPending.has(id)) { const got = await infoPending.get(id); if (got) return got; }
   try { const info = await api.bibleInfo(id, transient ? { transient: true } : undefined); state.infos.set(id, info); return info; }
   catch (e) { state.modules.errors.push(`${id.slice(3)}: ${e.message}`); return null; }
 }
@@ -1312,6 +1323,30 @@ async function renderPane(i, scroll, seq) {
     if (el && centerOn()) { centerVerse(t, vv, false); if (vv > 1) el.classList.add('flash'); }
     else if (el && vv > 1) { el.scrollIntoView({ block: 'center' }); el.classList.add('flash'); } else t.scrollTop = 0;
   } else t.scrollTop = keep;
+  snapshotPaneSoon(i, id, b, c, t);
+}
+
+/* ---------------- the text on screen at start-up (0.6.127) ----------------
+ * Each Bible view keeps a copy of its chapter as it was last shown (in this browser's storage). At the next start it is
+ * put on screen straight away, so the text is there while the modules are still being read; the freshly read chapter
+ * replaces it a moment later. */
+const snapT = {};
+function snapshotPaneSoon(i, id, b, c, t) {
+  clearTimeout(snapT[i]);
+  snapT[i] = setTimeout(() => {
+    try { const html = t.innerHTML; if (html.length < 600000) localStorage.setItem('tw.paneSnap.' + i, JSON.stringify({ id, b, c, html, st: t.scrollTop })); } catch (e) { /* storage full or off */ }
+  }, 1200);
+}
+function showPaneSnapshots() {
+  views().forEach((v, i) => {
+    try {
+      const sec = panes()[i]; const t = sec && sec.querySelector('.bvtext'); if (!t || t.querySelector('[data-v]')) return;
+      const sn = JSON.parse(localStorage.getItem('tw.paneSnap.' + i) || 'null'); const r = refOfView(i);
+      if (!sn || sn.id !== v.bible || sn.b !== r.b || sn.c !== r.c) return;
+      t.innerHTML = sn.html; try { applyPaneLook(sec, i); } catch (e) { /* the look follows with the real chapter */ }
+      t.scrollTop = sn.st || 0;
+    } catch (e) { /* nothing kept */ }
+  });
 }
 
 /* ---------------- popups & lookup ---------------- */
@@ -1699,7 +1734,7 @@ function about() {
   const verse = l => `<b>${esc(ABOUT_VERSE[l].ref)}</b><br>“${esc(ABOUT_VERSE[l].text)}”`;
   const html = `<div class="about">
     <img class="abouticon" data-logo="384" src="${TimotheosLogo.src(384)}" alt="Timotheos icon" width="96" height="96" draggable="false">
-    <p><b>Timotheos ${esc(s.version || '0.6.126')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
+    <p><b>Timotheos ${esc(s.version || '0.6.127')}</b> – an offline Bible study program that reads and creates <b>theWord</b> and <b>e-Sword</b> modules, and reads <b>MySword</b> modules (Bibles with the Apocrypha, commentaries, dictionaries, books, devotionals, maps, cross-references, verse lists and reading plans). Timotheos is an independent program: it is not made by, or affiliated with, theWord or e-Sword.</p>
     <table class="imp aboutt"><tr><th>License</th><td>GNU Affero General Public License, version 3 or later (AGPL-3.0-or-later). Free to use, study, change and share, for any purpose; a changed version that you share must stay free software under the same licence.<br>Copyright © 2026 Edmund P. Valdez. There is no warranty.</td></tr>
     <tr><th>Source code</th><td>The complete source code of this version is free for anyone who has this program: <a class="link" data-href="https://github.com/SalitaNgDiyos/Timotheos">https://github.com/SalitaNgDiyos/Timotheos</a> (each release there is named with its build number and commit).</td></tr>
     <tr><th>Legal</th><td><button type="button" class="pill" data-legal="LICENSE">Licence</button> <button type="button" class="pill" data-legal="THIRD-PARTY-LICENSES">Third-party notices</button> <button type="button" class="pill" data-legal="NOTICE">Notice</button> <button type="button" class="pill" data-legal="fonts">Fonts</button></td></tr>
