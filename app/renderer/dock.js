@@ -1230,7 +1230,48 @@
 
   function commit() { render(); saveSoon(); }
   let saveT = null;
-  function saveSoon() { clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; if (opts.onSave && L) opts.onSave(clone(L)); }, 100); }
+  function saveSoon() { record(); clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; if (opts.onSave && L) opts.onSave(clone(L)); }, 100); }
+
+  /* ---- undo / redo of layout changes (0.6.122). Changes coming within 0.4 s of each other are one step. The app adds its
+   * own part (the Bible views) through opts.snapshot / opts.restore, so a closed Bible view comes back with its Bible. ---- */
+  const UNDO = [], REDO = []; let lastSnap = null, lastJson = '', lastAt = 0, restoring = false;
+  const snapNow = () => ({ L: clone(L), x: opts.snapshot ? opts.snapshot() : null });
+  const keyOf = sn => JSON.stringify(sn.L) + '|' + JSON.stringify(sn.x);
+  function baseline() { if (!L) return; lastSnap = snapNow(); lastJson = keyOf(lastSnap); lastAt = 0; }
+  function record() {
+    if (!L || restoring) return;
+    const sn = snapNow(), j = keyOf(sn); if (j === lastJson) return;
+    const now = Date.now();
+    if (lastSnap && now - lastAt > 400) { UNDO.push(lastSnap); if (UNDO.length > 60) UNDO.shift(); }
+    REDO.length = 0; lastSnap = sn; lastJson = j; lastAt = now;
+    if (opts.onHistory) opts.onHistory(canUndo(), canRedo());
+  }
+  const canUndo = () => UNDO.length > 0, canRedo = () => REDO.length > 0;
+  async function applySnap(sn) {
+    restoring = true;
+    try {
+      if (opts.restore && sn.x) await opts.restore(sn.x);
+      L = normalize(sn.L); maxed = null; focusMode = false; render();
+      clearTimeout(saveT); saveT = setTimeout(() => { saveT = null; if (opts.onSave && L) opts.onSave(clone(L)); }, 100);
+    } finally { restoring = false; }
+    baseline();
+    if (opts.onHistory) opts.onHistory(canUndo(), canRedo());
+  }
+  async function undo() { if (!UNDO.length || restoring) return false; REDO.push(snapNow()); await applySnap(UNDO.pop()); return true; }
+  async function redo() { if (!REDO.length || restoring) return false; UNDO.push(snapNow()); await applySnap(REDO.pop()); return true; }
+
+  /** a Bible view is closed and the views after it move down one number: their panels keep their places, so only the closed
+   * view's place is left (an empty space in Detach edges mode; otherwise the neighbours grow into it) */
+  function closeBibleView(i, n) {
+    if (!L) return;
+    detach('bv' + i);
+    if (maxed === 'bv' + i) maxed = null;
+    const ren = id => { const m = /^bv(\d+)$/.exec(id); return m && +m[1] > i ? 'bv' + (+m[1] - 1) : id; };
+    for (const g of [...L.areas, ...L.floats]) { g.panels = g.panels.map(ren); g.active = ren(g.active); }
+    L.hidden = L.hidden.map(ren);
+    if (maxed) maxed = ren(maxed);
+    void n;   // the last panel element (bv<n-1>) is no longer in the layout; the app removes it next
+  }
   if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', () => { if (saveT) { clearTimeout(saveT); saveT = null; if (opts.onSave && L) opts.onSave(clone(L)); } });
   }
@@ -1378,7 +1419,7 @@
     detachMode = !!opts.detachMode;
     holder = document.createElement('div'); holder.id = 'dholder'; holder.hidden = true; document.body.appendChild(holder);
     L = normalize(layout);
-    render();
+    render(); baseline();
     window.addEventListener('resize', () => document.querySelectorAll('.dfloat').forEach(clampFloat));
   }
 
@@ -1386,6 +1427,7 @@
     init, register, add, remove, retitle, render, show, hide, activate, toggleFloat, toggleFocus, applyPreset, setLayout, isVisible, arrangeBible,
     setDetachMode, toggleDetachMode, getDetachMode, setSnapGrid, toggleSnapGrid, getSnapGrid,
     setNextRect, placeInSpace, startMenuDrag, clearAll, setBlueprintGrid, openLayoutDesigner, createBlueprintSlots,
+    undo, redo, canUndo, canRedo, closeBibleView, resetHistory: baseline,
     thumbnailSvg, findEmptySpaces: () => findEmptySpaces(L ? L.areas : []),
     findAvailableSpaces,
     panels: () => [...PANELS.values()], panel: id => PANELS.get(id), state: () => clone(L), located: id => locate(id), PRESETS, isBible,

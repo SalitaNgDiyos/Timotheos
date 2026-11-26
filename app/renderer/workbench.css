@@ -995,3 +995,8 @@ body.dragging .dslot { opacity: 0.25; }
 html:not(.phone) .bvtext .paraview { padding: 4px 6px 20px; gap: 16px; }
 html:not(.phone) .bvtext table.chapter td, html:not(.phone) .bvtext table.chapter thead th { padding-left: 4px; padding-right: 4px; }
 html:not(.phone) .bvtext .bvnone { padding: 6px; }
+/* undo / redo of layout changes (0.6.122), beside the menus */
+.tbhist { display: inline-flex; align-items: center; gap: 1px; margin-left: 8px; padding-left: 8px; border-left: 1px solid color-mix(in srgb, currentColor 22%, transparent); -webkit-app-region: no-drag; }
+.tbhbtn { background: transparent; border: 0; color: inherit; padding: 3px 6px; border-radius: 5px; display: inline-flex; align-items: center; cursor: pointer; }
+.tbhbtn:hover:not(:disabled) { background: color-mix(in srgb, currentColor 13%, transparent); }
+.tbhbtn:disabled { opacity: .35; cursor: default; }
