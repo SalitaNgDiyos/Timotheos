@@ -130,6 +130,7 @@ async function hostOp(op, a) {
     case 'openUrl': return openUrl(a[0]);
     case 'openPath': return openPath(a[0]);
     case 'netRequest': return invoke('net_request', { method: a[0], url: a[1], headers: a[2] || {}, body: a[3] || '' });
+    case 'aiRequest': return invoke('ai_request', { method: a[0], url: a[1], headers: a[2] || {}, body: a[3] || '', timeoutSecs: a[4] || 300 });
     case 'oauthAuth': return invoke('oauth_auth', { authUrlTemplate: a[0], timeoutSecs: a[1] || 180 });
     case 'clipRead': try { return await readText(); } catch (e) { return ''; }
     case 'clipWrite': {
@@ -203,7 +204,7 @@ const api = {
   xrefsChapter: (b, c) => call('xrefs:chapter', b, c), xrefsAdd: (f, t) => call('xrefs:add', f, t), xrefsRemove: (f, t) => call('xrefs:remove', f, t),
   xrefsSets: () => call('xrefs:sets'), xrefsEnable: (i, o) => call('xrefs:enable', i, o),
   parseRef: s => call('ref:parse', s), books: () => call('canon:books'), openExternal: u => call('shell:open', u),
-  modProps: id => call('mod:props', id), modSave: (id, c, a) => call('mod:save', id, c, a), modCompress: (id, o) => call('mod:compress', id, o), modRestore: id => call('mod:restore', id), modVerseLinks: (id, o, w) => call('mod:verselinks', id, o, w),
+  modProps: id => call('mod:props', id), modSave: (id, c, a) => call('mod:save', id, c, a), modCompress: (id, o) => call('mod:compress', id, o), modRestore: id => call('mod:restore', id), aiConfig: () => call('ai:config'), aiSetConfig: o => call('ai:setConfig', o), aiModels: o => call('ai:models', o), aiTest: o => call('ai:test', o), tarRate: job => call('tar:rate', job), tarLoad: id => call('tar:load', id), tarRemove: (id, s, a) => call('tar:remove', id, s, a), tarSummary: (id, s, a) => call('tar:summary', id, s, a), modVerseLinks: (id, o, w) => call('mod:verselinks', id, o, w),
   userModCreate: o => call('usermod:create', o), userModSaveCmt: (id, r, h) => call('usermod:saveCmt', id, r, h), userModSaveTopic: (id, t) => call('usermod:saveTopic', id, t),
   userModRenameTopic: (id, t, s) => call('usermod:renameTopic', id, t, s), userModMoveTopic: (id, t, d) => call('usermod:moveTopic', id, t, d), userModDeleteTopic: (id, t) => call('usermod:deleteTopic', id, t),
   userModExportNotes: o => call('usermod:exportNotes', o), userModExportNotebook: o => call('usermod:exportNotebook', o), exportVsls: (n, l) => call('twstudy:exportVsls', n, l), exportRdp: p => call('twstudy:exportRdp', p),

@@ -1,11 +1,8 @@
-Timotheos 0.6.120
+Timotheos 0.6.121
 
-- New: Parallel Bibles panel. Up to 8 Bibles verse by verse, from parallel sets you save. Drag it in from View > Layout & Panels.
-- The first time it opens, it asks you to set up a set: what kind of Bibles or a name (optional; Modern English, Old English, Tagalog, Original languages, Mixed languages fill it in), and which Bibles (required, 2 to 8, with up and down arrows for the order). With two or more saved sets it asks which set to open; with one set, that set simply opens.
-- Columns (side by side) or Stacked (each verse with every Bible under it). The phone starts Stacked.
-- Differences: marks the words that differ from the star Bible and shows the share in %. Click a Bible chip to make it the star Bible. Any two Bibles can be compared.
-- Follows the main Bible view (or reads on by itself), marks the current verse, and lights up every word with the same Strong's number in all the Bibles when the mouse rests on one.
-- Bible chips can be dragged to change the order and removed with x; the star menu switches, makes, changes or deletes sets.
-- On the phone: Parallel Bibles is in the Layout / More / command menus of each screen. The older two-Bible view (top and bottom) is still there.
-- View > Panels is now called Layout & Panels.
+- New: Translation Accuracy Rating (TAR). The TAR button of the Parallel Bibles panel (or View > Translation Accuracy Rating) asks an AI model of your choice to grade how faithfully a translation renders its source text (for example the Textus Receptus or the LXX), verse by verse.
+- Five measures: word meaning 30%, grammar 25%, completeness 20%, meaning and emphasis 15%, consistency 10%. Grades: Poor 0-59, Not Bad 60-79, Good 80-91, Faithful 92-100.
+- Rate one verse, the chapter, the book, or the entire translation. Judge as word for word or thought for thought; notes in English or Tagalog. Differences that come from a different source text are not counted. Stop at any time; a new start goes on where it stopped.
+- Results are saved per Bible. Each rated verse shows its grade in the Parallel Bibles panel; click it for the five measures, the AI's note and the words that lose something. The TAR dialog shows the saved averages for everything and per book.
+- AI settings: Anthropic (Claude), OpenAI, Google Gemini, OpenRouter, DeepSeek, Groq, Mistral, xAI, a model on this computer (Ollama, LM Studio), or any OpenAI-compatible address. Your key stays on this device only and is never synced. List models and Test buttons.
 - User Guide updated (computer and phone).

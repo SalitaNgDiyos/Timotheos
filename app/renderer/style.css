@@ -693,3 +693,41 @@ sup.gloss, sup.gloss font { font: italic 400 .66em var(--font-text); color: var(
 html.mobile .parbar { gap: 4px; padding: 6px; }
 html.mobile .parbar [data-a="wpop"], html.mobile .parbar [data-a="zin"], html.mobile .parbar [data-a="zout"] { display: none; }
 html.mobile .ptable { grid-template-columns: 2em repeat(var(--n), minmax(10.5em, 1fr)); }
+
+/* ---------------- Translation Accuracy Rating (0.6.121) ---------------- */
+.tar-faithful { --tarc: #2e7d32; } .tar-good { --tarc: #1f6fb2; } .tar-notbad { --tarc: #b7791f; } .tar-poor { --tarc: #c0392b; }
+:root[data-theme="dark"] .tar-faithful { --tarc: #66bb6a; } :root[data-theme="dark"] .tar-good { --tarc: #6fb0ea; } :root[data-theme="dark"] .tar-notbad { --tarc: #e0b050; } :root[data-theme="dark"] .tar-poor { --tarc: #ef7a6c; }
+.tarb { font: 700 10.5px var(--font-ui); color: #fff; background: var(--tarc); border: 0; border-radius: 8px; padding: 1px 6px; margin-left: 4px; cursor: pointer; vertical-align: 2px; }
+b.tar-faithful, b.tar-good, b.tar-notbad, b.tar-poor { color: var(--tarc); }
+.tardlg .tar2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tardlg .field, .aiset .field { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; }
+.tardlg select, .aiset select, .aiset input[type="text"], .aiset input[type="password"] { width: 100%; }
+.tarscope { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+.tarscope label, .tarchk { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.tarai { margin: 8px 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tarai button, .tardlg #tarForget, .aiset button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+.airow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.airow input { flex: 1; min-width: 12em; }
+#aiMsg.bad, .tardlg .bad, #modalBody p.bad { color: #c0392b; }
+.tarsaved .mh { font: 600 11px var(--font-ui); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 10px 0 4px; }
+.tartbl { max-height: 34vh; overflow: auto; border: 1px solid var(--line); border-radius: 6px; margin: 4px 0 8px; }
+.tartbl table { border-collapse: collapse; width: 100%; font: 12px var(--font-ui); }
+.tartbl th, .tartbl td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.tartbl th { position: sticky; top: 0; background: var(--panel); }
+.tarbig { display: flex; align-items: baseline; gap: 10px; color: var(--tarc); margin: 4px 0 6px; }
+.tarbig b { font: 700 34px var(--font-ui); } .tarbig span { font: 600 18px var(--font-ui); }
+.tarbars { display: grid; gap: 4px; margin: 8px 0; }
+.tarbar { display: grid; grid-template-columns: 11em 1fr 2.5em; gap: 8px; align-items: center; font: 12.5px var(--font-ui); }
+.tarbar small { color: var(--muted); }
+.tarbar i { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.tarbar i b { display: block; height: 100%; background: var(--tarc); }
+.tarbar em { font-style: normal; text-align: right; font-weight: 600; }
+.tarnote { background: var(--panel); border-left: 3px solid var(--accent); padding: 6px 10px; border-radius: 4px; }
+.tarprog { position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); z-index: 2500; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 26px rgba(0,0,0,.25); padding: 8px 12px; font: 12.5px var(--font-ui); max-width: 92vw; }
+.tarprog i { width: 120px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; flex: none; }
+.tarprog i b { display: block; height: 100%; background: var(--accent); }
+.tarprog button { border: 1px solid var(--line); background: var(--panel); color: var(--text); border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+html.mobile .tardlg .tar2, html.mobile .tarscope { grid-template-columns: 1fr; }
+html.mobile .tarbar { grid-template-columns: 8em 1fr 2.2em; }
+#modalBody .tardlg .tarscope label, #modalBody .tardlg .tarchk { display: flex; flex-direction: row; align-items: center; gap: 6px; margin: 2px 0; }
+#modalBody .tardlg input[type="radio"], #modalBody .tardlg input[type="checkbox"] { width: auto; flex: none; margin: 0; }
