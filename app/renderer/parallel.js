@@ -35,6 +35,12 @@
     // the bar on top; beside the text, the icons of a Bible view (0.6.128)
     root.innerHTML = `<div class="parbar"></div><div class="parmain"><nav class="parside bvside" aria-label="Settings of the Parallel Bibles panel">${sideHtml()}</nav><div class="parbody" tabindex="0"></div></div>`;
     bar = root.querySelector('.parbar'); body = root.querySelector('.parbody'); side = root.querySelector('.parside');
+    // the ⋯ menu (0.6.131): Differences, Follow and the text tools that used to sit in a column beside the text
+    menu = document.createElement('div'); menu.className = 'parxmenu hidden'; menu.innerHTML = '<div class="parmtop"></div>';
+    menu.appendChild(side); root.appendChild(menu);
+    menu.addEventListener('click', onBar);
+    body.addEventListener('mousedown', () => closeMenu());
+    root.addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.classList.contains('hidden')) { e.stopPropagation(); closeMenu(); } });
     bar.addEventListener('click', onBar);
     side.addEventListener('click', onSide);
     applyLook();
@@ -47,6 +53,9 @@
     new ResizeObserver(() => { if (visible()) wake(); }).observe(root);
     drawBar();
   }
+  let menu = null;
+  function closeMenu() { if (!menu) return; menu.classList.add('hidden'); const b = bar && bar.querySelector('.parmore'); if (b) { b.classList.remove('on'); b.setAttribute('aria-expanded', 'false'); } }
+  function toggleMenu() { if (!menu) return; const open = menu.classList.contains('hidden'); menu.classList.toggle('hidden', !open); const b = bar.querySelector('.parmore'); if (b) { b.classList.toggle('on', open); b.setAttribute('aria-expanded', String(open)); } }
   async function wake() {
     if (busy) return;
     if (!state.modules || !installed().length || !(state.nav && state.nav.length)) { dirty = true; setTimeout(() => { if (visible()) wake(); }, 150); return; }   // still starting up
@@ -72,7 +81,8 @@
       ${set ? `<button type="button" class="navpill parpill" data-a="pick" title="Choose the book, chapter and verse${follow() ? ' (the Bible views go along: Follow is on)' : ''}"><span class="np-cat">📜</span><span class="np-lbl">${esc(bk ? bk.name : '')} ${r.c || ''}:${r.v || 1}</span><span class="np-caret">▾</span></button>` : `<button type="button" class="primary" data-a="new">${ic('plus', 14)}Set up parallel Bibles</button>`}
       <span class="pargrow"></span>
       <span class="parseg" role="group" aria-label="Layout"><button type="button" data-a="cols" class="${mode === 'cols' ? 'on' : ''}" title="Bibles side by side">Columns</button><button type="button" data-a="stack" class="${mode === 'stack' ? 'on' : ''}" title="Each verse with every Bible under it">Stacked</button></span>
-      <button type="button" data-a="diff" class="tog${S().parDiff ? ' on' : ''}" title="Mark the words that differ from the ★ Bible (click a column title to choose it)">≠<span class="lbl"> Differences</span></button>
+      <button type="button" data-a="more" class="parmore${menu && !menu.classList.contains('hidden') ? ' on' : ''}" aria-haspopup="true" aria-expanded="${menu && !menu.classList.contains('hidden') ? 'true' : 'false'}" title="More: Differences, Follow and the text tools" aria-label="More">⋯</button>`;
+    if (menu) menu.querySelector('.parmtop').innerHTML = `<button type="button" data-a="diff" class="tog${S().parDiff ? ' on' : ''}" title="Mark the words that differ from the ★ Bible (click a column title to choose it)">≠<span class="lbl"> Differences</span></button>
       <button type="button" data-a="follow" class="tog${follow() ? ' on' : ''}" title="Follow the main Bible view (click to read on by itself)">${ic('link', 14)}<span class="lbl">Follow</span></button>`;
     syncSide();
   }
@@ -178,6 +188,7 @@
       if (set.bibles.length <= MIN) return flash(`A parallel set keeps at least ${MIN} Bibles.`);
       set.bibles = set.bibles.filter(x => x !== b.dataset.id); saveSets([...sets()]); drawBar(); return render(false);
     }
+    if (a === 'more') return toggleMenu();
     if (a === 'cols' || a === 'stack') { save({ parLayout: Object.assign({}, S().parLayout || {}, { [isPhone() ? 'phone' : 'pc']: a }) }); drawBar(); return render(true); }
     if (a === 'diff') { save({ parDiff: !S().parDiff }); drawBar(); return render(false); }
     if (a === 'wpop') { save({ parWpop: !S().parWpop }); return drawBar(); }
@@ -339,7 +350,7 @@
       html += `<div class="pstack${diff ? ' diffon' : ''}">`;
       for (const row of rows) {
         const cs = cellsOf(row);
-        html += `<div class="psv pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}"><div class="psh">${esc(bkName)} ${r.c}:${row.v === 0 ? '¶' : row.v}</div>${cs.map((c, k) => `<div class="psl${k === base && diff ? ' base' : ''}"><span class="plb" data-chip="${esc(ids[k])}" title="${esc(titleOf(ids[k]))} · click: compare the others with this Bible (★ for Differences)">${k === base && diff ? '★' : ''}${esc(abbrOf(ids[k]))}</span>${cellHtml(c, k, row.v)}</div>`).join('')}</div>`;
+        html += `<div class="psv pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}"><div class="psh">${row.v === 0 ? '¶' : row.v}</div>${cs.map((c, k) => `<div class="psl${k === base && diff ? ' base' : ''}"><span class="plb" data-chip="${esc(ids[k])}" title="${esc(titleOf(ids[k]))} · click: compare the others with this Bible (★ for Differences)">${k === base && diff ? '★' : ''}${esc(abbrOf(ids[k]))}</span>${cellHtml(c, k, row.v)}</div>`).join('')}</div>`;
       }
       html += '</div>';
     }

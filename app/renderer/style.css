@@ -717,3 +717,18 @@ html.mobile .ptable { grid-template-columns: 2em repeat(var(--n), minmax(10.5em,
 html.mobile .tab.parpanel .parside { display: none; }
 html.mobile .parbar { flex-wrap: wrap; }
 .tab.parpanel .parside > button { margin: 0 !important; }
+
+/* Parallel Bibles, layout A (0.6.131): one slim bar, short column names, a ⋯ menu, a light tint for the current verse */
+.tab.parpanel { position: relative; }
+.parbar .parmore { min-width: 30px; justify-content: center; font-weight: 700; }
+.parbar .parmore.on { background: var(--accent-soft); border-color: var(--accent); }
+.parxmenu { position: absolute; z-index: 20; right: 8px; top: 38px; width: min(300px, calc(100% - 16px)); box-sizing: border-box; padding: 8px; display: flex; flex-direction: column; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.22); }
+.parxmenu.hidden { display: none; }
+.parxmenu .parmtop { display: flex; gap: 6px; flex-wrap: wrap; }
+.parxmenu .parmtop button { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 6px; padding: 4px 10px; cursor: pointer; font: 12.5px var(--font-ui); }
+.parxmenu .parmtop button.on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.parxmenu .parmtop .lbl { display: inline; }
+.parxmenu .parside { width: auto; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 4px; padding: 6px 0 0; border-right: 0; border-top: 1px solid var(--line); background: transparent; overflow: visible; }
+.parxmenu .parside .bvsep { width: 1px; height: 18px; margin: 0 2px; }
+.ptable .pth small { display: none; }
+.ptable .pvrow.cur > * { background: color-mix(in srgb, var(--sel) 40%, transparent); }
