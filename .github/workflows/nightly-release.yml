@@ -7,7 +7,7 @@
 name: Nightly release
 on:
   schedule:
-    - cron: "0 16 * * *"
+    - cron: "3 16 * * *"   # 12:03 am Manila (off the hour: GitHub delays jobs set at :00 the most)
   workflow_dispatch:
 
 concurrency: { group: nightly-release, cancel-in-progress: false }
