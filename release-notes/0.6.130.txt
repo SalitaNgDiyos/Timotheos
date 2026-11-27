@@ -1,0 +1,8 @@
+Timotheos 0.6.130
+
+- Closing a panel (also a Bible view) never makes another panel grow, whether Edit Layout is on or off: its place stays an empty space.
+- Releases: a new version number is released once a day at 12 am Manila time, only on days with changes. Fixes made during the day are built at once as builds of the same version (for example 0.6.130 · build 812), and Check for updates and the start-up card offer them right away.
+- Check for updates: "Include today's builds" is on by default; About shows the build number.
+- Linux (.deb): a build of the same version installs over the one you have.
+
+
