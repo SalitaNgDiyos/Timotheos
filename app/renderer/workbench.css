@@ -1021,3 +1021,21 @@ body.dragging .dslot-tools { display: none; }
 .pm-dlg-hist button:hover:not(:disabled) { background: color-mix(in srgb, currentColor 13%, transparent); }
 .pm-dlg-hist button:disabled { opacity: .35; cursor: default; }
 html.phone .dempty { display: none !important; }
+
+/* the window map: where a closed panel goes (0.6.131) */
+.placeback { position: fixed; inset: 0; background: rgba(0,0,0,.38); z-index: 400; display: flex; align-items: center; justify-content: center; }
+.placedlg { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px 12px; box-shadow: 0 16px 50px rgba(0,0,0,.35); max-width: calc(100vw - 30px); box-sizing: border-box; }
+.placedlg h3 { margin: 0 0 4px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.placedlg > p.small { margin: 0 0 10px; max-width: 460px; }
+.placemap { position: relative; border: 1px solid var(--line); border-radius: 6px; background: var(--bg2, rgba(127,127,127,.08)); overflow: hidden; cursor: crosshair; }
+.placemap .pm-area, .placemap .pm-space, .placemap .pm-new { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px; padding: 3px; overflow: hidden; }
+.placemap .pm-area { border: 1px solid var(--line); background: var(--panel, var(--bg)); color: var(--muted); align-items: flex-start; padding-top: 6px; }
+.placemap .pm-area:hover { border-color: var(--accent); }
+.placemap .pm-space { border: 1.5px dashed var(--muted); color: var(--muted); font-style: italic; }
+.placemap .pm-new { pointer-events: none; border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--text); font-weight: 600; font-size: 12px; z-index: 2; transition: all .08s; }
+.placemap .pm-new.hov { border-style: dashed; }
+.placemap span { overflow: hidden; text-overflow: ellipsis; max-height: 100%; }
+.placedlg .pm-where { margin: 8px 0 10px; min-height: 1.3em; }
+.placedlg .pm-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.placedlg .pm-btns .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.placedlg .pm-btns .primary:disabled { opacity: .45; }

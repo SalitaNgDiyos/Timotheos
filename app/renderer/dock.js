@@ -29,19 +29,16 @@
   const PICK_MAXC = 6, PICK_MAXR = 3, PICK_MIN_W = 200, PICK_MIN_H = 150;
   let nextAddRect = null;
 
+  // no tabs (0.6.131): every panel has its own space; a panel not in a layout is closed (reopen it from View → Layout & Panels…)
   const PRESETS = {
     classic: { label: 'Classic (Books left, Bible views in the middle, study tools right, search below)', layout: {
       v: 3,
-      areas: [A(0, 0, 1, 3, ['tree']), A(1, 0, 2, 2, ['bv0']), A(3, 0, 1, 1, ['cmt']), A(3, 1, 1, 2, ['lib', 'study']), A(1, 2, 2, 1, ['search', 'bsearch'])],
-      floats: [], hidden: [] } },
-    tabs: { label: 'Compact (Bible views in the middle, everything else as tabs on the right)', layout: {
-      v: 3,
-      areas: [A(0, 0, 1, 3, ['tree']), A(1, 0, 2, 3, ['bv0']), A(3, 0, 1, 3, ['lib', 'cmt', 'search', 'bsearch', 'study'], 'lib')],
+      areas: [A(0, 0, 1, 3, ['tree']), A(1, 0, 2, 2, ['bv0']), A(3, 0, 1, 1, ['cmt']), A(3, 1, 1, 1, ['lib']), A(3, 2, 1, 1, ['study']), A(1, 2, 1, 1, ['search']), A(2, 2, 1, 1, ['bsearch'])],
       floats: [], hidden: [] } },
     study: { label: 'Word study (commentary and library side by side below)', layout: {
       v: 3,
-      areas: [A(0, 0, 1, 3, ['tree']), A(1, 0, 2, 2, ['bv0']), A(3, 0, 1, 2, ['search', 'bsearch', 'study'], 'search'), A(1, 2, 1, 1, ['cmt']), A(2, 2, 2, 1, ['lib'])],
-      floats: [], hidden: [] } },
+      areas: [A(0, 0, 1, 3, ['tree']), A(1, 0, 2, 2, ['bv0']), A(3, 0, 1, 1, ['search']), A(3, 1, 1, 1, ['study']), A(1, 2, 1, 1, ['cmt']), A(2, 2, 2, 1, ['lib'])],
+      floats: [], hidden: ['bsearch'] } },
     reading: { label: 'Reading (Bible views only; panels hidden)', layout: {
       v: 3,
       areas: [A(0, 0, 4, 3, ['bv0'])],
@@ -102,6 +99,7 @@
     for (const f of out.floats) if (!f.panels.includes(f.active)) f.active = f.panels[0];
     out.hidden = keep(out.hidden);
     for (const id of PANELS.keys()) if (!seen.has(id)) { if (PANELS.get(id).startHidden) out.hidden.push(id); else placeHome(out, id, true); } // e.g. a panel new in this version, or a new Bible view (a panel that starts hidden waits in Layout & Panels)
+    untab(out);
     out.slots = Array.isArray(out.slots) ? out.slots.filter(s => s && s.x1 - s.x0 > EPS && s.y1 - s.y0 > EPS && !out.areas.some(a => hit(a, s))) : [];
     return out;
   }
@@ -125,29 +123,75 @@
     return false;
   }
 
+  /** screen pixels of one column / one row (4 × 3 grid), to split an area along its longer side */
+  function unitPx() {
+    const wb = typeof document !== 'undefined' && document.getElementById('workbench'); const r = wb && wb.getBoundingClientRect ? wb.getBoundingClientRect() : null;
+    return r && r.width > 50 && r.height > 50 ? { cw: r.width / NC, rh: r.height / NR } : { cw: 1, rh: 1 };
+  }
+  /** the new panel takes half of area a (the right or bottom half, along its longer side); false when the halves would be too small */
+  function splitHalf(lay, a, id) {
+    const u = unitPx(); const across = wOf(a) * u.cw >= hOf(a) * u.rh;
+    const tryX = () => { if (wOf(a) < MINW * 2 - EPS) return false; const mid = (a.x0 + a.x1) / 2; lay.areas.push({ x0: mid, y0: a.y0, x1: a.x1, y1: a.y1, panels: [id], active: id }); a.x1 = mid; return true; };
+    const tryY = () => { if (hOf(a) < MINH * 2 - EPS) return false; const mid = (a.y0 + a.y1) / 2; lay.areas.push({ x0: a.x0, y0: mid, x1: a.x1, y1: a.y1, panels: [id], active: id }); a.y1 = mid; return true; };
+    return across ? (tryX() || tryY()) : (tryY() || tryX());
+  }
+  /** the biggest area that can be split in half gives half to the panel; else it floats (never a tab) */
+  function splitLargest(lay, id) {
+    const u = unitPx();
+    for (const a of [...lay.areas].sort((p, q) => wOf(q) * u.cw * hOf(q) * u.rh - wOf(p) * u.cw * hOf(p) * u.rh)) if (splitHalf(lay, a, id)) return true;
+    (lay.floats = lay.floats || []).push({ panels: [id], active: id, x: 120 + 30 * lay.floats.length, y: 100 + 30 * lay.floats.length, w: 380, h: 360 });
+    return true;
+  }
+  /** no tabs: a group of several panels is split into one space per panel (along its longer side); a floating window keeps one panel and the others float beside it */
+  function untab(lay) {
+    const u = unitPx(); const out = [];
+    for (const a of lay.areas) {
+      const ps = a.panels; if (ps.length <= 1) { out.push(a); continue; }
+      const n = ps.length, wpx = wOf(a) * u.cw, hpx = hOf(a) * u.rh;
+      let cols = wpx >= hpx ? n : 1, rows = wpx >= hpx ? 1 : n;
+      if (wOf(a) / cols < MINW - EPS || hOf(a) / rows < MINH - EPS) { cols = Math.ceil(Math.sqrt(n)); rows = Math.ceil(n / cols); }
+      const order = [a.active, ...ps.filter(x => x !== a.active)].filter(x => ps.includes(x));
+      order.forEach((id, k) => {
+        const c = k % cols, r = Math.floor(k / cols); const last = k === n - 1;
+        const x0 = a.x0 + wOf(a) * c / cols, x1 = last && rows > 1 ? a.x1 : a.x0 + wOf(a) * (c + 1) / cols;
+        const y0 = a.y0 + hOf(a) * r / rows, y1 = a.y0 + hOf(a) * (r + 1) / rows;
+        out.push({ x0, y0, x1, y1, panels: [id], active: id });
+      });
+    }
+    lay.areas = out;
+    const fl = [];
+    for (const f of lay.floats || []) {
+      if (f.panels.length <= 1) { fl.push(f); continue; }
+      const order = [f.active, ...f.panels.filter(x => x !== f.active)];
+      order.forEach((id, k) => fl.push({ ...f, panels: [id], active: id, x: f.x + 30 * k, y: f.y + 30 * k }));
+    }
+    lay.floats = fl;
+    return lay;
+  }
+
   /** where a new Bible view goes: it takes half of the area of the Bible view it follows, else a free cell, else a tab */
   function placeBible(lay, id, quiet) {
     const bvArea = [...lay.areas].reverse().find(a => a.panels.some(isBible));
     if (bvArea) {
       if (splitOff(lay, bvArea, id)) return;
       for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) if (tryCell(lay, id, r, c)) return;
-      bvArea.panels.push(id); if (!quiet) bvArea.active = id; return;
+      if (splitHalf(lay, bvArea, id)) return;
+      splitLargest(lay, id); return;
     }
     for (let r = 0; r < NR; r++) for (let c = 0; c < NC; c++) if (tryCell(lay, id, r, c)) return;
-    if (lay.areas.length) lay.areas[0].panels.push(id); else lay.areas.push(A(0, 0, 4, 3, [id]));
+    if (lay.areas.length) splitLargest(lay, id); else lay.areas.push(A(0, 0, 4, 3, [id]));
   }
 
   /** where a panel goes when it is shown again: its own place in the classic layout, else beside what is there */
   function placeHome(lay, id, quiet) {
     if (isBible(id)) return placeBible(lay, id, quiet);
     const home = PRESETS.classic.layout.areas.find(a => a.panels.includes(id));
-    if (home) {
-      const mate = lay.areas.find(a => Math.abs(a.x0 - home.x0) < 0.5 && Math.abs(a.y0 - home.y0) < 0.5);
-      if (mate) { mate.panels.push(id); if (!quiet) mate.active = id; return; }
-      if (!lay.areas.some(a => hit(a, home))) { lay.areas.push({ x0: home.x0, y0: home.y0, x1: home.x1, y1: home.y1, panels: [id], active: id }); return; }
-    }
+    if (home && !lay.areas.some(a => hit(a, home))) { lay.areas.push({ x0: home.x0, y0: home.y0, x1: home.x1, y1: home.y1, panels: [id], active: id }); return; }
     for (let r = 0; r < NR; r++) for (let c = NC - 1; c >= 0; c--) if (tryCell(lay, id, r, c)) return;
-    const last = lay.areas[lay.areas.length - 1]; if (last) { last.panels.push(id); if (!quiet) last.active = id; } else lay.areas.push(A(0, 0, 4, 3, [id]));
+    if (!lay.areas.length) { lay.areas.push(A(0, 0, 4, 3, [id])); return; }
+    const there = home && areaAt(lay, Math.floor((home.y0 + home.y1) / 2), Math.floor((home.x0 + home.x1) / 2));   // never a tab: it shares the area at its classic place
+    if (there && splitHalf(lay, there, id)) return;
+    splitLargest(lay, id);
   }
 
   /** a closed area leaves a hole: the neighbours along one whole side grow into it (if they fit it exactly) */
@@ -330,12 +374,10 @@
       if (!a) return null;
       let rect, mode = 'split';
       if (t.zone === 'center') {
-        a.panels.push(id); a.active = id;
-        rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 }; mode = 'tab';
+        return null;   // no tabs: a panel is never dropped on top of another
       } else if (t.zone === 'left' || t.zone === 'right') {
         if (wOf(a) < MINW * 2 - EPS) {
-          a.panels.push(id); a.active = id;
-          rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 }; mode = 'tab';
+          return null;
         } else {
           const mid = (a.x0 + a.x1) / 2;
           if (t.zone === 'left') { rect = { x0: a.x0, y0: a.y0, x1: mid, y1: a.y1 }; a.x0 = mid; }
@@ -344,8 +386,7 @@
         }
       } else if (t.zone === 'top' || t.zone === 'bottom') {
         if (hOf(a) < MINH * 2 - EPS) {
-          a.panels.push(id); a.active = id;
-          rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 }; mode = 'tab';
+          return null;
         } else {
           const mid = (a.y0 + a.y1) / 2;
           if (t.zone === 'top') { rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: mid }; a.y0 = mid; }
@@ -460,9 +501,16 @@
       const mid = (a.y0 + a.y1) / 2;
       rect = { x0: a.x0, y0: mid, x1: a.x1, y1: a.y1 }; a.y1 = mid;
       next.areas.push({ ...rect, panels: [id], active: id });
+    } else if (w >= MINW * 2 - EPS && w >= h) {   // a one-cell panel: it gives half (never a tab)
+      const mid = (a.x0 + a.x1) / 2;
+      rect = { x0: mid, y0: a.y0, x1: a.x1, y1: a.y1 }; a.x1 = mid;
+      next.areas.push({ ...rect, panels: [id], active: id });
+    } else if (h >= MINH * 2 - EPS) {
+      const mid = (a.y0 + a.y1) / 2;
+      rect = { x0: a.x0, y0: mid, x1: a.x1, y1: a.y1 }; a.y1 = mid;
+      next.areas.push({ ...rect, panels: [id], active: id });
     } else {
-      a.panels.push(id); a.active = id;
-      rect = { x0: a.x0, y0: a.y0, x1: a.x1, y1: a.y1 }; mode = 'tab';
+      return null;   // too small to split, and never a tab
     }
     if (!keepHole && hole) fillHole(next, hole);
     return { layout: next, rect, mode };
@@ -1087,7 +1135,7 @@
       const b = document.createElement('div'); b.className = 'dtarget cell'; b.dataset.t = JSON.stringify({ cell: [row, col] });
       const hasFree = spaces.some(sp => Math.min(sp.x1, col + 1) - Math.max(sp.x0, col) >= MINW - EPS && Math.min(sp.y1, row + 1) - Math.max(sp.y0, row) >= MINH - EPS);
       const a = areaAt(L, row, col); const names = a ? a.panels.filter(id => PANELS.has(id)).map(id => PANELS.get(id).title).join(', ') : '';
-      const sub = hasFree ? 'empty space' : a ? (wOf(a) > 1 + EPS || hOf(a) > 1 + EPS ? `split ${names}` : `tab with ${names}`) : 'empty';
+      const sub = hasFree ? 'empty space' : a ? (wOf(a) > 1 + EPS || hOf(a) > 1 + EPS ? `split ${names}` : `${names} (too small to split)`) : 'empty';
       b.title = `Cell ${row + 1}·${col + 1}: ${sub}`;
       b.style.cssText = `left:${col * 25}%;top:${row * 100 / 3}%;width:25%;height:${100 / 3}%`;
       b.innerHTML = `<span class="dcn">${row + 1}·${col + 1}</span><span class="dcw">${esc(sub)}</span>`;
@@ -1149,12 +1197,84 @@
   }
 
   /** make a panel visible: reopen it if closed, leave focus mode, bring its tab to the front */
-  function show(id) {
-    if (!PANELS.has(id)) return;
+  /** shows a panel. A closed panel gets its own space: Timotheos asks first and suggests splitting the active panel (opts.near),
+   *  the person may pick another panel and side, or an empty space. Resolves true when shown, false when cancelled. */
+  function show(id, o) {
+    o = o || {};
+    if (!PANELS.has(id) || !L) return Promise.resolve(false);
     const at = locate(id);
-    if (at && at.hidden) { L.hidden = L.hidden.filter(x => x !== id); placeHome(L, id); commit(); }
-    else if (focusMode && at && !at.float && !isBible(id)) { focusMode = false; render(); }
+    if (at && at.hidden) {
+      const h = document.documentElement.classList;
+      if (o.quiet || h.contains('sk') || h.contains('mobile') || h.contains('phone')) { L.hidden = L.hidden.filter(x => x !== id); placeHome(L, id); commit(); activate(id); return Promise.resolve(true); }
+      return askPlace(id, o.near);
+    }
+    if (focusMode && at && !at.float && !isBible(id)) { focusMode = false; render(); }
     activate(id);
+    return Promise.resolve(true);
+  }
+
+  /* ---------- the window map: where a closed panel goes (a panel never covers another) ---------- */
+  let placeAsk = null;
+  function askPlace(id, near) {
+    if (placeAsk) { placeAsk.close(false); }
+    const P = PANELS.get(id); const V = view;
+    const wb = $('#workbench').getBoundingClientRect(); const ratio = wb.height > 0 ? wb.height / wb.width : 0.62;
+    const mw = Math.min(460, innerWidth - 60), mh = Math.max(160, Math.min(300, Math.round(mw * ratio)));
+    const nameOf = a => a.panels.filter(x => PANELS.has(x)).map(x => PANELS.get(x).title).join(', ');
+    const spaces = findAvailableSpaces();
+    // the suggestion: the right (or lower) half of the panel in use, else another side, else an empty space, else any panel
+    const nearAt = near && locate(near); const order = [];
+    const ai0 = nearAt && !nearAt.float && !nearAt.hidden ? nearAt.ai : L.areas.findIndex(a => a.panels.some(isBible));
+    const sides = a => (wOf(a) * (wb.width / V.w) >= hOf(a) * (wb.height / V.h)) ? ['right', 'left', 'bottom', 'top'] : ['bottom', 'top', 'right', 'left'];
+    if (ai0 >= 0) for (const z of sides(L.areas[ai0])) order.push({ areaIndex: ai0, zone: z });
+    for (const sp of spaces) order.push({ space: sp });
+    L.areas.forEach((a, i) => { if (i !== ai0) for (const z of sides(a)) order.push({ areaIndex: i, zone: z }); });
+    let pick = null; for (const t of order) { const sim = computeSmartDrop(L, id, t, true); if (sim) { pick = { t, sim }; break; } }
+    const box = r => `left:${pct(r.x0, V.x, V.w)}%;top:${pct(r.y0, V.y, V.h)}%;width:${(r.x1 - r.x0) / V.w * 100}%;height:${(r.y1 - r.y0) / V.h * 100}%`;
+    const back = document.createElement('div'); back.className = 'placeback';
+    back.innerHTML = `<div class="placedlg" role="dialog" aria-modal="true" aria-labelledby="placeT">
+      <h3 id="placeT">${TimotheosIcons ? TimotheosIcons.icon(P.icon || 'layout', 17) : ''} Add the ${esc(P.title)} panel?</h3>
+      <p class="small">${esc(P.title)} needs its own space, so that it does not cover another panel. Click a panel to split it (on the side you point at) or an empty space, then <b>Add panel</b>.</p>
+      <div class="placemap" style="width:${mw}px;height:${mh}px">
+        ${L.areas.map((a, i) => `<div class="pm-area" data-ai="${i}" style="${box(a)}"><span>${esc(nameOf(a))}</span></div>`).join('')}
+        ${spaces.map((sp, i) => `<div class="pm-space" data-si="${i}" style="${box(sp)}"><span>Empty space</span></div>`).join('')}
+        <div class="pm-new hidden"><span>${esc(P.title)}</span></div>
+      </div>
+      <p class="pm-where small" aria-live="polite"></p>
+      <div class="pm-btns"><button type="button" class="pill" data-a="cancel">Cancel</button><button type="button" class="pill primary" data-a="ok">Add panel</button></div>
+    </div>`;
+    document.body.appendChild(back);
+    const map = back.querySelector('.placemap'), nw = back.querySelector('.pm-new'), where = back.querySelector('.pm-where'), okB = back.querySelector('[data-a="ok"]');
+    const sideWord = { left: 'left half', right: 'right half', top: 'upper half', bottom: 'lower half' };
+    const describe = t => t.space ? 'an empty space' : `the ${sideWord[t.zone]} of ${nameOf(L.areas[t.areaIndex])}`;
+    const paint = (pk, hover) => {
+      if (!pk) { nw.classList.add('hidden'); where.textContent = 'There is no room to split: make an empty space first (Edit Layout).'; okB.disabled = true; return; }
+      nw.setAttribute('style', box(pk.sim.rect)); nw.classList.remove('hidden'); nw.classList.toggle('hov', !!hover);
+      where.innerHTML = `${esc(P.title)} goes in ${esc(describe(pk.t))}.`; okB.disabled = false;
+    };
+    const targetAt = e => {
+      const sp = e.target.closest('.pm-space'); if (sp) return { space: spaces[+sp.dataset.si] };
+      const ar = e.target.closest('.pm-area'); if (!ar) return null;
+      const r = ar.getBoundingClientRect(); const dx = (e.clientX - r.left) / r.width - 0.5, dy = (e.clientY - r.top) / r.height - 0.5;
+      return { areaIndex: +ar.dataset.ai, zone: Math.abs(dx) * r.width >= Math.abs(dy) * r.height ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'top' : 'bottom') };
+    };
+    const simOf = t => { const sim = t && computeSmartDrop(L, id, t, true); return sim ? { t, sim } : null; };
+    map.addEventListener('pointermove', e => { const h = simOf(targetAt(e)); if (h) paint(h, true); else paint(pick); });
+    map.addEventListener('pointerleave', () => paint(pick));
+    map.addEventListener('click', e => { const h = simOf(targetAt(e)); if (h) { pick = h; paint(pick); } });
+    paint(pick);
+    return new Promise(res => {
+      const close = ok => {
+        if (!placeAsk) return; placeAsk = null; document.removeEventListener('keydown', key, true); back.remove();
+        if (ok && pick) { L = pick.sim.layout; maxed = null; if (focusMode) focusMode = false; commit(); activate(id); }
+        res(!!(ok && pick));
+      };
+      const key = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(false); } else if (e.key === 'Enter' && !okB.disabled) { e.preventDefault(); e.stopPropagation(); close(true); } };
+      document.addEventListener('keydown', key, true);
+      back.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (b) close(b.dataset.a === 'ok'); else if (e.target === back) close(false); });
+      placeAsk = { close };
+      setTimeout(() => okB.focus(), 0);
+    });
   }
 
   function hide(id) {
@@ -1481,7 +1601,7 @@
   }
 
   const apiObj = {
-    init, register, add, remove, retitle, render, show, hide, activate, toggleFloat, toggleFocus, applyPreset, setLayout, isVisible, arrangeBible,
+    init, register, add, remove, retitle, render, show, askPlace, hide, activate, toggleFloat, toggleFocus, applyPreset, setLayout, isVisible, arrangeBible,
     setDetachMode, toggleDetachMode, getDetachMode, setSnapGrid, toggleSnapGrid, getSnapGrid,
     setNextRect, placeInSpace, startMenuDrag, clearAll, setBlueprintGrid, openLayoutDesigner, createBlueprintSlots,
     undo, redo, canUndo, canRedo, closeBibleView, resetHistory: baseline,
@@ -1496,7 +1616,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       NC, NR, EPS, MINW, MINH, MIN_SPACE_PX, PRESETS,
-      normalize, findEmptySpaces, filterSpacesByMinPx, createBlueprintSlots, fitGrid, detachPanelFromLayout, fillHole,
+      normalize, untab, findEmptySpaces, filterSpacesByMinPx, createBlueprintSlots, fitGrid, detachPanelFromLayout, fillHole,
       computeSmartDrop, computeGridDrop, thumbnailSvg
     };
   }

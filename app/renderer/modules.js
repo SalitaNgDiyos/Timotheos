@@ -1115,13 +1115,14 @@ function wireModules() {
     if (rmx) { e.stopPropagation(); const [b, c, v] = rmx.dataset.from.split('.').map(Number); const [tb, tc, tv] = rmx.dataset.to.split('.').map(Number); await api.xrefsRemove({ b, c, v }, { b: tb, c: tc, v: tv }); await window.renderChapter(false); return showAllXrefs(v); }
     const addx = e.target.closest('button.addx'); if (addx) { e.stopPropagation(); return addXref(+addx.dataset.v); }
     const bl = e.target.closest('a[data-book]'); if (bl) { e.stopPropagation(); return openBookModule(bl.dataset.book, isNaN(+bl.dataset.tid) ? bl.dataset.tid : +bl.dataset.tid); }
-    const cm = e.target.closest('.pv sup.cm'); if (cm) setTimeout(() => openTab('cmt'), 0);
+    const cm = e.target.closest('.pv sup.cm'); if (cm && (window.TimotheosClickLookup.on() || TimotheosDock.isVisible('cmt'))) setTimeout(() => openTab('cmt'), 0);
   }, true);
   $('#libSpeak').onclick = () => TimotheosSpeech.speakTopic($('#libSpeak'));
   $('#workbench').addEventListener('click', e => {
     if (document.documentElement.classList.contains('mobile') || document.documentElement.classList.contains('sk')) return;
     if (e.target.closest('a, sup, [data-strong], [data-morph], .xrs')) return;
     if (!e.target.closest('.bv td') || String(window.getSelection())) return;
+    if (!window.TimotheosClickLookup.on()) return;   // off by default: right-click → Look up
     const w = wordAt(e); if (w) lookupWord(w);
   });
   // a finger tap also sends a "mouse over": on the phone screens a tap on a link goes straight to where the link leads, with no hover pop-up

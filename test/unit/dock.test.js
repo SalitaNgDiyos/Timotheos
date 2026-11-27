@@ -59,11 +59,10 @@ ok(dock.findEmptySpaces(closeFill.areas).length === 0, 'closing a panel with Det
 const bvIdx = classic.areas.findIndex(a => a.panels.includes('bv0'));
 for (const zone of ['left', 'right', 'top', 'bottom', 'center']) {
   const res = dock.computeSmartDrop(classic, 'cmt', { areaIndex: bvIdx, zone }, false);
-  ok(res && noOverlaps(res.layout.areas), `smart drop zone "${zone}" produces valid non-overlapping layout`);
   if (zone === 'center') {
-    const grp = res.layout.areas.find(a => a.panels.includes('bv0'));
-    ok(res.mode === 'tab' && grp.panels.includes('cmt') && grp.active === 'cmt', 'smart drop "center" tabs panel into target');
+    ok(res === null, 'smart drop "center" does nothing: no tabs (0.6.131)');
   } else {
+    ok(res && noOverlaps(res.layout.areas), `smart drop zone "${zone}" produces valid non-overlapping layout`);
     const grp = res.layout.areas.find(a => a.panels.includes('cmt'));
     ok(res.mode === 'split' && grp && grp.panels.length === 1, `smart drop "${zone}" splits target panel cleanly`);
   }
@@ -98,8 +97,8 @@ ok(gridSplit && gridSplit.mode === 'split' && noOverlaps(gridSplit.layout.areas)
 
 // 1x1 panel tab via 4x3 grid (drop study onto 1x1 cmt cell at row 0, col 3 in classic)
 const gridTab = dock.computeGridDrop(classic, 'study', 0, 3, false);
-ok(gridTab && gridTab.mode === 'tab' && noOverlaps(gridTab.layout.areas),
-  '4x3 grid drop onto 1x1 occupied cell tabs cleanly');
+ok(gridTab && gridTab.mode === 'split' && noOverlaps(gridTab.layout.areas) && gridTab.layout.areas.every(a => a.panels.length === 1),
+  '4x3 grid drop onto 1x1 occupied cell splits it in half (no tabs)');
 
 // 8. Real layout SVG thumbnails differ for every preset and render custom/floating layouts
 const svgs = Object.entries(dock.PRESETS).map(([k, p]) => [k, dock.thumbnailSvg(p.layout, { width: 64, height: 48 })]);
@@ -176,3 +175,15 @@ for (let c = 1; c <= 4; c++) {
 
 passed++;
 console.log(`dock: ${passed} ok`);
+
+// 0.6.131: no tabs anywhere — old tab groups are split apart, presets hold one panel per space
+{
+  const lay = dock.untab({ v: 3, areas: [{ x0: 0, y0: 0, x1: 1, y1: 3, panels: ['tree'], active: 'tree' }, { x0: 1, y0: 0, x1: 3, y1: 3, panels: ['bv0'], active: 'bv0' }, { x0: 3, y0: 0, x1: 4, y1: 3, panels: ['lib', 'cmt', 'search'], active: 'cmt' }], floats: [{ panels: ['study', 'bsearch'], active: 'study', x: 10, y: 10, w: 300, h: 300 }], hidden: [] });
+  ok(lay.areas.every(a => a.panels.length === 1) && lay.floats.every(f => f.panels.length === 1), 'every tab group is split into one panel per space');
+  ok(noOverlaps(lay.areas) && ['lib', 'cmt', 'search'].every(id => lay.areas.some(a => a.panels[0] === id && a.x0 === 3)), 'the three tabbed panels share their old column, one each');
+  ok(lay.floats.length === 2, 'a floating window with two tabs becomes two floating windows');
+  for (const [n, p] of Object.entries(dock.PRESETS)) ok(p.layout.areas.every(a => a.panels.length === 1), `preset ${n} has no tabs`);
+  ok(!dock.PRESETS.tabs, 'the Compact (all tabs) preset is gone');
+}
+console.log('no-tab tests done');
+

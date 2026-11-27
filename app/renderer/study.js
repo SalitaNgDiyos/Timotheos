@@ -689,6 +689,7 @@ function wireContextMenu() {
     const word = selWord || (TimotheosModules.wordAt(e) || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
     const copyTxt = sel || word, shortQ = t => t.length > 28 ? t.slice(0, 27) + '…' : t;
     const strongEl = e.target.closest('[data-strong]');
+    const tagEl = e.target.closest('[data-strong],[data-morph]'), noteEl = e.target.closest('sup.fn,sup.xref');
     const strongs = strongEl ? strongEl.dataset.strong.split(/\s+/).filter(Boolean) : [];
     const ref = pRef ? { b: pRef.b, c: pRef.c, v } : { b: state.ref.b, c: state.ref.c, v };
     const rangeRef = sv && sv.v2 > sv.v1 ? { ...ref, v: sv.v1, v2: sv.v2 } : ref;
@@ -710,7 +711,9 @@ function wireContextMenu() {
       `<button data-a="cmt">Commentaries on this verse</button>`,
       word ? `<button data-a="find" data-q="${esc(word)}">Find “${esc(word)}”</button>` : '',
       ...strongs.map(s => `<button data-a="find" data-q="${esc(s)}">Find ${esc(s)}</button>`),
-      word ? `<button data-a="look" data-q="${esc(word)}">Look up “${esc(word)}”</button>` : '',
+      tagEl && !noteEl ? `<button data-a="pin">Look up “${esc(shortQ((tagEl.classList.contains('word') && tagEl.textContent.trim()) || word || (tagEl.dataset.strong || tagEl.dataset.morph || '').split(/\s+/)[0]))}”${strongs.length ? ' <span class="small">' + esc(strongs.join(' ')) + '</span>' : ''}</button>`
+        : word ? `<button data-a="look" data-q="${esc(word)}">Look up “${esc(word)}”</button>` : '',
+      noteEl ? `<button data-a="pin">Show this ${noteEl.classList.contains('fn') ? 'footnote' : 'cross-reference'} in the Library</button>` : '',
     ];
     const m = $('#ctxMenu'); m.innerHTML = items.join(''); m.classList.remove('hidden');
     const W = window.innerWidth, H = window.innerHeight; const mw = m.offsetWidth, mh = m.offsetHeight;
@@ -736,6 +739,7 @@ function wireContextMenu() {
       else if (a === 'cmt') openTab('cmt');
       else if (a === 'find') window.TimotheosSearch.find(bt.dataset.q);
       else if (a === 'look') TimotheosModules.lookupWord(bt.dataset.q);
+      else if (a === 'pin') window.TimotheosPin(noteEl || tagEl);
     };
   }
   $('#workbench').addEventListener('click', e => { const n = e.target.closest('.unote, .noteicon'); if (n) { e.stopPropagation(); editNote(n.dataset.note); } }, true);

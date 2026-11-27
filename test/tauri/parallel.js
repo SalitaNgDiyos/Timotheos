@@ -16,7 +16,7 @@ try {
   ok(/Layout & Panels/.test($('#panelsMenu .pm-dlg-title').textContent) && /Parallel Bibles/.test($('#panelsMenu').textContent), 'listed in the Layout & Panels dialog');
   runCommand('panels'); await sl(200);
   // first time: the set-up dialog
-  TimotheosDock.show('par');
+  TimotheosDock.show('par', { quiet: true });
   ok(await until(() => /Set up Parallel Bibles/.test($('#modalTitle').textContent) && !$('#modal').classList.contains('hidden')), 'first time: the set-up dialog opens');
   const okBtn = () => $$('#modalBtns button').find(b => b.classList.contains('primary'));
   ok(okBtn().disabled, 'Save is off while fewer than 2 Bibles are picked');

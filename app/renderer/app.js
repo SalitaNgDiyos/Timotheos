@@ -54,6 +54,7 @@ async function showLookup(o) {
   const activeBible = (views()[state.active] || {}).bible || '';
   const cards = []; const seen = new Set();
   const title = [word, ...strongs, ...morphs].filter(Boolean).join(' · ') || 'Lookup';
+  if (!(await openTab('lib'))) return;   // the Library gets its own space first (asked when it is closed)
   setLookupHtml('<p class="hint">Looking up…</p>', true, title);
   const lookupOne = async (kind, key) => {
     const r = await api.lookup(kind, key, activeBible).catch(() => null);
@@ -80,7 +81,6 @@ async function showLookup(o) {
   if (others.length) cards.push(`<div class="entry"><div class="src">“${esc(word || strongs[0] || '')}” in your books and maps (~ = similar word)</div>${others.join(' · ')}</div>`);
   setLookupHtml(`<div class="cmtfeed">${cards.join('')}</div>`, false, title);
   lkpState.cur = { html: $('#libFeed').innerHTML, title };
-  openTab('lib');
 }
 window.showLookup = showLookup;
 
@@ -1559,8 +1559,13 @@ function showPopupHtml(el, html) {
   const ph = p.offsetHeight; if (y + ph > H - 10) p.style.top = Math.max(10, r.top - ph - 6) + 'px';
 }
 
+/** "Click a word to look it up" (Options, off by default): a click in the Bible text opens the Library only when it is on (the phone screens keep their taps) */
+function clickLooksUp() { const h = document.documentElement.classList; return h.contains('sk') || h.contains('mobile') || !!(state.settings && state.settings.clickLookup); }
+const inBibleText = el => !!(el && el.closest && el.closest('.bv, .parpanel .parbody'));
+window.TimotheosClickLookup = { on: clickLooksUp, inBibleText };
+window.TimotheosPin = el => pin(el);   // right-click → Look up on a Strong's word, a footnote or a cross-reference mark
 async function pin(el) {
-  if (el.matches('sup.fn,sup.xref')) { setLookupHtml(await noteHtml(el) || '<p class="hint">Nothing to show.</p>', true, el.classList.contains('fn') ? 'Footnote' : 'Cross-reference'); return openTab('lib'); }
+  if (el.matches('sup.fn,sup.xref')) { if (!(await openTab('lib'))) return; setLookupHtml(await noteHtml(el) || '<p class="hint">Nothing to show.</p>', true, el.classList.contains('fn') ? 'Footnote' : 'Cross-reference'); return; }
   const split = k => (el.dataset[k] || '').split(/\s+/).filter(Boolean);
   const word = (el.classList.contains('word') ? el.textContent : '');
   return showLookup({ word, lemma: el.dataset.lemma, strongs: split('strong'), morphs: split('morph') });
@@ -1719,11 +1724,14 @@ async function followLink(href, linkText, linkEl) {
   if (mo) { const fake = document.createElement('span'); fake.dataset.morph = decodeURIComponent(mo[1]); return pin(fake); }
 }
 
-function openTab(name, focus) {
-  TimotheosDock.show(name);
+/** shows a panel; a closed panel first gets its own space (Timotheos asks where). false when the person cancels */
+async function openTab(name, focus) {
+  const ok = await TimotheosDock.show(name, { near: 'bv' + (state.active || 0) });
+  if (ok === false) return false;
   if (name === 'search') TimotheosSearch.onOpen(focus);
   if (name === 'bsearch') TimotheosBookSearch.onOpen(focus);
   if (name === 'study') TimotheosStudy.onOpen();
+  return true;
 }
 window.openTab = openTab;
 
@@ -1795,6 +1803,8 @@ function wireUi() {
   $('#apPlacement').onchange = async () => { await api.setSettings({ apocryphaPlacement: $('#apPlacement').value }); state.settings.apocryphaPlacement = $('#apPlacement').value; await rebuildNav(); await go(state.ref, false); };
   if ($('#importBtn2')) $('#importBtn2').onclick = () => TimotheosModules.importModules();
   $('#resetPanelSkins').onclick = () => TimotheosPanelSkin.resetAll();
+  $('#clickLookup').checked = !!state.settings.clickLookup;
+  $('#clickLookup').onchange = () => save({ clickLookup: $('#clickLookup').checked });
   $('#centerActive').checked = centerOn();
   $('#centerActive').onchange = () => { save({ centerActive: $('#centerActive').checked }); ensurePanes(); renderChapter(true); };
   document.addEventListener('click', e => {
@@ -1805,10 +1815,15 @@ function wireUi() {
     if (!row) row = verseNear(e);   // the blank space between and beside the verses belongs to the nearest verse
     if (row && !e.target.closest('button, input, select, textarea, .menu') && !String(window.getSelection()).trim()) selectVerse(+row.dataset.v, false);
     const link = e.target.closest('[data-href]');
-    if (link) { e.preventDefault(); if (phoneVerseLink(link)) return; followLink(link.dataset.href, link.textContent, link); return; }
+    if (link) {
+      e.preventDefault(); if (phoneVerseLink(link)) return;
+      if (!clickLooksUp() && inBibleText(link) && /[?&]t=[GH]?\d|\?[GH]\d+\b|\[morph\]/i.test(link.dataset.href || '')) return;   // a Strong's / morph link in the Bible text: right-click → Look up
+      followLink(link.dataset.href, link.textContent, link); return;
+    }
     const t = popupTarget(e.target);
     if (t) {
       if ((document.documentElement.classList.contains('mobile') || document.documentElement.classList.contains('sk')) && isWordTarget(t) && t.closest('.bv')) return;
+      if (!clickLooksUp() && inBibleText(t)) return;   // words, Strong's words, footnote and cross-reference marks: hover shows them; right-click → Look up opens the Library
       pin(t); return;
     }
   });
