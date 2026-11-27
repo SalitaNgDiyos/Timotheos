@@ -765,7 +765,8 @@
       const p = PANELS.get(id);
       return `<button class="dtab${id === act0 ? ' on' : ''}" data-id="${id}" style="--tc: var(--cap-${p.cap})" title="${esc(p.title)}">${ic(p.icon, 15)}<span>${esc(p.title)}</span></button>`;
     }).join('');
-    div.innerHTML = `<header class="dcap">
+    div.innerHTML = `<header class="dcap${detachMode ? ' movable' : ''}">
+        ${detachMode ? `<span class="dgrip">${ic('grip', 14)}</span>` : ''}
         <div class="dtabs">${tabs}</div>
         ${ids.some(isBible) ? ((typeof document !== 'undefined' && document.documentElement.classList.contains('mobile')) ? (window.TimotheosNav ? `<span class="dnav">${TimotheosNav.barHtml()}</span>` : '') : `<button type="button" class="bvbible" data-a="bible" data-bv-idx="${isBible(act0) ? +act0.slice(2) : +ids.find(isBible).slice(2)}" title="Click to choose another Bible for this view · double-click to rename this view">${esc(PANELS.get(isBible(act0) ? act0 : ids.find(isBible)).title)}</button>`) : ''}
         <span class="dbtns">
@@ -779,7 +780,7 @@
         </span></header><div class="dbody"></div>`;
     const body = div.querySelector('.dbody');
     for (const id of ids) { const p = PANELS.get(id); body.appendChild(p.el); p.el.classList.toggle('hidden', id !== act0); }
-    div.querySelector('.dcap').addEventListener('pointerdown', e => startDrag(e, div, g));
+    div.querySelector('.dcap').addEventListener('pointerdown', e => { if (detachMode) startDrag(e, div, g); });   // panels are moved only while Edit Layout is on
     div.querySelector('.dcap').addEventListener('dblclick', e => { if (!e.target.closest('.dbtn, .bvbible, .bvrename')) toggleFloat(g.active); });
     div.querySelectorAll('.dtab').forEach(b => b.addEventListener('click', () => activate(b.dataset.id)));
     div.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', () => {

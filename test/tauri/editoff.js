@@ -13,6 +13,12 @@ try {
   ok(TimotheosDock.getDetachMode(), 'Edit Layout is on');
   $('#panelsMenu .pm-dlg-close').click(); await sl(300);
   ok(!TimotheosDock.getDetachMode(), 'closing the window turned Edit Layout off');
+  const cap = $('#workbench .dcap'), r = cap.getBoundingClientRect(), ev = (t, x) => cap.dispatchEvent(new PointerEvent(t, { bubbles: true, clientX: x, clientY: r.top + 8, pointerId: 1, button: 0 }));
+  ev('pointerdown', r.left + r.width / 2); ev('pointermove', r.left + r.width / 2 + 40); ev('pointermove', r.left + r.width / 2 + 90); await sl(100);
+  ok(!document.body.classList.contains('dragging'), 'Edit Layout off: a panel cannot be dragged'); ev('pointerup', r.left + r.width / 2 + 90); await sl(100);
+  TimotheosDock.setDetachMode(true); await sl(300);
+  ok(!!$('#workbench .dcap .dgrip') && $('#workbench .dcap').classList.contains('movable'), 'Edit Layout on: the drag grip shows');
+  TimotheosDock.setDetachMode(false); await sl(300);
   ok(!$('.dgrip') && ![...document.querySelectorAll('[title]')].some(e => /Drag to move this panel/.test(e.title)), 'no drag grip or its tooltip on panels');
   ok(!$('.tb-chc') && !/\d+ ch\b/.test(($('#pane-tree') || document.body).textContent), 'no chapter counts in the books list');
 } catch (e) { ok(false, 'error ' + e.message); }

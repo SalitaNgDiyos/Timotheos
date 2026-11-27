@@ -1048,3 +1048,8 @@ html.phone .dempty { display: none !important; }
 body.dragging .dlink { pointer-events: none; }
 .dadd-menu { position: fixed; z-index: 10000; min-width: 190px; max-height: 70vh; overflow: auto; }
 .dadd-menu button { display: block; width: 100%; text-align: left; }
+
+/* a panel can be moved by its title bar only while Edit Layout is on */
+.dcap { cursor: default; }
+.dcap.movable { cursor: grab; }
+.dcap.movable:active { cursor: grabbing; }
