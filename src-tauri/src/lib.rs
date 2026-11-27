@@ -638,7 +638,7 @@ fn make_net_agent<R: ureq::Resolver + 'static>(r: R) -> ureq::Agent {
         .resolver(r)
         .https_only(!cfg!(debug_assertions))
         .timeout_connect(std::time::Duration::from_secs(25))
-        .timeout_read(std::time::Duration::from_secs(60))
+        .timeout_read(std::time::Duration::from_secs(30))
         .redirects(5)
         .user_agent(concat!("Timotheos/", env!("CARGO_PKG_VERSION")))
         .build()
@@ -686,7 +686,63 @@ fn net_fetch_text(cache_file: Option<&Path>, url: &str) -> Result<String, String
         Err(ureq::Error::Transport(t)) => Err(format!("No connection: {t}")),
     }
 }
+/// downloads a file: Timotheos' own downloader first (system DNS, then public DNS); when the connection stalls or fails,
+/// the computer's own curl tries again (Linux, macOS, Windows 10/11 have it), with retries. The update check still
+/// compares the file with its SHA-256 fingerprint, so a file from either way is checked the same.
 fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
+    let first = net_fetch_once(url, dest, max);
+    let e = match first { Ok(n) => return Ok(n), Err(e) => e };
+    if e == "Stopped." || e.contains("larger than") || e.starts_with("Only https") || e.contains("error 404") || e.contains("error 403") { return Err(e); }
+    #[cfg(not(target_os = "android"))]
+    {
+        match net_fetch_curl(url, dest, max) {
+            Ok(n) => return Ok(n),
+            Err(c) if c == "Stopped." => return Err(c),
+            Err(c) => return Err(format!("{e} (tried again with the computer's curl: {c})")),
+        }
+    }
+    #[allow(unreachable_code)]
+    Err(e)
+}
+#[cfg(not(target_os = "android"))]
+fn net_fetch_curl(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
+    if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
+    if let Some(d) = dest.parent() { fs::create_dir_all(d).map_err(|e| e.to_string())?; }
+    let part = PathBuf::from(format!("{}.part", dest.to_string_lossy()));
+    let _ = fs::remove_file(&part);
+    let mut cmd = std::process::Command::new(if cfg!(windows) { "curl.exe" } else { "curl" });
+    cmd.args(["-fsSL", "--proto", "=https", "--proto-redir", "=https", "--retry", "3", "--retry-delay", "2", "--retry-all-errors",
+        "--connect-timeout", "25", "--speed-limit", "1024", "--speed-time", "60", "-A", concat!("Timotheos/", env!("CARGO_PKG_VERSION"))]);
+    if max > 0 { cmd.arg("--max-filesize").arg(max.to_string()); }
+    cmd.arg("-o").arg(&part).arg(url);
+    #[cfg(windows)]
+    { use std::os::windows::process::CommandExt; cmd.creation_flags(0x0800_0000); }
+    let mut child = cmd.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped())
+        .spawn().map_err(|e| format!("curl could not start ({e})"))?;
+    NET_TOTAL.store(0, Ordering::Relaxed); NET_DONE.store(0, Ordering::Relaxed);
+    loop {
+        if NET_STOP.load(Ordering::Relaxed) { let _ = child.kill(); let _ = child.wait(); let _ = fs::remove_file(&part); return Err("Stopped.".into()); }
+        if let Ok(m) = fs::metadata(&part) { NET_DONE.store(m.len(), Ordering::Relaxed); }
+        match child.try_wait() {
+            Ok(Some(st)) if st.success() => break,
+            Ok(Some(st)) => {
+                let mut msg = String::new(); if let Some(mut er) = child.stderr.take() { let _ = er.read_to_string(&mut msg); }
+                let _ = fs::remove_file(&part);
+                let msg = msg.trim().trim_start_matches("curl: ").to_string();
+                return Err(if msg.is_empty() { format!("curl stopped with code {}", st.code().unwrap_or(-1)) } else { msg });
+            }
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(200)),
+            Err(e) => { let _ = fs::remove_file(&part); return Err(e.to_string()); }
+        }
+    }
+    let n = fs::metadata(&part).map(|m| m.len()).unwrap_or(0);
+    if n == 0 { let _ = fs::remove_file(&part); return Err("curl brought an empty file".into()); }
+    let _ = fs::remove_file(dest);
+    fs::rename(&part, dest).map_err(|e| e.to_string())?;
+    NET_DONE.store(n, Ordering::Relaxed);
+    Ok(n)
+}
+fn net_fetch_once(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
     let first_try = apply_net_headers(make_net_agent(NetResolver).get(url), url, None).call();
     let resp = match first_try {
