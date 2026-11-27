@@ -718,7 +718,7 @@
   const p=$('#hw'), tw=document.createTreeWalker(p,NodeFilter.SHOW_TEXT), n=tw.nextNode(), i=n.textContent.indexOf('wisdom'); const rg=document.createRange(); rg.setStart(n,i); rg.setEnd(n,i+6); const rr=rg.getBoundingClientRect();
   const X=rr.left+rr.width/2, Y=rr.top+rr.height/2; const mk=(type)=>{ const ev=new Event(type,{bubbles:true,cancelable:true}); ev.touches=type==='touchend'?[]:[{clientX:X,clientY:Y}]; ev.changedTouches=[{clientX:X,clientY:Y}]; return ev; };
   (document.elementFromPoint(X,Y)||p).dispatchEvent(mk('touchstart')); await sl(900); (document.elementFromPoint(X,Y)||p).dispatchEvent(mk('touchend')); await sl(300);
-  const sh=sheet(); ok(!!sh&&/Look up “wisdom”/.test(sh.textContent)&&/Find “wisdom”/.test(sh.textContent)&&/Copy “wisdom”/.test(sh.textContent),'hold a word in another book: Look up / Find / Copy “wisdom”');
+  const sh=sheet(); ok(!!sh&&/Look up “wisdom” in Library/.test(sh.textContent)&&/Find “wisdom” in this Bible/.test(sh.textContent)&&/Copy “wisdom”/.test(sh.textContent),'hold a word in another book: Look up / Find / Copy “wisdom”');
   copied.length=0; const cb=sh&&sh.querySelector('[data-a="copyword"]'); if(cb) cb.click(); await sl(300); ok(copied[copied.length-1]==='wisdom','Copy copies it');
   await closeSheet(); pg.remove();
  });

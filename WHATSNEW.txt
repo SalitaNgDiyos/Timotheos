@@ -8,3 +8,4 @@ Timotheos 0.6.131
 - One panel per space: panels are never tabs any more. Panels that were tabbed together are split side by side; floating windows hold one panel each. The Compact layout (all tabs) is gone.
 - Opening a closed panel (a lookup, Bible Search, a book link…) first asks "Add the … panel?" with a map of the window: it suggests splitting the panel you are using; point at another panel and side, or an empty space, then Add panel. Cancel leaves everything as it was.
 - Updates and module downloads: when Timotheos' own download stalls or fails, it tries again by itself with the computer's own downloader (curl, on Linux and Windows 10/11); the file is still checked against GitHub's fingerprint before installing.
+- Right-click menu labels are clearer: Find “word” in this Bible, Find G1385 in this Bible, and Look up “word” in Library.

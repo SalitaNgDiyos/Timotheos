@@ -34,7 +34,7 @@
     // ---- the other books: Library, Commentary, dictionaries
     const host = document.createElement('div'); host.className = 'lookup'; host.style.cssText = 'position:fixed;left:200px;top:120px;width:360px;background:#fff;color:#000;z-index:99999;padding:10px'; host.innerHTML = '<p>The beginning of wisdom is the fear of the Lord.</p>'; document.body.appendChild(host);
     const hr = wordRect(host, 'wisdom'); sel.removeAllRanges(); rc(hr.rect.left + hr.rect.width / 2, hr.rect.top + hr.rect.height / 2, host); await sleep(200);
-    ok(/Look up “wisdom”/.test(menu()) && /Find “wisdom”/.test(menu()) && /Copy “wisdom”/.test(menu()), 'other books, nothing selected: Look up / Find / Copy “wisdom”');
+    ok(/Look up “wisdom” in Library/.test(menu()) && /Find “wisdom” in this Bible/.test(menu()) && /Copy “wisdom”/.test(menu()), 'other books, nothing selected: Look up / Find / Copy “wisdom”');
     $('#ctxMenu button[data-a="look"]').click(); await sleep(100); ok(looked[looked.length - 1] === 'wisdom', 'Look up opens the lookup for it');
     rc(hr.rect.left + 3, hr.rect.top + 5, host); await sleep(150); $('#ctxMenu button[data-a="find"]').click(); await sleep(100); ok(finds[finds.length - 1] === 'wisdom', 'Find searches for it');
     const fr = wordRect(host, 'fear'); sel.removeAllRanges(); sel.addRange(fr.r); rc(hr.rect.left + 3, hr.rect.top + 5, host); await sleep(150);
