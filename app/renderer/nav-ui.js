@@ -103,7 +103,7 @@
   const NAV_STEPS = [['prevBook', 'prevBook', 'Previous book (Ctrl+←)'], ['prevChap', 'prevChap', 'Previous chapter'], ['back', 'back', 'Back to the previous passage (Alt+←)'], ['prevVerse', 'up', 'Previous verse (↑)'],
     ['nextVerse', 'down', 'Next verse (↓)'], ['fwd', 'forward', 'Forward to the next passage (Alt+→)'], ['nextChap', 'nextChap', 'Next chapter'], ['nextBook', 'nextBook', 'Next book (Ctrl+→)'], ['hist', 'history', 'Recent passage history (Back / Forward list)']];
   function barHtml() {
-    return `<span class="navhdr1"><button type="button" class="navpill" title="Browse books, chapters and verses (mouse wheel steps the book)"><span class="np-cat">📜</span><span class="np-lbl">Genesis</span><span class="np-short">Gen</span><span class="np-caret">▾</span></button><span class="navsteps">${NAV_STEPS.map(([a, ic, t]) => `<button type="button" class="dbtn navic" data-nav="${a}" title="${t}" aria-label="${t}">${TimotheosIcons.icon(ic, 14)}</button>`).join('')}</span></span>`;
+    return `<span class="navhdr1"><button type="button" class="navpill" title="Browse books, chapters and verses (mouse wheel steps the book)"><span class="np-lbl">Genesis</span><span class="np-short">Gen</span><span class="np-caret">▾</span></button><span class="navsteps">${NAV_STEPS.map(([a, ic, t]) => `<button type="button" class="dbtn navic" data-nav="${a}" title="${t}" aria-label="${t}">${TimotheosIcons.icon(ic, 14)}</button>`).join('')}</span></span>`;
   }
   function wireHeaderBar() {
     const vSel = $('#verseSel');

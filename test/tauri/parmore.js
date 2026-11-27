@@ -11,6 +11,7 @@ try {
   const sets = [{ id: 'p1', name: 'T', bibles: ids, base: ids[0] }];
   state.settings.parSets = sets; state.settings.parSetId = 'p1';
   TimotheosDock.show('par', { quiet: true }); await sl(1500);
+  ok(!$('.np-cat') && $('.parset').firstElementChild.tagName === 'B', 'no icon beside the verse reference or on the set button');
   ok(!$('#tab-par .parbar [data-a="diff"]') && !$('#tab-par .parbar [data-a="follow"]'), 'Differences and Follow are no longer on the bar');
   ok(!!$('#tab-par .parbar .parmore'), 'the bar has a ⋯ button');
   ok($('#tab-par .parxmenu').classList.contains('hidden'), 'the ⋯ menu starts closed');

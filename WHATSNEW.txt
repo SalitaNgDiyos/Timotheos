@@ -14,3 +14,4 @@ Timotheos 0.6.131
 - Edit Layout turns off when the Layout & Panels window is closed. The drag grip is removed from panel headers. The number of chapters per book is no longer shown in the books list and pickers. The phone app no longer has the Clipboard monitor.
 - Panels can be moved by their title bar only while Edit Layout is on; the drag grip shows only then.
 - Parallel Bibles has a slimmer bar: Differences, Follow and the text tools are under a ⋯ button, columns show the short Bible name (full name on hover), only the verse number shows on the left, and the current verse has a light tint.
+- The icons next to the verse reference (the scroll/cross beside "Exodus 23:5") and the star on the Parallel Bibles set button are removed from all Bible panels.
