@@ -11,7 +11,7 @@ try {
   TimotheosDock.setDetachMode(true); await sl(400);
   const g = $$('#workbench .dgroup').find(x => x.querySelector('.dtab[data-id="cmt"]')); g.querySelector('.dbtn[data-act="close"]').click(); await sl(500);
   const btn = $('.dempty .dsplit');
-  ok(btn && /Split/.test(btn.textContent), 'the empty space offers Split…');
+  ok(btn && /Split/.test(btn.textContent), 'the empty space offers Split Space');
   btn.click(); await sl(300);
   const pk = $('.ld-picker');
   const cells = $$('.ld-picker .ld-cell'); const maxC = Math.max(...cells.map(c => +c.dataset.c)), maxR = Math.max(...cells.map(c => +c.dataset.r));

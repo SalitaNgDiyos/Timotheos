@@ -17,7 +17,7 @@ try {
   $$('#workbench .dgroup').find(g => g.querySelector('.dtab[data-id="cmt"]')).querySelector('.dbtn[data-act="close"]').click(); await sl(500);
   const a1 = areas();
   ok(JSON.stringify(a1) === JSON.stringify(before.filter(a => a[0] !== 'cmt')), 'closing Commentary: no other panel moved or grew');
-  ok($$('.dempty').length === 1 && !$('.dempty .dsplit'), 'its place shows as an empty space (no Split… outside Edit Layout)');
+  ok($$('.dempty').length === 1 && !!$('.dempty .dadd'), 'its place shows as an empty space with Add Panel');
   $$('#workbench .dgroup').find(g => g.querySelector('.dtab[data-id="bv0"]')).querySelector('.dbtn[data-act="close"]').click(); await sl(900);
   const a2 = areas();
   ok(a2.length === 2 && a2[0][0] === 'tree' && a2[0][3] === 1 && a2[1][0] === 'bv0' && a2[1][1] === 2 && a2[1][3] === 3, 'closing a Bible view: the other view keeps its place (' + JSON.stringify(a2) + ')');

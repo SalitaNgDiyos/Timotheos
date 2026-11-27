@@ -694,6 +694,11 @@ async function addView(bible, targetRect) {
   const vs = [...views(), v]; state.active = vs.length - 1;
   await setViews(vs);
 }
+/* a new Bible view in an exact empty space (the Add Panel link) */
+window.TimotheosNewViewIn = async rect => {
+  const bid = ((state.settings.views || [])[state.active] || {}).bible || (state.modules.bibles[0] && state.modules.bibles[0].id);
+  if (bid) await addView(bid, rect);
+};
 async function useBible(bible) {
   if (!views().length) return addView(bible);
   await ensureInfo(bible);

@@ -1039,3 +1039,12 @@ html.phone .dempty { display: none !important; }
 .placedlg .pm-btns { display: flex; justify-content: flex-end; gap: 8px; }
 .placedlg .pm-btns .primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .placedlg .pm-btns .primary:disabled { opacity: .45; }
+
+/* the links shown in an empty space: Add Panel, Split Space */
+.dlinks { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; pointer-events: none; }
+.dslot, .dempty { display: flex; align-items: center; justify-content: center; }
+.dlink { pointer-events: auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); background: var(--card); color: var(--text); border-radius: 7px; padding: 4px 12px; font: 600 12.5px var(--font-ui); cursor: pointer; }
+.dlink:hover { border-color: var(--accent); background: var(--accent-soft); }
+body.dragging .dlink { pointer-events: none; }
+.dadd-menu { position: fixed; z-index: 10000; min-width: 190px; max-height: 70vh; overflow: auto; }
+.dadd-menu button { display: block; width: 100%; text-align: left; }

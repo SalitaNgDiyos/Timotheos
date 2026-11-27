@@ -608,6 +608,35 @@
       else { const x0 = Math.max(a.x0, b.x0), x1 = Math.min(a.x1, b.x1); Object.assign(el.style, { top: `calc(${pct(a.y1, V.y, V.h)}% - 3px)`, height: '6px', left: `calc(${pct(x0, V.x, V.w)}% + 3px)`, width: `calc(${(x1 - x0) / V.w * 100}% - 6px)` }); }
     }
   }
+  /** the two links an empty place shows: Add Panel (a list of every panel) and Split Space (only while it is big enough to split) */
+  function emptyLinks(el, sp) {
+    const px = boxPx(sp), fit = fitGrid(px.w, px.h), box = { x0: sp.x0, y0: sp.y0, x1: sp.x1, y1: sp.y1 };
+    el.innerHTML = `<div class="dlinks"><button type="button" class="dlink dadd">${ic('plus', 15)}Add Panel</button>${fit.cols * fit.rows > 1 ? `<button type="button" class="dlink dsplit" title="Divide this empty space into several places (up to ${fit.cols} × ${fit.rows} here)">${ic('grid', 15)}Split Space</button>` : ''}</div>`;
+    el.querySelector('.dadd').onclick = e => { e.stopPropagation(); openAddMenu(e.currentTarget, box); };
+    const sb = el.querySelector('.dsplit'); if (sb) sb.onclick = e => { e.stopPropagation(); openLayoutDesigner(sb, box); };
+  }
+  /** the list of panels under Add Panel; the one chosen goes into exactly this space and no other panel moves or resizes */
+  function openAddMenu(anchor, box) {
+    document.querySelectorAll('.dadd-menu').forEach(x => x.remove());
+    const kinds = [{ id: 'newbv', title: 'Bible View' }, ...[...PANELS.values()].filter(p => !isBible(p.id)).map(p => ({ id: p.id, title: p.title || p.id }))];
+    const m = document.createElement('div'); m.className = 'menu dadd-menu';
+    m.innerHTML = kinds.map(k => `<button type="button" data-id="${k.id}">${esc(k.title)}</button>`).join('');
+    document.body.appendChild(m);
+    const r = anchor.getBoundingClientRect();
+    m.style.left = Math.max(4, Math.min(r.left, window.innerWidth - m.offsetWidth - 4)) + 'px';
+    m.style.top = Math.max(4, Math.min(r.bottom + 4, window.innerHeight - m.offsetHeight - 4)) + 'px';
+    const off = () => { m.remove(); document.removeEventListener('mousedown', away, true); document.removeEventListener('keydown', key, true); };
+    const away = e => { if (!m.contains(e.target)) off(); };
+    const key = e => { if (e.key === 'Escape') { e.stopPropagation(); off(); } };
+    setTimeout(() => { document.addEventListener('mousedown', away, true); document.addEventListener('keydown', key, true); }, 0);
+    m.querySelectorAll('button').forEach(b => b.onclick = async () => {
+      off();
+      if (b.dataset.id === 'newbv') { if (window.TimotheosNewViewIn) await window.TimotheosNewViewIn(box); }
+      else placeInSpace(b.dataset.id, box);
+    });
+    const f = m.querySelector('button'); if (f) f.focus();
+  }
+
   function render() {
     const wb = $('#workbench'); const grid = $('#grid');
     const scroll = new Map();
@@ -629,7 +658,7 @@
           width: `${(sp.x1 - sp.x0) / view.w * 100}%`,
           height: `${(sp.y1 - sp.y0) / view.h * 100}%`
         });
-        sl.innerHTML = `<span class="dslot-lbl">Drop panel here</span>`;
+        emptyLinks(sl, sp);
         grid.appendChild(sl);
       }
       // Draggable dotted edges between adjacent blueprint slots
@@ -667,7 +696,7 @@
       box.innerHTML = `<button type="button" class="ld-cta-btn" id="designLayoutBtn">${ic('grid', 20)}<span>Design your layout</span></button><p class="ld-cta-sub">Pick a 1×1 up to 6×3 grid (as many as fit the window), adjust the dotted edges, then drag panels in from <b>Panels</b>.</p>`;
       box.querySelector('#designLayoutBtn').onclick = e => openLayoutDesigner(e.currentTarget);
       grid.appendChild(box);
-    } else if (!maxed && !focusMode) {   // empty spaces show in both modes (a closed panel leaves one); Split… only in Edit Layout
+    } else if (!maxed && !focusMode) {   // an empty space (a closed panel leaves one) shows the links Add Panel and Split Space, in both modes
       for (const sp of findEmptySpaces(shown.concat(activeSlots))) {
         const em = document.createElement('div');
         em.className = 'dempty';
@@ -677,9 +706,7 @@
           width: `calc(${(sp.x1 - sp.x0) / view.w * 100}% - 6px)`,
           height: `calc(${(sp.y1 - sp.y0) / view.h * 100}% - 6px)`
         });
-        const fit = fitGrid(boxPx(sp).w, boxPx(sp).h);
-        em.innerHTML = `<span>Empty space — drag a panel here</span>${detachMode && fit.cols * fit.rows > 1 ? `<button type="button" class="dsplit" title="Divide this empty space into several empty places (up to ${fit.cols} × ${fit.rows} here)">${ic('grid', 15)}Split…</button>` : ''}`;
-        const sb = em.querySelector('.dsplit'); if (sb) sb.onclick = e => { e.stopPropagation(); openLayoutDesigner(sb, { x0: sp.x0, y0: sp.y0, x1: sp.x1, y1: sp.y1 }); };
+        emptyLinks(em, sp);
         grid.appendChild(em);
       }
     }

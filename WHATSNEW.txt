@@ -9,3 +9,4 @@ Timotheos 0.6.131
 - Opening a closed panel (a lookup, Bible Search, a book link…) first asks "Add the … panel?" with a map of the window: it suggests splitting the panel you are using; point at another panel and side, or an empty space, then Add panel. Cancel leaves everything as it was.
 - Updates and module downloads: when Timotheos' own download stalls or fails, it tries again by itself with the computer's own downloader (curl, on Linux and Windows 10/11); the file is still checked against GitHub's fingerprint before installing.
 - Right-click menu labels are clearer: Find “word” in this Bible, Find G1385 in this Bible, and Look up “word” in Library.
+- A closed panel (or any empty space) now shows two links: Add Panel (pick any panel to fill that space) and Split Space (divide it; only offered while the space is big enough). They work with Edit Layout on or off.
