@@ -1,5 +1,6 @@
 Timotheos 0.6.131
-- Updated the bundled Ang Malayang Biblia (AMB) module to the 2026.1 edition.
-- Real-time AMB Bible auto-update: on startup on both PC and Android, Timotheos now checks for live updates published to Ang-Malayang-Biblia-Translation and updates your installed AMB Bible silently in-place without waiting for an app update.
+- Updated the bundled Ang Malayang Biblia (AMB) module to the 2026.1 edition with the updated About page.
+- Real-time AMB Bible auto-update: on startup on both PC and Android, Timotheos now checks for live updates published to Ang-Malayang-Biblia-Translation, updates your installed AMB Bible silently in-place, and refreshes the open Bible view immediately.
+- USFM 3.0 archives (.usfm.zip) and folders now load their embedded About page (copr.htm / about.htm / README.html).
 
 

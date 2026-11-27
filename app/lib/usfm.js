@@ -826,24 +826,37 @@ function isPerBookUsfmDir(dir, fileNames) {
 function loadUsfm(fileOrDir) {
   const st = fs.statSync(fileOrDir);
   const texts = [];
+  let coprAbout = '';
+  const ABOUT_FILE_RE = /(?:^|\/)(?:copr\.htm|copr\.html|about\.htm|about\.html|readme\.html)$/i;
   if (st.isDirectory()) {
-    const files = fs.readdirSync(fileOrDir)
+    const allFiles = fs.readdirSync(fileOrDir);
+    const files = allFiles
       .filter(f => {
         if (!USFM_EXT.test(f)) return false;
         try { return fs.statSync(path.join(fileOrDir, f)).isFile(); } catch (e) { return false; }
       })
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     for (const f of files) texts.push(fs.readFileSync(path.join(fileOrDir, f), 'utf8'));
+    const af = allFiles.find(f => ABOUT_FILE_RE.test(f));
+    if (af) {
+      try { coprAbout = fs.readFileSync(path.join(fileOrDir, af), 'utf8').replace(/^\uFEFF/, '').trim(); } catch (e) {}
+    }
   } else if (/\.zip$/i.test(fileOrDir)) {
     const buf = fs.readFileSync(fileOrDir);
-    const ents = zip.entries(buf)
+    const allEnts = zip.entries(buf);
+    const ents = allEnts
       .filter(e => !e.name.endsWith('/') && USFM_EXT.test(e.name))
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     for (const e of ents) texts.push(zip.extract(buf, e).toString('utf8'));
+    const ae = allEnts.find(e => !e.name.endsWith('/') && ABOUT_FILE_RE.test(e.name));
+    if (ae) {
+      try { coprAbout = zip.extract(buf, ae).toString('utf8').replace(/^\uFEFF/, '').trim(); } catch (e) {}
+    }
   } else {
     texts.push(fs.readFileSync(fileOrDir, 'utf8'));
   }
   const parsed = parseUsfmTexts(texts);
+  if (coprAbout) parsed.meta.about = coprAbout;
   if (!Object.keys(parsed.books).length) {
     throw new Error('no readable USFM books (\\id ... \\c ... \\v ...) found in ' + path.basename(fileOrDir));
   }

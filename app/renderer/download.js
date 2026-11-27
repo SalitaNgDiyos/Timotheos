@@ -700,8 +700,12 @@ const TimotheosDownload = (() => {
         officialModVersions: vers
       });
     }
-    if (updatedCount > 0 && typeof window !== 'undefined' && window.TimotheosStudy && TimotheosStudy.flash) {
-      TimotheosStudy.flash(`Ang Malayang Biblia (${upd.mod.tag || 'latest'}) updated automatically.`);
+    if (updatedCount > 0 && typeof window !== 'undefined') {
+      try { if (state && state.infos && typeof state.infos.clear === 'function') state.infos.clear(); } catch (e) {}
+      try { if (typeof window.renderChapter === 'function') await window.renderChapter(false); } catch (e) {}
+      if (window.TimotheosStudy && TimotheosStudy.flash) {
+        TimotheosStudy.flash(`Ang Malayang Biblia (${upd.mod.tag || 'latest'}) updated automatically.`);
+      }
     }
     return { updated: updatedCount > 0, mod: upd.mod };
   }
