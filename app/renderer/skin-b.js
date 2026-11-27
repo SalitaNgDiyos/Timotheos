@@ -28,7 +28,7 @@
     const p = P(); const S = TimotheosSpeech; const c = S.cfg(); const clip = window.TimotheosTools && TimotheosTools.clipOn && TimotheosTools.clipOn();
     const r = (k, i, l, sm) => `<button type="button" class="prr" data-k="${k}">${p.ic(i, 20)}<span>${l}</span><small>${sm || ''} ${p.ic('chevR', 16)}</small></button>`;
     box.innerHTML = `<div class="glist">${r('ra', 'speaker', 'Read aloud', esc(S.NAMES[c.lang] || 'Automatic'))}${r('look', 'palette', 'Appearance', 'Skin, fonts')}${r('layout', 'layers', 'Layout', 'Two Bibles, screen')}${r('vnum', 'text', 'Verse numbers', 'Margin')}${r('view', 'eye', 'Reading view', 'Show, size, colours')}</div>
-      <div class="glist">${r('mods', 'import', 'Modules', 'Import, uninstall')}${r('copy', 'copy', 'Copy verses', '')}<button type="button" class="prr" data-k="clip">${p.ic('clipboard', 20)}<span>Clipboard monitor</span><small class="clipv">${clip ? 'On' : 'Off'}</small></button>${r('daily', 'calendar', 'Daily readings', '')}${r('print', 'print', 'Print the chapter', '').replace('class="prr"', 'class="prr nophone"')}</div>
+      <div class="glist">${r('mods', 'import', 'Modules', 'Import, uninstall')}${r('copy', 'copy', 'Copy verses', '')}${r('daily', 'calendar', 'Daily readings', '')}${r('print', 'print', 'Print the chapter', '').replace('class="prr"', 'class="prr nophone"')}</div>
       <div class="glist">${r('fonts', 'type', 'Fonts', 'Bible, Greek, Hebrew')}${r('all', 'gear', 'All options', '')}</div>
       <div class="glist">${r('guide', 'guide', 'User guide', '')}${r('about', 'info', 'About Timotheos', (state.settings && state.settings.version) || '')}${r('screen', 'grid', 'Change screen', 'Clear Tabs')}</div>`;
     box.onclick = e => {
@@ -36,7 +36,6 @@
       if (k === 'ra') p.readAloudPage();
       else if (k === 'look') TimotheosOptions.open('look'); else if (k === 'vnum') TimotheosOptions.open('vnum'); else if (k === 'fonts') TimotheosOptions.open('fonts'); else if (k === 'keys') TimotheosOptions.open('keys'); else if (k === 'all') TimotheosOptions.open();
       else if (k === 'layout') layoutSheet(); else if (k === 'view') p.readingSheet(); else if (k === 'mods') p.modulesSheet(); else if (k === 'copy') TimotheosStudy.copyDialog();
-      else if (k === 'clip') { runCommand('clipmon'); setTimeout(() => { const v = box.querySelector('.clipv'); if (v) v.textContent = TimotheosTools.clipOn() ? 'On' : 'Off'; }, 100); }
       else if (k === 'daily') p.studySection('plans'); else if (k === 'print') runCommand('print');
       else if (k === 'guide') runCommand('guide'); else if (k === 'about') runCommand('about'); else if (k === 'screen') window.TimotheosSkins.picker(true);
     };

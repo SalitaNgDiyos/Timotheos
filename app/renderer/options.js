@@ -341,11 +341,16 @@
     m.style.right = 'auto';
     m.style.maxHeight = Math.max(200, innerHeight - y - 12) + 'px';
   }
-  function closePanelsDialog() {
+  function closePanelsDialog(keepEdit) {
     const m = $('#panelsMenu');
     if (m) m.classList.add('hidden');
     const b = $('#panelsBtn');
     if (b) b.classList.remove('on');
+    if (!keepEdit) editLayoutOff();
+  }
+  /** Edit Layout belongs to the Layout & Panels window: closing the window turns it off */
+  function editLayoutOff() {
+    if (window.TimotheosDock && TimotheosDock.getDetachMode && TimotheosDock.getDetachMode()) { TimotheosDock.setDetachMode(false); syncDockToggles(); }
   }
   function togglePanelsDialog() {
     const m = $('#panelsMenu'); if (!m) return;
@@ -377,7 +382,7 @@
     m.querySelectorAll('[data-hist]').forEach(b => b.onclick = async e => { e.stopPropagation(); if (b.dataset.hist === 'undo') await TimotheosDock.undo(); else await TimotheosDock.redo(); syncLayoutHistory(); });
     syncLayoutHistory();
     const po = m.querySelector('.pm-dlg-popout');
-    if (po) po.onclick = () => { closePanelsDialog(); TimotheosHost.openPanelsWindow(); setTimeout(broadcastPanelsState, 250); };
+    if (po) po.onclick = () => { closePanelsDialog(true); TimotheosHost.openPanelsWindow(); setTimeout(broadcastPanelsState, 250); };
     const head = m.querySelector('.pm-dlg-head');
     head.addEventListener('pointerdown', e => {
       if (e.button !== 0 || e.target.closest('.pm-dlg-close, .pm-dlg-hist, .pm-dlg-popout')) return;
@@ -902,7 +907,7 @@
     panelsCh.onmessage = async e => {
       const msg = e.data || {};
       if (msg.type === 'hello') { panelsPopped = true; return broadcastPanelsState(); }
-      if (msg.type === 'bye') { panelsPopped = false; return; }
+      if (msg.type === 'bye') { panelsPopped = false; setTimeout(() => { if (!layoutWindowOpen()) editLayoutOff(); }, 400); return; }
       if (msg.type === 'dockBack') { openPanelsDialog(); return; }
       if (msg.type === 'preset') { TimotheosDock.applyPreset(msg.id); broadcastPanelsState(); return; }
       if (msg.type === 'cmd') {

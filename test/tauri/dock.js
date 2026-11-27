@@ -47,8 +47,8 @@ async function drag(id, to, via) {
   ok(where('study') === 'float' && document.querySelector('.dfloat [data-panel="study"]'), 'drop outside the grid → floating window');
   // 5. move the floating window by its caption
   const fl = document.querySelector('.dfloat'); const x0 = fl.offsetLeft;
-  const [fx, fy] = ctr(fl.querySelector('.dgrip'));
-  pe('pointerdown', fx, fy, fl.querySelector('.dgrip')); pe('pointermove', fx + 30, fy); await sleep(30); pe('pointermove', fx + 120, fy); await sleep(30); pe('pointerup', fx + 120, fy); await sleep(300);
+  const [fx, fy] = ctr(fl.querySelector('.dcap'));
+  pe('pointerdown', fx, fy, fl.querySelector('.dcap')); pe('pointermove', fx + 30, fy); await sleep(30); pe('pointermove', fx + 120, fy); await sleep(30); pe('pointerup', fx + 120, fy); await sleep(300);
   ok(Math.abs(D.state().floats[0].x - (x0 + 120)) < 4, 'floating window moved: x ' + x0 + ' → ' + D.state().floats[0].x);
   // 6. dock it again with its button
   fl.querySelector('.dbtn[data-act="float"]').click(); await sleep(200);

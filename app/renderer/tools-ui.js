@@ -266,7 +266,7 @@
   function init() {
     document.addEventListener('click', e => { if (!(e.target instanceof Element)) return; const im = e.target.closest('.lookup img, #popup img'); if (im && !e.target.closest('a')) { e.preventDefault(); openImage(im); } });
     wireMarks();
-    if (ccfg().on) startClip();
+    if (ccfg().on && !/\b(mobile|phone)\b/.test(document.documentElement.className)) startClip();   // no clipboard monitor in the phone app
     const ex = $('#libExport'); if (ex) ex.onclick = exportTopics;
     const pr = $('#libPrint'); if (pr) pr.onclick = printTopic;
     // what Timotheos itself copies is not shown by the clipboard monitor

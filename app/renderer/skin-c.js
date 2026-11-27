@@ -32,7 +32,7 @@
     if (navSeg === 'books') {
       openBook = openBook || state.ref.b; let g = null;
       body = '<div class="ptree">' + navList().map(b => { const head = b.grp !== g ? `<div class="tg">${p.esc(GRP[b.grp] || b.grp)}</div>` : ''; g = b.grp;
-        return head + `<button type="button" class="bk${b.id === openBook ? ' open' : ''}" data-b="${b.id}">${p.esc(b.name)} <small>${b.chapterList.length}</small></button>` + (b.id === openBook ? `<div class="cg">${b.chapterList.map(c => `<button type="button" data-c="${c}" class="${b.id === state.ref.b && c === state.ref.c ? 'hl' : ''}">${c}</button>`).join('')}</div>` : ''); }).join('') + '</div>';
+        return head + `<button type="button" class="bk${b.id === openBook ? ' open' : ''}" data-b="${b.id}">${p.esc(b.name)}</button>` + (b.id === openBook ? `<div class="cg">${b.chapterList.map(c => `<button type="button" data-c="${c}" class="${b.id === state.ref.b && c === state.ref.c ? 'hl' : ''}">${c}</button>`).join('')}</div>` : ''); }).join('') + '</div>';
     } else if (navSeg === 'history') {
       const seen = new Set(); const rows = [];
       for (const r of [...(state.back || [])].reverse()) { const k = `${r.b}.${r.c}.${r.v}`; if (seen.has(k)) continue; seen.add(k); rows.push(r); if (rows.length > 40) break; }
@@ -104,7 +104,7 @@
     ['Rescan modules', 'refresh', 'File', () => runCommand('rescan')], ['Imported modules folder', 'folder', 'File', () => runCommand('modulesFolder')], ['New user module…', 'plus', 'File', () => runCommand('newUserMod')],
     ['Export topics…', 'import', 'File', () => runCommand('exportTopics')], ['Print the topic', 'print', 'File', () => runCommand('printTopic')], ['Print the chapter', 'print', 'File', () => runCommand('print')],
     ['Options', 'tune', 'File', () => runCommand('options')], ['Bible search (all options)', 'search', 'View', () => P().fullPanel('search')], ['Book search', 'book', 'View', () => P().search({ mode: 'books' })],
-    ['Copy verses…', 'copy', 'View', () => TimotheosStudy.copyDialog()], ['Clipboard monitor', 'clipboard', 'View', () => runCommand('clipmon')], ['Daily readings', 'calendar', 'View', () => P().studySection('plans')],
+    ['Copy verses…', 'copy', 'View', () => TimotheosStudy.copyDialog()], ['Daily readings', 'calendar', 'View', () => P().studySection('plans')],
     ['Devotionals today', 'book', 'View', () => P().devotionals()], ['My Study', 'study', 'View', () => P().studyPage()], ['My notes', 'note', 'View', () => P().studySection('notes')], ['Highlights', 'highlight', 'View', () => P().highlightsPage()],
     ['Bookmarks', 'bookmark', 'View', () => P().studySection('marks')], ['Verse lists', 'study', 'View', () => P().studySection('lists')], ['Library', 'library', 'View', () => P().library()], ['Commentary', 'commentary', 'View', () => studyDrawer('commentary')],
     ['Reading view: size, what to show', 'text', 'View', () => P().readingSheet()], ['Choose the Bible', 'bible', 'View', () => P().chooseBible()], ['Parallel Bibles (up to 8, verse by verse)', 'compare', 'View', () => P().fullPanel('par')],
@@ -129,7 +129,7 @@
         h += `<div class="pgo">${r ? `<div class="pg2">Go to</div><button type="button" class="pr hl" data-go="${r.b}.${r.c}.${r.v}">${p.ic('pin', 18)}<span>${p.esc(p.rn(r))}</span><small>Go</small></button>` : ''}</div>`;
         if (!r && /\d/.test(t)) api.parseRef(t).then(x => { if (my !== palSeq || !x || !x.b) return; const g = body.querySelector('.pgo'); if (g) g.innerHTML = `<div class="pg2">Go to</div><button type="button" class="pr hl" data-go="${x.b}.${x.c || 1}.${x.v || 1}">${p.ic('pin', 18)}<span>${p.esc(p.rn({ b: x.b, c: x.c || 1, v: x.v || 1 }))}</span><small>Go</small></button>`; }).catch(() => {});
         const bks = navList().filter(b => b.name.toLowerCase().startsWith(t.toLowerCase())).slice(0, 3);
-        if (bks.length && !r) h += `<div class="pg2">Books of the Bible</div>${bks.map(b => `<button type="button" class="pr" data-go="${b.id}.1.1">${p.ic('book', 18)}<span>${p.esc(b.name)}</span><small>${b.chapterList.length} ch</small></button>`).join('')}`;
+        if (bks.length && !r) h += `<div class="pg2">Books of the Bible</div>${bks.map(b => `<button type="button" class="pr" data-go="${b.id}.1.1">${p.ic('book', 18)}<span>${p.esc(b.name)}</span></button>`).join('')}`;
         h += '<div class="pg2v"></div><div class="pg2b">' + (t.length >= 3 && !r ? '<div class="pg2">Books</div><p class="phint bsprog">Searching the books…</p>' : '') + '</div>';
       }
       h += `<div class="pg2">Commands</div>${cm.map(c => `<button type="button" class="pr" data-cmd="${cmds.indexOf(c)}">${p.ic(c[1], 18)}<span>${p.esc(c[0])}</span></button>`).join('') || '<p class="phint">No command by that name.</p>'}`;
@@ -194,7 +194,7 @@
     closeAll(true); const p = P(); const cc = $('.c-cc'); const v = views()[state.active] || {}; const sh = Object.assign({}, state.settings.show, v.show || {});
     const ap = TimotheosOptions.appearance(); const vn = (v.vnPos || ap.vnPos) !== 'hidden'; const sync = views().every(x => x.linked); const clip = window.TimotheosTools && TimotheosTools.clipOn && TimotheosTools.clipOn();
     const t = (k, i, l, on) => `<button type="button" class="cct${on ? ' on' : ''}" data-cc="${k}">${p.ic(i, 22)}${l}</button>`;
-    cc.innerHTML = `<div class="dh" style="font-size:19px"><small>Quick settings</small>This desk</div><div class="ccg">${root.classList.contains('sk-themed') ? '' : t('dark', 'palette', 'Dark', !root.classList.contains('sk-light'))}${t('sync', 'sync', 'Sync views', sync)}${t('strongs', 'lexicon', "Strong's", !!sh.strongs)}${t('columns', 'compare', 'Interlinear', !!sh.columns)}${t('vn', 'text', 'Verse no.', vn)}${t('clip', 'clipboard', 'Clipboard', !!clip)}${t('notes', 'note', 'Notes', !!sh.notes)}${t('highlights', 'highlight', 'Marks', !!sh.highlights)}</div>
+    cc.innerHTML = `<div class="dh" style="font-size:19px"><small>Quick settings</small>This desk</div><div class="ccg">${root.classList.contains('sk-themed') ? '' : t('dark', 'palette', 'Dark', !root.classList.contains('sk-light'))}${t('sync', 'sync', 'Sync views', sync)}${t('strongs', 'lexicon', "Strong's", !!sh.strongs)}${t('columns', 'compare', 'Interlinear', !!sh.columns)}${t('vn', 'text', 'Verse no.', vn)}${t('notes', 'note', 'Notes', !!sh.notes)}${t('highlights', 'highlight', 'Marks', !!sh.highlights)}</div>
       <div class="slider">${p.ic('text', 20)}<input type="range" min="0.6" max="2.5" step="0.1" value="${v.zoom || 1}" data-zoom aria-label="Text size">A</div>
       <div class="links"><button type="button" class="pchip" data-l="options">${p.ic('tune', 16)} Options</button><button type="button" class="pchip" data-l="mods">${p.ic('import', 16)} Modules</button><button type="button" class="pchip" data-l="layouts">${p.ic('layers', 16)} Layouts</button><button type="button" class="pchip" data-l="voices">${p.ic('speaker', 16)} Voices</button><button type="button" class="pchip" data-l="view">${p.ic('eye', 16)} All view options</button><button type="button" class="pchip" data-l="help">${p.ic('guide', 16)} Help</button></div>`;
     cc.classList.add('on'); scrim(true); opened();
@@ -203,7 +203,6 @@
         if (a === 'dark') { root.classList.toggle('sk-light', !on); try { localStorage.setItem('tw.c.light', on ? '' : '1'); } catch (x) { /* */ } TimotheosSkins.colors(); }
         else if (a === 'sync') { views().forEach((x, i) => { if (!!x.linked !== on) toggleLink(i); }); }
         else if (a === 'vn') setVerseNumbers(state.active, on);
-        else if (a === 'clip') runCommand('clipmon');
         else setShow(a, on);
         k.classList.toggle('on', on); return; }
       const l = e.target.closest('[data-l]'); if (!l) return; closeAll();

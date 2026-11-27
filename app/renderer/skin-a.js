@@ -45,7 +45,7 @@
     ['commentary', 'Commentary', 'Single or all', () => P().commentarySheet({ ...state.ref })], ['study', 'My Study', 'Notes, lists, marks', () => P().studyPage()], ['compare', 'Parallel Bibles', 'Up to 8 Bibles, verse by verse', () => P().fullPanel('par')],
     ['copy', 'Copy verses', 'Ranges & formats', () => TimotheosStudy.copyDialog()], ['calendar', 'Daily readings', 'Plans, devotionals', () => P().studySection('plans')], ['speaker', 'Read aloud', 'Voices, repeat', () => readNow()],
     ['import', 'Modules', 'Import, uninstall', () => P().modulesSheet()], ['tune', 'Options', 'Skins, fonts, layout', () => runCommand('options')], ['guide', 'Help', 'Guide, about', () => P().helpSheet()]];
-  const PILLS = [['text', 'Reading view', () => P().readingSheet()], ['gear', 'Read aloud settings', () => P().readAloudPage()], ['print', 'Print', () => runCommand('print')], ['clipboard', 'Clipboard monitor', () => runCommand('clipmon')],
+  const PILLS = [['text', 'Reading view', () => P().readingSheet()], ['gear', 'Read aloud settings', () => P().readAloudPage()], ['print', 'Print', () => runCommand('print')],
     ['layers', 'Layouts', () => layouts()], ['bookmark', 'Bookmarks', () => P().studySection('marks')], ['highlight', 'Highlights', () => P().highlightsPage()], ['note', 'My notes', () => P().studySection('notes')],
     ['import', 'Export topics', () => runCommand('exportTopics')], ['print', 'Print library topic', () => runCommand('printTopic')], ['plus', 'New user module', () => runCommand('newUserMod')],
     ['info', 'About', () => runCommand('about')], ['grid', 'Change screen', () => window.TimotheosSkins.picker(true)]];

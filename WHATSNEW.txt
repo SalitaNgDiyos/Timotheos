@@ -11,3 +11,4 @@ Timotheos 0.6.131
 - Right-click menu labels are clearer: Find “word” in this Bible, Find G1385 in this Bible, and Look up “word” in Library.
 - A closed panel (or any empty space) now shows two links: Add Panel (pick any panel to fill that space) and Split Space (divide it; only offered while the space is big enough). They work with Edit Layout on or off.
 - Phone: the buttons in the verse sheet (hold a verse) now work with one tap; the first tap was being swallowed after the hold.
+- Edit Layout turns off when the Layout & Panels window is closed. The drag grip is removed from panel headers. The number of chapters per book is no longer shown in the books list and pickers. The phone app no longer has the Clipboard monitor.

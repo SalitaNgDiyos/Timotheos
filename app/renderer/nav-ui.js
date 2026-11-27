@@ -247,7 +247,7 @@
         bodyHtml = `
           <div class="npbody npcascade">
             <div class="np-subbar">
-              <span><b style="color:${cat.color}">${cat.icon} ${esc(bk.name)}</b> — Select a chapter (${bk.chapterList.length} chapters):</span>
+              <span><b style="color:${cat.color}">${cat.icon} ${esc(bk.name)}</b> — Select a chapter:</span>
               <span class="grow"></span>
               <button type="button" class="nplink" data-npstep="book">← Change Book</button>
             </div>
@@ -290,7 +290,7 @@
       }
       const isCur = x.id === activeBk.id;
       if (tileStyle === 'tiles') {
-        html += `<button type="button" class="npb-tile ${isCur ? 'on' : ''}" data-b="${x.id}" style="--cat-col:${cat.color}" title="${esc(x.name)} (${x.chapterList.length} ch)">${esc(x.abbr)}</button>`;
+        html += `<button type="button" class="npb-tile ${isCur ? 'on' : ''}" data-b="${x.id}" style="--cat-col:${cat.color}" title="${esc(x.name)}">${esc(x.abbr)}</button>`;
       } else {
         html += `<button type="button" class="npb-row ${isCur ? 'on' : ''}" data-b="${x.id}" style="--cat-col:${cat.color}"><span class="npb-abbr">${esc(x.abbr)}</span><span class="npb-name">${esc(x.name)}</span><span class="npb-chc">${x.chapterList.length}</span></button>`;
       }
@@ -719,7 +719,7 @@
           lastCat = cat.id;
           html += `<div class="tgrp-cat" style="--cat-col:${cat.color}"><span>${cat.icon} ${esc(catLabel(cat))}</span></div><div class="ttile-grid">`;
         }
-        html += `<button type="button" class="ttile ${bk.id === state.ref.b ? 'cur' : ''}" data-b="${bk.id}" style="--cat-col:${cat.color}" title="${esc(bk.name)} (${bk.chapterList.length} chapters)">${esc(bk.abbr)}</button>`;
+        html += `<button type="button" class="ttile ${bk.id === state.ref.b ? 'cur' : ''}" data-b="${bk.id}" style="--cat-col:${cat.color}" title="${esc(bk.name)}">${esc(bk.abbr)}</button>`;
       }
       if (lastCat !== null) html += `</div>`;
       html += `</div>`;
@@ -768,7 +768,7 @@
       const isOpen = bk.id === state.ref.b || !!q;
       html += `
         <details data-b="${bk.id}" class="tbook ${bk.id === state.ref.b ? 'active-book' : ''}" style="--cat-col:${cat.color}" ${isOpen ? 'open' : ''}>
-          <summary><span class="tb-dot" style="background:${cat.color}"></span><span class="tb-name">${esc(bk.name)}</span><span class="tb-chc">${bk.chapterList.length} ch</span></summary>
+          <summary><span class="tb-dot" style="background:${cat.color}"></span><span class="tb-name">${esc(bk.name)}</span></summary>
           <div class="chgrid">${bk.chapterList.map(c => `<button type="button" data-b="${bk.id}" data-c="${c}" class="${bk.id === state.ref.b && c === state.ref.c ? 'cur' : ''}">${c}</button>`).join('')}</div>
           ${bk.id === state.ref.b ? `<div class="tvs-wrap"><div class="tvs-lbl">📍 Verses in ${esc(bk.abbr)} ${state.ref.c}:</div><div class="chgrid tvs-grid">${Array.from({ length: vMax }, (_, i) => i + 1).map(v => `<button type="button" data-v="${v}" class="${v === state.ref.v ? 'cur' : ''}">:${v}</button>`).join('')}</div></div>` : ''}
         </details>`;

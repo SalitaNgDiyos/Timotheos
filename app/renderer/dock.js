@@ -763,10 +763,9 @@
     if (maxed && ids.includes(maxed)) div.classList.add('max');
     const tabs = ids.map(id => {
       const p = PANELS.get(id);
-      return `<button class="dtab${id === act0 ? ' on' : ''}" data-id="${id}" style="--tc: var(--cap-${p.cap})" title="${esc(p.title)} — drag to move">${ic(p.icon, 15)}<span>${esc(p.title)}</span></button>`;
+      return `<button class="dtab${id === act0 ? ' on' : ''}" data-id="${id}" style="--tc: var(--cap-${p.cap})" title="${esc(p.title)}">${ic(p.icon, 15)}<span>${esc(p.title)}</span></button>`;
     }).join('');
     div.innerHTML = `<header class="dcap">
-        <span class="dgrip" title="Drag to move this panel">${ic('grip', 14)}</span>
         <div class="dtabs">${tabs}</div>
         ${ids.some(isBible) ? ((typeof document !== 'undefined' && document.documentElement.classList.contains('mobile')) ? (window.TimotheosNav ? `<span class="dnav">${TimotheosNav.barHtml()}</span>` : '') : `<button type="button" class="bvbible" data-a="bible" data-bv-idx="${isBible(act0) ? +act0.slice(2) : +ids.find(isBible).slice(2)}" title="Click to choose another Bible for this view · double-click to rename this view">${esc(PANELS.get(isBible(act0) ? act0 : ids.find(isBible)).title)}</button>`) : ''}
         <span class="dbtns">
