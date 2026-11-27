@@ -740,7 +740,7 @@
       lp = setTimeout(() => { const x = verseOf(tg) || verseAt(sx, sy, tg); if (!x || !H.hold) return; held = true; const ev = { target: tg, clientX: sx, clientY: sy }; H.hold(x, wordOf(ev), { x: sx, y: sy }); }, 500);
     }, { passive: true });
     wb.addEventListener('touchmove', e => { const t = e.touches[0]; if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) clearTimeout(lp); }, { passive: true });
-    wb.addEventListener('touchend', e => { clearTimeout(lp); if (held) { e.preventDefault(); } }, { passive: false });
+    wb.addEventListener('touchend', e => { clearTimeout(lp); if (held) { e.preventDefault(); setTimeout(() => { held = false; }, 400); } }, { passive: false });   // the click a hold leaves behind is swallowed; the flag must not outlive it, or the first tap in the verse sheet is lost
     // the old right-click menu is replaced by the screen's own (a mouse right-click, or a long press that the system turns into one)
     wb.addEventListener('contextmenu', e => {
       if (!root.classList.contains('sk')) return; if (!inText(e.target) && !e.target.closest('.bv [data-v]')) return;
@@ -749,7 +749,7 @@
     }, true);
     document.addEventListener('click', e => {
       if (!root.classList.contains('sk')) return;
-      if (held) { held = false; e.preventDefault(); e.stopPropagation(); return; }
+      if (held) { held = false; if (e.target.closest && e.target.closest('#workbench')) { e.preventDefault(); e.stopPropagation(); return; } }
       const tg = e.target; if (!tg.closest || !tg.closest('.bv .bvtext')) return;
       if (tg.closest('sup.fn, sup.xref')) { e.preventDefault(); e.stopPropagation(); noteHtml(tg.closest('sup')).then(h => sheet(`<div class="pcards"><article class="pcard">${h || '<p class="phint">Nothing to show.</p>'}</article></div>`, { title: tg.closest('sup.fn') ? 'Footnote' : 'Cross-reference' })); return; }
       if (tg.closest('.sk-aa')) { e.preventDefault(); e.stopPropagation(); formatFor(+tg.closest('.bv').dataset.i); return; }

@@ -10,3 +10,4 @@ Timotheos 0.6.131
 - Updates and module downloads: when Timotheos' own download stalls or fails, it tries again by itself with the computer's own downloader (curl, on Linux and Windows 10/11); the file is still checked against GitHub's fingerprint before installing.
 - Right-click menu labels are clearer: Find “word” in this Bible, Find G1385 in this Bible, and Look up “word” in Library.
 - A closed panel (or any empty space) now shows two links: Add Panel (pick any panel to fill that space) and Split Space (divide it; only offered while the space is big enough). They work with Edit Layout on or off.
+- Phone: the buttons in the verse sheet (hold a verse) now work with one tap; the first tap was being swallowed after the hold.
