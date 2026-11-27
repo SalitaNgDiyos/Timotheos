@@ -14,6 +14,7 @@ const TimotheosDownload = (() => {
     ebible: 'https://ebible.org/Scriptures/'
   };
   const APP_REPOS = new Set(['timotheos', 'dark-skinned-ibiblia']);
+  const AMB_REPO = 'ang-malayang-biblia-translation';
   const MOD_EXT_RE = /\.(ont|ot|nt|twm|twzip|zip|7z|bblx|bbli|cmtx|cmti|dctx|dcti|topx|topi|refx|refi|devx|devi|lexx|lexi|mapx|mapi|harx|hari|usfm|sfm|usfx|mybible)$/i;
   const SHOW = 120;
   let current = 'official', busy = false, ebibleRows = null, filter = '';
@@ -149,6 +150,49 @@ const TimotheosDownload = (() => {
       .concat(all.books || [])
       .map(m => String(m.name || m.title || ''))
       .filter(Boolean);
+  }
+
+  function isAmbModuleName(name) {
+    return /^amb\+?\.(?:nt|ont|ot)$/i.test(String(name || '').trim());
+  }
+
+  /** Find whether the SalitaNgDiyos AMB release has a newer version than this device's saved live AMB signature */
+  function findLiveAmbUpdate(remoteMods, installedNames, savedAmb = null) {
+    const installedAmb = [];
+    const seen = new Set();
+    for (const nm of (installedNames || [])) {
+      const s = String(nm || '').trim();
+      const low = s.toLowerCase();
+      if (isAmbModuleName(s) && !seen.has(low)) {
+        seen.add(low);
+        installedAmb.push(s);
+      }
+    }
+    if (!installedAmb.length) return null;
+
+    const candidates = (remoteMods || []).filter(m =>
+      m && m.url && isAmbModuleName(m.file) &&
+      (!m.repo || String(m.repo).toLowerCase() === AMB_REPO) &&
+      /\.(?:nt|ont)$/i.test(String(m.file || ''))
+    );
+    if (!candidates.length) return null;
+
+    candidates.sort((a, b) => {
+      const ca = compareStamps(b.stamp || extractStamp(b.updatedAt), a.stamp || extractStamp(a.updatedAt));
+      if (ca) return ca;
+      if ((b.updatedAt || '') !== (a.updatedAt || '')) return (b.updatedAt || '') > (a.updatedAt || '') ? 1 : -1;
+      const aPlus = /^amb\+/i.test(a.file || '') ? 1 : 0;
+      const bPlus = /^amb\+/i.test(b.file || '') ? 1 : 0;
+      return bPlus - aPlus;
+    });
+
+    const m = candidates[0];
+    const remoteSig = [m.tag || '', m.updatedAt || '', m.size ? String(m.size) : ''].filter(Boolean).join('|');
+    if (savedAmb && savedAmb.sig && remoteSig && savedAmb.sig === remoteSig) return null;
+    if (savedAmb && savedAmb.updatedAt && m.updatedAt && m.updatedAt === savedAmb.updatedAt &&
+        savedAmb.tag === (m.tag || '') && (!m.size || savedAmb.size === m.size)) return null;
+
+    return { mod: m, targetFiles: installedAmb, remoteSig };
   }
 
   /** Compare remote SalitaNgDiyos modules against installed files & saved versions */
@@ -618,14 +662,64 @@ const TimotheosDownload = (() => {
     };
   }
 
+  async function autoUpdateBundledAmb(cat = null) {
+    if (typeof state === 'undefined' || (state.settings && state.settings.ambAutoUpdate === false)) return null;
+    if (!net()) return null;
+    let mods = cat && Array.isArray(cat.modules) ? cat.modules : null;
+    if (!mods) {
+      const p = places();
+      const res = await fetchGitHubRepoModules(p.officialUser, 'Ang-Malayang-Biblia-Translation', '', false);
+      mods = res && Array.isArray(res.mods) ? res.mods : [];
+    }
+    const upd = findLiveAmbUpdate(mods, getInstalledModuleNames(), state.settings && state.settings.ambLiveVersion);
+    if (!upd) return null;
+
+    let updatedCount = 0;
+    let touched = false;
+    for (const targetFile of upd.targetFiles) {
+      try {
+        const tmpPath = await net().get(upd.mod.url, targetFile);
+        const r = await TimotheosModules.importModules([tmpPath], true);
+        const res = (r && r.results) || [];
+        if (res.some(x => x.status === 'updated' || x.status === 'imported')) updatedCount++;
+        if (res.some(x => x.status === 'updated' || x.status === 'imported' || x.status === 'already')) touched = true;
+      } catch (e) { /* keep trying remaining filename if both amb.nt and amb+.nt exist */ }
+    }
+    if (!touched) return null;
+
+    if (typeof save === 'function') {
+      const vers = Object.assign({}, (state.settings && state.settings.officialModVersions) || {});
+      const ambKey = upd.mod.modKey || normalizeModuleKey(upd.mod.file);
+      vers[ambKey] = { repo: upd.mod.repo || 'Ang-Malayang-Biblia-Translation', tag: upd.mod.tag, stamp: upd.mod.stamp, updatedAt: upd.mod.updatedAt, file: upd.mod.file, title: upd.mod.title };
+      for (const tf of upd.targetFiles) {
+        const tk = normalizeModuleKey(tf);
+        if (tk) vers[tk] = vers[ambKey];
+      }
+      await save({
+        ambLiveVersion: { sig: upd.remoteSig, tag: upd.mod.tag, updatedAt: upd.mod.updatedAt, size: upd.mod.size, file: upd.mod.file },
+        officialModVersions: vers
+      });
+    }
+    if (updatedCount > 0 && typeof window !== 'undefined' && window.TimotheosStudy && TimotheosStudy.flash) {
+      TimotheosStudy.flash(`Ang Malayang Biblia (${upd.mod.tag || 'latest'}) updated automatically.`);
+    }
+    return { updated: updatedCount > 0, mod: upd.mod };
+  }
+
   async function checkModuleUpdates(interactive = false) {
     if (!net()) return [];
     const cat = await loadOfficial(true);
+    let ambRes = null;
+    try { ambRes = await autoUpdateBundledAmb(cat); } catch (e) { /* keep checking other modules */ }
     const savedVers = (typeof state !== 'undefined' && state.settings && state.settings.officialModVersions) || {};
     const ignored = interactive ? {} : ((typeof state !== 'undefined' && state.settings && state.settings.ignoredModUpdates) || {});
     const updates = findModuleUpdates(cat.modules, getInstalledModuleNames(), savedVers, ignored);
     if (updates.length) showModuleUpdateNotice(updates);
-    else if (interactive) status('All installed SalitaNgDiyos modules are up to date.');
+    else if (interactive) {
+      status(ambRes && ambRes.updated
+        ? `Ang Malayang Biblia (${E(ambRes.mod.tag || 'latest')}) was updated automatically. All other SalitaNgDiyos modules are up to date.`
+        : 'All installed SalitaNgDiyos modules are up to date.');
+    }
     return updates;
   }
 
@@ -635,6 +729,7 @@ const TimotheosDownload = (() => {
     try {
       const env = (TimotheosHost.info().env || {});
       if (env.TIMOTHEOS_SCRIPT) return;
+      try { await autoUpdateBundledAmb(); } catch (e) { /* quiet live AMB check */ }
       await checkModuleUpdates(false);
     } catch (e) { /* quiet startup check */ }
   }
@@ -690,7 +785,7 @@ const TimotheosDownload = (() => {
     await p;
     if (busy) net().stop();
   }
-  return { open, repos, isEncryptedModule, parseCsv, ebibleList, readCatalog, readTheWordXml, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, checkModuleUpdates, checkModuleUpdatesStartup, dedupeModules, parseGitHubRepoUrl, rewriteGitHubBlobUrl, parseHumanSize, parseGitHubExpandedAssets, parseGitHubReposHtml };
+  return { open, repos, isEncryptedModule, parseCsv, ebibleList, readCatalog, readTheWordXml, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, isAmbModuleName, findLiveAmbUpdate, autoUpdateBundledAmb, checkModuleUpdates, checkModuleUpdatesStartup, dedupeModules, parseGitHubRepoUrl, rewriteGitHubBlobUrl, parseHumanSize, parseGitHubExpandedAssets, parseGitHubReposHtml };
 })();
 if (typeof window !== 'undefined') window.TimotheosDownload = TimotheosDownload;
 if (typeof module !== 'undefined' && module.exports) module.exports = TimotheosDownload;

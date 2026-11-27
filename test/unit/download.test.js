@@ -150,4 +150,43 @@ const htmlAssets = dl.parseGitHubExpandedAssets(
 ok(htmlAssets.length === 2 && htmlAssets[0].file === 'LXX_Brenton_2026-11-21_2015.ot' && htmlAssets[0].size === 20 * 1048576 && htmlAssets[1].stamp === '2026-11-21_2015',
   'parseGitHubExpandedAssets parses release assets, sizes, and timestamps from GitHub HTML');
 
+// 13. Real-time bundled AMB auto-update detection (supports both amb.nt and amb+.nt and same-tag re-uploads)
+ok(dl.isAmbModuleName('amb.nt') && dl.isAmbModuleName('amb+.nt') && !dl.isAmbModuleName('kjv.ont'),
+  'isAmbModuleName matches amb.nt and amb+.nt only');
+
+const ambMods = dl.parseOfficialRelease(
+  { name: 'Ang-Malayang-Biblia-Translation', description: 'Tagalog NT' },
+  {
+    tag_name: '2026.1',
+    published_at: '2026-11-27T04:00:00Z',
+    assets: [
+      { name: 'amb+.nt', size: 6564900, updated_at: '2026-11-27T04:00:00Z', browser_download_url: 'https://example.com/amb+.nt' },
+      { name: 'amb+.usfm.zip', size: 1495979, updated_at: '2026-11-27T04:00:00Z', browser_download_url: 'https://example.com/amb+.usfm.zip' }
+    ]
+  }
+);
+const liveAmb1 = dl.findLiveAmbUpdate(ambMods, ['amb.nt', 'kjv.ont'], null);
+ok(liveAmb1 && liveAmb1.mod.file === 'amb+.nt' && liveAmb1.targetFiles.length === 1 && liveAmb1.targetFiles[0] === 'amb.nt',
+  'findLiveAmbUpdate offers live update for bundled amb.nt when amb+.nt is released');
+
+const liveAmb2 = dl.findLiveAmbUpdate(ambMods, ['amb.nt'], { sig: liveAmb1.remoteSig, tag: '2026.1', updatedAt: '2026-11-27T04:00:00Z', size: 6564900 });
+ok(liveAmb2 === null, 'findLiveAmbUpdate skips when ambLiveVersion matches current signature');
+
+const ambModsReupload = dl.parseOfficialRelease(
+  { name: 'Ang-Malayang-Biblia-Translation', description: 'Tagalog NT' },
+  {
+    tag_name: '2026.1',
+    published_at: '2026-11-27T06:30:00Z',
+    assets: [
+      { name: 'amb+.nt', size: 6565123, updated_at: '2026-11-27T06:30:00Z', browser_download_url: 'https://example.com/amb+.nt' }
+    ]
+  }
+);
+const liveAmb3 = dl.findLiveAmbUpdate(ambModsReupload, ['amb.nt'], { sig: liveAmb1.remoteSig, tag: '2026.1', updatedAt: '2026-11-27T04:00:00Z', size: 6564900 });
+ok(liveAmb3 !== null && liveAmb3.remoteSig !== liveAmb1.remoteSig,
+  'findLiveAmbUpdate detects re-upload on the same 2026.1 release tag when timestamp or size changes');
+
+ok(dl.findLiveAmbUpdate(ambMods, ['kjv.ont'], null) === null,
+  'findLiveAmbUpdate skips when user has removed AMB');
+
 console.log(`download: ${passed} ok`);
