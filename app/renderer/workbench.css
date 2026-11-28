@@ -1091,3 +1091,6 @@ body.dragging .dlink { pointer-events: none; }
 .lgman .lgbook select { flex: none; max-width: 45%; }
 .lgman .lgbook.hidden { display: none; }
 .dfloat > .dcap { cursor: grab; } .dfloat > .dcap:active { cursor: grabbing; }
+
+/* a popped-out window (popwin.js): only its panel, without the main window's title bar, toolbar and status bar */
+html.popwin .titlebar, html.popwin .toolbar, html.popwin .statusbar, html.popwin .dbtn[data-act="float"], html.popwin .dbtn[data-act="max"], html.popwin .dbtn[data-act="close"], html.popwin .dbtn[data-act="pop"] { display: none !important; }

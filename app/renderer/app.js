@@ -86,6 +86,8 @@ window.showLookup = showLookup;
 
 async function init() {
   state.settings = await api.getSettings();
+  const popped = window.TimotheosPop && TimotheosPop.isPop();   // a window of its own for one panel (popwin.js)
+  if (popped) TimotheosPop.adjustSettings(state.settings);
   state.ref = state.settings.ref || state.ref;
   initViews();
   // the Bible text comes first (0.6.127): the list of modules and the Bible of the open view are asked for at once, so
@@ -115,11 +117,13 @@ async function init() {
   api.onMenu(cmd => runCommand(cmd));
   TimotheosTitlebar.init();
   TimotheosProps.init();
+  if (window.TimotheosI18n) TimotheosI18n.apply(state.settings.lang || 'en');
+  if (popped) { TimotheosPop.afterInit(); return; }   // the start-up checks run in the main window only
   setTimeout(() => { try { if (window.TimotheosOptions && TimotheosOptions.startupAutoSync) TimotheosOptions.startupAutoSync(); } catch (e) {} }, 3000);
   setTimeout(() => { try { TimotheosUpdates.startup(); } catch (e) { /* the quiet look at start-up never gets in the way */ } }, 5000);
   setTimeout(() => { try { if (window.TimotheosDownload && TimotheosDownload.checkModuleUpdatesStartup) TimotheosDownload.checkModuleUpdatesStartup(); } catch (e) {} }, 7500);
-  if (window.TimotheosI18n) TimotheosI18n.apply(state.settings.lang || 'en');
   if (api.onExternalSync) api.onExternalSync(handleExternalSync);
+  setTimeout(() => { try { if (window.TimotheosPop) TimotheosPop.restore(); } catch (e) {} }, 1200);   // the popped-out windows of last time
 }
 
 async function handleExternalSync(data) {
@@ -183,6 +187,7 @@ function initDock() {
   if (window.TimotheosParallel && $('#tab-par')) { TimotheosParallel.init(); TimotheosDock.register({ id: 'par', title: 'Parallel Bibles', icon: 'parallel', cap: 'bible', el: $('#tab-par'), startHidden: true }); }
   ensurePanes(); // the Bible views are panels of the grid too
   TimotheosDock.init(state.settings.dock, {
+    canPop: () => !!(window.TimotheosPop && TimotheosPop.can()), onPop: id => TimotheosPop.popOut(id),
     onSave: layout => save({ dock: layout }),
     // undo / redo of layout changes (0.6.122): the Bible views are part of what is undone
     snapshot: () => ({ views: JSON.parse(JSON.stringify(views())), active: state.active }),
@@ -704,6 +709,7 @@ async function useBible(bible) {
   await ensureInfo(bible);
   views()[state.active].bible = bible; await setViews([...views()]);
 }
+window.TimotheosCloseView = i => closeView(i);
 function closeView(i) {
   if (views().length < 2) {
     if (!document.documentElement.classList.contains('mobile') && window.TimotheosDock) {

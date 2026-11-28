@@ -1049,6 +1049,8 @@ pub fn run() {
                 responder.respond(r);
             });
         })
+        // closing the main window ends Timotheos, popped-out panel windows included (they come back at the next start)
+        .on_window_event(|w, e| { if w.label() == "main" { if let tauri::WindowEvent::Destroyed = e { w.app_handle().exit(0); } } })
         .setup(|app| {
             // test hook: run a script in the page 3 seconds after the start
             if let Ok(path) = std::env::var("TIMOTHEOS_SCRIPT") {

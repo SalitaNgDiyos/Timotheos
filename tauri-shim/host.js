@@ -19,8 +19,18 @@ document.documentElement.classList.toggle('mobile', isMobile);
 if (isAndroid) installAndroidSpeech();
 const win = getCurrentWindow();
 
+/* ---------- popped-out windows ----------
+ * A panel can be popped out into a window of its own (index.html?pop=<panel id>). Such a window starts no engine of its
+ * own: every request goes to the main window's engine over a BroadcastChannel, so only one engine reads modules and
+ * saves files. Its settings changes stay in that window; notes, highlights and the other study data are saved by the
+ * main engine and every window takes the change at once. */
+const POP = new URLSearchParams(location.search).get('pop') || '';
+if (POP) document.documentElement.classList.add('popwin');
+const popCh = typeof BroadcastChannel === 'function' && !isMobile ? new BroadcastChannel('timotheos-pop') : null;
+const popWaiting = new Map(); let popSeq = 0;
+
 /* ---------- worker ---------- */
-const worker = new Worker('worker.js');
+const worker = POP ? { postMessage() {}, onmessage: null, onerror: null } : new Worker('worker.js');
 let started; const startedP = new Promise(r => { started = r; });
 let seq = 0; const waiting = new Map(); const listeners = {};
 const on = (ch, fn) => { (listeners[ch] = listeners[ch] || []).push(fn); };
@@ -29,14 +39,14 @@ worker.onmessage = async ev => {
   const m = ev.data;
   if (m.t === 'started') started();
   else if (m.t === 'ipc-res') { const w = waiting.get(m.id); if (w) { waiting.delete(m.id); w(m.res); } }
-  else if (m.t === 'event') (listeners[m.ch] || []).forEach(f => { try { f(m.data); } catch (e) { console.error(e); } });
+  else if (m.t === 'event') { (listeners[m.ch] || []).forEach(f => { try { f(m.data); } catch (e) { console.error(e); } }); if (popCh) popCh.postMessage({ t: 'event', ch: m.ch, data: m.data }); }
   else if (m.t === 'host') {
     try { worker.postMessage({ t: 'host-res', id: m.id, val: await hostOp(m.op, m.args) }); }
     catch (e) { worker.postMessage({ t: 'host-res', id: m.id, err: String(e && e.message || e) }); }
   }
 };
 worker.onerror = e => console.error('worker error', e.message, e.filename, e.lineno);
-const infoP = invoke('host_info').then(i => { info = i; worker.postMessage({ t: 'init', info: i }); return i; });
+const infoP = invoke('host_info').then(i => { info = i; worker.postMessage({ t: 'init', info: i }); if (POP) started(); return i; });
 
 // Android: an export is written into the app's own "exports" folder (the worker asks for a place to save and gets a
 // path there); when the request that wrote it is done, Android's "Save to" screen takes it where the user chooses.
@@ -57,11 +67,59 @@ async function androidFlushExports() {
   }
 }
 async function call(ch, ...args) {
+  if (POP) return popCall(ch, args);
   await infoP; await startedP;
   const r = await new Promise(res => { const id = ++seq; waiting.set(id, res); worker.postMessage({ t: 'ipc', id, ch, args }); });
   if (androidExports.length && r && r.ok) androidFlushExports(); else androidExports.length = 0;
   if (!r || !r.ok) throw new Error(r ? r.error : 'no answer');
   return r.data;
+}
+
+/* a popped-out window asks the main window's engine; its own settings changes are kept in this window only */
+let popSettings = null;
+async function popCall(ch, args) {
+  if (ch === 'settings:set') { popSettings = Object.assign(popSettings || {}, args[0] || {}); return true; }
+  const r = await new Promise((res, rej) => {
+    const id = POP + ':' + (++popSeq); popWaiting.set(id, res);
+    const t = setTimeout(() => { if (popWaiting.delete(id)) rej(new Error('The main Timotheos window did not answer.')); }, 120000);
+    popWaiting.set(id, v => { clearTimeout(t); res(v); });
+    popCh.postMessage({ t: 'call', id, ch, args });
+  });
+  if (!r || !r.ok) throw new Error(r ? r.error : 'no answer');
+  return ch === 'settings:get' && popSettings ? Object.assign(r.data, popSettings) : r.data;
+}
+if (popCh) popCh.onmessage = async ev => {
+  const m = ev.data || {};
+  if (POP) {
+    if (m.t === 'res' && popWaiting.has(m.id)) { const f = popWaiting.get(m.id); popWaiting.delete(m.id); f(m.res); }
+    else if (m.t === 'event') (listeners[m.ch] || []).forEach(f => { try { f(m.data); } catch (e) { console.error(e); } });
+    else if (m.t === 'ud' && m.from !== POP) udChanged(m.key, m.value);
+    else if (m.t === 'close' && m.label === win.label) win.destroy();
+    return;
+  }
+  // the main window: answer the popped-out windows with its own engine
+  if (m.t === 'call') {
+    await infoP; await startedP;
+    const res = await new Promise(r => { const id = ++seq; waiting.set(id, r); worker.postMessage({ t: 'ipc', id, ch: m.ch, args: m.args }); });
+    popCh.postMessage({ t: 'res', id: m.id, res });
+  } else if (m.t === 'ud' && m.from) udChanged(m.key, m.value);
+  else if (m.t === 'bounds' || m.t === 'closed') { if (window.TimotheosPop) window.TimotheosPop.onMessage(m); }
+};
+/** notes, highlights, bookmarks… changed in another window: take the change and draw the chapter again */
+let udTimer = null;
+function udChanged(key, value) {
+  const S = window.TimotheosStudy; if (!S || !S.study || !S.study.ud) return;
+  S.study.ud[key] = value;
+  clearTimeout(udTimer); udTimer = setTimeout(() => { try { if (window.renderChapter) window.renderChapter(false); } catch (e) { /* later */ } }, 150);
+}
+async function openPopWindow(label, url, b) {
+  if (isMobile) return false;
+  const ex = await WebviewWindow.getByLabel(label);
+  if (ex) { try { await ex.setFocus(); return true; } catch (e) { /* closed */ } }
+  const o = { url, title: 'Timotheos', width: b && b.w || 520, height: b && b.h || 640, minWidth: 260, minHeight: 200 };
+  if (b && Number.isFinite(b.x) && Number.isFinite(b.y)) { o.x = b.x; o.y = b.y; }
+  new WebviewWindow(label, o);
+  return true;
 }
 
 /* ---------- things done for the worker ---------- */
@@ -190,7 +248,7 @@ const api = {
   pathForFile: () => '',
   bibleInfo: (id, o) => call('bible:info', id, o), nav: ids => call('bible:nav', ids), chapter: (ids, b, c) => call('bible:chapter', ids, b, c),
   search: (ids, q, o) => call('search', ids, q, o), searchDescribe: (q, o) => call('search:describe', q, o), searchRanges: () => call('search:ranges'), checkRange: t => call('search:checkRange', t),
-  userData: () => call('ud:get'), studyBackup: () => call('study:backup'), studyRestoreRead: () => call('study:restoreRead'), studyRestoreApply: (f, m) => call('study:restoreApply', f, m), setUserData: (k, v) => call('ud:set', k, v),
+  userData: () => call('ud:get'), studyBackup: () => call('study:backup'), studyRestoreRead: () => call('study:restoreRead'), studyRestoreApply: (f, m) => call('study:restoreApply', f, m), setUserData: (k, v) => { if (popCh) popCh.postMessage({ t: 'ud', key: k, value: v, from: POP || 'main' }); return call('ud:set', k, v); },
   planPresets: () => call('plans:presets'), createPlan: (o, ids) => call('plans:create', o, ids), planCatchUp: p => call('plans:catchUp', p), planRestart: p => call('plans:restart', p),
   copyText: (t, h) => call('clipboard:write', t, h), print: () => call('print'), lookup: (k, key, b) => call('lookup', k, key, b),
   bookOpen: id => call('book:open', id), bookAbout: id => call('book:about', id), bookTopics: id => call('book:topics', id), bookSearch: (id, q) => call('book:search', id, q),
@@ -251,7 +309,7 @@ const net = {
     return how;
   },
 };
-window.TimotheosHost = { isMobile, isAndroid, info: () => info, seedBundled, net, openPanelsWindow };
+window.TimotheosHost = { isMobile, isAndroid, info: () => info, seedBundled, net, openPanelsWindow, pop: POP, openPopWindow, popClose: label => popCh && popCh.postMessage({ t: 'close', label }) };
 
 /* ---------- window buttons, dragging, size memory (computer only) ---------- */
 function windowButtons() {
@@ -277,6 +335,15 @@ async function restoreBounds() {
     win.onResized(save);
   } catch (e) { /* defaults */ }
 }
+/** a popped-out window tells the main window where it is and how big, and when you close it */
+function popWindowReports() {
+  let t = null;
+  const send = () => { clearTimeout(t); t = setTimeout(async () => {
+    try { const f = await win.scaleFactor(), p = await win.outerPosition(), z = await win.innerSize();
+      popCh.postMessage({ t: 'bounds', label: win.label, x: Math.round(p.x / f), y: Math.round(p.y / f), w: Math.round(z.width / f), h: Math.round(z.height / f) }); } catch (e) { /* closing */ } }, 400); };
+  win.onMoved(send); win.onResized(send);
+  win.onCloseRequested(() => { popCh.postMessage({ t: 'closed', label: win.label }); });
+}
 async function dragDrop() {
   if (isMobile) return;
   try {
@@ -291,7 +358,7 @@ async function dragDrop() {
 window.addEventListener('DOMContentLoaded', () => {
   const t = setInterval(() => { if (document.querySelector('.titlebar .tmwrap, .titlebar *')) { clearInterval(t); windowButtons(); } }, 100);
   setTimeout(() => clearInterval(t), 8000);
-  restoreBounds(); dragDrop();
+  if (POP) popWindowReports(); else { restoreBounds(); dragDrop(); }
   // test hook: run a script in the page, wait, then say that the picture can be taken
   infoP.then(async i => {
     if (!i.env.TIMOTHEOS_SCRIPT) return;

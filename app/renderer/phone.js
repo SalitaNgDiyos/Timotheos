@@ -17,7 +17,7 @@
 
   function apply() {
     queued = false;
-    const phone = mq.matches || document.documentElement.classList.contains('mobile');
+    const phone = (mq.matches && !document.documentElement.classList.contains('popwin')) || document.documentElement.classList.contains('mobile');   // a narrow popped-out window keeps the computer layout
     document.documentElement.classList.toggle('phone', phone);
     // the menu (File View Help) sits at the left of the toolbar row on a phone, and goes back to the title bar otherwise
     const menus = document.getElementById('tbMenus'), tool = document.getElementById('toolbar'), tb = document.getElementById('titlebar');

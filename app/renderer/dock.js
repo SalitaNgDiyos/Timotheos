@@ -775,6 +775,7 @@
           <button class="dbtn dzoom" data-act="zoom+" title="Larger (Ctrl + mouse wheel up)">${ic('textUp', 15)}</button>
           <button class="dbtn" data-act="float" title="${where.float ? 'Dock again' : 'Float as a window'}">${ic(where.float ? 'dockIn' : 'float', 14)}</button>
           ${where.float ? '' : `<button class="dbtn" data-act="max" title="${div.classList.contains('max') ? 'Restore' : 'Maximize'}">${ic(div.classList.contains('max') ? 'restore' : 'max', 14)}</button>`}
+          ${opts.canPop && opts.canPop(act0) ? `<button class="dbtn" data-act="pop" title="Pop out into its own window (move it anywhere on the screen)">${ic('detach', 14)}</button>` : ''}
           <button class="dbtn dmore" data-act="more" title="More: fonts and colours, size, float, maximize">${ic('dots', 14)}</button>
           <button class="dbtn" data-act="close" title="Close (reopen from the Panels menu)">${ic('close', 14)}</button>
         </span></header><div class="dbody"></div>`;
@@ -788,6 +789,7 @@
       if (a === 'close') { if (!(opts.onClose && opts.onClose(act0))) hide(act0); return; }
       if (a === 'more') return moreMenu(div, b);
       if (a === 'skin') { if (opts.onSkin) opts.onSkin(act0, b); return; }
+      if (a === 'pop') { if (opts.onPop) opts.onPop(act0); return; }
       if (a === 'float') toggleFloat(act0);
       if (a === 'zoom-' || a === 'zoom+') { if (opts.onZoom) opts.onZoom(act0, a === 'zoom+' ? 1 : -1); }
       if (a === 'max') { maxed = maxed && ids.includes(maxed) ? null : act0; render(); }
@@ -1638,6 +1640,7 @@
     setDetachMode, toggleDetachMode, getDetachMode, setSnapGrid, toggleSnapGrid, getSnapGrid,
     setNextRect, placeInSpace, startMenuDrag, clearAll, setBlueprintGrid, openLayoutDesigner, createBlueprintSlots,
     undo, redo, canUndo, canRedo, closeBibleView, resetHistory: baseline,
+    rectOf: id => { const p = PANELS.get(id); const g = p && p.el.closest('.dgroup'); return g ? g.getBoundingClientRect() : null; },
     thumbnailSvg, findEmptySpaces: () => findEmptySpaces(L ? L.areas : []),
     findAvailableSpaces,
     panels: () => [...PANELS.values()], panel: id => PANELS.get(id), state: () => clone(L), located: id => locate(id), PRESETS, isBible,
