@@ -7,3 +7,7 @@ Timotheos 0.6.132
 - Right-click → "Find “word” in this Bible" searches only that Bible in Bible Search (phone: the first open Bible).
 - Parallel Bibles, Stacked: a superscript verse number before each Bible's text, the same as Columns; the separate verse heading is gone.
 - Bible Search results, Parallel Bibles and the Library use the same text background as a Bible view.
+- Download modules: several downloads can run at the same time; each row shows its own progress and a Stop button, and the imports follow one after the other.
+- The scripture popup takes the size of its verse (small for a short verse, bigger for a long one), grows wider first, stays inside the app window, and scrolls only when the window is too small. It can still be resized by hand (until it closes).
+- The single-commentary view (and the Library entry) use the same text background as the Bible views.
+- Where to get modules: the file chooser now opens a moment after the window closes (a possible cause of a crash on some desktops).

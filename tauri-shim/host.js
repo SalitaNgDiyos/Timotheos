@@ -225,10 +225,11 @@ async function seedBundled() {
 let dlSeq = 0;
 const net = {
   MAX: 400 << 20,
-  async get(url, name, onProgress) {
+  async get(url, name, onProgress, handle) {
     await infoP;
     const dest = info.tmp + '/download-' + Date.now() + '-' + (++dlSeq) + '/' + (String(name || 'file').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, '_').slice(0, 150) || 'file');
-    const t = onProgress ? setInterval(async () => { try { onProgress(await invoke('net_progress')); } catch (e) { /* no progress */ } }, 350) : null;
+    if (handle) handle.dest = dest;   // the page can stop this very download: net.stop(handle.dest)
+    const t = onProgress ? setInterval(async () => { try { onProgress(await invoke('net_progress', { dest })); } catch (e) { /* no progress */ } }, 350) : null;
     try { await invoke('net_get', { url, dest, max: net.MAX }); } catch (e) { throw new Error(String(e && e.message || e)); } finally { if (t) clearInterval(t); }
     return dest;
   },
@@ -237,7 +238,7 @@ const net = {
     try { return await invoke('net_text', { url }); }
     catch (e) { throw new Error(String(e && e.message || e)); }
   },
-  stop: () => invoke('net_stop'),
+  stop: dest => invoke('net_stop', { dest: dest || null }),
   sha256: path => invoke('net_sha256', { path }),
   // the downloaded installer: Windows starts it (and Timotheos closes, below), Linux installs it and starts Timotheos again, Android's own installer screen opens
   async install(path) {

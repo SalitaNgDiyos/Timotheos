@@ -17,9 +17,11 @@ const TimotheosDownload = (() => {
   const AMB_REPO = 'ang-malayang-biblia-translation';
   const MOD_EXT_RE = /\.(ont|ot|nt|twm|twzip|zip|7z|bblx|bbli|cmtx|cmti|dctx|dcti|topx|topi|refx|refi|devx|devi|lexx|lexi|mapx|mapi|harx|hari|usfm|sfm|usfx|mybible)$/i;
   const SHOW = 120;
-  let current = 'official', busy = false, ebibleRows = null, filter = '';
+  let current = 'official', ebibleRows = null, filter = '';
   const cache = new Map();
   const added = new Set();
+  const active = new Map();   // id -> { handle, text }: the downloads that run now, several at once
+  let importChain = Promise.resolve();   // the imports go one after the other; the downloads do not wait for each other
 
   const net = () => (typeof window !== 'undefined' && window.TimotheosHost && TimotheosHost.net) || null;
   function places() {
@@ -538,11 +540,12 @@ const TimotheosDownload = (() => {
       const badge = u ? `<span class="dlbadge">Update available</span>` : '';
       const btnCls = u ? 'dlget updbtn' : 'dlget';
       const btnLabel = u ? 'Update' : (added.has(m.id) ? 'Added' : (isInstalled ? 'Installed' : 'Download'));
-      const btnDis = !u && (added.has(m.id) || isInstalled);
+      const run = active.get(m.id);
+      const btnDis = !!run || (!u && (added.has(m.id) || isInstalled));
       return `<div class="dlrow" data-id="${E(m.id)}"><div class="dlt"><b>${E(m.title)}</b>${badge}
       <span>${E([m.language + (m.own ? ' (' + m.own + ')' : ''), m.description, m.size ? mb(m.size) : ''].filter(Boolean).join(' · '))}</span>
       ${m.licence ? `<small>${E(m.licence.length > 220 ? m.licence.slice(0, 220) + '…' : m.licence)}</small>` : ''}</div>
-      <button type="button" class="${btnCls}"${btnDis ? ' disabled' : ''}>${btnLabel}</button></div>`;
+      <div class="dlact"><button type="button" class="${btnCls}"${btnDis ? ' disabled' : ''}>${run ? '…' : btnLabel}</button>${run ? `<span class="dlpr">${E(run.text || '')}</span><button type="button" class="dlstop">Stop</button>` : ''}</div></div>`;
     }).join('') + more;
   }
 
@@ -589,9 +592,9 @@ const TimotheosDownload = (() => {
     q('#dlList').dataset.n = cat.modules.length;
   }
 
-  async function downloadAndImportOne(m, onPct) {
-    const path = await net().get(m.url, m.file, onPct);
-    const r = await TimotheosModules.importModules([path], true);
+  async function downloadAndImportOne(m, onPct, handle) {
+    const path = await net().get(m.url, m.file, onPct, handle);
+    const r = await (importChain = importChain.catch(() => {}).then(() => TimotheosModules.importModules([path], true)));
     const res = (r && r.results) || [];
     const good = res.filter(x => x.status === 'imported' || x.status === 'updated');
     if (good.length || res.some(x => x.status === 'already')) {
@@ -601,19 +604,22 @@ const TimotheosDownload = (() => {
     return { res, good };
   }
 
-  async function fetchOne(id, btn) {
-    if (busy) return; const repo = repos().find(r => r.id === current);
+  const rowOf = id => { const l = q('#dlList'); return l ? [...l.querySelectorAll('.dlrow')].find(r => r.dataset.id === id) : null; };
+  async function fetchOne(id) {
+    if (active.has(id)) return; const repo = repos().find(r => r.id === current);
     const cat = await load(repo); const m = cat.modules.find(x => x.id === id); if (!m) return;
-    busy = true; btn.disabled = true; btn.textContent = '…';
-    status(`Downloading <b>${E(m.title)}</b>… <span id="dlPct"></span> <button type="button" id="dlStop">Stop</button>`);
+    const run = { handle: {}, text: '' }; active.set(id, run);
+    const redrawList = () => { if (q('#dlList') && current === repo.id) q('#dlList').innerHTML = rowsHtml(cat.modules); };
+    redrawList();
+    const n = active.size; status(n > 1 ? `Downloading ${n} modules at once…` : `Downloading <b>${E(m.title)}</b>…`);
     try {
-      const { res, good } = await downloadAndImportOne(m, p => { const s = q('#dlPct'); if (s) s.textContent = p.total ? mb(p.done) + ' of ' + mb(p.total) : p.done ? mb(p.done) : ''; });
+      const { res, good } = await downloadAndImportOne(m, p => { run.text = p.total ? mb(p.done) + ' of ' + mb(p.total) : p.done ? mb(p.done) : ''; const r = rowOf(id), sp = r && r.querySelector('.dlpr'); if (sp) sp.textContent = run.text; }, run.handle);
       if (good.length) status(`Added: <b>${E(good.map(x => x.title || x.name).join(', '))}</b>. It is in your library now.`);
       else if (res.some(x => x.status === 'already')) status(`<b>${E(m.title)}</b> is already in your library.`);
       else status(`<b>${E(m.title)}</b> was downloaded but could not be imported. ${E((res[0] && (res[0].reason || res[0].note)) || '')}`, true);
     } catch (e) { status(`<b>${E(m.title)}</b> was not downloaded. ${E(e.message)}`, true); }
-    busy = false;
-    if (q('#dlList')) q('#dlList').innerHTML = rowsHtml(cat.modules);
+    active.delete(id);
+    redrawList();
   }
 
   /* ---------- Official SalitaNgDiyos Module Update Notification Dialog ---------- */
@@ -760,10 +766,10 @@ const TimotheosDownload = (() => {
   function redraw() { const b = q('#modalBody'); if (!b || !q('.dlmods', b)) return; b.innerHTML = frame(); wire(); show(); }
   function wire() {
     const root = q('.dlmods'); if (!root) return;
-    q('#dlRepo').onchange = e => { if (busy) { e.target.value = current; return; } current = e.target.value; filter = ''; redraw(); };
+    q('#dlRepo').onchange = e => { current = e.target.value; filter = ''; redraw(); };
     const chk = q('#dlCheckUpd');
     if (chk) chk.onclick = async () => {
-      if (busy) return;
+      if (active.size) return;
       chk.disabled = true; status('Checking SalitaNgDiyos repositories for module updates…');
       try { await checkModuleUpdates(true); await show(false); }
       catch (e) { status(`Could not check for updates: ${E(e.message)}`, true); }
@@ -777,17 +783,17 @@ const TimotheosDownload = (() => {
     q('#dlFind').oninput = async e => { filter = e.target.value; try { const cat = await load(repos().find(r => r.id === current)); if (q('#dlList')) q('#dlList').innerHTML = rowsHtml(cat.modules); } catch (err) { /* not loaded yet */ } };
     q('#dlFind').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } };
     root.onclick = e => {
-      if (e.target.closest('#dlStop')) return net().stop();
-      const b = e.target.closest('.dlget'); if (b && !b.disabled) fetchOne(b.closest('.dlrow').dataset.id, b);
+      const sb = e.target.closest('.dlstop'); if (sb) { const run = active.get(sb.closest('.dlrow').dataset.id); if (run && run.handle.dest) net().stop(run.handle.dest); return; }
+      const b = e.target.closest('.dlget'); if (b && !b.disabled) fetchOne(b.closest('.dlrow').dataset.id);
     };
   }
   async function open() {
     if (!net()) return TimotheosModules.messageBox('Download modules', '<p>This build of Timotheos cannot download. Use <b>Import modules</b> with files you downloaded yourself.</p>');
-    busy = false;
+    active.clear();
     const p = TimotheosModules.modal('Download modules', frame(), [{ label: 'Close', value: null }], true);
     wire(); show();
     await p;
-    if (busy) net().stop();
+    if (active.size) net().stop();
   }
   return { open, repos, isEncryptedModule, parseCsv, ebibleList, readCatalog, readTheWordXml, normalizeModuleKey, extractStamp, compareStamps, parseOfficialRelease, findModuleUpdates, isAmbModuleName, findLiveAmbUpdate, autoUpdateBundledAmb, checkModuleUpdates, checkModuleUpdatesStartup, dedupeModules, parseGitHubRepoUrl, rewriteGitHubBlobUrl, parseHumanSize, parseGitHubExpandedAssets, parseGitHubReposHtml };
 })();

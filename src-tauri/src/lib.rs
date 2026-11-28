@@ -510,9 +510,12 @@ fn write_b64(path: String, data: String, append: bool) -> Result<(), String> {
 fn read_text_file(path: String) -> Result<String, String> { fs::read_to_string(path).map_err(|e| e.to_string()) }
 
 /* ---------- the internet: only the "Download modules" window uses it, and only when the user asks ---------- */
-static NET_DONE: AtomicU64 = AtomicU64::new(0);
-static NET_TOTAL: AtomicU64 = AtomicU64::new(0);
-static NET_STOP: AtomicBool = AtomicBool::new(false);
+/// one running download: how far it is, and whether the user pressed Stop for it (several can run at once)
+#[derive(Default)]
+struct NetJob { done: AtomicU64, total: AtomicU64, stop: AtomicBool }
+static NET_JOBS: std::sync::OnceLock<Mutex<HashMap<String, std::sync::Arc<NetJob>>>> = std::sync::OnceLock::new();
+static NET_LAST: Mutex<String> = Mutex::new(String::new());
+fn net_jobs() -> &'static Mutex<HashMap<String, std::sync::Arc<NetJob>>> { NET_JOBS.get_or_init(|| Mutex::new(HashMap::new())) }
 
 fn temp_dir_of(app: &tauri::AppHandle) -> PathBuf {
     if cfg!(target_os = "android") { app.path().app_cache_dir().unwrap_or_default() } else { std::env::temp_dir() }
@@ -689,13 +692,13 @@ fn net_fetch_text(cache_file: Option<&Path>, url: &str) -> Result<String, String
 /// downloads a file: Timotheos' own downloader first (system DNS, then public DNS); when the connection stalls or fails,
 /// the computer's own curl tries again (Linux, macOS, Windows 10/11 have it), with retries. The update check still
 /// compares the file with its SHA-256 fingerprint, so a file from either way is checked the same.
-fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
-    let first = net_fetch_once(url, dest, max);
+fn net_fetch(url: &str, dest: &Path, max: u64, job: &NetJob) -> Result<u64, String> {
+    let first = net_fetch_once(url, dest, max, job);
     let e = match first { Ok(n) => return Ok(n), Err(e) => e };
     if e == "Stopped." || e.contains("larger than") || e.starts_with("Only https") || e.contains("error 404") || e.contains("error 403") { return Err(e); }
     #[cfg(not(target_os = "android"))]
     {
-        match net_fetch_curl(url, dest, max) {
+        match net_fetch_curl(url, dest, max, job) {
             Ok(n) => return Ok(n),
             Err(c) if c == "Stopped." => return Err(c),
             Err(c) => return Err(format!("{e} (tried again with the computer's curl: {c})")),
@@ -705,7 +708,7 @@ fn net_fetch(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     Err(e)
 }
 #[cfg(not(target_os = "android"))]
-fn net_fetch_curl(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
+fn net_fetch_curl(url: &str, dest: &Path, max: u64, job: &NetJob) -> Result<u64, String> {
     if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
     if let Some(d) = dest.parent() { fs::create_dir_all(d).map_err(|e| e.to_string())?; }
     let part = PathBuf::from(format!("{}.part", dest.to_string_lossy()));
@@ -719,10 +722,10 @@ fn net_fetch_curl(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     { use std::os::windows::process::CommandExt; cmd.creation_flags(0x0800_0000); }
     let mut child = cmd.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::piped())
         .spawn().map_err(|e| format!("curl could not start ({e})"))?;
-    NET_TOTAL.store(0, Ordering::Relaxed); NET_DONE.store(0, Ordering::Relaxed);
+    job.total.store(0, Ordering::Relaxed); job.done.store(0, Ordering::Relaxed);
     loop {
-        if NET_STOP.load(Ordering::Relaxed) { let _ = child.kill(); let _ = child.wait(); let _ = fs::remove_file(&part); return Err("Stopped.".into()); }
-        if let Ok(m) = fs::metadata(&part) { NET_DONE.store(m.len(), Ordering::Relaxed); }
+        if job.stop.load(Ordering::Relaxed) { let _ = child.kill(); let _ = child.wait(); let _ = fs::remove_file(&part); return Err("Stopped.".into()); }
+        if let Ok(m) = fs::metadata(&part) { job.done.store(m.len(), Ordering::Relaxed); }
         match child.try_wait() {
             Ok(Some(st)) if st.success() => break,
             Ok(Some(st)) => {
@@ -739,10 +742,10 @@ fn net_fetch_curl(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     if n == 0 { let _ = fs::remove_file(&part); return Err("curl brought an empty file".into()); }
     let _ = fs::remove_file(dest);
     fs::rename(&part, dest).map_err(|e| e.to_string())?;
-    NET_DONE.store(n, Ordering::Relaxed);
+    job.done.store(n, Ordering::Relaxed);
     Ok(n)
 }
-fn net_fetch_once(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
+fn net_fetch_once(url: &str, dest: &Path, max: u64, job: &NetJob) -> Result<u64, String> {
     if !net_url_ok(url) { return Err("Only https addresses can be downloaded.".into()); }
     let first_try = apply_net_headers(make_net_agent(NetResolver).get(url), url, None).call();
     let resp = match first_try {
@@ -755,7 +758,7 @@ fn net_fetch_once(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     };
     let total: u64 = resp.header("Content-Length").and_then(|v| v.parse().ok()).unwrap_or(0);
     if max > 0 && total > max { return Err("The file is larger than Timotheos downloads.".into()); }
-    NET_TOTAL.store(total, Ordering::Relaxed);
+    job.total.store(total, Ordering::Relaxed);
     if let Some(d) = dest.parent() { fs::create_dir_all(d).map_err(|e| e.to_string())?; }
     let part = PathBuf::from(format!("{}.part", dest.to_string_lossy()));
     let mut out = fs::File::create(&part).map_err(|e| e.to_string())?;
@@ -763,14 +766,14 @@ fn net_fetch_once(url: &str, dest: &Path, max: u64) -> Result<u64, String> {
     let mut buf = vec![0u8; 64 * 1024];
     let mut done: u64 = 0;
     let res: Result<(), String> = loop {
-        if NET_STOP.load(Ordering::Relaxed) { break Err("Stopped.".into()); }
+        if job.stop.load(Ordering::Relaxed) { break Err("Stopped.".into()); }
         match rd.read(&mut buf) {
             Ok(0) => break Ok(()),
             Ok(n) => {
                 done += n as u64;
                 if max > 0 && done > max { break Err("The file is larger than Timotheos downloads.".into()); }
                 if let Err(e) = out.write_all(&buf[..n]) { break Err(e.to_string()); }
-                NET_DONE.store(done, Ordering::Relaxed);
+                job.done.store(done, Ordering::Relaxed);
             }
             Err(e) => break Err(format!("The download broke off: {e}")),
         }
@@ -794,20 +797,36 @@ fn net_get(app: tauri::AppHandle, url: String, dest: String, max: u64) -> Result
     let tmp = temp_dir_of(&app);
     let d = PathBuf::from(&dest);
     if !d.starts_with(&tmp) || d.components().any(|c| matches!(c, std::path::Component::ParentDir)) { return Err("Downloads go to the temporary folder only.".into()); }
-    // what earlier downloads left in the temporary folder is cleared away first (the import keeps its own copy)
+    // what earlier downloads left in the temporary folder is cleared away first (the import keeps its own copy); only
+    // folders that have not been touched for ten minutes, so downloads that run at the same time are left alone
     if let Ok(rd) = fs::read_dir(&tmp) {
         for e in rd.filter_map(|e| e.ok()) {
             let p = e.path();
-            if e.file_name().to_string_lossy().starts_with("download-") && p.is_dir() && Some(p.as_path()) != d.parent() { let _ = fs::remove_dir_all(&p); }
+            let old = fs::metadata(&p).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).map_or(false, |a| a.as_secs() > 600);
+            if e.file_name().to_string_lossy().starts_with("download-") && p.is_dir() && Some(p.as_path()) != d.parent() && old { let _ = fs::remove_dir_all(&p); }
         }
     }
-    NET_DONE.store(0, Ordering::Relaxed); NET_TOTAL.store(0, Ordering::Relaxed); NET_STOP.store(false, Ordering::Relaxed);
-    net_fetch(&url, &d, max)
+    let job = std::sync::Arc::new(NetJob::default());
+    if let Ok(mut j) = net_jobs().lock() { j.insert(dest.clone(), job.clone()); }
+    if let Ok(mut l) = NET_LAST.lock() { *l = dest.clone(); }
+    let r = net_fetch(&url, &d, max, &job);
+    if let Ok(mut j) = net_jobs().lock() { j.remove(&dest); }
+    r
 }
+/// how far a download is (the one with this `dest`, or the one that began last)
 #[tauri::command]
-fn net_progress() -> Value { json!({ "done": NET_DONE.load(Ordering::Relaxed), "total": NET_TOTAL.load(Ordering::Relaxed) }) }
+fn net_progress(dest: Option<String>) -> Value {
+    let key = dest.unwrap_or_else(|| NET_LAST.lock().map(|l| l.clone()).unwrap_or_default());
+    let j = net_jobs().lock().ok().and_then(|m| m.get(&key).cloned());
+    match j { Some(j) => json!({ "done": j.done.load(Ordering::Relaxed), "total": j.total.load(Ordering::Relaxed) }), None => json!({ "done": 0, "total": 0 }) }
+}
+/// stop the download with this `dest`, or all of them
 #[tauri::command]
-fn net_stop() { NET_STOP.store(true, Ordering::Relaxed); }
+fn net_stop(dest: Option<String>) {
+    if let Ok(m) = net_jobs().lock() {
+        for (k, j) in m.iter() { if dest.as_ref().map_or(true, |d| d == k) { j.stop.store(true, Ordering::Relaxed); } }
+    }
+}
 
 /// the file must lie inside a "download-…" folder of the temporary folder of Timotheos (what net_get fills)
 fn tmp_download(app: &tauri::AppHandle, path: &str) -> Result<PathBuf, String> {
@@ -1065,7 +1084,7 @@ mod tests {
     #[ignore]
     fn the_ebible_list_can_be_fetched_over_https() {
         let f = std::env::temp_dir().join("timotheos-net-test.csv");
-        let n = net_fetch("https://ebible.org/Scriptures/translations.csv", &f, 20 << 20).unwrap();
+        let n = net_fetch("https://ebible.org/Scriptures/translations.csv", &f, 20 << 20, &NetJob::default()).unwrap();
         assert!(n > 100_000);
         assert!(fs::read_to_string(&f).unwrap().contains("translationId"));
     }

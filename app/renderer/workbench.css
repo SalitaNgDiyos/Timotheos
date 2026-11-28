@@ -1055,4 +1055,7 @@ body.dragging .dlink { pointer-events: none; }
 .dcap.movable:active { cursor: grabbing; }
 
 /* the Bible search results, Parallel Bibles and the Library read on the same text background as a Bible view */
-#tab-search .results, #tab-search .searchout, #tab-search .bsresults, .parbody, #tab-lib .lookup, #tab-lib #libBody, #tab-lib #libFeed { background-color: var(--textbg); }
+#tab-search .results, #tab-search .searchout, #tab-search .bsresults, .parbody, #tab-lib .lookup, #tab-lib #libBody, #tab-lib #libFeed, #tab-cmt .cmtbody, .libfeedwrap .cmtbody { background-color: var(--textbg); }
+.dlrow .dlact { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.dlrow .dlpr { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.dlrow .dlstop { font-size: 12px; padding: 2px 8px; }

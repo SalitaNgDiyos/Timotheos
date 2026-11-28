@@ -1524,13 +1524,12 @@ function applyPopupZoom() {
 function stepPopupZoom(d) {
   const a = TimotheosOptions.appearance(); a.popupZoom = Math.round(Math.min(2.5, Math.max(0.6, popupZoom() + d * 0.1)) * 10) / 10;
   save({ appearance: a }); applyPopupZoom();
+  const pp = $('#popup'); if (pp && !pp.classList.contains('hidden') && !pp.classList.contains('sized')) fitPopup();
 }
 window.stepPopupZoom = stepPopupZoom;
 function wirePopupResize() {
   const p = $('#popup');
   p.addEventListener('click', e => { const b = e.target.closest('[data-pz]'); if (b) { e.stopPropagation(); popupHold = true; stepPopupZoom(b.dataset.pz === '+' ? 1 : -1); setTimeout(() => { popupHold = false; }, 400); } });
-  const sz = (TimotheosOptions.appearance().popupSize) || null;
-  if (sz) { p.style.width = sz.w + 'px'; p.style.height = sz.h + 'px'; p.classList.add('sized'); }
   p.addEventListener('mousedown', e => {
     const r = p.getBoundingClientRect();
     if (e.clientX < r.right - 18 || e.clientY < r.bottom - 18) return;
@@ -1539,9 +1538,7 @@ function wirePopupResize() {
     const up = () => {
       document.removeEventListener('mouseup', up, true);
       setTimeout(() => { popupHold = false; }, 50);
-      const a = TimotheosOptions.appearance(); a.popupSize = { w: p.offsetWidth, h: p.offsetHeight };
-      p.style.width = a.popupSize.w + 'px'; p.style.height = a.popupSize.h + 'px'; p.classList.add('sized');
-      save({ appearance: a });
+      p.style.width = p.offsetWidth + 'px'; p.style.height = p.offsetHeight + 'px'; p.classList.add('sized');   // kept until the popup closes; the next one fits its own text again
       if (!p.matches(':hover')) hidePopupSoon();
     };
     document.addEventListener('mouseup', up, true);
@@ -1556,12 +1553,35 @@ async function showPopup(el) {
 function showPopupHtml(el, html) {
   clearTimeout(hideTimer);
   const p = $('#popup'); p.innerHTML = `<div class="pzbar"><button type="button" data-pz="-" title="Smaller text in popups (Ctrl + mouse wheel down)">A−</button><span class="pzv"></span><button type="button" data-pz="+" title="Larger text in popups (Ctrl + mouse wheel up)">A+</button></div><div class="pzbody">${html}</div>`;
-  applyPopupZoom(); p.classList.remove('hidden'); p.scrollTop = 0;
-  const r = el.getBoundingClientRect(); const W = window.innerWidth, H = window.innerHeight;
-  const pw = Math.min(p.offsetWidth || 440, W - 20);
-  let x = Math.min(Math.max(10, r.left), W - pw - 10); let y = r.bottom + 6;
-  p.style.left = x + 'px'; p.style.top = y + 'px';
-  const ph = p.offsetHeight; if (y + ph > H - 10) p.style.top = Math.max(10, r.top - ph - 6) + 'px';
+  popupAnchor = el.getBoundingClientRect(); p.classList.remove('sized'); p.style.width = ''; p.style.height = '';
+  applyPopupZoom(); fitPopup(); p.scrollTop = 0;
+}
+/** The popup takes the size of its own text (a short verse is small, a long one grows), inside the window as far as it goes:
+ *  it first gets wider, in steps, so it stays low; it sits below the word, or above it, wherever the whole text fits, and it
+ *  only scrolls when even the widest, tallest place in the window is too small. The corner at its foot still resizes it by hand. */
+let popupAnchor = null;
+function fitPopup() {
+  const p = $('#popup'); if (!p || !popupAnchor) return;
+  const r = popupAnchor, W = window.innerWidth, H = window.innerHeight, M = 10, G = 6;
+  p.style.visibility = 'hidden'; p.classList.remove('hidden');
+  p.style.maxWidth = (W - 2 * M) + 'px'; p.style.maxHeight = 'none'; p.style.height = 'auto';
+  const room = Math.max(r.top - M - G, H - r.bottom - M - G);                       // the taller side of the word
+  const steps = [...new Set([340, 440, 540, 660, 800, W - 2 * M].map(w => Math.min(w, W - 2 * M)))].sort((a, b) => a - b);
+  let w = steps[steps.length - 1], h = 0;
+  p.style.width = 'auto'; p.style.maxWidth = Math.min(340, W - 2 * M) + 'px';        // a very short text is not stretched to a box
+  if (p.offsetHeight <= room) { steps.length = 0; w = p.offsetWidth; }
+  p.style.maxWidth = (W - 2 * M) + 'px';
+  for (const cand of steps) { p.style.width = cand + 'px'; h = p.offsetHeight; if (h <= room) { w = cand; break; } if (cand === steps[steps.length - 1]) w = cand; }
+  p.style.width = w + 'px'; h = p.offsetHeight; w = p.offsetWidth;
+  const below = H - r.bottom - M - G, above = r.top - M - G;
+  let y, mh = null;
+  if (h <= below) y = r.bottom + G;
+  else if (h <= above) y = r.top - G - h;
+  else if (h <= H - 2 * M) y = Math.min(Math.max(M, r.bottom + G), H - M - h);       // does not fit on either side: lie over the word, but whole
+  else { y = M; mh = H - 2 * M; }                                                  // bigger than the window: scroll
+  p.style.maxHeight = mh ? mh + 'px' : 'none'; if (mh) p.style.height = mh + 'px';
+  p.style.left = Math.min(Math.max(M, r.left), W - w - M) + 'px'; p.style.top = y + 'px';
+  p.style.visibility = '';
 }
 
 /** "Click a word to look it up" (Options, on by default): a click in the Bible text looks the word up only while a Library panel is open; with no Library panel a click does nothing
@@ -1607,8 +1627,10 @@ async function getModules() {
     <p class="small"><b>Files Timotheos reads:</b> theWord <code>.ont</code> <code>.ot</code> <code>.nt</code> <code>.twm</code> <code>.twzip</code>; e-Sword <code>.bblx</code> <code>.cmtx</code> <code>.dctx</code> <code>.lexx</code> <code>.topx</code> <code>.refx</code> <code>.devx</code> (and the older <code>…i</code> forms); and a <code>.zip</code> that holds any of these. A module that comes as a program (<code>.exe</code>) cannot be imported, and locked or encrypted modules are not opened.</p>
     <p class="small">A site may ask you to make a free account before you can download. Timotheos is not connected with these sites, and each module stays under its publisher's own terms.</p></div>`;
   const r = await TimotheosModules.modal('Where to get modules', html, [{ label: 'Close', value: null }, { label: 'Download modules…', value: 'download' }, { label: 'Import modules…', value: 'import', primary: true }], true);
-  if (r === 'import') runCommand('import');
-  if (r === 'download') runCommand('downloadModules');
+  // the file chooser opens only after this window is gone from the screen (a native dialog over a closing window can take the app down on some desktops)
+  const later = fn => setTimeout(() => { try { fn(); } catch (e) { console.error('[getModules]', e); } }, 250);
+  if (r === 'import') later(() => runCommand('import'));
+  if (r === 'download') later(() => runCommand('downloadModules'));
 }
 const GET_MODS_LINK = '<a class="link" data-href="cmd:getModules">Where to get modules</a>';
 window.GET_MODS_LINK = GET_MODS_LINK;
