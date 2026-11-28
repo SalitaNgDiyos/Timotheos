@@ -19,9 +19,11 @@ try {
   ok(!$('#tab-par .parxmenu').classList.contains('hidden') && !!$('#tab-par .parxmenu [data-a="diff"]') && !!$('#tab-par .parxmenu [data-a="follow"]') && $$('#tab-par .parxmenu .parside [data-s]').length >= 10, 'the ⋯ menu holds Differences, Follow and the text tools');
   $('#tab-par .parmore').click(); await sl(200);
   ok($('#tab-par .parxmenu').classList.contains('hidden'), '⋯ again closes it');
-  const vn = $$('#tab-par .pvn').map(x => x.textContent).filter(Boolean);
-  ok(vn.length > 0 && vn.every(t => /^(\d+|¶)$/.test(t)), 'verse numbers only on the left: ' + vn.slice(0, 4).join(','));
+  ok(!$('#tab-par .pvn'), 'no verse column on the left edge');
+  const first = $('#tab-par .pvrow .pcell'), vv = first && first.dataset.v;
+  ok(vv && /^(\d+|¶)$/.test(vv) && getComputedStyle(first, '::before').content.replace(/"/g, '') === vv && getComputedStyle(first, '::before').verticalAlign === 'super', 'the verse number is a superscript at the start of each Bible\'s text: ' + vv);
   ok($$('#tab-par .pth small').every(e => getComputedStyle(e).display === 'none'), 'column names show the short name only');
+  $('#tab-par [data-a="cols"]').click(); await sl(600); await TimotheosDock.hide('lib');
   $('#tab-par [data-a="stack"]').click(); await sl(600);
   const sh = $$('#tab-par .psh').map(x => x.textContent);
   ok(sh.length > 0 && sh.every(t => /^(\d+|¶)$/.test(t)), 'stacked: verse numbers only: ' + sh.slice(0, 3).join(','));

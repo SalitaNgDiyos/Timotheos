@@ -336,15 +336,15 @@
       out[base] = { h: bw.map((w, j) => baseMark.has(j) ? `<mark class="dif">${esc(w)}</mark>` : esc(w)).join(' '), pct: null, plain: true };
       return out;
     };
-    const cellHtml = (c, k, v) => c.h == null ? `<div class="pcell pmiss">${isPhone() ? '—' : 'not in this Bible'}</div>`
-      : `<div class="pcell${infos[k].rtl ? ' rtl' : ''}" data-bid="${esc(ids[k])}"${c.plain ? ' data-plain="1"' : ''}${infos[k].rtl ? ' dir="rtl"' : ''}>${c.h}${c.pct != null ? ` <span class="diffpct" title="share of words that differ from ${esc(abbrOf(ids[base]))}">${c.pct}%</span>` : ''}</div>`;
+    const cellHtml = (c, k, v) => c.h == null ? `<div class="pcell pmiss" data-v="${v === 0 ? '¶' : v}">${isPhone() ? '—' : 'not in this Bible'}</div>`
+      : `<div class="pcell${infos[k].rtl ? ' rtl' : ''}" data-v="${v === 0 ? '¶' : v}" data-bid="${esc(ids[k])}"${c.plain ? ' data-plain="1"' : ''}${infos[k].rtl ? ' dir="rtl"' : ''}>${c.h}${c.pct != null ? ` <span class="diffpct" title="share of words that differ from ${esc(abbrOf(ids[base]))}">${c.pct}%</span>` : ''}</div>`;
     const curV = (r.b === state.ref.b && r.c === state.ref.c) || !follow() ? r.v : 0;
     let html = '';
     if (gone.length) html += `<p class="hint parwarn">Not installed any more: ${esc(gone.map(x => x.replace(/^\w+:/, '')).join(', '))}</p>`;
     if (!rows.length) html += `<p class="hint">${esc(bkName)} ${r.c} is in none of these Bibles.</p>`;
     else if (layoutMode() === 'cols') {
-      html += `<div class="ptable${diff ? ' diffon' : ''}" style="--n:${ids.length}"><div class="phd"><span class="pvn"></span>${ids.map((id, k) => `<div class="pth${k === base && diff ? ' base' : ''}" data-chip="${esc(id)}" title="${esc(titleOf(id))} · click: compare the others with this Bible (★ for Differences)"><b>${k === base && diff ? '★ ' : ''}${esc(abbrOf(id))}</b><small>${esc(titleOf(id))}</small></div>`).join('')}</div>`;
-      for (const row of rows) html += `<div class="pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}"><span class="pvn">${row.v === 0 ? '¶' : row.v}</span>${cellsOf(row).map((c, k) => cellHtml(c, k, row.v)).join('')}</div>`;
+      html += `<div class="ptable${diff ? ' diffon' : ''}" style="--n:${ids.length}"><div class="phd">${ids.map((id, k) => `<div class="pth${k === base && diff ? ' base' : ''}" data-chip="${esc(id)}" title="${esc(titleOf(id))} · click: compare the others with this Bible (★ for Differences)"><b>${k === base && diff ? '★ ' : ''}${esc(abbrOf(id))}</b><small>${esc(titleOf(id))}</small></div>`).join('')}</div>`;
+      for (const row of rows) html += `<div class="pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}">${cellsOf(row).map((c, k) => cellHtml(c, k, row.v)).join('')}</div>`;
       html += '</div>';
     } else {
       html += `<div class="pstack${diff ? ' diffon' : ''}">`;

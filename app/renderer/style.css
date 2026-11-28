@@ -648,13 +648,12 @@ sup.gloss, sup.gloss font { font: italic 400 .66em var(--font-text); color: var(
 .parbody .hint { margin: 10px 12px; }
 .parnone { padding: 28px 16px; text-align: center; font-family: var(--font-ui); }
 .parnone .primary { background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 7px 14px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
-.ptable { display: grid; grid-template-columns: 2.6em repeat(var(--n), minmax(13em, 1fr)); min-width: min-content; }
+.ptable { display: grid; grid-template-columns: repeat(var(--n), minmax(13em, 1fr)); min-width: min-content; }
 .ptable .phd, .ptable .pvrow { display: contents; }
 .ptable .phd > * { position: sticky; top: 0; z-index: 1; background: var(--card); border-bottom: 2px solid var(--line); padding: 6px 10px; font: 12.5px var(--font-ui); }
 .ptable .pth b { margin-right: 6px; }
 .ptable .pth small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .ptable .pth.base b { color: var(--accent); }
-.ptable .pvn { text-align: right; padding: 7px 6px 0 0; color: var(--accent); font: 700 12.5px var(--font-ui); border-bottom: 1px solid var(--line); cursor: pointer; }
 .ptable .pcell { padding: 6px 10px 8px; border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); cursor: pointer; }
 .ptable .pvrow.cur > * { background: var(--sel); }
 .pcell.pmiss { color: var(--muted); font: italic 12px var(--font-ui); background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(127,127,127,.07) 6px 12px); }
@@ -692,7 +691,7 @@ sup.gloss, sup.gloss font { font: italic 400 .66em var(--font-text); color: var(
 .parchoose .ppr span { display: flex; flex-direction: column; min-width: 0; }
 html.mobile .parbar { gap: 4px; padding: 6px; }
 html.mobile .parbar [data-a="wpop"], html.mobile .parbar [data-a="zin"], html.mobile .parbar [data-a="zout"] { display: none; }
-html.mobile .ptable { grid-template-columns: 2em repeat(var(--n), minmax(10.5em, 1fr)); }
+html.mobile .ptable { grid-template-columns: repeat(var(--n), minmax(10.5em, 1fr)); }
 /* Parallel Bibles: the icons beside the text, one-row bar, the verse picker (0.6.128) */
 .tab.parpanel .parmain { flex: 1; min-height: 0; display: flex; }
 .tab.parpanel .parmain .parbody { flex: 1; min-width: 0; }
@@ -732,3 +731,7 @@ html.mobile .parbar { flex-wrap: wrap; }
 .parxmenu .parside .bvsep { width: 1px; height: 18px; margin: 0 2px; }
 .ptable .pth small { display: none; }
 .ptable .pvrow.cur > * { background: color-mix(in srgb, var(--sel) 40%, transparent); }
+
+/* the verse number is a small superscript at the top left of each Bible's text (a pseudo-element: it is not part of the text, so highlights and copying are unchanged) */
+.ptable .pcell[data-v]::before { content: attr(data-v); color: var(--accent); font: 700 .62em var(--font-ui); vertical-align: super; line-height: 0; margin-right: .3em; }
+.ptable .pcell.pmiss[data-v]::before { font-size: 11px; font-style: normal; }
