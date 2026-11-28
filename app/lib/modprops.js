@@ -37,15 +37,23 @@ function str(v) {
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 /* ---------------------------------------------------------------- about text ⇄ HTML */
+/** RTF without its "{\rtf1" header (seen in some theWord commentaries: the text starts with "{\info…" or "\paperw…"):
+ *  at least two RTF words other than \par and \line, and no HTML tags */
+function bareRtf(s) {
+  if (!s || isRtf(s) || /<\/?(p|br|div|span|b|i|font)\b/i.test(s)) return false;
+  const words = new Set((s.match(/\\([a-z]{1,32})-?\d*/g) || []).map(w => w.replace(/[-\d\\]/g, '')));
+  words.delete('par'); words.delete('line');
+  return words.size >= 2 && /\\(plain|pard|paperw|f\d|fs\d|b\b|i\b|rtlch|ltrch|lang\d|cf\d|ql|qc|info|sectd|nosupersub)/.test(s);
+}
 function aboutStyle(s) {
   if (!s) return 'none';
-  if (isRtf(s)) return 'rtf';
+  if (isRtf(s) || bareRtf(s)) return 'rtf';
   if (/<\/?(p|br|b|i|div|span|a|font|strong|em|u)\b/i.test(s)) return 'html';
   return 'plain';
 }
 function aboutToHtml(s) {
   const st = aboutStyle(s);
-  if (st === 'rtf') return rtfToHtml(s);
+  if (st === 'rtf') return rtfToHtml(isRtf(s) ? s : '{\\rtf1 ' + s + '}');
   if (st === 'html') return s;
   if (!s) return '';
   // theWord Bibles often use "\par" inside a one-line value

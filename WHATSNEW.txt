@@ -23,3 +23,4 @@ Timotheos 0.6.132
 - An empty space (Add Panel / Split Space) could be drawn over a panel, covering its buttons (seen over Parallel Bibles); it is no longer drawn over panels and always lies under them.
 - Parallel Bibles: its own Show switches in the ⋯ menu: Words of Jesus in red, Headings, Added words in italics, Verse numbers, Translator's notes and cross-references, Strong's and Morph (separate from the Bible views' switches).
 - Library bar: one compact row. When the panel is narrow the group tiles drop their counts, then the ones that do not fit fold into a "+N" tile that lists those groups with their modules; the open module's tile always stays in view.
+- Properties → About: the text of modules whose About is RTF without its header (some theWord commentaries, e.g. the College Press series) shows as formatted text instead of RTF code.
