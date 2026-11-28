@@ -744,3 +744,18 @@ html.mobile .parbar { flex-wrap: wrap; }
 .parxmenu .parshow .pshh { font: 700 11px var(--font-ui); text-transform: uppercase; letter-spacing: .4px; color: var(--muted); margin-bottom: 2px; }
 .parxmenu .parshow label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .parbody.novn .pcell[data-v]::before { display: none; }
+
+/* Parallel Bibles: column title with a Bible drop-down and move arrows; the Save icon next to the set name */
+.ptable .pth .pthr { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.ptable .pth .pthr b { margin-right: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ptable .pth .pthgrow { flex: 1 1 auto; }
+.ptable .pth .pthb { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 4px; color: var(--muted); flex: 0 0 auto; }
+.ptable .pth .pthb:hover:not(:disabled) { background: var(--hover, rgba(128,128,128,.2)); color: var(--fg); }
+.ptable .pth .pthb:disabled { opacity: .3; cursor: default; }
+.parbar .parsave { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: var(--accent); border: 1px solid var(--accent); flex: 0 0 auto; }
+.parbar .parsave:hover { background: var(--hover, rgba(128,128,128,.2)); }
+.parxmenu .parauto { border-top: 1px solid var(--line); padding: 6px 10px; }
+.parxmenu .parauto label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.parmenu.parbl { max-height: min(70vh, 480px); overflow: auto; }
+.parmenu.parbl small { color: var(--muted); }
+.parmenu .parblank { display: inline-block; width: 14px; height: 14px; }

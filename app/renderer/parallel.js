@@ -23,9 +23,26 @@
   const follow = () => S().parFollow !== false;
   const visible = () => !!(root && root.isConnected && root.offsetParent !== null && root.clientWidth > 0);
   const ic = (n, s = 15) => (window.TimotheosIcons ? TimotheosIcons.icon(n, s) : '');
+  /* Bibles of the current set: the saved ones, or (Auto save off) the temporary change that the Save icon keeps */
+  let draft = null;   // { id, bibles }
+  const autoSave = () => S().parAutoSave !== false;
+  const effBibles = st => (st ? (draft && draft.id === st.id ? draft.bibles : st.bibles) : []);
+  const unsaved = () => { const st = curSet(); return !!(st && draft && draft.id === st.id && JSON.stringify(draft.bibles) !== JSON.stringify(st.bibles)); };
+  function changeBibles(list) {
+    const st = curSet(); if (!st) return;
+    list = list.filter((x, i) => x && list.indexOf(x) === i);
+    if (list.length < MIN) return flash(`A parallel set keeps at least ${MIN} Bibles.`);
+    if (autoSave()) { st.bibles = [...list]; if (!list.includes(st.base)) st.base = list[0]; draft = null; saveSets([...sets()]); }
+    else draft = { id: st.id, bibles: [...list] };
+    drawBar(); render(false);
+  }
+  function saveDraft() {
+    const st = curSet(); if (!st || !unsaved()) return;
+    st.bibles = [...draft.bibles]; if (!st.bibles.includes(st.base)) st.base = st.bibles[0]; draft = null; saveSets([...sets()]); drawBar(); flash(`Saved in “${setName(st)}”.`);
+  }
   const setName = s => (s && s.name) || (s ? s.bibles.map(abbrOf).join(' · ') : '');
   const newId = () => 'ps' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  function saveSets(list, extra) { save(Object.assign({ parSets: list }, extra || {})); }
+  function saveSets(list, extra) { draft = null; save(Object.assign({ parSets: list }, extra || {})); }
   function ref() { return follow() || !S().parRef ? { ...state.ref } : { ...S().parRef }; }
 
   /* ---------------------------------------------------------------- the panel */
@@ -36,10 +53,12 @@
     root.innerHTML = `<div class="parbar"></div><div class="parmain"><nav class="parside bvside" aria-label="Settings of the Parallel Bibles panel">${sideHtml()}</nav><div class="parbody" tabindex="0"></div></div>`;
     bar = root.querySelector('.parbar'); body = root.querySelector('.parbody'); side = root.querySelector('.parside');
     // the ⋯ menu (0.6.131): Differences, Follow and the text tools that used to sit in a column beside the text
-    menu = document.createElement('div'); menu.className = 'parxmenu hidden'; menu.innerHTML = '<div class="parmtop"></div><div class="parshow" role="group" aria-label="Show in Parallel Bibles"></div>';
+    menu = document.createElement('div'); menu.className = 'parxmenu hidden'; menu.innerHTML = '<div class="parmtop"></div><div class="parshow" role="group" aria-label="Show in Parallel Bibles"></div><div class="parauto"></div>';
     menu.appendChild(side); root.appendChild(menu);
     menu.addEventListener('click', onBar);
     menu.addEventListener('change', e => {   // the panel's own "Show" switches (not those of the Bible views)
+      const au = e.target.closest('input[data-auto]');
+      if (au) { save({ parAutoSave: au.checked }); if (au.checked) saveDraft(); drawBar(); return; }
       const cb = e.target.closest('input[data-ps]'); if (!cb) return;
       const p = { ...pshow(), [cb.dataset.ps]: cb.checked }; if (cb.dataset.ps === 'strongs') p.morph = cb.checked;
       save({ parShow: p }); applyLook(); render(false, true);
@@ -62,7 +81,7 @@
       try {
         if (isPhone() || visible()) return;
         const set = curSet(); if (!set) return;
-        const ids = set.bibles.filter(bibleOf).slice(0, MAX), r = ref();
+        const ids = effBibles(set).filter(bibleOf).slice(0, MAX), r = ref();
         Promise.all(ids.map(id => ensureInfo(id))).then(() => api.chapter(ids, r.b, r.c)).catch(() => { /* it is only a warm-up */ });
       } catch (e) { /* only a warm-up */ }
     }, 4000);
@@ -87,16 +106,17 @@
   function drawBar() {
     if (!bar) return;
     const set = curSet(); const mode = layoutMode();
-    const ids = set ? set.bibles.filter(bibleOf) : [];
+    const ids = set ? effBibles(set).filter(bibleOf) : [];
     const base = set && ids.includes(set.base) ? set.base : ids[0];
     const r = ref(); const bk = (state.nav || []).find(x => x.id === r.b);
     // one row: the set, the verse picker (as in a Bible view), then the layout, Differences and Follow (0.6.128)
-    bar.innerHTML = `<button type="button" class="parset" data-a="sets" title="Choose another parallel set, make a new one, or change this one (add, remove or order its Bibles)"><b>${esc(set ? setName(set) : 'No set yet')}</b>${ic('down', 13)}</button>
+    bar.innerHTML = `<button type="button" class="parset" data-a="sets" title="Choose another parallel set, make a new one, or change this one (add, remove or order its Bibles)"><b>${esc(set ? setName(set) : 'No set yet')}</b>${ic('down', 13)}</button>${unsaved() ? `<button type="button" class="parsave" data-a="savedraft" title="Save these Bibles in the set “${esc(setName(set))}” (Auto save is off)" aria-label="Save">${ic('save', 15)}</button>` : ''}
       ${set ? `<button type="button" class="navpill parpill" data-a="pick" title="Choose the book, chapter and verse${follow() ? ' (the Bible views go along: Follow is on)' : ''}"><span class="np-lbl">${esc(bk ? bk.name : '')} ${r.c || ''}:${r.v || 1}</span><span class="np-caret">▾</span></button>` : `<button type="button" class="primary" data-a="new">${ic('plus', 14)}Set up parallel Bibles</button>`}
       <span class="pargrow"></span>
       <span class="parseg" role="group" aria-label="Layout"><button type="button" data-a="cols" class="${mode === 'cols' ? 'on' : ''}" title="Bibles side by side">Columns</button><button type="button" data-a="stack" class="${mode === 'stack' ? 'on' : ''}" title="Each verse with every Bible under it">Stacked</button></span>
       <button type="button" data-a="more" class="parmore${menu && !menu.classList.contains('hidden') ? ' on' : ''}" aria-haspopup="true" aria-expanded="${menu && !menu.classList.contains('hidden') ? 'true' : 'false'}" title="More: Differences, Follow and the text tools" aria-label="More">⋯</button>`;
     if (menu) { const ps = pshow(); menu.querySelector('.parshow').innerHTML = '<div class="pshh">Show in Parallel Bibles</div>' + PSHOW.map(([k, l, t]) => `<label title="${esc(t)}"><input type="checkbox" data-ps="${k}"${ps[k] ? ' checked' : ''}> ${esc(l)}</label>`).join(''); }
+    if (menu) menu.querySelector('.parauto').innerHTML = `<label title="On: changing, swapping or moving a Bible is kept in the set at once. Off: the change is only for now, until you press the Save icon next to the set name."><input type="checkbox" data-auto${autoSave() ? ' checked' : ''}> Auto save changes to the set</label>`;
     if (menu) menu.querySelector('.parmtop').innerHTML = `<button type="button" data-a="diff" class="tog${S().parDiff ? ' on' : ''}" title="Mark the words that differ from the ★ Bible (click a column title to choose it)">≠<span class="lbl"> Differences</span></button>
       <button type="button" data-a="follow" class="tog${follow() ? ' on' : ''}" title="Follow the main Bible view (click to read on by itself)">${ic('link', 14)}<span class="lbl">Follow</span></button>`;
     syncSide();
@@ -208,9 +228,9 @@
     if (a === 'edit') return set && setupDialog(set);
     if (a === 'remove') {
       if (!set) return;
-      if (set.bibles.length <= MIN) return flash(`A parallel set keeps at least ${MIN} Bibles.`);
-      set.bibles = set.bibles.filter(x => x !== b.dataset.id); saveSets([...sets()]); drawBar(); return render(false);
+      return changeBibles(effBibles(set).filter(x => x !== b.dataset.id));
     }
+    if (a === 'savedraft') return saveDraft();
     if (a === 'more') return toggleMenu();
     if (a === 'cols' || a === 'stack') { save({ parLayout: Object.assign({}, S().parLayout || {}, { [isPhone() ? 'phone' : 'pc']: a }) }); drawBar(); return render(true, true); }
     if (a === 'diff') { save({ parDiff: !S().parDiff }); drawBar(); return render(false, true); }
@@ -244,7 +264,7 @@
     setTimeout(() => document.addEventListener('pointerdown', out, true), 0);
     m.onclick = async e => {
       const s = e.target.closest('[data-set]'), k = e.target.closest('[data-m]'); if (!s && !k) return; close();
-      if (s) { save({ parSetId: s.dataset.set }); drawBar(); return render(true); }
+      if (s) { draft = null; save({ parSetId: s.dataset.set }); drawBar(); return render(true); }
       if (k.dataset.m === 'new') return setupDialog(null);
       if (k.dataset.m === 'edit') return setupDialog(curSet());
       if (k.dataset.m === 'del') {
@@ -330,8 +350,8 @@
     const my = ++seq; const T0 = performance.now(), P = (window.__P = {}); const mk = n => { P[n] = Math.round(performance.now() - T0); }; applyZoom(); mk('zoom');
     const set = curSet();
     if (!set) { body.innerHTML = `<div class="parnone"><p>No parallel set yet.</p><button type="button" class="primary" data-a2="new">${ic('plus', 15)}Set up parallel Bibles</button></div>`; return; }
-    const ids = set.bibles.filter(bibleOf).slice(0, MAX);
-    const gone = set.bibles.filter(id => !bibleOf(id));
+    const ids = effBibles(set).filter(bibleOf).slice(0, MAX);
+    const gone = effBibles(set).filter(id => !bibleOf(id));
     if (!ids.length) { body.innerHTML = '<div class="parnone"><p>The Bibles of this set are not installed any more.</p></div>'; return; }
     if (!body.querySelector('.pvrow, .parnone')) body.innerHTML = '<p class="hint parload">Loading…</p>';   // the first opening reads the Bibles
     await Promise.all(ids.map(id => ensureInfo(id)));
@@ -374,7 +394,7 @@
     if (gone.length) html += `<p class="hint parwarn">Not installed any more: ${esc(gone.map(x => x.replace(/^\w+:/, '')).join(', '))}</p>`;
     if (!rows.length) html += `<p class="hint">${esc(bkName)} ${r.c} is in none of these Bibles.</p>`;
     else if (layoutMode() === 'cols') {
-      html += `<div class="ptable${diff ? ' diffon' : ''}" style="--n:${ids.length}"><div class="phd">${ids.map((id, k) => `<div class="pth${k === base && diff ? ' base' : ''}" data-chip="${esc(id)}" title="${esc(titleOf(id))} · click: compare the others with this Bible (★ for Differences)"><b>${k === base && diff ? '★ ' : ''}${esc(abbrOf(id))}</b><small>${esc(titleOf(id))}</small></div>`).join('')}</div>`;
+      html += `<div class="ptable${diff ? ' diffon' : ''}" style="--n:${ids.length}"><div class="phd">${ids.map((id, k) => `<div class="pth${k === base && diff ? ' base' : ''}" data-chip="${esc(id)}" title="${esc(titleOf(id))} · click: compare the others with this Bible (★ for Differences)"><div class="pthr"><b>${k === base && diff ? '★ ' : ''}${esc(abbrOf(id))}</b><button type="button" class="pthb" data-pcol="drop" data-k="${k}" title="Choose another Bible for this column" aria-label="Choose another Bible">${ic('down', 12)}</button><span class="pthgrow"></span><button type="button" class="pthb" data-pcol="left" data-k="${k}"${k ? '' : ' disabled'} title="Move this Bible to the left" aria-label="Move left">${ic('prev', 13)}</button><button type="button" class="pthb" data-pcol="right" data-k="${k}"${k < ids.length - 1 ? '' : ' disabled'} title="Move this Bible to the right" aria-label="Move right">${ic('next', 13)}</button></div><small>${esc(titleOf(id))}</small></div>`).join('')}</div>`;
       for (const row of rows) html += `<div class="pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}">${cellsOf(row).map((c, k) => cellHtml(c, k, row.v)).join('')}</div>`;
       html += '</div>';
     } else {
@@ -407,7 +427,7 @@
   function snapKey() {
     const st = curSet(); if (!st) return '';
     const r = ref();
-    return JSON.stringify([st.id, st.bibles, st.base, r.b, r.c, layoutMode(), !!S().parDiff, S().parZoom || 1]);
+    return JSON.stringify([st.id, effBibles(st), st.base, r.b, r.c, layoutMode(), !!S().parDiff, S().parZoom || 1]);
   }
   let snapT = 0;
   function snapshotSoon() {
@@ -440,6 +460,8 @@
   function onBody(e) {
     if (e.target.closest('[data-a2="new"]')) return setupDialog(null, !sets().length);
     // a column title (or the name in Stacked) makes that Bible the ★ one the others are compared with (the chips are gone, 0.6.127)
+    const pc = e.target.closest('[data-pcol]');
+    if (pc) { e.stopPropagation(); return colAction(pc); }
     const ch = e.target.closest('[data-chip]');
     if (ch) { const st = curSet(); if (st && st.base !== ch.dataset.chip) { st.base = ch.dataset.chip; saveSets([...sets()]); drawBar(); render(false, true); } return; }
     if (e.target.closest('a, [data-href], sup.fn, sup.xref, button')) return;
@@ -448,6 +470,33 @@
     if (follow()) { if (typeof selectVerse === 'function' && !selectVerse(v, true)) go({ ...state.ref, v }); }
     else { const r = ref(); save({ parRef: { b: r.b, c: r.c, v } }); }
     mark(v);
+  }
+  /** the buttons at the head of a column: another Bible, or one place left or right */
+  function colAction(btn) {
+    const st = curSet(); if (!st) return; const list = [...effBibles(st)], k = +btn.dataset.k, a = btn.dataset.pcol;
+    if (a === 'left' && k > 0) { [list[k - 1], list[k]] = [list[k], list[k - 1]]; return changeBibles(list); }
+    if (a === 'right' && k < list.length - 1) { [list[k + 1], list[k]] = [list[k], list[k + 1]]; return changeBibles(list); }
+    if (a === 'drop') return bibleList(btn, k);
+  }
+  function bibleList(btn, k) {
+    document.querySelectorAll('.parmenu').forEach(m => m.remove());
+    const st = curSet(); if (!st) return; const list = effBibles(st), cur = list[k];
+    const all = installed().slice().sort((x, y) => abbrOf(x.id).localeCompare(abbrOf(y.id)));
+    const m = document.createElement('div'); m.className = 'parmenu parbl';
+    m.innerHTML = '<div class="mh">Bible for this column</div>' + all.map(b => `<button type="button" data-id="${esc(b.id)}" class="${b.id === cur ? 'on' : ''}">${b.id === cur ? ic('check', 14) : (list.includes(b.id) ? ic('star', 14) : '<i class="parblank"></i>')}<span><b>${esc(abbrOf(b.id))}</b> <small>${esc(titleOf(b.id))}</small></span></button>`).join('');
+    document.body.appendChild(m);
+    const r = btn.getBoundingClientRect();
+    m.style.left = Math.max(4, Math.min(r.left, innerWidth - m.offsetWidth - 4)) + 'px'; m.style.top = Math.max(4, Math.min(r.bottom + 4, innerHeight - m.offsetHeight - 4)) + 'px';
+    const close = () => { m.remove(); document.removeEventListener('pointerdown', out, true); };
+    const out = e => { if (!m.contains(e.target)) close(); };
+    setTimeout(() => document.addEventListener('pointerdown', out, true), 0);
+    m.onclick = e => {
+      const it = e.target.closest('button[data-id]'); if (!it) return; close();
+      const id = it.dataset.id; if (id === cur) return;
+      const j = list.indexOf(id), next = [...list];
+      if (j >= 0) { next[j] = cur; next[k] = id; } else next[k] = id;   // already in the set: the two columns swap
+      changeBibles(next);
+    };
   }
   const boxOf = el => (el && getComputedStyle(el).display === 'contents' ? el.firstElementChild : el);   // a row of the column table has no box of its own
   function mark(v) {
@@ -480,5 +529,5 @@
   }
   function onModulesChanged() { if (curSet()) { drawBar(); render(false); } }
 
-  window.TimotheosParallel = { showSnapshot, setBibles: () => { const st = curSet(); return st ? st.bibles.filter(bibleOf) : []; }, visible, syncSide, shownRef: () => (shown ? { ...shown } : { ...ref() }), following: follow, init, render, onRef, onModulesChanged, setupDialog, chooseSetDialog, wake, wordPopupAllowed: shift => !!(shift || S().parWpop), MAX };
+  window.TimotheosParallel = { showSnapshot, setBibles: () => { const st = curSet(); return st ? effBibles(st).filter(bibleOf) : []; }, visible, syncSide, shownRef: () => (shown ? { ...shown } : { ...ref() }), following: follow, init, render, onRef, onModulesChanged, setupDialog, chooseSetDialog, wake, wordPopupAllowed: shift => !!(shift || S().parWpop), MAX };
 })();

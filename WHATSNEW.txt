@@ -25,3 +25,4 @@ Timotheos 0.6.132
 - Library bar: one compact row. When the panel is narrow the group tiles drop their counts, then the ones that do not fit fold into a "+N" tile that lists those groups with their modules; the open module's tile always stays in view.
 - Properties → About: the text of modules whose About is RTF without its header (some theWord commentaries, e.g. the College Press series) shows as formatted text instead of RTF code.
 - Footnote and cross-reference popups now behave like verse-link popups: they fit the length of the note and close quickly when the mouse leaves.
+- Parallel Bibles: each column title has a Bible drop-down (change that column's Bible) and left/right arrows (move it). Auto save (in the ⋯ menu) keeps these changes in the set; with it off a Save icon next to the set name keeps them.
