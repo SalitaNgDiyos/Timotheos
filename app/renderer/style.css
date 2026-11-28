@@ -761,3 +761,9 @@ html.mobile .parbar { flex-wrap: wrap; }
 .parmenu .parblank { display: inline-block; width: 14px; height: 14px; }
 /* the move arrows show only while the mouse is over the column title (always on touch screens) */
 @media (hover: hover) { .ptable .pth .pthb[data-pcol="left"], .ptable .pth .pthb[data-pcol="right"] { display: none; } .ptable .pth:hover .pthb[data-pcol="left"], .ptable .pth:hover .pthb[data-pcol="right"], .ptable .pth:focus-within .pthb[data-pcol="left"], .ptable .pth:focus-within .pthb[data-pcol="right"] { display: inline-flex; } }
+
+/* a Bible label can be dragged to another place (Parallel Bibles) */
+@media (hover: hover) { .ptable .pth[data-chip], .pstack .plb[data-chip] { cursor: grab; } }
+html.pardrag, html.pardrag * { cursor: grabbing !important; user-select: none !important; }
+.pardragghost { position: fixed; z-index: 100000; pointer-events: none; padding: 3px 9px; border-radius: 6px; background: var(--accent); color: #fff; font: 600 12.5px var(--font-ui); opacity: .92; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.pardragmark { position: fixed; z-index: 99999; pointer-events: none; background: var(--accent); border-radius: 2px; display: none; }

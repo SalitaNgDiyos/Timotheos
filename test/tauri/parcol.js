@@ -25,6 +25,23 @@ try {
   ok(!!$('#tab-par .parsave'), 'the Save icon shows');
   $('#tab-par .parsave').click(); await sl(1500);
   ok(JSON.stringify(state.settings.parSets[0].bibles) !== before && !$('#tab-par .parsave'), 'Save keeps the change in the set and the icon goes');
+  // drag a label onto another one
+  save({ parAutoSave: true }); await sl(300);
+  const dragLab = async (sel, vertical) => {
+    if (vertical) { const pb = $('#tab-par .parbody'); pb.scrollTop = 0; await sl(300); }
+    const labs = $$(sel); const A = labs[1].getBoundingClientRect(), B = labs[0].getBoundingClientRect();
+    const fire = (t, type, x, y) => (t || document).dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerType: 'mouse' }));
+    const sx = A.left + 12, sy = A.top + A.height / 2, ex = B.left + 12, ey = vertical ? B.top + 2 : B.top + B.height / 2;
+    fire(labs[1].querySelector('b') || labs[1], 'pointerdown', sx, sy); fire(document, 'pointermove', sx + 20, sy + 20); fire(document, 'pointermove', ex, ey); await sl(100); fire(document, 'pointerup', ex, ey); await sl(1500);
+  };
+  const b0 = [...state.settings.parSets[0].bibles];
+  await dragLab('#tab-par .pth[data-chip]', false);
+  const b1 = state.settings.parSets[0].bibles; ok(b1[0] === b0[1] && b1[1] === b0[0], 'dragging the second column title before the first moves it: ' + b0.join(',') + ' -> ' + b1.join(','));
+  save({ parLayout: { pc: 'stack' } }); TimotheosParallel.render(true, true); await sl(2000);
+  const first = $('#tab-par .plb[data-chip]');
+  if (first) { const bb = [...state.settings.parSets[0].bibles]; await dragLab('#tab-par .psv .plb[data-chip]', true); const ba = state.settings.parSets[0].bibles; ok(JSON.stringify(ba) !== JSON.stringify(bb), 'Stacked: dragging a label moves the Bible: ' + bb.join(',') + ' -> ' + ba.join(',')); }
+  else ok(false, 'no stacked labels');
+  save({ parLayout: { pc: 'cols' } }); TimotheosParallel.render(true, true);
   $('#tab-par .parmore').click(); await sl(200); ok(!!$('#tab-par .parauto input[data-auto]'), 'Auto save switch is in the ⋯ menu');
   save({ parAutoSave: true });
 } catch (e) { ok(false, 'error ' + e.message); }

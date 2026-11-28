@@ -64,6 +64,7 @@
       save({ parShow: p }); applyLook(); render(false, true);
     });
     body.addEventListener('mousedown', () => closeMenu());
+    body.addEventListener('pointerdown', onLabelDown);
     root.addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.classList.contains('hidden')) { e.stopPropagation(); closeMenu(); } });
     bar.addEventListener('click', onBar);
     side.addEventListener('click', onSide);
@@ -463,6 +464,7 @@
     const pc = e.target.closest('[data-pcol]');
     if (pc) { e.stopPropagation(); return colAction(pc); }
     const ch = e.target.closest('[data-chip]');
+    if (ch && Date.now() - dragEnd < 300) return;   // the mouse button of a drag does not also choose the ★ Bible
     if (ch) { const st = curSet(); if (st && st.base !== ch.dataset.chip) { st.base = ch.dataset.chip; saveSets([...sets()]); drawBar(); render(false, true); } return; }
     if (e.target.closest('a, [data-href], sup.fn, sup.xref, button')) return;
     const row = e.target.closest('.pvrow[data-pv]'); if (!row) return;
@@ -470,6 +472,35 @@
     if (follow()) { if (typeof selectVerse === 'function' && !selectVerse(v, true)) go({ ...state.ref, v }); }
     else { const r = ref(); save({ parRef: { b: r.b, c: r.c, v } }); }
     mark(v);
+  }
+  /** drag a Bible label (a column title, or the name before a verse in Stacked) onto another one to move it there */
+  let dragEnd = 0;
+  function onLabelDown(e) {
+    if (e.button !== 0 || e.pointerType === 'touch' || e.target.closest('button')) return;
+    const lab = e.target.closest('.pth[data-chip], .plb[data-chip]'); if (!lab) return;
+    const st = curSet(); if (!st) return;
+    const from = lab.dataset.chip, stacked = lab.classList.contains('plb'), x0 = e.clientX, y0 = e.clientY;
+    let on = false, ghost = null, mark = null, tgt = null, after = false;
+    const cleanup = () => { document.removeEventListener('pointermove', mv, true); document.removeEventListener('pointerup', up, true); document.removeEventListener('keydown', kd, true); if (ghost) ghost.remove(); if (mark) mark.remove(); document.documentElement.classList.remove('pardrag'); };
+    const kd = ev => { if (ev.key === 'Escape') { tgt = null; cleanup(); dragEnd = Date.now(); } };
+    const mv = ev => {
+      if (!on) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return; on = true; document.documentElement.classList.add('pardrag'); ghost = document.createElement('div'); ghost.className = 'pardragghost'; ghost.textContent = abbrOf(from); document.body.appendChild(ghost); mark = document.createElement('div'); mark.className = 'pardragmark'; document.body.appendChild(mark); }
+      ghost.style.left = ev.clientX + 10 + 'px'; ghost.style.top = ev.clientY + 10 + 'px';
+      const el = document.elementFromPoint(ev.clientX, ev.clientY), t = el && el.closest(stacked ? '.plb[data-chip]' : '.pth[data-chip]');
+      if (!t || t.dataset.chip === from) { tgt = null; mark.style.display = 'none'; return; }
+      const r = t.getBoundingClientRect(); tgt = t.dataset.chip; after = stacked ? ev.clientY > r.top + r.height / 2 : ev.clientX > r.left + r.width / 2;
+      mark.style.display = 'block';
+      if (stacked) { mark.style.left = r.left + 'px'; mark.style.width = r.width + 'px'; mark.style.height = '3px'; mark.style.top = (after ? r.bottom : r.top) - 1 + 'px'; }
+      else { mark.style.top = r.top + 'px'; mark.style.height = r.height + 'px'; mark.style.width = '3px'; mark.style.left = (after ? r.right : r.left) - 1 + 'px'; }
+    };
+    const up = () => {
+      const was = on, t = tgt, aft = after; cleanup();
+      if (!was) return; dragEnd = Date.now();
+      if (!t) return;
+      const list = effBibles(st).filter(x => x !== from), j = list.indexOf(t); if (j < 0) return;
+      list.splice(aft ? j + 1 : j, 0, from); changeBibles(list);
+    };
+    document.addEventListener('pointermove', mv, true); document.addEventListener('pointerup', up, true); document.addEventListener('keydown', kd, true);
   }
   /** the buttons at the head of a column: another Bible, or one place left or right */
   function colAction(btn) {
