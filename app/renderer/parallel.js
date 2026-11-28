@@ -186,7 +186,7 @@
   async function onBar(e) {
     const b = e.target.closest('[data-a]');
     const chip = e.target.closest('[data-chip]');
-    if (!b && chip) { const s = curSet(); if (s) { s.base = chip.dataset.chip; saveSets([...sets()]); drawBar(); if (S().parDiff) render(false); } return; }
+    if (!b && chip) { const s = curSet(); if (s) { s.base = chip.dataset.chip; saveSets([...sets()]); drawBar(); if (S().parDiff) render(false, true); } return; }
     if (!b) return;
     const a = b.dataset.a, set = curSet();
     if (a === 'sets') return setMenu(b);
@@ -198,8 +198,8 @@
       set.bibles = set.bibles.filter(x => x !== b.dataset.id); saveSets([...sets()]); drawBar(); return render(false);
     }
     if (a === 'more') return toggleMenu();
-    if (a === 'cols' || a === 'stack') { save({ parLayout: Object.assign({}, S().parLayout || {}, { [isPhone() ? 'phone' : 'pc']: a }) }); drawBar(); return render(true); }
-    if (a === 'diff') { save({ parDiff: !S().parDiff }); drawBar(); return render(false); }
+    if (a === 'cols' || a === 'stack') { save({ parLayout: Object.assign({}, S().parLayout || {}, { [isPhone() ? 'phone' : 'pc']: a }) }); drawBar(); return render(true, true); }
+    if (a === 'diff') { save({ parDiff: !S().parDiff }); drawBar(); return render(false, true); }
     if (a === 'wpop') { save({ parWpop: !S().parWpop }); return drawBar(); }
     if (a === 'follow') { const on = !follow(); save(on ? { parFollow: true } : { parFollow: false, parRef: { ...state.ref } }); drawBar(); return render(true); }
     if (a === 'pick' && window.TimotheosNav) {
@@ -307,12 +307,13 @@
 
   /* ---------------------------------------------------------------- drawing */
   let wantScroll = false;
-  async function render(scroll) {
+  let chCache = null;   // the last chapter read: a change of layout or of Differences draws it again without reading the Bibles again
+  async function render(scroll, reuse) {
     if (!body) return;
     if (scroll) wantScroll = true;   // a newer drawing that does not scroll must not cancel the scroll asked for before it
     if (!visible()) { dirty = true; return; }
     dirty = false;
-    const my = ++seq; applyZoom();
+    const my = ++seq; const T0 = performance.now(), P = (window.__P = {}); const mk = n => { P[n] = Math.round(performance.now() - T0); }; applyZoom(); mk('zoom');
     const set = curSet();
     if (!set) { body.innerHTML = `<div class="parnone"><p>No parallel set yet.</p><button type="button" class="primary" data-a2="new">${ic('plus', 15)}Set up parallel Bibles</button></div>`; return; }
     const ids = set.bibles.filter(bibleOf).slice(0, MAX);
@@ -320,10 +321,13 @@
     if (!ids.length) { body.innerHTML = '<div class="parnone"><p>The Bibles of this set are not installed any more.</p></div>'; return; }
     if (!body.querySelector('.pvrow, .parnone')) body.innerHTML = '<p class="hint parload">Loading…</p>';   // the first opening reads the Bibles
     await Promise.all(ids.map(id => ensureInfo(id)));
+    mk('info');
     const r = ref();
     let data;
-    try { data = await api.chapter(ids, r.b, r.c); } catch (e) { if (my === seq) body.innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
+    const ck = ids.join('|') + '|' + r.b + '.' + r.c;
+    try { if (reuse && chCache && chCache.key === ck) data = chCache.data; else { data = await api.chapter(ids, r.b, r.c); chCache = { key: ck, data }; } } catch (e) { if (my === seq) body.innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
     if (my !== seq) return;
+    mk('chapter');
     shown = { b: r.b, c: r.c };
     const show = Object.assign({}, S().show || {}, { strongs: false, morph: false, lemma: false, columns: false, tags: false, footnotes: false, xrefs: false, xrefsFull: false, cmtLinks: false });
     const infos = ids.map(id => state.infos.get(id) || EMPTY_MOD);
@@ -364,17 +368,22 @@
       }
       html += '</div>';
     }
+    mk('build');
     const keep = body.scrollTop;
-    body.innerHTML = html; body.classList.remove('parsnap');
+    body.innerHTML = html; mk('innerHTML'); body.classList.remove('parsnap');
     if (typeof markGlosses === 'function') try { markGlosses(body); } catch (e) { /* */ }
     // the user's highlights, as in the Bible views (not while differences are marked: the text is shown plain then)
     if (window.TimotheosStudy && TimotheosStudy.paintHighlights && (S().show || {}).highlights !== false) body.querySelectorAll('.pcell[data-bid]:not([data-plain])').forEach(cell => {
       const row = cell.closest('[data-pv]'); if (row && +row.dataset.pv) try { TimotheosStudy.paintHighlights(cell, cell.dataset.bid, r.b, r.c, +row.dataset.pv); } catch (e) { /* */ }
     });
-    drawBar();
-    snapshotSoon();
+    mk('glossHl');
+    drawBar(); mk('drawBar');
+    snapshotSoon(); mk('snap');
     if (wantScroll) { wantScroll = false; const el = boxOf(body.querySelector(`.pvrow[data-pv="${curV}"]`)); if (el && curV > 1) el.scrollIntoView({ block: 'center' }); else body.scrollTop = 0; }
     else body.scrollTop = keep;
+    mk('scroll'); P.end = Math.round(performance.now() - T0);
+    // a slow drawing is written to the Developer Tools console, so that it can be reported: where the time went, in ms since it began
+    if (P.end > 300) console.info('[parallel] drawn in ' + P.end + ' ms: ' + JSON.stringify(P) + ' · ' + ids.length + ' Bibles, ' + rows.length + ' verses, ' + layoutMode() + (diff ? ', differences on' : ''));
   }
   /* ---- start-up (0.6.128): what the panel showed last time is put on screen at once, while the Bibles are read;
    * the freshly read text replaces it. Kept in this browser's storage, only for the same set, place and layout. */
@@ -415,7 +424,7 @@
     if (e.target.closest('[data-a2="new"]')) return setupDialog(null, !sets().length);
     // a column title (or the name in Stacked) makes that Bible the ★ one the others are compared with (the chips are gone, 0.6.127)
     const ch = e.target.closest('[data-chip]');
-    if (ch) { const st = curSet(); if (st && st.base !== ch.dataset.chip) { st.base = ch.dataset.chip; saveSets([...sets()]); drawBar(); render(false); } return; }
+    if (ch) { const st = curSet(); if (st && st.base !== ch.dataset.chip) { st.base = ch.dataset.chip; saveSets([...sets()]); drawBar(); render(false, true); } return; }
     if (e.target.closest('a, [data-href], sup.fn, sup.xref, button')) return;
     const row = e.target.closest('.pvrow[data-pv]'); if (!row) return;
     const v = +row.dataset.pv; if (!v) return;
