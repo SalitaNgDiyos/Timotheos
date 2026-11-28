@@ -345,6 +345,44 @@ async function fillLibSelect() {
     sel.appendChild(og);
   }
   if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
+  renderLibGroups();
+}
+
+/* the group tiles above the Library (they replace the module list): a tile per group, its modules drop down under it */
+function renderLibGroups() {
+  const box = $('#libGroups'); if (!box || !window.TimotheosLibGroups) return;
+  const G = TimotheosLibGroups, all = (state.modules.books || []).filter(b => !b.hidden);
+  const cur = all.find(b => b.id === lib.cur), curG = cur ? G.groupOf(cur) : null;
+  const gs = G.shown(all);
+  box.innerHTML = gs.length ? gs.map(g => `<button type="button" class="lgtile${g.id === curG ? ' on' : ''}" data-g="${esc(g.id)}" aria-haspopup="menu" title="${esc(g.name)}: ${g.list.length} module${g.list.length === 1 ? '' : 's'}${g.id === curG && cur ? ' · open: ' + esc(G.title(cur)) : ''}">${esc(g.name)}<span class="lgn">${g.list.length}</span>${icon('down', 12)}</button>`).join('')
+    : '<span class="small muted">No commentaries, dictionaries or books yet</span>';
+}
+function closeLibMenus() { document.querySelectorAll('.lgmenu').forEach(m => m.remove()); document.querySelectorAll('.lgtile.open').forEach(t => t.classList.remove('open')); const mm = $('#libMoreMenu'); if (mm) mm.classList.add('hidden'); const mb = $('#libMoreBtn'); if (mb) mb.classList.remove('on'); }
+function openGroupMenu(tile) {
+  const was = tile.classList.contains('open'); closeLibMenus(); if (was) return;
+  const G = TimotheosLibGroups, list = G.members(tile.dataset.g, (state.modules.books || []).filter(b => !b.hidden));
+  const m = document.createElement('div'); m.className = 'lgmenu menu'; m.setAttribute('role', 'menu');
+  m.innerHTML = list.map(b => { const f = window.dupFile ? window.dupFile(list, b, G.title) : ''; return `<button type="button" role="menuitem" data-id="${esc(b.id)}" class="${b.id === lib.cur ? 'cur' : ''}"${b.locked ? ' disabled title="Locked: it opens only in theWord"' : ''}>${esc(G.title(b))}${f ? ` <span class="small">${esc(f)}</span>` : ''}${b.user ? ' <span class="small">[mine]</span>' : ''}</button>`; }).join('');
+  document.body.appendChild(m); tile.classList.add('open');
+  const r = tile.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+  m.style.left = Math.max(6, Math.min(r.left, W - m.offsetWidth - 6)) + 'px';
+  const below = H - r.bottom - 8; if (m.offsetHeight > below && r.top > below) { m.style.maxHeight = Math.min(m.offsetHeight, r.top - 8) + 'px'; m.style.top = (r.top - 4 - Math.min(m.offsetHeight, r.top - 8)) + 'px'; } else { m.style.maxHeight = below + 'px'; m.style.top = (r.bottom + 4) + 'px'; }
+  const c = m.querySelector('.cur'); if (c) c.scrollIntoView({ block: 'nearest' });
+  m.onclick = e => { const b = e.target.closest('button[data-id]'); if (!b || b.disabled) return; closeLibMenus(); openBookModule(b.dataset.id); };
+}
+function wireLibGroups() {
+  const box = $('#libGroups'); if (!box || box.dataset.wired) return; box.dataset.wired = '1';
+  box.addEventListener('click', e => { const t = e.target.closest('.lgtile'); if (t) { e.stopPropagation(); openGroupMenu(t); } });
+  const mb = $('#libMoreBtn'), mm = $('#libMoreMenu');
+  if (mb && mm) {
+    mb.onclick = e => { e.stopPropagation(); const open = mm.classList.contains('hidden'); closeLibMenus(); if (!open) return; mm.classList.remove('hidden'); mb.classList.add('on');
+      const r = mb.getBoundingClientRect(); mm.style.top = (r.bottom + 4) + 'px'; mm.style.left = Math.max(6, Math.min(r.right - mm.offsetWidth, innerWidth - mm.offsetWidth - 6)) + 'px'; };
+    mm.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.classList.contains('grabbtn')) setTimeout(closeLibMenus, 0); });
+  }
+  const gb = $('#libGroupsBtn'); if (gb) gb.onclick = async () => { closeLibMenus(); if (await TimotheosLibGroups.manage()) renderLibGroups(); };
+  document.addEventListener('click', e => { if (!e.target.closest('.lgmenu, #libMoreMenu, .lgtile, #libMoreBtn')) closeLibMenus(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLibMenus(); });
+  window.addEventListener('libgroups', renderLibGroups);
 }
 
 async function openBookModule(id, topicId, addHistory = true, anchor = null) {
@@ -356,7 +394,7 @@ async function openBookModule(id, topicId, addHistory = true, anchor = null) {
   if (info.locked) { $('#libTopics').innerHTML = ''; $('#libBody').innerHTML = `<div class="entry"><h4>${esc(info.title)}</h4><p class="note">This module cannot be opened in Timotheos: ${esc(info.reason)}.</p></div>`; return; }
   if (lib.cur !== id) {
     lib.cur = id; lib.topics = await api.bookTopics(id);
-    await fillLibSelect(); $('#libMod').value = id; $('#libFilter').value = '';
+    await fillLibSelect(); $('#libMod').value = id; $('#libFilter').value = ''; renderLibGroups();
     renderTopicList(lib.topics);
   }
   $('#libToday').classList.toggle('hidden', info.kind !== 'devotional');
@@ -435,6 +473,7 @@ async function showTopic(id, tid, addHistory = true, anchor = null) {
 
 let filterTimer = null;
 function wireLibrary() {
+  wireLibGroups();
   $('#libMod').onchange = () => { if ($('#libMod').value) openBookModule($('#libMod').value); };
   $('#libFilter').oninput = () => {
     clearTimeout(filterTimer);

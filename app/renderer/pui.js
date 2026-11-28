@@ -477,23 +477,28 @@
   const coverOf = s => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) | 0; return COVER[Math.abs(h) % COVER.length]; };
   function libraryInto(box, o = {}) {
     const mods = (state.modules.books || []).filter(b => !b.hidden);
-    const kinds = KIND.filter(([k]) => mods.some(m => m.kind === k));
-    let cur = o.kind || (kinds[0] || [])[0];
+    const G = window.TimotheosLibGroups;
+    let kinds = G ? G.shown(mods).map(g => [g.id, g.name]) : KIND.filter(([k]) => mods.some(m => m.kind === k));   // the Library groups (the same as on the computer)
+    let cur = o.kind ? (G ? 'k:' + o.kind : o.kind) : (kinds[0] || [])[0];
+    if (!kinds.some(([k]) => k === cur)) cur = (kinds[0] || [])[0];
     const draw = () => {
+      if (G) { kinds = G.shown(mods).map(g => [g.id, g.name]); if (!kinds.some(([k]) => k === cur)) cur = (kinds[0] || [])[0]; }
       // locked modules (they open only in theWord) come last; modules with the same name show their file name
       const tl = m => m.title || m.name.replace(/\.[^.]+(\.twm)?$/i, '');
-      const list = mods.filter(m => m.kind === cur).sort((a, z) => (!!a.locked - !!z.locked) || (a.title || a.name).localeCompare(z.title || z.name));
+      const list = G ? G.members(cur, mods) : mods.filter(m => m.kind === cur).sort((a, z) => (!!a.locked - !!z.locked) || (a.title || a.name).localeCompare(z.title || z.name));
       box.innerHTML = `${kinds.length > 1 ? `<div class="pseg scroll">${kinds.map(([k, l]) => `<button type="button" data-k="${k}" class="${k === cur ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
         <div class="mods">${list.map(m => { const t = m.title || m.name.replace(/\.[^.]+(\.twm)?$/i, ''); return `<button type="button" class="mod${m.locked ? ' locked' : ''}" data-id="${esc(m.id)}"><span class="cov" style="background:${coverOf(t)}">${esc((m.abbr || t).replace(/[^\p{L}\p{N}]/gu, '').slice(0, 1).toUpperCase())}</span><span class="mt"><b>${esc(t)}</b><span>${m.locked ? 'locked — opens only in theWord' : `${m.totalTopics ? m.totalTopics.toLocaleString() + ' entries · ' : ''}${esc((KIND.find(x => x[0] === m.kind) || [])[1] || m.kind)}${m.user ? ' · your own · editable' : ''}`}${window.dupFile(list, m, tl) ? ' · ' + esc(window.dupFile(list, m, tl)) : ''}</span></span>${ic('chevR', 18)}</button>`; }).join('') || '<p class="phint">No modules of this kind. Import theWord or e-Sword modules from More → Modules.</p>'}</div>
-        <div class="pills"><button type="button" class="pill" data-import>${ic('import', 16)} Import modules</button><button type="button" class="pill" data-newmod>${ic('plus', 16)} New user module</button><button type="button" class="pill" data-getmods>${ic('info', 16)} Where to get modules</button></div>`;
+        <div class="pills"><button type="button" class="pill" data-import>${ic('import', 16)} Import modules</button><button type="button" class="pill" data-newmod>${ic('plus', 16)} New user module</button><button type="button" class="pill" data-getmods>${ic('info', 16)} Where to get modules</button>${G ? `<button type="button" class="pill" data-groups>${ic('sidebar', 16)} Groups…</button>` : ''}</div>`;
     };
     draw();
     box.onclick = e => {
       const k = e.target.closest('[data-k]'); if (k) { cur = k.dataset.k; return draw(); }
       if (e.target.closest('[data-getmods]')) return runCommand('getModules');
+      if (e.target.closest('[data-groups]')) return G.manage().then(ch => { if (ch) draw(); });
       const m = e.target.closest('.mod'); if (m) { if (m.classList.contains('locked')) return flash('This module is locked: it opens only in theWord'); return openModule(m.dataset.id); }
       if (e.target.closest('[data-import]')) return TimotheosModules.importModules();
-      if (e.target.closest('[data-newmod]')) return TimotheosModules.newUserModuleDialog(cur === 'book' ? 'book' : cur === 'dictionary' ? 'dictionary' : 'commentary');
+      const ck = String(cur || '').replace(/^k:/, '');
+      if (e.target.closest('[data-newmod]')) return TimotheosModules.newUserModuleDialog(ck === 'book' ? 'book' : ck === 'dictionary' ? 'dictionary' : 'commentary');
     };
   }
   function library() { const p = pushPage({ title: 'Library', big: true, actions: `<button type="button" class="pib" data-x="import" aria-label="Import">${ic('import', 22)}</button><button type="button" class="pib" data-x="bsearch" aria-label="Search the books">${ic('search', 22)}</button>` });

@@ -145,29 +145,33 @@
   <div class="tab libtab" id="tab-lib">
     <div class="libbar">
       <button id="libSideBtn" class="lbtn on" data-icon="sidebar" data-icon-size="16" title="Show or hide the list of topics" aria-label="Topic list"></button>
-      <select id="libMod" title="Module"></select>
+      <select id="libMod" title="Module" class="hidden" aria-hidden="true" tabindex="-1"></select>
+      <div id="libGroups" class="libgroups" role="toolbar" aria-label="Library groups"></div>
       <span class="lsep"></span>
       <button id="libBack" class="lbtn" data-icon="back" data-icon-size="16" title="Back to the topic you read before" aria-label="Back"></button>
       <button id="libPrev" class="lbtn" data-icon="prev" data-icon-size="16" title="Previous topic in the list (Alt+←)" aria-label="Previous topic"></button>
       <button id="libNext" class="lbtn" data-icon="next" data-icon-size="16" title="Next topic in the list (Alt+→)" aria-label="Next topic"></button>
       <button id="libToday" class="lbtn hidden" data-icon="study" data-icon-size="16" title="Today's reading"></button>
-      <span id="libUserBar" class="libuser hidden">
-        <span class="lsep"></span>
-        <button id="libAddTopic" class="lbtn" data-icon="plus" data-icon-size="15" title="New topic"></button>
-        <button id="libAddSub" class="lbtn" title="New child sub-topic" style="font-size:11px;width:auto;padding:0 5px">+Sub</button>
-        <button id="libEditTopic" class="lbtn" data-icon="edit" data-icon-size="15" title="Edit this topic"></button>
-        <button id="libRenameTopic" class="lbtn" data-icon="type" data-icon-size="15" title="Rename this topic"></button>
-        <button id="libMoveUp" class="lbtn" title="Move topic up">↑</button>
-        <button id="libMoveDown" class="lbtn" title="Move topic down">↓</button>
-        <button id="libDelTopic" class="lbtn" data-icon="close" data-icon-size="14" title="Delete this topic"></button>
-      </span>
       <span class="grow"></span>
-      <button id="libSpeak" class="lbtn" data-icon="speaker" data-icon-size="16" title="Read this topic aloud (again: stop)" aria-label="Read aloud"></button>
-      <button id="libPrint" class="lbtn" data-icon="print" data-icon-size="16" title="Print this topic" aria-label="Print"></button>
-      <button id="libExport" class="lbtn" data-icon="import" data-icon-size="16" title="Export topics (.docx, .rtf, .html, .txt)" aria-label="Export"></button>
-      <button id="libInfo" class="lbtn" data-icon="info" data-icon-size="16" title="Properties of this module (view and edit)" aria-label="Properties"></button>
-      <button id="libCompress" class="lbtn" data-icon="compress" data-icon-size="16" title="Make this module file smaller" aria-label="Compress"></button>
-      <button type="button" class="lbtn grabbtn grabright" data-grab="lib" data-icon="hand" data-icon-size="15" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text; the middle button always drags)" aria-label="Drag to scroll" aria-pressed="false"></button>
+      <button id="libMoreBtn" class="lbtn" data-icon="dots" data-icon-size="16" title="More: read aloud, print, export, properties, groups…" aria-label="More" aria-haspopup="menu"></button>
+      <div id="libMoreMenu" class="libmenu hidden" role="menu">
+      <button id="libSpeak" data-label="Read aloud" class="lbtn" data-icon="speaker" data-icon-size="16" title="Read this topic aloud (again: stop)" aria-label="Read aloud"></button>
+      <button id="libPrint" data-label="Print" class="lbtn" data-icon="print" data-icon-size="16" title="Print this topic" aria-label="Print"></button>
+      <button id="libExport" data-label="Export topics…" class="lbtn" data-icon="import" data-icon-size="16" title="Export topics (.docx, .rtf, .html, .txt)" aria-label="Export"></button>
+      <button id="libInfo" data-label="Properties" class="lbtn" data-icon="info" data-icon-size="16" title="Properties of this module (view and edit)" aria-label="Properties"></button>
+      <button id="libCompress" data-label="Make the file smaller" class="lbtn" data-icon="compress" data-icon-size="16" title="Make this module file smaller" aria-label="Compress"></button>
+      <button type="button" class="lbtn grabbtn" data-grab="lib" data-label="Drag to scroll" data-icon="hand" data-icon-size="15" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text; the middle button always drags)" aria-label="Drag to scroll" aria-pressed="false"></button>
+        <button id="libGroupsBtn" class="lbtn" data-icon="sidebar" data-icon-size="16" data-label="Manage groups…" title="Make, rename and order the groups, and choose the group of each module"></button>
+      <span id="libUserBar" class="libuser hidden"><span class="lmsep"></span>
+                <button id="libAddTopic" data-label="New topic" class="lbtn" data-icon="plus" data-icon-size="15" title="New topic"></button>
+        <button id="libAddSub" data-label="New sub-topic" class="lbtn" title="New child sub-topic" data-icon="plus" data-icon-size="13"></button>
+        <button id="libEditTopic" data-label="Edit this topic" class="lbtn" data-icon="edit" data-icon-size="15" title="Edit this topic"></button>
+        <button id="libRenameTopic" data-label="Rename this topic" class="lbtn" data-icon="type" data-icon-size="15" title="Rename this topic"></button>
+        <button id="libMoveUp" data-label="Move topic up" class="lbtn" data-icon="up" data-icon-size="14" title="Move topic up"></button>
+        <button id="libMoveDown" data-label="Move topic down" class="lbtn" data-icon="down" data-icon-size="14" title="Move topic down"></button>
+        <button id="libDelTopic" data-label="Delete this topic" class="lbtn" data-icon="close" data-icon-size="14" title="Delete this topic"></button>
+      </span>
+      </div>
     </div>
     <div class="libfeedwrap" id="libFeedWrap">
       <div class="lkpbar">
@@ -447,6 +451,7 @@
 <script src="render.js"></script>
 <script src="translit.js"></script>
 <script src="modules.js"></script>
+<script src="libgroups.js"></script>
 <script src="study.js"></script>
 <script src="search-ui.js"></script>
 <script src="bsearch-ui.js"></script>

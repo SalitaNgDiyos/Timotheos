@@ -11,3 +11,6 @@ Timotheos 0.6.132
 - The scripture popup takes the size of its verse (small for a short verse, bigger for a long one), grows wider first, stays inside the app window, and scrolls only when the window is too small. It can still be resized by hand (until it closes).
 - The single-commentary view (and the Library entry) use the same text background as the Bible views.
 - Where to get modules: the file chooser now opens a moment after the window closes (a possible cause of a crash on some desktops).
+- Library: the module list is replaced by group tiles (Commentaries, Dictionaries, Books, Devotionals… and your own groups); click a tile to drop down its modules. "Manage groups…" makes, renames, orders and deletes groups and sets the group of each module. The phone Library shows the same groups.
+- Library: Read aloud, Print, Export, Properties, Make the file smaller, Drag to scroll and the topic buttons of your own modules are now in the ⋯ menu.
+- Library: the topic list stays on the left in a narrow panel (it no longer jumps to the top).
