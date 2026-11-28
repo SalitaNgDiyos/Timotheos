@@ -364,7 +364,7 @@
       html += `<div class="pstack${diff ? ' diffon' : ''}">`;
       for (const row of rows) {
         const cs = cellsOf(row);
-        html += `<div class="psv pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}"><div class="psh">${row.v === 0 ? '¶' : row.v}</div>${cs.map((c, k) => `<div class="psl${k === base && diff ? ' base' : ''}"><span class="plb" data-chip="${esc(ids[k])}" title="${esc(titleOf(ids[k]))} · click: compare the others with this Bible (★ for Differences)">${k === base && diff ? '★' : ''}${esc(abbrOf(ids[k]))}</span>${cellHtml(c, k, row.v)}</div>`).join('')}</div>`;
+        html += `<div class="psv pvrow${row.v === curV ? ' cur' : ''}" data-pv="${row.v}">${cs.map((c, k) => `<div class="psl${k === base && diff ? ' base' : ''}"><span class="plb" data-chip="${esc(ids[k])}" title="${esc(titleOf(ids[k]))} · click: compare the others with this Bible (★ for Differences)">${k === base && diff ? '★' : ''}${esc(abbrOf(ids[k]))}</span>${cellHtml(c, k, row.v)}</div>`).join('')}</div>`;
       }
       html += '</div>';
     }

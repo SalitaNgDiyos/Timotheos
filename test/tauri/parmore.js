@@ -25,8 +25,11 @@ try {
   ok($$('#tab-par .pth small').every(e => getComputedStyle(e).display === 'none'), 'column names show the short name only');
   $('#tab-par [data-a="cols"]').click(); await sl(600); await TimotheosDock.hide('lib');
   $('#tab-par [data-a="stack"]').click(); await sl(600);
-  const sh = $$('#tab-par .psh').map(x => x.textContent);
-  ok(sh.length > 0 && sh.every(t => /^(\d+|¶)$/.test(t)), 'stacked: verse numbers only: ' + sh.slice(0, 3).join(','));
+  const sc = $('#tab-par .pstack .psl .pcell'), sv = sc && sc.dataset.v;
+  ok(!$('#tab-par .psh'), 'stacked: no separate verse heading');
+  ok(sv && getComputedStyle(sc, '::before').content.replace(/"/g, '') === sv && getComputedStyle(sc, '::before').verticalAlign === 'super', 'stacked: a superscript verse number before each Bible text: ' + sv);
+  const bg = e => getComputedStyle(e).backgroundColor;
+  ok(bg($('#tab-par .parbody')) === bg($('.bv')), 'Parallel Bibles uses the Bible view text background');
 } catch (e) { ok(false, 'error ' + e.message); }
 console.log('RESULT ' + out.join(' | '));
 })();

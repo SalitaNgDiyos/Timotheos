@@ -1053,3 +1053,6 @@ body.dragging .dlink { pointer-events: none; }
 .dcap { cursor: default; }
 .dcap.movable { cursor: grab; }
 .dcap.movable:active { cursor: grabbing; }
+
+/* the Bible search results, Parallel Bibles and the Library read on the same text background as a Bible view */
+#tab-search .results, #tab-search .searchout, #tab-search .bsresults, .parbody, #tab-lib .lookup, #tab-lib #libBody, #tab-lib #libFeed { background-color: var(--textbg); }

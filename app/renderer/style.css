@@ -660,7 +660,6 @@ sup.gloss, sup.gloss font { font: italic 400 .66em var(--font-text); color: var(
 .pcell.rtl { text-align: right; }
 .pstack .psv { padding: 6px 12px 8px; border-bottom: 1px solid var(--line); cursor: pointer; }
 .pstack .psv.cur { background: var(--sel); }
-.pstack .psh { font: 700 12.5px var(--font-ui); color: var(--accent); margin-bottom: 2px; }
 .pstack .psl { display: grid; grid-template-columns: 4.2em 1fr; gap: 8px; padding: 2px 0; }
 .pstack .plb { font: 600 11.5px var(--font-ui); color: var(--muted); padding-top: .3em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pstack .psl.base .plb { color: var(--accent); }
@@ -735,3 +734,7 @@ html.mobile .parbar { flex-wrap: wrap; }
 /* the verse number is a small superscript at the top left of each Bible's text (a pseudo-element: it is not part of the text, so highlights and copying are unchanged) */
 .ptable .pcell[data-v]::before { content: attr(data-v); color: var(--accent); font: 700 .62em var(--font-ui); vertical-align: super; line-height: 0; margin-right: .3em; }
 .ptable .pcell.pmiss[data-v]::before { font-size: 11px; font-style: normal; }
+
+/* Stacked: a small superscript verse number before each Bible's text, the same as Columns */
+.pstack .psl .pcell[data-v]::before { content: attr(data-v); color: var(--accent); font: 700 .62em var(--font-ui); vertical-align: super; line-height: 0; margin-right: .3em; }
+.pstack .psl .pcell.pmiss[data-v]::before { font-size: 11px; font-style: normal; }

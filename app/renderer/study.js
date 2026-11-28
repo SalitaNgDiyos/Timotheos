@@ -709,8 +709,8 @@ function wireContextMenu() {
       `<button data-a="xr">Cross-references</button>`,
       `<button data-a="addxr">Add a cross-reference…</button>`,
       `<button data-a="cmt">Commentaries on this verse</button>`,
-      word ? `<button data-a="find" data-q="${esc(word)}">Find “${esc(word)}” in Bible Search</button>` : '',
-      ...strongs.map(s => `<button data-a="find" data-q="${esc(s)}">Find ${esc(s)} in Bible Search</button>`),
+      word ? `<button data-a="find" data-b="${esc(id)}" data-q="${esc(word)}">Find “${esc(word)}” in this Bible</button>` : '',
+      ...strongs.map(s => `<button data-a="find" data-b="${esc(id)}" data-q="${esc(s)}">Find ${esc(s)} in this Bible</button>`),
       tagEl && !noteEl ? `<button data-a="pin">Look up “${esc(shortQ((tagEl.classList.contains('word') && tagEl.textContent.trim()) || word || (tagEl.dataset.strong || tagEl.dataset.morph || '').split(/\s+/)[0]))}” in Library${strongs.length ? ' <span class="small">' + esc(strongs.join(' ')) + '</span>' : ''}</button>`
         : word ? `<button data-a="look" data-q="${esc(word)}">Look up “${esc(word)}” in Library</button>` : '',
       noteEl ? `<button data-a="pin">Show this ${noteEl.classList.contains('fn') ? 'footnote' : 'cross-reference'} in the Library</button>` : '',
@@ -737,7 +737,7 @@ function wireContextMenu() {
       else if (a === 'xr') TimotheosModules.showAllXrefs(v);
       else if (a === 'addxr') TimotheosModules.addXref(v);
       else if (a === 'cmt') openTab('cmt');
-      else if (a === 'find') window.TimotheosSearch.find(bt.dataset.q);
+      else if (a === 'find') window.TimotheosSearch.find(bt.dataset.q, bt.dataset.b || undefined);
       else if (a === 'look') TimotheosModules.lookupWord(bt.dataset.q);
       else if (a === 'pin') window.TimotheosPin(noteEl || tagEl);
     };

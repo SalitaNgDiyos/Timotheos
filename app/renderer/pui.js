@@ -213,7 +213,7 @@
       const d = e.target.closest('[data-c]'); if (d) { setLastColor(d.dataset.c); $$('.pdot', s).forEach(z => z.classList.toggle('on', z === d)); act.highlight(x, d.dataset.c); return; }
       const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a;
       closeSheet(); if (state.ref.v !== x.v) selectVerse(x.v, false);
-      if (a === 'find') return search({ q: word.word || word.strongs[0] });
+      if (a === 'find') return search({ q: word.word || word.strongs[0], only: (state.settings.openBibles || [])[0] });
       setTimeout(() => act[a](x, word), 60);
     });
   }
@@ -565,7 +565,7 @@
       const t = q.value.trim(); if (!t) { res.innerHTML = ''; return; } const my = ++seq, m0 = mode;
       res.innerHTML = '<p class="phint">Searching…</p>';
       if (mode === 'bible') {
-        const { o: so, e } = engine(); e.scope = scope; const ids = searchIds(so);
+        const { o: so, e } = engine(); e.scope = scope; const ids = o.only ? [o.only] : searchIds(so);
         try {
           const r = await api.search(ids, t, Object.assign(e, { limit: 3000 })); if (my !== seq || mode !== m0) return; last = r; filterB = null;
           const u = ud(); u.searchHistory = [t, ...(u.searchHistory || []).filter(x => x !== t)].slice(0, 50); api.setUserData('searchHistory', u.searchHistory);
@@ -765,9 +765,9 @@
   window.addEventListener('load', wire);
   /* ---------------- hold a word in a Library page, a commentary or a dictionary: Look up / Find / Copy ---------------- */
   function bookWordSheet(w, cw) {
-    const s = sheet(`<div class="pills">${w && w.length > 1 ? `<button type="button" class="pill" data-a="lookup">${ic('lexicon', 16)} Look up “${esc(shortW(w))}” in Library</button><button type="button" class="pill" data-a="find">${ic('search', 16)} Find “${esc(shortW(w))}” in Bible Search</button>` : ''}<button type="button" class="pill" data-a="copyword">${ic('copy', 16)} Copy “${esc(shortW(cw))}”</button></div>`, { title: `“${esc(shortW(cw))}”` });
+    const s = sheet(`<div class="pills">${w && w.length > 1 ? `<button type="button" class="pill" data-a="lookup">${ic('lexicon', 16)} Look up “${esc(shortW(w))}” in Library</button><button type="button" class="pill" data-a="find">${ic('search', 16)} Find “${esc(shortW(w))}” in this Bible</button>` : ''}<button type="button" class="pill" data-a="copyword">${ic('copy', 16)} Copy “${esc(shortW(cw))}”</button></div>`, { title: `“${esc(shortW(cw))}”` });
     s.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; closeSheet();
-      if (a === 'lookup') setTimeout(() => wordSheet({ word: w, strongs: [], morphs: [] }), 60); else if (a === 'find') search({ q: w });
+      if (a === 'lookup') setTimeout(() => wordSheet({ word: w, strongs: [], morphs: [] }), 60); else if (a === 'find') search({ q: w, only: (state.settings.openBibles || [])[0] });
       else api.copyText(cw, null).then(() => flash(`Copied “${shortW(cw)}”`)); });
   }
   (() => {

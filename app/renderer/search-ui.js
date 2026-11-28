@@ -98,10 +98,10 @@ function bibleIds(o) {
   if (o.bibles === 'all') return state.modules.bibles.map(b => b.id);
   return open;
 }
-async function run(q) {
+async function run(q, only) {
   if (q != null) $('#searchInput').value = q;
   q = $('#searchInput').value.trim(); if (!q) return;
-  const o = saveOpts(); const ids = bibleIds(o);
+  const o = saveOpts(); const ids = only ? [only] : bibleIds(o);
   if (!ids.length) { $('#searchStatus').textContent = 'Tick at least one Bible to search in.'; $('#searchPick').open = true; return; }
   $('#searchStatus').textContent = 'Searching…'; $('#searchResults').innerHTML = ''; $('#searchTabs').classList.add('hidden');
   try {
@@ -155,6 +155,6 @@ function historyMenu(e) {
 }
 function onOpen(focus) { fillScopes($('#searchScope').value || opts().scope); if (focus) $('#searchInput').focus(); }
 /** "Find …" from elsewhere (context menu, popups) */
-function find(q) { openTab('search'); run(q); }
+function find(q, bibleId) { openTab('search'); run(q, bibleId); }
 
 window.TimotheosSearch = { init, run, find, onOpen, fillBibleList };
