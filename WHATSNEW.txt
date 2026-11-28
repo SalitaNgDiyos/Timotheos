@@ -2,3 +2,4 @@ Timotheos 0.6.132
 
 - A left click on a word looks it up in the Library while a Library panel is open; with none open a click does nothing (right-click → Look up still asks where to put one). The menu now says "Find “word” in Bible Search" because it searches the Bible chosen in the Bible Search panel.
 - Parallel Bibles: the verse column on the left edge is gone; the verse number is a small superscript at the top left of each Bible's text.
+- Parallel Bibles opens faster the first time: its Bibles are opened quietly in the background after the app starts, and "Loading…" shows while it reads them.

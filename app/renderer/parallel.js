@@ -52,6 +52,15 @@
     // the panel was hidden and is now on screen: ask for / choose a set the first time, and draw it
     new ResizeObserver(() => { if (visible()) wake(); }).observe(root);
     drawBar();
+    // while the panel is closed, open its Bibles quietly in the background so the first opening does not wait for them (computer only)
+    setTimeout(() => {
+      try {
+        if (isPhone() || visible()) return;
+        const set = curSet(); if (!set) return;
+        const ids = set.bibles.filter(bibleOf).slice(0, MAX), r = ref();
+        Promise.all(ids.map(id => ensureInfo(id))).then(() => api.chapter(ids, r.b, r.c)).catch(() => { /* it is only a warm-up */ });
+      } catch (e) { /* only a warm-up */ }
+    }, 4000);
   }
   let menu = null;
   function closeMenu() { if (!menu) return; menu.classList.add('hidden'); const b = bar && bar.querySelector('.parmore'); if (b) { b.classList.remove('on'); b.setAttribute('aria-expanded', 'false'); } }
@@ -309,6 +318,7 @@
     const ids = set.bibles.filter(bibleOf).slice(0, MAX);
     const gone = set.bibles.filter(id => !bibleOf(id));
     if (!ids.length) { body.innerHTML = '<div class="parnone"><p>The Bibles of this set are not installed any more.</p></div>'; return; }
+    if (!body.querySelector('.pvrow, .parnone')) body.innerHTML = '<p class="hint parload">Loading…</p>';   // the first opening reads the Bibles
     await Promise.all(ids.map(id => ensureInfo(id)));
     const r = ref();
     let data;
