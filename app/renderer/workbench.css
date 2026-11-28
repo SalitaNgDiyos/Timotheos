@@ -739,7 +739,7 @@ body.centered .bv > .bvbody > .bvtext { padding-bottom: var(--half, 0px); box-si
 body.detach-mode #grid > .dgroup { outline: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: -1px; }
 body.detach-mode .gut.detach, body.detach-mode .gut.free { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 body.detach-mode .gut.detach:hover, body.detach-mode .gut.free:hover { background: color-mix(in srgb, var(--accent) 55%, transparent); }
-.dempty { position: absolute; z-index: 1; box-sizing: border-box; border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--accent) 7%, transparent); display: flex; align-items: center; justify-content: center; pointer-events: none; color: var(--muted); font-size: 12px; text-align: center; padding: 8px; }
+.dempty { position: absolute; z-index: 0; box-sizing: border-box; border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--accent) 7%, transparent); display: flex; align-items: center; justify-content: center; pointer-events: none; color: var(--muted); font-size: 12px; text-align: center; padding: 8px; }
 
 /* Smart drop zones (empty spaces + Left/Right/Top/Bottom/Tab on panels + outer edges) */
 body.dragging .dempty { opacity: 0; }
@@ -900,9 +900,12 @@ html.mobile #gnav .tb:disabled { opacity: .35; }
 html.mobile .toolbar .grow { display: none; }
 
 /* panel captions: names first. Folded buttons sit under "⋯"; at the narrowest the other tabs show icons only */
-.dcap .dmore { display: none; }
-.dcap.tight .dbtns > .dbtn:not(.dmore):not([data-act="close"]) { display: none; }
-.dcap.tight .dmore { display: grid; }
+/* on a computer every panel button (fonts and colours, A−/A+, float, maximize, pop out) sits under "⋯"; only ⋯ and × stay */
+.dcap .dmore { display: grid; }
+.dcap .dbtns > .dbtn:not(.dmore):not([data-act="close"]) { display: none; }
+html.phone .dcap .dmore { display: none; }
+html.phone .dcap:not(.tight) .dbtns > .dbtn:not(.dmore):not([data-act="close"]) { display: grid; }
+html.phone .dcap.tight .dmore { display: grid; }
 .dcap.tight2 .dtab:not(.on) > span { display: none; }
 .dcap .dtabs .dtab { flex: 0 1 auto; }
 .dcap .dtabs .dtab.on { flex: 0 0 auto; max-width: 100%; }
@@ -1094,3 +1097,14 @@ body.dragging .dlink { pointer-events: none; }
 
 /* a popped-out window (popwin.js): only its panel, without the main window's title bar, toolbar and status bar */
 html.popwin .titlebar, html.popwin .toolbar, html.popwin .statusbar, html.popwin .dbtn[data-act="float"], html.popwin .dbtn[data-act="max"], html.popwin .dbtn[data-act="close"], html.popwin .dbtn[data-act="pop"] { display: none !important; }
+
+/* a side toolbar (the Bible view's icons on the left) that is too short shows a double arrow at its foot instead of a
+   scroll bar; the arrow lists the icons that do not fit (sideovf.js) */
+.bvside { overflow: hidden !important; position: relative; }
+.bvside > .ovf { visibility: hidden; pointer-events: none; position: absolute; left: 3px; bottom: 6px; }
+.bvside > .ovf.bvsep { display: none; }
+.bvside > .sovf { margin-top: auto; flex: none; color: var(--text); }
+.sovfmenu { position: fixed; z-index: 130; display: flex; flex-direction: column; min-width: 190px; max-height: 80vh; overflow: auto; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+.sovfmenu button { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--text); padding: 6px 10px; border-radius: 5px; text-align: left; font: 13px var(--font-ui); cursor: pointer; }
+.sovfmenu button:hover { background: var(--sel); }
+.sovfmenu button .sovfic { width: 18px; display: grid; place-items: center; flex: none; font: 700 12px var(--font-ui); }

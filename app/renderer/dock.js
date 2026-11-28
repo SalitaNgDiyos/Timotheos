@@ -697,7 +697,7 @@
       box.querySelector('#designLayoutBtn').onclick = e => openLayoutDesigner(e.currentTarget);
       grid.appendChild(box);
     } else if (!maxed && !focusMode) {   // an empty space (a closed panel leaves one) shows the links Add Panel and Split Space, in both modes
-      for (const sp of findEmptySpaces(shown.concat(activeSlots))) {
+      for (const sp of findEmptySpaces(shown.concat(activeSlots)).filter(sp => !shown.some(a => hit(a, sp)))) {   // never over a panel
         const em = document.createElement('div');
         em.className = 'dempty';
         Object.assign(em.style, {
