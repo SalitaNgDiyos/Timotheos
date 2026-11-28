@@ -5,7 +5,7 @@
  * the same: the list clicks it (and what it opens shows beside the arrow). */
 'use strict';
 (() => {
-  const SEL = '.bvside';
+  const SEL = '.bvside:not(.parside)';
   const ARROW = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l5 5 5-5"/><path d="M7 13l5 5 5-5"/></svg>';
   const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(es => es.forEach(e => fit(e.target))) : null;
   const seen = new WeakSet();

@@ -36,9 +36,14 @@
     root.innerHTML = `<div class="parbar"></div><div class="parmain"><nav class="parside bvside" aria-label="Settings of the Parallel Bibles panel">${sideHtml()}</nav><div class="parbody" tabindex="0"></div></div>`;
     bar = root.querySelector('.parbar'); body = root.querySelector('.parbody'); side = root.querySelector('.parside');
     // the ⋯ menu (0.6.131): Differences, Follow and the text tools that used to sit in a column beside the text
-    menu = document.createElement('div'); menu.className = 'parxmenu hidden'; menu.innerHTML = '<div class="parmtop"></div>';
+    menu = document.createElement('div'); menu.className = 'parxmenu hidden'; menu.innerHTML = '<div class="parmtop"></div><div class="parshow" role="group" aria-label="Show in Parallel Bibles"></div>';
     menu.appendChild(side); root.appendChild(menu);
     menu.addEventListener('click', onBar);
+    menu.addEventListener('change', e => {   // the panel's own "Show" switches (not those of the Bible views)
+      const cb = e.target.closest('input[data-ps]'); if (!cb) return;
+      const p = { ...pshow(), [cb.dataset.ps]: cb.checked }; if (cb.dataset.ps === 'strongs') p.morph = cb.checked;
+      save({ parShow: p }); applyLook(); render(false, true);
+    });
     body.addEventListener('mousedown', () => closeMenu());
     root.addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.classList.contains('hidden')) { e.stopPropagation(); closeMenu(); } });
     bar.addEventListener('click', onBar);
@@ -91,6 +96,7 @@
       <span class="pargrow"></span>
       <span class="parseg" role="group" aria-label="Layout"><button type="button" data-a="cols" class="${mode === 'cols' ? 'on' : ''}" title="Bibles side by side">Columns</button><button type="button" data-a="stack" class="${mode === 'stack' ? 'on' : ''}" title="Each verse with every Bible under it">Stacked</button></span>
       <button type="button" data-a="more" class="parmore${menu && !menu.classList.contains('hidden') ? ' on' : ''}" aria-haspopup="true" aria-expanded="${menu && !menu.classList.contains('hidden') ? 'true' : 'false'}" title="More: Differences, Follow and the text tools" aria-label="More">⋯</button>`;
+    if (menu) { const ps = pshow(); menu.querySelector('.parshow').innerHTML = '<div class="pshh">Show in Parallel Bibles</div>' + PSHOW.map(([k, l, t]) => `<label title="${esc(t)}"><input type="checkbox" data-ps="${k}"${ps[k] ? ' checked' : ''}> ${esc(l)}</label>`).join(''); }
     if (menu) menu.querySelector('.parmtop').innerHTML = `<button type="button" data-a="diff" class="tog${S().parDiff ? ' on' : ''}" title="Mark the words that differ from the ★ Bible (click a column title to choose it)">≠<span class="lbl"> Differences</span></button>
       <button type="button" data-a="follow" class="tog${follow() ? ' on' : ''}" title="Follow the main Bible view (click to read on by itself)">${ic('link', 14)}<span class="lbl">Follow</span></button>`;
     syncSide();
@@ -99,6 +105,14 @@
   const AL = ['left', 'center', 'justify', 'right'];
   const look = () => S().parLook || {};
   function setLook(k, v) { const o = Object.assign({}, look()); if (v == null || v === '') delete o[k]; else o[k] = v; save({ parLook: o }); applyLook(); }
+  /** what the panel shows: its own switches; the first time they start from the Bible view's */
+  const PSHOW = [['woj', 'Words of Jesus in red', 'Words of Jesus in red'], ['headings', 'Headings', 'Section headings of the Bibles'], ['added', 'Added words in italics', 'Words the translators added, in italics'],
+    ['vnums', 'Verse numbers', 'The small verse number before each Bible\'s text'], ['footnotes', "Translator's notes and cross-references", 'Footnote (f) and cross-reference marks; point at one to read it'],
+    ['strongs', "Strong's and Morph", "Strong's numbers and morphology codes in tagged Bibles"]];
+  function pshow() {
+    const own = S().parShow; if (own && typeof own === 'object') return { vnums: true, ...own };
+    const v = S().show || {}; return { woj: v.woj !== false, headings: v.headings !== false, added: v.added !== false, vnums: true, footnotes: false, strongs: false, morph: false };
+  }
   function sideHtml() {
     const al = window.TimotheosAlign ? TimotheosAlign.icon('left', 15) : ic('menu', 15);
     return `<button data-grab="par" class="pgrab bvgrab" title="Drag to scroll: when on, hold the left mouse button on the text and drag to scroll it (Shift+drag selects text)" aria-pressed="false">${ic('hand', 15)}</button>
@@ -329,7 +343,10 @@
     if (my !== seq) return;
     mk('chapter');
     shown = { b: r.b, c: r.c };
-    const show = Object.assign({}, S().show || {}, { strongs: false, morph: false, lemma: false, columns: false, tags: false, footnotes: false, xrefs: false, xrefsFull: false, cmtLinks: false });
+    const ps = pshow();
+    const show = Object.assign({}, S().show || {}, { lemma: false, columns: false, tags: false, xrefs: false, xrefsFull: false, cmtLinks: false },
+      { woj: !!ps.woj, headings: !!ps.headings, added: !!ps.added, footnotes: !!ps.footnotes, strongs: !!ps.strongs, morph: !!ps.morph });
+    if (body) body.classList.toggle('novn', !ps.vnums);
     const infos = ids.map(id => state.infos.get(id) || EMPTY_MOD);
     const ctxs = ids.map(() => ({ fn: { n: 0 }, b: r.b }));
     const rows = data.rows.filter(row => row.cells.some(x => x != null));

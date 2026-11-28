@@ -21,3 +21,4 @@ Timotheos 0.6.132
 - Panel captions show only ⋯ and ×: fonts and colours, A−/A+, Float, Maximize and Pop out are in the ⋯ menu.
 - A Bible view too short for its side buttons shows a double arrow at the foot that lists the hidden ones, instead of a scroll bar.
 - An empty space (Add Panel / Split Space) could be drawn over a panel, covering its buttons (seen over Parallel Bibles); it is no longer drawn over panels and always lies under them.
+- Parallel Bibles: its own Show switches in the ⋯ menu: Words of Jesus in red, Headings, Added words in italics, Verse numbers, Translator's notes and cross-references, Strong's and Morph (separate from the Bible views' switches).
