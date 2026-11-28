@@ -1505,7 +1505,7 @@ function wireHover() {
     if (t && !wordPopupAllowed(t, e.shiftKey)) t = null;   // a view with word pop-ups off: only with Shift
     if (t === hoverEl) { if (!t && !e.target.closest('#popup, a[data-href], a.xr') && !$('#popup').classList.contains('hidden')) hidePopupSoon(150); return; }   // left a verse link: the popup goes soon
     hoverEl = t; clearTimeout(hoverTimer);
-    if (!t) { if (!e.target.closest('#popup, a[data-href], a.xr')) hidePopupSoon(); return; }
+    if (!t) { if (!e.target.closest('#popup, a[data-href], a.xr')) hidePopupSoon($('#popup').classList.contains('fitted') ? 150 : 300); return; }   // a fitted popup (verse link, footnote) goes soon
     hoverTimer = setTimeout(() => showPopup(t), 280);
   });
   // Shift pressed while the mouse already rests on a word of a view that has word pop-ups off
@@ -1560,7 +1560,7 @@ async function showPopup(el) {
   clearTimeout(hideTimer);
   const html = el.matches('sup.fn,sup.xref') ? await noteHtml(el) : await lookupHtml(el);
   if (hoverEl !== el || !html) return;
-  showPopupHtml(el, html);
+  showPopupHtml(el, html, el.matches('sup.fn,sup.xref') ? { fit: true } : {});   // footnotes and cross-references behave like verse links: they fit their text
 }
 /** the word popups keep the size you gave them last (as before); without one they use the usual size of the stylesheet */
 function applySavedPopupSize() {

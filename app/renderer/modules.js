@@ -1233,7 +1233,7 @@ function wireModules() {
       const slice = tgt.hash ? extractBookmarkSlice(topic.html, tgt.hash) : topic.html;
       const info = (state.modules.books || []).find(b => b.id === tgt.id) || {};
       const html = `<div class="entry"><h4>${esc(topic.subject)}</h4><div class="src">${esc(info.title || '')}</div>${sanitize(slice)}</div>`;
-      window.showPopupHtml(a, html);
+      window.showPopupHtml(a, html, { fit: true });
     }
   });
   document.addEventListener('mouseover', async e => {
