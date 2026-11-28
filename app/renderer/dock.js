@@ -95,7 +95,7 @@
     out.areas = okAreas.map(a => ({ ...a, panels: keep(a.panels) })).filter(a => a.panels.length);
     delete out.cols; delete out.rows; out.v = 3;
     for (const a of out.areas) if (!a.panels.includes(a.active)) a.active = a.panels[0];
-    out.floats = (out.floats || []).map(f => ({ panels: keep(f.panels), active: f.active, x: +f.x || 80, y: +f.y || 80, w: +f.w || 360, h: +f.h || 320 })).filter(f => f.panels.length);
+    out.floats = (out.floats || []).map(f => ({ panels: keep(f.panels), active: f.active, x: Number.isFinite(+f.x) ? +f.x : 80, y: Number.isFinite(+f.y) ? +f.y : 80, w: +f.w || 360, h: +f.h || 320, ...(f.home && Number.isFinite(+f.home.x0) ? { home: { x0: +f.home.x0, y0: +f.home.y0, x1: +f.home.x1, y1: +f.home.y1 } } : {}) })).filter(f => f.panels.length);
     for (const f of out.floats) if (!f.panels.includes(f.active)) f.active = f.panels[0];
     out.hidden = keep(out.hidden);
     for (const id of PANELS.keys()) if (!seen.has(id)) { if (PANELS.get(id).startHidden) out.hidden.push(id); else placeHome(out, id, true); } // e.g. a panel new in this version, or a new Bible view (a panel that starts hidden waits in Layout & Panels)
@@ -780,7 +780,7 @@
         </span></header><div class="dbody"></div>`;
     const body = div.querySelector('.dbody');
     for (const id of ids) { const p = PANELS.get(id); body.appendChild(p.el); p.el.classList.toggle('hidden', id !== act0); }
-    div.querySelector('.dcap').addEventListener('pointerdown', e => { if (detachMode) startDrag(e, div, g); });   // panels are moved only while Edit Layout is on
+    div.querySelector('.dcap').addEventListener('pointerdown', e => { if (detachMode || div.classList.contains('dfloat')) startDrag(e, div, g); });   // docked panels move only while Edit Layout is on; a floating window always moves by its title bar
     div.querySelector('.dcap').addEventListener('dblclick', e => { if (!e.target.closest('.dbtn, .bvbible, .bvrename')) toggleFloat(g.active); });
     div.querySelectorAll('.dtab').forEach(b => b.addEventListener('click', () => activate(b.dataset.id)));
     div.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', () => {
@@ -959,8 +959,9 @@
   }
 
   function clampFloat(w) {
-    const W = window.innerWidth, H = window.innerHeight;
-    const x = Math.min(Math.max(0, parseInt(w.style.left)), W - 120), y = Math.min(Math.max(40, parseInt(w.style.top)), H - 60);
+    // anywhere in the window, even partly past its edges; 80 px of its title bar always stays in reach
+    const W = window.innerWidth, H = window.innerHeight, ww = w.offsetWidth || parseInt(w.style.width) || 360;
+    const x = Math.min(Math.max(80 - ww, parseInt(w.style.left)), W - 80), y = Math.min(Math.max(0, parseInt(w.style.top)), H - 36);
     w.style.left = x + 'px'; w.style.top = y + 'px';
   }
 
@@ -1036,13 +1037,14 @@
         drag.ghost.innerHTML = `${ic(p.icon, 15)}<span>${esc(p.title)}</span>`;
         document.body.appendChild(drag.ghost);
       }
-      showEmptySpaceTargets();
+      if (!drag.isFloat) showEmptySpaceTargets();   // a floating window only moves when dragged; its Dock button puts it back
     }
     if (drag.ghost) { drag.ghost.style.left = e.clientX + 12 + 'px'; drag.ghost.style.top = e.clientY + 10 + 'px'; }
     if (drag.isFloat) {
       drag.groupDiv.style.left = e.clientX - drag.ox + 'px'; drag.groupDiv.style.top = e.clientY - drag.oy + 'px';
       drag.groupDiv.style.pointerEvents = 'none';
     }
+    if (drag.isFloat) return;
     const els = document.elementsFromPoint(e.clientX, e.clientY);
     const overMenu = els.some(el => el && el.id === 'panelsMenu');
     const tgt = overMenu ? null : (els.find(el => el.classList && el.classList.contains('dtarget')) || null);
@@ -1331,11 +1333,15 @@
   }
   function toggleFloat(id) {
     const at = locate(id); if (!at) return;
-    if (at.float) { detach(id); placeHome(L, id); }
-    else {
+    // the place a panel leaves when it floats stays empty (nothing beside it grows), and Dock puts it back there when that place is still free
+    if (at.float) {
+      const home = at.g.home; detach(id);
+      if (home && !L.areas.some(a => hit(a, home))) L.areas.push({ x0: home.x0, y0: home.y0, x1: home.x1, y1: home.y1, panels: [id], active: id });
+      else placeHome(L, id);
+    } else {
       const el = PANELS.get(id).el.closest('.dgroup'); const r = el ? el.getBoundingClientRect() : { left: 200, top: 120 };
-      detach(id);
-      L.floats.push({ panels: [id], active: id, x: Math.round(r.left + 30), y: Math.round(r.top + 30), w: 380, h: 360 });
+      const home = detach(id, true);
+      L.floats.push({ panels: [id], active: id, x: Math.round(r.left + 30), y: Math.round(r.top + 30), w: 380, h: 360, ...(home ? { home } : {}) });
     }
     maxed = null; commit();
   }

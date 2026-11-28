@@ -1090,3 +1090,4 @@ body.dragging .dlink { pointer-events: none; }
 .lgman .lgbook span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lgman .lgbook select { flex: none; max-width: 45%; }
 .lgman .lgbook.hidden { display: none; }
+.dfloat > .dcap { cursor: grab; } .dfloat > .dcap:active { cursor: grabbing; }

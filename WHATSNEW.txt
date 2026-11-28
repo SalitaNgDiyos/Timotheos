@@ -16,3 +16,4 @@ Timotheos 0.6.132
 - Library: the topic list stays on the left in a narrow panel (it no longer jumps to the top).
 - Verse-link popups close quickly when the mouse leaves the link (they could stay open until the mouse reached another word).
 - Popups on tagged Bible words (Strong's, morphology, footnotes) are back to the old way: a fixed size that you set by dragging the corner, and Timotheos remembers it.
+- Floating windows: they move by their caption at any time (no need for Edit Layout), can go partly past the window's edges, and never dock while dragged (use the Dock button). Floating a panel leaves its place empty, so no other panel grows or shrinks; Dock puts it back into that place.
