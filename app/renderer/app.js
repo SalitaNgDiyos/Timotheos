@@ -1497,7 +1497,7 @@ function wireHover() {
     if (document.documentElement.classList.contains('sk') && Date.now() - touchAt < 1500) return;
     let t = popupTarget(e.target);
     if (t && !wordPopupAllowed(t, e.shiftKey)) t = null;   // a view with word pop-ups off: only with Shift
-    if (t === hoverEl) return;
+    if (t === hoverEl) { if (!t && !e.target.closest('#popup, a[data-href], a.xr') && !$('#popup').classList.contains('hidden')) hidePopupSoon(150); return; }   // left a verse link: the popup goes soon
     hoverEl = t; clearTimeout(hoverTimer);
     if (!t) { if (!e.target.closest('#popup, a[data-href], a.xr')) hidePopupSoon(); return; }
     hoverTimer = setTimeout(() => showPopup(t), 280);
@@ -1510,12 +1510,12 @@ function wireHover() {
     hoverEl = t; clearTimeout(hoverTimer); hoverTimer = setTimeout(() => showPopup(t), 120);
   });
   document.addEventListener('mousemove', e => { const w = popupTarget(e.target); lastWordEl = w && isWordTarget(w) ? w : null; }, { passive: true });
-  $('#popup').addEventListener('mouseleave', hidePopupSoon);
+  $('#popup').addEventListener('mouseleave', () => hidePopupSoon());
   $('#popup').addEventListener('mouseenter', () => clearTimeout(hideTimer));
 }
 let hideTimer = null;
 let popupHold = false;
-function hidePopupSoon() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (!popupHold) $('#popup').classList.add('hidden'); }, 300); }
+function hidePopupSoon(ms = 300) { clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (!popupHold && !$('#popup').matches(':hover')) $('#popup').classList.add('hidden'); }, ms); }
 const popupZoom = () => Math.min(2.5, Math.max(0.6, +(TimotheosOptions.appearance().popupZoom || 1)));
 function applyPopupZoom() {
   const p = $('#popup'); const z = popupZoom(); const b = p.querySelector('.pzbody'); if (b) b.style.zoom = z;
@@ -1524,11 +1524,12 @@ function applyPopupZoom() {
 function stepPopupZoom(d) {
   const a = TimotheosOptions.appearance(); a.popupZoom = Math.round(Math.min(2.5, Math.max(0.6, popupZoom() + d * 0.1)) * 10) / 10;
   save({ appearance: a }); applyPopupZoom();
-  const pp = $('#popup'); if (pp && !pp.classList.contains('hidden') && !pp.classList.contains('sized')) fitPopup();
+  const pp = $('#popup'); if (pp && !pp.classList.contains('hidden') && pp.classList.contains('fitted') && !pp.classList.contains('sized')) fitPopup();
 }
 window.stepPopupZoom = stepPopupZoom;
 function wirePopupResize() {
   const p = $('#popup');
+  applySavedPopupSize();
   p.addEventListener('click', e => { const b = e.target.closest('[data-pz]'); if (b) { e.stopPropagation(); popupHold = true; stepPopupZoom(b.dataset.pz === '+' ? 1 : -1); setTimeout(() => { popupHold = false; }, 400); } });
   p.addEventListener('mousedown', e => {
     const r = p.getBoundingClientRect();
@@ -1538,7 +1539,12 @@ function wirePopupResize() {
     const up = () => {
       document.removeEventListener('mouseup', up, true);
       setTimeout(() => { popupHold = false; }, 50);
-      p.style.width = p.offsetWidth + 'px'; p.style.height = p.offsetHeight + 'px'; p.classList.add('sized');   // kept until the popup closes; the next one fits its own text again
+      if (p.classList.contains('fitted')) { p.style.width = p.offsetWidth + 'px'; p.style.height = p.offsetHeight + 'px'; p.classList.add('sized'); }   // a verse-link popup: the size lasts until it closes; the next one fits its own text again
+      else {   // a word popup (Strong's, morphology, footnote): Timotheos remembers the size, as before
+        const a = TimotheosOptions.appearance(); a.popupSize = { w: p.offsetWidth, h: p.offsetHeight };
+        p.style.width = a.popupSize.w + 'px'; p.style.height = a.popupSize.h + 'px'; p.classList.add('sized');
+        save({ appearance: a });
+      }
       if (!p.matches(':hover')) hidePopupSoon();
     };
     document.addEventListener('mouseup', up, true);
@@ -1550,11 +1556,26 @@ async function showPopup(el) {
   if (hoverEl !== el || !html) return;
   showPopupHtml(el, html);
 }
-function showPopupHtml(el, html) {
+/** the word popups keep the size you gave them last (as before); without one they use the usual size of the stylesheet */
+function applySavedPopupSize() {
+  const p = $('#popup'); const sz = (TimotheosOptions.appearance().popupSize) || null;
+  for (const k of ['maxWidth', 'maxHeight', 'width', 'height', 'visibility']) p.style[k] = '';
+  p.classList.remove('sized');
+  if (sz) { p.style.width = sz.w + 'px'; p.style.height = sz.h + 'px'; p.classList.add('sized'); }
+}
+/** o.fit: a verse-link popup, which takes the size of its verse (fitPopup); without it a word popup, placed the old way */
+function showPopupHtml(el, html, o = {}) {
   clearTimeout(hideTimer);
   const p = $('#popup'); p.innerHTML = `<div class="pzbar"><button type="button" data-pz="-" title="Smaller text in popups (Ctrl + mouse wheel down)">A−</button><span class="pzv"></span><button type="button" data-pz="+" title="Larger text in popups (Ctrl + mouse wheel up)">A+</button></div><div class="pzbody">${html}</div>`;
-  popupAnchor = el.getBoundingClientRect(); p.classList.remove('sized'); p.style.width = ''; p.style.height = '';
-  applyPopupZoom(); fitPopup(); p.scrollTop = 0;
+  p.classList.toggle('fitted', !!o.fit);
+  if (o.fit) { popupAnchor = el.getBoundingClientRect(); p.classList.remove('sized'); p.style.width = ''; p.style.height = ''; applyPopupZoom(); fitPopup(); p.scrollTop = 0; return; }
+  popupAnchor = null; applySavedPopupSize();
+  applyPopupZoom(); p.classList.remove('hidden'); p.scrollTop = 0;
+  const r = el.getBoundingClientRect(); const W = window.innerWidth, H = window.innerHeight;
+  const pw = Math.min(p.offsetWidth || 440, W - 20);
+  let x = Math.min(Math.max(10, r.left), W - pw - 10); let y = r.bottom + 6;
+  p.style.left = x + 'px'; p.style.top = y + 'px';
+  const ph = p.offsetHeight; if (y + ph > H - 10) p.style.top = Math.max(10, r.top - ph - 6) + 'px';
 }
 /** The popup takes the size of its own text (a short verse is small, a long one grows), inside the window as far as it goes:
  *  it first gets wider, in steps, so it stays low; it sits below the word, or above it, wherever the whole text fits, and it

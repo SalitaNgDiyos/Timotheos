@@ -1186,7 +1186,7 @@ function wireModules() {
       if (!a.matches(':hover')) return;
       const v = m[3] ? +m[3] : 1;
       const html = await versePreview(+m[1], +m[2], v, m[4] ? +m[4] : v, modSpec);
-      if (a.matches(':hover') && html) window.showPopupHtml(a, html);
+      if (a.matches(':hover') && html) window.showPopupHtml(a, html, { fit: true });
       return;
     }
 
@@ -1199,7 +1199,7 @@ function wireModules() {
         const apSelected = TimotheosPopupBibles.normalizePopupIds(state.settings && state.settings.popupAP, (state.modules.bibles || []).map(x => x.id));
         if (apSelected.length || !tgt || tgt.tid == null) {
           const html = await versePreview(legacyRef.b, legacyRef.c, legacyRef.v1, legacyRef.v2);
-          if (a.matches(':hover') && html) { window.showPopupHtml(a, html); return; }
+          if (a.matches(':hover') && html) { window.showPopupHtml(a, html, { fit: true }); return; }
         }
       }
       if (!tgt || tgt.tid == null) return;
@@ -1216,7 +1216,7 @@ function wireModules() {
     const [b, c, v, span] = a.dataset.xr.split('.').map(Number);
     a.title = '';
     const html = await versePreview(b, c, v, v + span);
-    if (a.matches(':hover')) window.showPopupHtml(a, html);
+    if (a.matches(':hover')) window.showPopupHtml(a, html, { fit: true });
   });
 }
 
