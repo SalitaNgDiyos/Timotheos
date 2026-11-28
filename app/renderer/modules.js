@@ -356,13 +356,38 @@ function renderLibGroups() {
   const gs = G.shown(all);
   box.innerHTML = gs.length ? gs.map(g => `<button type="button" class="lgtile${g.id === curG ? ' on' : ''}" data-g="${esc(g.id)}" aria-haspopup="menu" title="${esc(g.name)}: ${g.list.length} module${g.list.length === 1 ? '' : 's'}${g.id === curG && cur ? ' · open: ' + esc(G.title(cur)) : ''}">${esc(g.name)}<span class="lgn">${g.list.length}</span>${icon('down', 12)}</button>`).join('')
     : '<span class="small muted">No commentaries, dictionaries or books yet</span>';
+  fitLibGroups();
 }
+/** one row only: the tiles that do not fit fold into a last tile "+N" that lists those groups with their modules; the tile
+ *  of the open module always stays in view (and only it shortens its name when even one tile hardly fits) */
+function fitLibGroups() {
+  const box = $('#libGroups'); if (!box) return;
+  box.querySelectorAll('.lgtile').forEach(t => t.classList.remove('lgfold'));
+  const old = box.querySelector('.lgplus'); if (old) old.remove();
+  box.classList.remove('compact');
+  const tiles = [...box.querySelectorAll('.lgtile[data-g]')]; if (tiles.length < 2) return;
+  if (box.scrollWidth <= box.clientWidth + 1) return;
+  box.classList.add('compact');   // first the counts and the little arrows go, then tiles fold
+  if (box.scrollWidth <= box.clientWidth + 1) return;
+  const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'lgtile lgplus'; plus.dataset.more = '1'; plus.setAttribute('aria-haspopup', 'menu');
+  box.appendChild(plus);
+  const order = tiles.filter(t => !t.classList.contains('on')).reverse();   // the last ones fold first; the open one never
+  for (const t of order) {
+    t.classList.add('lgfold');
+    const n = box.querySelectorAll('.lgfold').length; plus.innerHTML = `+${n}${icon('down', 12)}`; plus.title = 'More groups: ' + [...box.querySelectorAll('.lgfold')].map(x => x.firstChild.textContent).join(', ');
+    if (box.scrollWidth <= box.clientWidth + 1) break;
+  }
+}
+if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(() => fitLibGroups()); const watch = () => { const b = document.getElementById('libGroups'); if (b) ro.observe(b); else setTimeout(watch, 500); }; setTimeout(watch, 0); }
 function closeLibMenus() { document.querySelectorAll('.lgmenu').forEach(m => m.remove()); document.querySelectorAll('.lgtile.open').forEach(t => t.classList.remove('open')); const mm = $('#libMoreMenu'); if (mm) mm.classList.add('hidden'); const mb = $('#libMoreBtn'); if (mb) mb.classList.remove('on'); }
 function openGroupMenu(tile) {
   const was = tile.classList.contains('open'); closeLibMenus(); if (was) return;
-  const G = TimotheosLibGroups, list = G.members(tile.dataset.g, (state.modules.books || []).filter(b => !b.hidden));
+  const G = TimotheosLibGroups, mods = (state.modules.books || []).filter(b => !b.hidden);
   const m = document.createElement('div'); m.className = 'lgmenu menu'; m.setAttribute('role', 'menu');
-  m.innerHTML = list.map(b => { const f = window.dupFile ? window.dupFile(list, b, G.title) : ''; return `<button type="button" role="menuitem" data-id="${esc(b.id)}" class="${b.id === lib.cur ? 'cur' : ''}"${b.locked ? ' disabled title="Locked: it opens only in theWord"' : ''}>${esc(G.title(b))}${f ? ` <span class="small">${esc(f)}</span>` : ''}${b.user ? ' <span class="small">[mine]</span>' : ''}</button>`; }).join('');
+  const one = list => list.map(b => { const f = window.dupFile ? window.dupFile(list, b, G.title) : ''; return `<button type="button" role="menuitem" data-id="${esc(b.id)}" class="${b.id === lib.cur ? 'cur' : ''}"${b.locked ? ' disabled title="Locked: it opens only in theWord"' : ''}>${esc(G.title(b))}${f ? ` <span class="small">${esc(f)}</span>` : ''}${b.user ? ' <span class="small">[mine]</span>' : ''}</button>`; }).join('');
+  m.innerHTML = tile.dataset.more   // "+N": the folded groups, each with its modules
+    ? [...document.querySelectorAll('#libGroups .lgfold')].map(t => { const g = G.shown(mods).find(x => x.id === t.dataset.g); return g ? `<div class="lghead">${esc(g.name)}</div>${one(g.list)}` : ''; }).join('')
+    : one(G.members(tile.dataset.g, mods));
   document.body.appendChild(m); tile.classList.add('open');
   const r = tile.getBoundingClientRect(), W = innerWidth, H = innerHeight;
   m.style.left = Math.max(6, Math.min(r.left, W - m.offsetWidth - 6)) + 'px';
