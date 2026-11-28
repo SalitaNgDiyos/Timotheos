@@ -765,7 +765,7 @@
   window.addEventListener('load', wire);
   /* ---------------- hold a word in a Library page, a commentary or a dictionary: Look up / Find / Copy ---------------- */
   function bookWordSheet(w, cw) {
-    const s = sheet(`<div class="pills">${w && w.length > 1 ? `<button type="button" class="pill" data-a="lookup">${ic('lexicon', 16)} Look up “${esc(shortW(w))}” in Library</button><button type="button" class="pill" data-a="find">${ic('search', 16)} Find “${esc(shortW(w))}” in this Bible</button>` : ''}<button type="button" class="pill" data-a="copyword">${ic('copy', 16)} Copy “${esc(shortW(cw))}”</button></div>`, { title: `“${esc(shortW(cw))}”` });
+    const s = sheet(`<div class="pills">${w && w.length > 1 ? `<button type="button" class="pill" data-a="lookup">${ic('lexicon', 16)} Look up “${esc(shortW(w))}” in Library</button><button type="button" class="pill" data-a="find">${ic('search', 16)} Find “${esc(shortW(w))}” in Bible Search</button>` : ''}<button type="button" class="pill" data-a="copyword">${ic('copy', 16)} Copy “${esc(shortW(cw))}”</button></div>`, { title: `“${esc(shortW(cw))}”` });
     s.addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (!b) return; const a = b.dataset.a; closeSheet();
       if (a === 'lookup') setTimeout(() => wordSheet({ word: w, strongs: [], morphs: [] }), 60); else if (a === 'find') search({ q: w });
       else api.copyText(cw, null).then(() => flash(`Copied “${shortW(cw)}”`)); });

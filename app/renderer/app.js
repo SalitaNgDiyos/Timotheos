@@ -1564,8 +1564,12 @@ function showPopupHtml(el, html) {
   const ph = p.offsetHeight; if (y + ph > H - 10) p.style.top = Math.max(10, r.top - ph - 6) + 'px';
 }
 
-/** "Click a word to look it up" (Options, off by default): a click in the Bible text opens the Library only when it is on (the phone screens keep their taps) */
-function clickLooksUp() { const h = document.documentElement.classList; return h.contains('sk') || h.contains('mobile') || !!(state.settings && state.settings.clickLookup); }
+/** "Click a word to look it up" (Options, on by default): a click in the Bible text looks the word up only while a Library panel is open; with no Library panel a click does nothing
+ *  (right-click → Look up still works and asks where to put the Library). The phone screens keep their taps. */
+function clickLooksUp() {
+  const h = document.documentElement.classList; if (h.contains('sk') || h.contains('mobile')) return true;
+  return !(state.settings && state.settings.clickLookup === false) && !!(window.TimotheosDock && TimotheosDock.isVisible('lib'));
+}
 const inBibleText = el => !!(el && el.closest && el.closest('.bv, .parpanel .parbody'));
 window.TimotheosClickLookup = { on: clickLooksUp, inBibleText };
 window.TimotheosPin = el => pin(el);   // right-click → Look up on a Strong's word, a footnote or a cross-reference mark
@@ -1808,7 +1812,7 @@ function wireUi() {
   $('#apPlacement').onchange = async () => { await api.setSettings({ apocryphaPlacement: $('#apPlacement').value }); state.settings.apocryphaPlacement = $('#apPlacement').value; await rebuildNav(); await go(state.ref, false); };
   if ($('#importBtn2')) $('#importBtn2').onclick = () => TimotheosModules.importModules();
   $('#resetPanelSkins').onclick = () => TimotheosPanelSkin.resetAll();
-  $('#clickLookup').checked = !!state.settings.clickLookup;
+  $('#clickLookup').checked = state.settings.clickLookup !== false;
   $('#clickLookup').onchange = () => save({ clickLookup: $('#clickLookup').checked });
   $('#centerActive').checked = centerOn();
   $('#centerActive').onchange = () => { save({ centerActive: $('#centerActive').checked }); ensurePanes(); renderChapter(true); };

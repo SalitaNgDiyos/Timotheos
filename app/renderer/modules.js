@@ -981,7 +981,7 @@ document.addEventListener('contextmenu', e => {
   const copyTxt = sel || w; if (!copyTxt) return;
   e.preventDefault();
   const q = esc(w || copyTxt);
-  const items = [w && w.length > 1 ? `<button data-a="look" data-q="${q}">Look up “${esc(shortQ(w))}” in Library</button>` : '', w ? `<button data-a="find" data-q="${q}">Find “${esc(shortQ(w))}” in this Bible</button>` : '', `<button data-a="copyword" data-q="${esc(copyTxt)}">Copy “${esc(shortQ(copyTxt))}”</button>`];
+  const items = [w && w.length > 1 ? `<button data-a="look" data-q="${q}">Look up “${esc(shortQ(w))}” in Library</button>` : '', w ? `<button data-a="find" data-q="${q}">Find “${esc(shortQ(w))}” in Bible Search</button>` : '', `<button data-a="copyword" data-q="${esc(copyTxt)}">Copy “${esc(shortQ(copyTxt))}”</button>`];
   const mn = document.getElementById('ctxMenu'); mn.innerHTML = items.join(''); mn.classList.remove('hidden');
   mn.style.left = Math.min(e.clientX, innerWidth - mn.offsetWidth - 8) + 'px'; mn.style.top = Math.min(e.clientY, innerHeight - mn.offsetHeight - 8) + 'px';
   mn.onclick = async ev => { const bt = ev.target.closest('button'); if (!bt) return; mn.classList.add('hidden'); const k = bt.dataset.a;

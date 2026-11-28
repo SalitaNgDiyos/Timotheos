@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Edmund P. Valdez
-// 0.6.131: a click in the Bible text does not open the Library (setting off by default); right-click → Look up asks where the
+// 0.6.131: a click in the Bible text looks a word up only while a Library panel is open (otherwise it does nothing); right-click → Look up asks where the
 // closed Library goes (the window map) and never covers another panel; no tabs anywhere.
 // FOLDERS='["/home/claude/partest"]' bash test/tauri/run.sh test/tauri/lookupplace.js /tmp/lp.png 1500
 (async () => { const out = []; const ok = (c, m) => out.push((c ? '✓ ' : '✗ ') + m); const sl = ms => new Promise(r => setTimeout(r, ms));
@@ -20,10 +20,11 @@ try {
   await sl(700);
   let st = TimotheosDock.state();
   ok(st.areas.every(a => a.panels.length === 1) && ['cmt', 'search', 'bsearch'].every(id => st.areas.some(a => a.panels[0] === id)), 'an old tab group (Commentary + Search + Book Search) is split into three spaces');
-  ok(state.settings.clickLookup !== true && $('#clickLookup') && !$('#clickLookup').checked, 'Options: "Click a word to look it up" is off');
+  if (state.settings.clickLookup === false) { $('#clickLookup').checked = true; $('#clickLookup').dispatchEvent(new Event('change')); await sl(200); }   // an earlier run of this test left it off in the test profile
+  ok(state.settings.clickLookup !== false && $('#clickLookup') && $('#clickLookup').checked, 'Options: Click a word is on: ' + state.settings.clickLookup + '/' + ($('#clickLookup') && $('#clickLookup').checked));
   const p = wordPoint(); fire('click', p); await sl(800);
-  ok(!TimotheosDock.isVisible('lib') && !$('.placedlg'), `clicking “${p.w}” does not open the Library`);
-  const pt = wordPoint(true); if (pt.el.matches('[data-strong]')) { fire('click', pt); await sl(800); ok(!TimotheosDock.isVisible('lib') && !$('.placedlg'), `clicking the Strong's word “${pt.w}” does not open the Library`); }
+  ok(!TimotheosDock.isVisible('lib') && !$('.placedlg'), `clicking “${p.w}” does nothing while there is no Library panel`);
+  const pt = wordPoint(true); if (pt.el.matches('[data-strong]')) { fire('click', pt); await sl(800); ok(!TimotheosDock.isVisible('lib') && !$('.placedlg'), `clicking the Strong's word “${pt.w}” does nothing while there is no Library panel`); }
   const fn = $('.bv sup.fn, .bv sup.xref'); if (fn) { fn.click(); await sl(600); ok(!TimotheosDock.isVisible('lib') && !$('.placedlg'), 'clicking a footnote/cross-reference mark does not open the Library'); }
   const before = JSON.stringify(TimotheosDock.state().areas);
   fire('contextmenu', p); await sl(300);
@@ -50,13 +51,16 @@ try {
   // with the Library open, right-click → Look up just fills it
   fire('contextmenu', p); await sl(300); [...$$('#ctxMenu button')].find(b => /Look up/.test(b.textContent)).click(); await sl(500);
   ok(!$('.placedlg'), 'Library open: no question');
-  // the setting on: a click looks up (and asks when the Library is closed)
-  $('#clickLookup').checked = true; $('#clickLookup').dispatchEvent(new Event('change')); await sl(200);
+  // with the Library open a left click looks the word up in it; closed, a click does nothing; the setting off: never
+  fire('click', wordPoint(true)); await sl(1200);
+  ok(!$('.placedlg') && /Lookup|·|dictionary|topic/i.test($('#libFeed').textContent), 'Library open: a left click looks the word up in it');
   TimotheosDock.hide('lib'); await sl(500);
   fire('click', wordPoint(true)); await sl(600);
-  ok(!!$('.placedlg'), 'with the setting on, a click asks where the closed Library goes');
-  $('.placedlg [data-a="cancel"]').click(); await sl(200);
+  ok(!$('.placedlg') && !TimotheosDock.isVisible('lib'), 'Library closed: a left click does nothing (no question, no panel)');
+  TimotheosDock.show('lib', { quiet: true }); await sl(500);
   $('#clickLookup').checked = false; $('#clickLookup').dispatchEvent(new Event('change')); await sl(200);
+  ok(!window.TimotheosClickLookup.on(), 'setting off: a click never looks up');
+  $('#clickLookup').checked = true; $('#clickLookup').dispatchEvent(new Event('change')); await sl(200);
   // Ctrl+F with Bible Search closed asks too
   TimotheosDock.hide('search'); await sl(400);
   window.runCommand('search'); await sl(500);
