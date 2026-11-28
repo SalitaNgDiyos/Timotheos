@@ -759,3 +759,5 @@ html.mobile .parbar { flex-wrap: wrap; }
 .parmenu.parbl { max-height: min(70vh, 480px); overflow: auto; }
 .parmenu.parbl small { color: var(--muted); }
 .parmenu .parblank { display: inline-block; width: 14px; height: 14px; }
+/* the move arrows show only while the mouse is over the column title (always on touch screens) */
+@media (hover: hover) { .ptable .pth .pthb[data-pcol="left"], .ptable .pth .pthb[data-pcol="right"] { display: none; } .ptable .pth:hover .pthb[data-pcol="left"], .ptable .pth:hover .pthb[data-pcol="right"], .ptable .pth:focus-within .pthb[data-pcol="left"], .ptable .pth:focus-within .pthb[data-pcol="right"] { display: inline-flex; } }
